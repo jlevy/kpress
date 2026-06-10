@@ -85,13 +85,13 @@
   /* Prose reading measure. 48rem (~768px) matches kash's --content-width; the
      earlier 76ch (~640px in serif) read narrower than the reference. */
   --kpress-measure: 48rem;
-  --kpress-doc-bg: var(--kpress-host-bg, #ffffff);
-  --kpress-doc-text: var(--kpress-host-text, #111827);
-  --kpress-doc-muted: var(--kpress-host-muted, #5b6472);
-  --kpress-doc-border: var(--kpress-host-border, #d8dee8);
-  --kpress-doc-link: var(--kpress-host-link, #0756a5);
-  --kpress-doc-code-bg: var(--kpress-host-code-bg, #f6f8fb);
-  --kpress-doc-accent: #0f766e;
+  --kpress-doc-bg: var(--kpress-host-bg, oklch(100.00% 0 0));
+  --kpress-doc-text: var(--kpress-host-text, oklch(21.01% 0.0318 264.7));
+  --kpress-doc-muted: var(--kpress-host-muted, oklch(50.06% 0.0250 259.2));
+  --kpress-doc-border: var(--kpress-host-border, oklch(89.90% 0.0151 260.7));
+  --kpress-doc-link: var(--kpress-host-link, oklch(45.76% 0.1445 254.7));
+  --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(97.93% 0.0029 84.6));
+  --kpress-doc-accent: oklch(51.09% 0.0861 186.4);
   --kpress-print-page-margin: 0.7in;
   --kpress-print-font-size: 11pt;
   --kpress-print-footer: "Formatted by KPress";
@@ -121,7 +121,7 @@
   --color-bg-alt: var(--kpress-doc-surface-bg);
   --color-bg-alt-solid: var(--kpress-doc-surface-bg);
   --color-bg-meta-solid: var(--kpress-doc-surface-bg);
-  --color-bg-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
+  --color-bg-selected: var(--kpress-doc-surface-selected);
   --color-text: var(--kpress-doc-text);
   --color-primary: var(--kpress-doc-link);
   --color-primary-light: color-mix(in srgb, var(--kpress-doc-link) 72%, white);
@@ -130,15 +130,21 @@
   --color-hint-strong: var(--kpress-doc-muted);
   --color-hint-gentle: var(--kpress-doc-border);
   --color-border-hint: var(--kpress-doc-border);
-  --color-hover-bg: color-mix(in srgb, var(--kpress-doc-link) 8%, transparent);
+  --color-hover-bg: var(--kpress-doc-surface-hover);
   --color-hover: var(--kpress-doc-border);
   --color-selection: color-mix(in srgb, var(--kpress-doc-link) 18%, transparent);
   --color-scrollbar: color-mix(in srgb, var(--kpress-doc-muted) 45%, transparent);
   --color-scrollbar-hover: color-mix(in srgb, var(--kpress-doc-muted) 70%, transparent);
-  --color-success: #15803d;
+  --color-success: oklch(52.73% 0.1371 150.1);
   /* Subtle surface fill shared by code blocks, table headers, and the metadata
-     block, so they read as one family. Points at the host-overridable code bg. */
+     block, so they read as one family. Points at the host-overridable code bg.
+     The hover/selected steps extend the same family for interaction highlights
+     (TOC hover/active, hovered controls): a warm paper ramp from the original
+     KPress palette, deepening with interaction strength. Light-theme defaults;
+     theme-dark.css re-derives them from its own surfaces. */
   --kpress-doc-surface-bg: var(--kpress-doc-code-bg);
+  --kpress-doc-surface-hover: oklch(95.83% 0.0070 88.6);
+  --kpress-doc-surface-selected: oklch(92.56% 0.0046 78.3);
   /* Task-list checkbox size: slightly larger than body text so the check glyph
      is clearly legible at a glance and not confused with a bullet. */
   --kpress-checkbox-size: 1.15em;

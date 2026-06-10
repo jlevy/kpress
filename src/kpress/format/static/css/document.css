@@ -1,7 +1,7 @@
 .kpress {
-  background: var(--kpress-doc-bg, #fff);
+  background: var(--kpress-doc-bg, oklch(100.00% 0 0));
   box-sizing: border-box;
-  color: var(--kpress-doc-text, #111827);
+  color: var(--kpress-doc-text, oklch(21.01% 0.0318 264.7));
   font-family: var(--kpress-font-body, system-ui, sans-serif);
   /* Allow height transitions to/from `auto` (e.g. <details> expansion). */
   interpolate-size: allow-keywords;
@@ -22,18 +22,18 @@
 }
 
 .kpress-print-surface {
-  background: var(--kpress-doc-bg, #fff);
+  background: var(--kpress-doc-bg, oklch(100.00% 0 0));
 }
 
 .kpress-doc-header,
 .kpress-source-header {
-  border-bottom: 1px solid var(--kpress-doc-border, #d8dee8);
+  border-bottom: 1px solid var(--kpress-doc-border, oklch(89.90% 0.0151 260.7));
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
 }
 
 .kpress-metadata {
-  color: var(--kpress-doc-text, #111827);
+  color: var(--kpress-doc-text, oklch(21.01% 0.0318 264.7));
 }
 
 .kpress-doc-header h1,
@@ -46,17 +46,17 @@
 }
 
 .kpress-source-meta {
-  color: var(--kpress-doc-muted, #5b6472);
+  color: var(--kpress-doc-muted, oklch(50.06% 0.0250 259.2));
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
   margin: 0.5rem 0 0;
 }
 
 .kpress-frontmatter-error,
 .kpress-source-truncation-warning {
-  background: color-mix(in srgb, #b42318 8%, var(--kpress-doc-bg));
-  border: 1px solid color-mix(in srgb, #b42318 42%, var(--kpress-doc-border));
+  background: color-mix(in srgb, oklch(50.03% 0.1821 29.5) 8%, var(--kpress-doc-bg));
+  border: 1px solid color-mix(in srgb, oklch(50.03% 0.1821 29.5) 42%, var(--kpress-doc-border));
   border-radius: var(--kpress-radius-sm);
-  color: color-mix(in srgb, #b42318 84%, var(--kpress-doc-text));
+  color: color-mix(in srgb, oklch(50.03% 0.1821 29.5) 84%, var(--kpress-doc-text));
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
   font-size: var(--kpress-font-size-small, 0.95rem);
   line-height: 1.35;
@@ -199,7 +199,7 @@
 }
 
 .kpress a {
-  color: var(--kpress-doc-link, #0756a5);
+  color: var(--kpress-doc-link, oklch(45.76% 0.1445 254.7));
   text-decoration: none;
   transition: color var(--kpress-transition-fast);
 }
@@ -234,7 +234,7 @@
 }
 
 .kpress-figcaption {
-  color: var(--kpress-doc-muted, #5b6472);
+  color: var(--kpress-doc-muted, oklch(50.06% 0.0250 259.2));
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
   font-size: var(--kpress-font-size-small, 0.95rem);
   line-height: 1.35;
@@ -256,7 +256,7 @@
 
 .kpress code,
 .kpress-code {
-  background: var(--kpress-doc-surface-bg, #f6f8fb);
+  background: var(--kpress-doc-surface-bg, oklch(97.93% 0.0029 84.6));
   font-family: var(--kpress-font-mono, ui-monospace, monospace);
   font-size: var(--kpress-font-size-mono, 0.82rem);
   letter-spacing: -0.025em;
@@ -294,7 +294,7 @@
 }
 
 .kpress-frontmatter {
-  border: 1px solid var(--kpress-doc-border, #d8dee8);
+  border: 1px solid var(--kpress-doc-border, oklch(89.90% 0.0151 260.7));
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
   margin: 1rem 0;
 }
@@ -319,8 +319,8 @@
 }
 
 .kpress details {
-  border: 1px solid var(--kpress-doc-border, #d8dee8);
-  color: var(--kpress-doc-text, #111827);
+  border: 1px solid var(--kpress-doc-border, oklch(89.90% 0.0151 260.7));
+  color: var(--kpress-doc-text, oklch(21.01% 0.0318 264.7));
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
   font-feature-settings: var(--kpress-font-features-sans, normal);
   margin: 0.75rem 0;
@@ -333,7 +333,7 @@
    label and the TOC read as one design language. */
 .kpress summary {
   align-items: center;
-  color: var(--kpress-doc-muted, #5b6472);
+  color: var(--kpress-doc-muted, oklch(50.06% 0.0250 259.2));
   cursor: pointer;
   display: flex;
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
@@ -386,7 +386,7 @@
 }
 
 .kpress details[open] summary {
-  border-bottom: 1px solid var(--kpress-doc-border, #d8dee8);
+  border-bottom: 1px solid var(--kpress-doc-border, oklch(89.90% 0.0151 260.7));
 }
 
 .kpress summary:focus-visible {

@@ -465,7 +465,7 @@ Current public variables (from `contract.py::PUBLIC_CSS_VARIABLES`):
   --kpress-doc-accent: #0f766e;
   --kpress-doc-bg: white;
   --kpress-doc-border: #ddd;
-  --kpress-doc-code-bg: #f6f8fb;
+  --kpress-doc-code-bg: oklch(97.93% 0.0029 84.6);
   --kpress-doc-link: #0645ad;
   --kpress-doc-muted: #666;
   --kpress-doc-text: black;
@@ -520,6 +520,13 @@ enforce “always use CSS vars”).
   opacity/visibility. The `prefers-reduced-motion` block suppresses them.
 - **Surface fill** — `--kpress-doc-surface-bg` is the single subtle fill shared by code
   blocks, table headers, and (where applicable) metadata/shaded surfaces.
+  `--kpress-doc-surface-hover` and `--kpress-doc-surface-selected` extend the family for
+  interaction highlights (TOC hover/active, hovered controls): in light mode a warm
+  paper ramp from the original KPress palette — `oklch(97.93% 0.0029 84.6)` base,
+  `oklch(95.83% 0.0070 88.6)` hover, `oklch(92.56% 0.0046 78.3)` selected — deepening
+  with interaction strength; theme-dark re-derives both from its own surfaces.
+  All first-party color literals are written as `oklch()` (exact, round-trip-verified
+  conversions; see `devtools/css_to_oklch.py`).
 
 Two shared interaction primitives are documented so every component reuses them rather
 than re-styling:
@@ -830,9 +837,12 @@ kash; they are the recorded exceptions:
 9. **Footnotes-section container styling** (border-top, muted, 0.9em) — kash has none.
 10. **Dual active-state signal** on TOC links (`data-active` attribute + `.active`
     class) so embedding hosts get an attribute hook.
-11. **Cool-blue palette**, not kash’s warm teal — `#0756a5`-based primary, fully-opaque
-    tokens. This is the KPress brand palette; the kash `--color-*` token *names* are
-    provided but mapped to blue values.
+11. **Cool-blue primary over warm paper surfaces** — the link/primary stays the KPress
+    blue (`oklch(45.76% 0.1445 254.7)`, was `#0756a5`), not kash’s teal, with
+    fully-opaque tokens; the kash `--color-*` token *names* are provided but mapped to
+    KPress values. Interaction/surface fills (code bg, TOC hover/active) use the warm
+    paper ramp from the original KPress palette (see Surface fill above) rather than
+    blue tints.
 12. **Blue-based dark palette** (same hue choice in dark mode).
 13. **Sans on the `.kpress` wrapper, serif only inside `.kpress-prose`** — UI chrome is
     sans, body prose is serif.
