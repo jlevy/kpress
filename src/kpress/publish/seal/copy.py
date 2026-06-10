@@ -9,7 +9,7 @@ Document-local refs (``./image.png``) and external URLs
 (``https://cdn.example.com/foo.js``) are emitted into the rendered HTML
 verbatim and handled by the deploy layer (CDN, static host, reverse
 proxy). The v2 roadmap brings sealing back behind a real parser or a JS
-bundler — see ``packages/kpress/kpress-design.md`` § "Asset sealing:
+bundler — see ``kpress-design.md`` § "Asset sealing:
 deferred for v1".
 """
 

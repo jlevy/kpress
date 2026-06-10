@@ -1,4 +1,4 @@
-## Publishing Releases
+# Publishing Releases
 
 This is how to publish a Python package to [**PyPI**](https://pypi.org/) from GitHub
 Actions, when using the

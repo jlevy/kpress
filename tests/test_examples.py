@@ -1,4 +1,4 @@
-"""End-to-end tests for the bundled examples under ``packages/kpress/examples``.
+"""End-to-end tests for the bundled examples under ``examples/``.
 
 These run each example's ``build.py`` into a scratch directory and assert the
 Markdown-to-many-URLs output, so the examples stay runnable as the public API

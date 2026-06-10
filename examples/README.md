@@ -104,3 +104,7 @@ from a repo or CMS), an incremental build cache, and the actual deploy step (upl
 object storage or a host, then invalidate the CDN). None of that changes how KPress is
 called. It wraps the same `render_fragment` and `get_static_asset` core shown here; only
 the final “copy `public/` somewhere” step becomes a real upload.
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

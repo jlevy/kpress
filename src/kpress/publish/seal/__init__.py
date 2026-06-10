@@ -2,7 +2,7 @@
 
 The historical asset sealer (HTML/CSS/JS URL rewriter, external fetcher,
 offline-tree verifier) is deferred to v2 — see
-``packages/kpress/kpress-design.md`` § "Asset sealing: deferred for v1"
+``kpress-design.md`` § "Asset sealing: deferred for v1"
 and the v1-removal spec at
 ``docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md``.
 

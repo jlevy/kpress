@@ -465,7 +465,7 @@ def build_sealed_tree(
 
     Historical name retained for the readable-vs-sealed golden suite; the
     actual asset-sealing pass is deferred to v2 (see
-    ``packages/kpress/kpress-design.md`` § "Asset sealing: deferred for
+    ``kpress-design.md`` § "Asset sealing: deferred for
     v1"). Today this exercises the readable→production package-asset
     shape: hashed paths plus gzip sidecars.
     """
