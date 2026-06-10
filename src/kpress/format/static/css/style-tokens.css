@@ -90,7 +90,7 @@
   --kpress-doc-muted: var(--kpress-host-muted, oklch(50.06% 0.025 259.2));
   --kpress-doc-border: var(--kpress-host-border, oklch(89.90% 0.0151 260.7));
   --kpress-doc-link: var(--kpress-host-link, oklch(45.76% 0.1445 254.7));
-  --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(97.93% 0.0029 84.6));
+  --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(97.85% 0.0045 258.3));
   --kpress-doc-accent: oklch(51.09% 0.0861 186.4);
   --kpress-print-page-margin: 0.7in;
   --kpress-print-font-size: 11pt;
@@ -139,12 +139,18 @@
   /* Subtle surface fill shared by code blocks, table headers, and the metadata
      block, so they read as one family. Points at the host-overridable code bg.
      The hover/selected steps extend the same family for interaction highlights
-     (TOC hover/active, hovered controls): a warm paper ramp from the original
-     KPress palette, deepening with interaction strength. Light-theme defaults;
-     theme-dark.css re-derives them from its own surfaces. */
+     (TOC hover/active, hovered controls) and are host-overridable via
+     --kpress-host-surface-*; the neutral default is a subtle link tint, which the
+     light/dark theme files re-derive per theme. */
   --kpress-doc-surface-bg: var(--kpress-doc-code-bg);
-  --kpress-doc-surface-hover: oklch(95.83% 0.007 88.6);
-  --kpress-doc-surface-selected: oklch(92.56% 0.0046 78.3);
+  --kpress-doc-surface-hover: var(
+    --kpress-host-surface-hover,
+    color-mix(in srgb, var(--kpress-doc-link) 8%, transparent)
+  );
+  --kpress-doc-surface-selected: var(
+    --kpress-host-surface-selected,
+    color-mix(in srgb, var(--kpress-doc-link) 10%, transparent)
+  );
   /* Task-list checkbox size: slightly larger than body text so the check glyph
      is clearly legible at a glance and not confused with a bullet. */
   --kpress-checkbox-size: 1.15em;
@@ -178,6 +184,18 @@
   --kpress-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --kpress-font-prose: Georgia, "Times New Roman", Times, serif;
   --kpress-font-punctuation: Georgia, "Times New Roman", Times, serif;
+}
+
+/* Built-in palette presets: reasonable default sets for common cases, each a
+   named bundle of the host-var contract (not special-cased code). Selected with
+   RenderOptions.palette / `format.palette` (which stamps data-kpress-palette on
+   the .kpress wrapper); `neutral` is the default and needs no overrides. Any of
+   these vars can still be overridden individually by a host. The `warm`
+   tan-paper ramp is from the original KPress site. */
+.kpress[data-kpress-palette="warm"] {
+  --kpress-host-code-bg: oklch(97.93% 0.0029 84.6);
+  --kpress-host-surface-hover: oklch(95.83% 0.007 88.6);
+  --kpress-host-surface-selected: oklch(92.56% 0.0046 78.3);
 }
 
 @font-face {

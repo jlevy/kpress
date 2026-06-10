@@ -9,8 +9,14 @@
   --kpress-doc-border: var(--kpress-host-border, oklch(33.73% 0.0207 254.1));
   --kpress-doc-link: var(--kpress-host-link, oklch(76.68% 0.1208 255.4));
   --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(24.16% 0.0153 256.8));
-  --kpress-doc-surface-hover: color-mix(in srgb, var(--kpress-doc-muted) 85%, var(--kpress-doc-bg));
-  --kpress-doc-surface-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
+  --kpress-doc-surface-hover: var(
+    --kpress-host-surface-hover,
+    color-mix(in srgb, var(--kpress-doc-muted) 85%, var(--kpress-doc-bg))
+  );
+  --kpress-doc-surface-selected: var(
+    --kpress-host-surface-selected,
+    color-mix(in srgb, var(--kpress-doc-link) 10%, transparent)
+  );
   --color-bg: var(--kpress-doc-bg);
   --color-bg-solid: var(--kpress-doc-bg);
   --color-bg-alt: var(--kpress-doc-code-bg);

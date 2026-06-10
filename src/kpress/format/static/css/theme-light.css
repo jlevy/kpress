@@ -10,9 +10,15 @@
   --kpress-doc-muted: var(--kpress-host-muted, oklch(50.06% 0.025 259.2));
   --kpress-doc-border: var(--kpress-host-border, oklch(89.90% 0.0151 260.7));
   --kpress-doc-link: var(--kpress-host-link, oklch(45.76% 0.1445 254.7));
-  --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(97.93% 0.0029 84.6));
-  --kpress-doc-surface-hover: oklch(95.83% 0.007 88.6);
-  --kpress-doc-surface-selected: oklch(92.56% 0.0046 78.3);
+  --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(97.85% 0.0045 258.3));
+  --kpress-doc-surface-hover: var(
+    --kpress-host-surface-hover,
+    color-mix(in srgb, var(--kpress-doc-link) 8%, transparent)
+  );
+  --kpress-doc-surface-selected: var(
+    --kpress-host-surface-selected,
+    color-mix(in srgb, var(--kpress-doc-link) 10%, transparent)
+  );
   --color-bg: var(--kpress-doc-bg);
   --color-bg-solid: var(--kpress-doc-bg);
   --color-bg-alt: var(--kpress-doc-code-bg);

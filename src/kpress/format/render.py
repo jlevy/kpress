@@ -211,6 +211,7 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
         f'data-kpress-profile="document" data-kpress-theme="{escape(options.theme_mode)}" '
         f'data-kpress-resolved-theme="{escape(options.resolved_theme)}" '
         f'data-kpress-fonts="{escape(options.font_mode)}" '
+        f'data-kpress-palette="{escape(options.palette)}" '
         f"{label_attr}>"
         f"{doc_header}"
         f"{frontmatter_error}"

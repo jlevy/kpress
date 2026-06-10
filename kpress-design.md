@@ -560,12 +560,20 @@ enforce “always use CSS vars”).
 - **Surface fill** — `--kpress-doc-surface-bg` is the single subtle fill shared by code
   blocks, table headers, and (where applicable) metadata/shaded surfaces.
   `--kpress-doc-surface-hover` and `--kpress-doc-surface-selected` extend the family for
-  interaction highlights (TOC hover/active, hovered controls): in light mode a warm
-  paper ramp from the original KPress palette — `oklch(97.93% 0.0029 84.6)` base,
-  `oklch(95.83% 0.0070 88.6)` hover, `oklch(92.56% 0.0046 78.3)` selected — deepening
-  with interaction strength; theme-dark re-derives both from its own surfaces.
+  interaction highlights (TOC hover/active, hovered controls), deepening with interaction
+  strength. All three are **host-overridable** — they read
+  `var(--kpress-host-surface-*, <neutral default>)`, so a host (or a palette preset) can
+  retarget the highlights, not just the code background. The neutral default is a subtle
+  link tint, re-derived per light/dark theme.
   All first-party color literals are written as `oklch()` (exact, round-trip-verified
   conversions; see `devtools/css_to_oklch.py`).
+- **Palette presets** — reasonable default sets for common cases, each a *named bundle of
+  the `--kpress-host-*` contract* (not special-cased code), keyed on
+  `.kpress[data-kpress-palette="<name>"]` and selected via `RenderOptions.palette` /
+  `format.palette`. `neutral` is the default (no overrides); `warm` applies the original
+  tan-paper ramp (`--kpress-host-code-bg` + `--kpress-host-surface-hover/-selected`). A
+  host can select a preset and still override any single var on top — *simple stays
+  simple, complex stays possible.*
 
 Two shared interaction primitives are documented so every component reuses them rather
 than re-styling:

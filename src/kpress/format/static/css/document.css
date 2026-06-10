@@ -256,7 +256,7 @@
 
 .kpress code,
 .kpress-code {
-  background: var(--kpress-doc-surface-bg, oklch(97.93% 0.0029 84.6));
+  background: var(--kpress-doc-surface-bg, oklch(97.85% 0.0045 258.3));
   font-family: var(--kpress-font-mono, ui-monospace, monospace);
   font-size: var(--kpress-font-size-mono, 0.82rem);
   letter-spacing: -0.025em;

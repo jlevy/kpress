@@ -444,6 +444,7 @@ def build_site(
             RenderOptions(
                 asset_url_prefix=asset_prefix,
                 asset_mode=asset_mode,
+                palette=config.format.palette,
                 include_toc=config.format.toc,
                 toc_min_headings=config.format.toc_min_headings,
                 math=config.format.math,
