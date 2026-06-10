@@ -26,10 +26,10 @@ Run modes:
   repository Playwright dependency.
   Keep browser automation as an optional operator aid unless a later spec explicitly
   changes that boundary.
-- Package resolution must respect the repository two-week supply-chain floor:
-  `[tool.uv].exclude-newer` sets the Python cutoff, `.npmrc` sets npm’s
-  `minimum-release-age=20160`, `package.json` uses exact versions, and
-  `scripts/package_policy.py` verifies uv/npm lockfiles and package-owned npx tool pins.
+- Package resolution must respect the two-week supply-chain cool-off
+  (SUPPLY-CHAIN-SECURITY.md): `UV_EXCLUDE_NEWER` gates Python resolution (set in CI;
+  export locally when re-resolving), `.npmrc` sets npm’s `min-release-age=14` with exact
+  pins in `package.json`, and both lockfiles are committed and installed frozen.
   Current KPress npm pins are `@biomejs/biome@2.4.14`, `typescript@6.0.3`,
   `vitest@4.1.5`, and `happy-dom@20.9.0`.
 - Keep generated scratch output outside the repo unless you are intentionally updating
@@ -51,8 +51,8 @@ Before anything else, probe whether this machine can run the surfaces you are ab
 validate. This is a runtime probe, not a dev quality gate.
 
 ```bash
-uv run --project packages/kpress kpress doctor
-uv run --project packages/kpress kpress doctor --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" --json
+uv run kpress doctor
+uv run kpress doctor --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" --json
 ```
 
 `doctor` never hits the network by default and never fails on bare discovery;
@@ -64,9 +64,9 @@ capability (optimizer `full`, `br`, PDF) is unavailable.
 These are the required package gates for ordinary KPress changes.
 
 ```bash
-uv run --project packages/kpress pytest packages/kpress/tests --tb=short -q
-uv run --project packages/kpress python packages/kpress/devtools/lint.py --check
-uv run --project packages/kpress python packages/kpress/devtools/js_dom_tests.py
+uv run pytest tests --tb=short -q
+uv run python devtools/lint.py --check
+uv run python devtools/js_dom_tests.py
 git diff --check
 ```
 
@@ -83,31 +83,15 @@ When JavaScript, CSS, or JSON needs automated formatting, run the package-owned 
 fix pass intentionally and review its diff:
 
 ```bash
-uv run --project packages/kpress python packages/kpress/devtools/biome.py check --write src tests biome.json
-git diff -- packages/kpress/src packages/kpress/tests packages/kpress/biome.json
-```
-
-Run the package-local form when validating from inside `packages/kpress/`:
-
-```bash
-cd packages/kpress
-uv run pytest tests --tb=short -q
-uv run python devtools/lint.py --check
-```
-
-Package-local Biome fix pass:
-
-```bash
 uv run python devtools/biome.py check --write src tests biome.json
+git diff -- src tests biome.json
 ```
 
-Package-local JavaScript validation:
+Focused JavaScript validation:
 
 ```bash
 uv run python devtools/tsc_check.py
 uv run python devtools/js_dom_tests.py
-uv run python devtools/npm_policy.py
-uv run python ../../scripts/package_policy.py
 ```
 
 When validating a pull request, also run the PR CI gate after pushing:
@@ -118,10 +102,9 @@ gh pr checks <pr-number> --watch
 
 Expected PR checks:
 
-- `lint-kpress`
-- `test-kpress`
-- focused affected-package checks such as host adapter tests when the PR changes the
-  host integration
+- `lint` (full quality gate including the JS checks)
+- `test` (one job per supported Python version)
+- `wheel-smoke` (build the wheel, install into a clean venv, exercise the CLI)
 
 Before committing, stage only the intended files and let the repo hook run normally.
 To run the same staged-file hook explicitly:
@@ -168,25 +151,25 @@ fixtures may have changed.
 First check whether existing goldens still match:
 
 ```bash
-uv run --project packages/kpress pytest \
-  packages/kpress/tests/test_golden_render.py \
-  packages/kpress/tests/test_golden_publish.py \
+uv run pytest \
+  tests/test_golden_render.py \
+  tests/test_golden_publish.py \
   --tb=short -q
 ```
 
 If the change intentionally alters output, regenerate the package-owned goldens:
 
 ```bash
-KPRESS_UPDATE_GOLDENS=1 uv run --project packages/kpress pytest \
-  packages/kpress/tests/test_golden_render.py \
-  packages/kpress/tests/test_golden_publish.py \
+KPRESS_UPDATE_GOLDENS=1 uv run pytest \
+  tests/test_golden_render.py \
+  tests/test_golden_publish.py \
   --tb=short -q
 ```
 
 Then review the generated artifact diff:
 
 ```bash
-git diff -- packages/kpress/tests/golden/accepted
+git diff -- tests/golden/accepted
 ```
 
 Accept golden changes only when the diff is expected.
@@ -212,7 +195,7 @@ It can run independently of the golden update flow.
 > owns those files and runtime fetches.
 > The `public-sealed` directory names below describe the *hashed + gzipped package-asset
 > shape* (production layout), not a sealed asset graph.
-> See `packages/kpress/kpress-design.md` § “Asset sealing: deferred for v1” and
+> See `kpress-design.md` § “Asset sealing: deferred for v1” and
 > `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md` for the v2
 > roadmap.
 
@@ -222,24 +205,24 @@ Create inputs:
 export KPRESS_VALIDATION_ROOT="${KPRESS_VALIDATION_ROOT:-${TMPDIR:-/tmp}/kpress-validation-$(date +%Y%m%d-%H%M%S)}"
 mkdir -p "$KPRESS_VALIDATION_ROOT"
 
-cp packages/kpress/tests/fixtures/documents/rich-components.md \
+cp tests/fixtures/documents/rich-components.md \
   "$KPRESS_VALIDATION_ROOT/rich-components.md"
-cp -R packages/kpress/tests/fixtures/sites/basic "$KPRESS_VALIDATION_ROOT/site"
+cp -R tests/fixtures/sites/basic "$KPRESS_VALIDATION_ROOT/site"
 ```
 
 Run local document workflows:
 
 ```bash
-uv run --project packages/kpress kpress \
+uv run kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   init --config "$KPRESS_VALIDATION_ROOT/kpress.yml"
 
-uv run --project packages/kpress kpress \
+uv run kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   format "$KPRESS_VALIDATION_ROOT/rich-components.md" \
   --output-dir "$KPRESS_VALIDATION_ROOT/formatted"
 
-uv run --project packages/kpress kpress \
+uv run kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   export "$KPRESS_VALIDATION_ROOT/rich-components.md" \
   --html "$KPRESS_VALIDATION_ROOT/export/rich-components.html" \
@@ -249,11 +232,11 @@ uv run --project packages/kpress kpress \
 Run static publishing in both modes:
 
 ```bash
-uv run --project packages/kpress kpress build \
+uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-readable"
 
-uv run --project packages/kpress kpress build \
+uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed" \
@@ -265,21 +248,21 @@ uv run --project packages/kpress kpress build \
 `gzip` precompression is in the stdlib and runs in every install.
 `br` (Brotli) is gated behind the `kpress[optimize]` extra so the base wheel stays lean.
 The default `uv sync` does NOT install it, which is why the unit test
-`tests/test_optimize.py::test_precompress_brotli_records_compression_method` skips (and
-CI’s `test-kpress` job shows `1 skipped`). Re-run the suite with the extra to exercise
-the path:
+`tests/test_optimize.py::test_precompress_brotli_records_compression_method` skips (CI
+installs `--all-extras`, so its `test` jobs exercise it).
+Re-run with the extra locally to exercise the path:
 
 ```bash
-uv sync --project packages/kpress --extra optimize
-uv run --project packages/kpress pytest \
-  packages/kpress/tests/test_optimize.py::test_precompress_brotli_records_compression_method \
+uv sync --extra optimize
+uv run pytest \
+  tests/test_optimize.py::test_precompress_brotli_records_compression_method \
   --tb=short -q
 ```
 
 End-to-end brotli build smoke (the extra must already be installed):
 
 ```bash
-uv run --project packages/kpress kpress build \
+uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed-br" \
@@ -294,7 +277,7 @@ output:
 
 ```bash
 # Run this from a venv that does NOT have the optimize extra.
-if uv run --project packages/kpress kpress build \
+if uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed-br-fail" \
   --precompress br; then
@@ -308,7 +291,7 @@ fi
 Run optimizer and expected missing-extra checks:
 
 ```bash
-uv run --project packages/kpress kpress optimize \
+uv run kpress optimize \
   "$KPRESS_VALIDATION_ROOT/export/rich-components.html" \
   --output "$KPRESS_VALIDATION_ROOT/export/rich-components.min.html" \
   --backend full
@@ -318,7 +301,7 @@ Clipboard and DOCX extras are intentionally absent in the base package.
 These commands should return exit code `2` with clear JSON diagnostics:
 
 ```bash
-if uv run --project packages/kpress kpress \
+if uv run kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   paste --title ClipboardSmoke; then
   echo "expected paste to report missing clipboard extra"
@@ -327,7 +310,7 @@ else
   test "$?" -eq 2
 fi
 
-if uv run --project packages/kpress kpress \
+if uv run kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   export "$KPRESS_VALIDATION_ROOT/rich-components.md" \
   --docx "$KPRESS_VALIDATION_ROOT/export/rich-components.docx"; then
@@ -378,8 +361,8 @@ Review the current contract against implementation and docs:
 
 ```bash
 git diff -- \
-  packages/kpress/src/kpress/contract.py \
-  packages/kpress/kpress-design.md \
+  src/kpress/contract.py \
+  kpress-design.md \
   docs/project/specs/active/plan-2026-05-16-kpress-package-and-publisher.md
 ```
 
@@ -464,7 +447,7 @@ The exact command depends on the host application:
 # Example: start the host's dev server pointed at the KPress fixture site.
 # Adjust the project name and command for your embedding host.
 uv run --project <host-project> <host-command> serve \
-  packages/kpress/tests/fixtures/sites/basic \
+  tests/fixtures/sites/basic \
   --path docs/index.md \
   --no-open
 ```
@@ -574,6 +557,6 @@ Useful bead labels:
 - [ ] Part 6 human visual and functional acceptance completed
 - [ ] Any failures were filed as beads with reproduction details
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

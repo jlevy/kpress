@@ -21,6 +21,36 @@ kpress clean                 # remove output dir (manifest-guarded) + .kpress/
 kpress doctor --config kpress.yml   # verify required capabilities before CI use
 ```
 
+`kpress.yml` controls the site.
+A fuller example:
+
+```yaml
+site:
+  title: My Site
+  base_url: https://example.com
+  # Page chrome slots: opaque HTML owned by the site; kpress styles the
+  # wrappers (.kpress-site-header / .kpress-site-footer) but never interprets
+  # the content. Each slot also accepts a *_file variant read relative to
+  # this config file.
+  header_html_file: _includes/header.html
+  footer_html: '<p>Published with <a href="https://github.com/jlevy/kpress">kpress</a></p>'
+  head_extra_html: '<link rel="icon" href="/favicon.svg">'
+
+sources:
+  - path: content
+    include: ["**/*.md"]
+    # Verbatim-copy files (logos, favicons, images): copied to the output at
+    # their source-relative paths, collision-checked against rendered pages.
+    static: ["favicon.svg", "img/**/*.png"]
+
+publish:
+  output_dir: public
+  asset_mode: hashed     # hosted | linked | hashed | sealed
+
+optimizer:
+  mode: none             # or "full" (requires Node; never a silent fallback)
+```
+
 Pick the asset mode by hosting model:
 
 | Mode | Use when |
@@ -69,6 +99,6 @@ deploy; the deploy step then publishes `public/` with the site’s own tooling.
   `file://` or a local server with the network disabled, and confirm reader features
   (TOC, tooltips, code copy) work.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

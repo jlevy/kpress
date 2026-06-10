@@ -475,5 +475,6 @@ output to review.
 | MANUAL-BROWSER | 24 (all reader feature beads, matrix beads, `trading-azna`, `trading-zwc2`, `trading-t2rf`) |
 | GROUPING/GATE | 11 (`trading-xgzj`, `trading-wkzp`, `trading-mfwo`, `trading-08y5`, `trading-8is3`, `trading-131h`, `trading-d6g2`, `trading-selz`, `trading-5dmd`, `trading-n7ok`, `trading-0xa1`) |
 
-<!-- This document follows ../../docs/general/std-doc-guidelines.md.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

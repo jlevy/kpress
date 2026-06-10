@@ -26,7 +26,8 @@ DOC_PATHS = [
     "docs",
 ]
 
-# JS gates run via npx with exact pins from devtools/npm_policy.py.
+# JS gates run via `npx --no-install` against the pinned, locked toolchain
+# in package.json (`make install` / `npm ci` sets it up).
 JS_GATES: list[list[str]] = [
     [sys.executable, "devtools/biome.py", "ci", "src", "tests", "biome.json"],
     [sys.executable, "devtools/tsc_check.py"],

@@ -1,12 +1,11 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# CI: full quality gate, tests across supported Python versions, and a
+# clean-install wheel smoke test.
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: CI
 
 on:
   push:
-    # Use ["main", "master"] for CI only on the default branch.
-    # Use ["**"] for CI on all branches.
     branches: ["main", "master"]
   pull_request:
     branches: ["main", "master"]
@@ -17,12 +16,53 @@ permissions:
 env:
   # Supply-chain cool-off: only consider releases older than this, so CI never
   # resolves packages too new to have been vetted. uv (>= 0.9, and the version
-  # pinned below) accepts a relative duration directly. See the Supply Chain
-  # Hardening section in docs/development.md.
+  # pinned below) accepts a relative duration directly. See
+  # SUPPLY-CHAIN-SECURITY.md and docs/development.md.
   UV_EXCLUDE_NEWER: "14 days"
 
 jobs:
-  build:
+  # Full quality gate: ruff, basedpyright, codespell, extraction safety check,
+  # and the JS gates (Biome, tsc checkJs, vitest DOM tests) against the pinned,
+  # locked npm toolchain. Runs once — it is not Python-version-sensitive.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (official GitHub action)
+        uses: actions/checkout@v6
+        with:
+          # Important for versioning plugins:
+          fetch-depth: 0
+
+      - name: Install uv (official Astral action)
+        # Pinned to a full, immutable version tag. As of v8, setup-uv no longer
+        # publishes floating major/minor tags (e.g. `@v8`), so bump this exact
+        # version when updating.
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "0.11.12"
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Set up Python (using uv)
+        run: uv python install
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Node dependencies (locked, no scripts)
+        run: npm ci
+
+      - name: Install all dependencies
+        # --frozen: install exactly from the committed uv.lock, never re-resolving
+        # (UV_EXCLUDE_NEWER, set above, governs any resolution that does happen).
+        run: uv sync --all-extras --frozen
+
+      - name: Run the quality gate (check-only)
+        run: uv run python devtools/lint.py --check
+
+  test:
     strategy:
       matrix:
         # Update this as needed:
@@ -44,12 +84,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install uv (official Astral action)
-        # Pinned to a full, immutable version tag. As of v8, setup-uv no longer
-        # publishes floating major/minor tags (e.g. `@v8`), so bump this exact
-        # version when updating.
+        # Pinned to a full, immutable version tag (see note in the lint job).
         uses: astral-sh/setup-uv@v8.1.0
         with:
-          # Update this as needed:
           version: "0.11.12"
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -57,20 +94,53 @@ jobs:
       - name: Set up Python (using uv)
         run: uv python install
 
-      # Alternately can use the official Python action:
-      # - name: Set up Python (using actions/setup-python)
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: ${{ matrix.python-version }}
-
       - name: Install all dependencies
         # --frozen: install exactly from the committed uv.lock, never re-resolving
         # (UV_EXCLUDE_NEWER, set above, governs any resolution that does happen).
         run: uv sync --all-extras --frozen
 
-      - name: Run linting
-        # Check-only mode so CI fails on unformatted code instead of fixing it.
-        run: uv run python devtools/lint.py --check
-
       - name: Run tests
         run: uv run pytest
+
+  # Build the wheel and exercise it from a clean, isolated install — catches
+  # data-file packaging regressions (fonts, KaTeX, CSS, JS, templates) before
+  # they reach a real release. Complements the in-suite clean-room test with an
+  # explicit CLI smoke run.
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "0.11.12"
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Build sdist + wheel
+        # Build into a clean out-dir so the glob can't match any stale wheel.
+        run: uv build --out-dir /tmp/dist
+
+      - name: Install the built wheel into a clean venv
+        run: |
+          uv venv /tmp/wheeltest --python 3.13
+          uv pip install --python /tmp/wheeltest /tmp/dist/kpress-*.whl
+
+      - name: Smoke-test the installed CLI (bundled assets resolve)
+        run: |
+          /tmp/wheeltest/bin/kpress --version
+          /tmp/wheeltest/bin/kpress --help
+          /tmp/wheeltest/bin/kpress doctor
+          mkdir /tmp/site && cd /tmp/site
+          printf '# Hello\n\nSmoke test.\n' > index.md
+          printf 'sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: sealed\n' > kpress.yml
+          /tmp/wheeltest/bin/kpress build
+          test -f public/index.html
+          ls public/_kpress/assets/css public/_kpress/assets/js public/_kpress/assets/fonts

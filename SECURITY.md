@@ -15,6 +15,6 @@ Security-sensitive changes should preserve these package contracts:
 - Extraction checks must fail on local path leaks, private workspace references, and
   secret-like tokens in public package files.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

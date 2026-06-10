@@ -1,0 +1,61 @@
+# Git hooks managed by lefthook (https://lefthook.dev).
+# Install once: `make hooks-install` (or `npm ci && npm run prepare`).
+# Bypass for an emergency commit: `git commit --no-verify` (avoid in PRs).
+
+# Run pre-commit commands sequentially (not parallel). Several commands stage
+# fixups with `git add` (stage_fixed), and concurrent `git add` contends on
+# .git/index.lock; sequential execution removes that race. The fast ruff/biome
+# steps add almost nothing to the dominant format-markdown (flowmark) runtime.
+pre-commit:
+  parallel: false
+  commands:
+    ruff-format:
+      glob: "*.py"
+      run: uv run ruff format {staged_files}
+      stage_fixed: true
+
+    ruff-check:
+      glob: "*.py"
+      run: uv run ruff check --fix {staged_files}
+      stage_fixed: true
+
+    # --unsafe auto-applies Biome's unsafe-class fixes (e.g. brace wrapping);
+    # CI stays verify-only via `biome ci` in devtools/lint.py.
+    # --no-errors-on-unmatched so staging only biome-ignored vendored assets
+    # (e.g. katex/*.min.css) does not fail the commit.
+    biome:
+      glob: "*.{js,css,json}"
+      run: uv run python devtools/biome.py check --write --unsafe --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+    js-check:
+      glob: "*.js"
+      run: uv run python devtools/tsc_check.py && uv run python devtools/js_dom_tests.py
+
+    # NOTE: when files are passed as explicit args, codespell bypasses the
+    # [tool.codespell] skip list in pyproject.toml, so the skip patterns must
+    # be repeated here — keep the two in sync.
+    codespell:
+      glob: "*.{py,md}"
+      run: uv run codespell --write-changes --skip='tests/fixtures/*,tests/golden/accepted/*,tests/e2e/docs/*,*/static/katex/*,*/static/icons/*' {staged_files}
+      stage_fixed: true
+
+    # Markdown formatting with flowmark-rs, delegating to `make format` (the
+    # same command developers run locally). Whole-repo, not {staged_files}:
+    # flowmark-rs only reads .flowmarkignore relative to its target arg, so
+    # passing subsets bypasses the exclusion list and damages fixtures and
+    # e2e showcase docs. The `glob: '*.md'` filter just means the hook only
+    # fires when at least one staged file is Markdown; the whole-tree scan is
+    # fast (well under a second).
+    format-markdown:
+      glob: "*.md"
+      run: make format
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    extraction-check:
+      run: uv run python devtools/extraction_check.py
+    tests:
+      run: uv run pytest -q

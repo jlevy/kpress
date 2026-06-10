@@ -1,8 +1,8 @@
 # KPress Notices
 
-KPress’s own license is AGPL-3.0-or-later, declared in `LICENSE`.
-This file records the third-party components KPress vendors or bundles, each under its
-own license, independent of KPress’s license.
+KPress’s own license is AGPL-3.0-or-later, declared in `LICENSE`. This file records the
+third-party components KPress vendors or bundles, each under its own license,
+independent of KPress’s license.
 
 ## Vendored and bundled components
 
@@ -29,6 +29,6 @@ Python dependencies declared in `pyproject.toml` (frontmatter-format, latex2math
 markdown-it-py, mdit-py-plugins, nh3, pygments, strif) are installed from PyPI under
 their own licenses and are not redistributed by this package.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

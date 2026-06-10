@@ -6,24 +6,37 @@ This project is set up to use [uv](https://docs.astral.sh/uv/) to manage Python 
 dependencies. First, be sure you
 [have uv installed](https://docs.astral.sh/uv/getting-started/installation/).
 
-Then
-[fork the jlevy/kpress repo](https://github.com/jlevy/kpress/fork)
-(having your own fork will make it easier to contribute) and
+Then [fork the jlevy/kpress repo](https://github.com/jlevy/kpress/fork) (having your own
+fork will make it easier to contribute) and
 [clone it](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository).
+
+You will also need [Node](https://nodejs.org/) (and npm): the lint gate runs Biome,
+TypeScript `checkJs`, and browserless vitest DOM tests over the browser assets shipped
+in the wheel, using the exact-pinned toolchain in `package.json`/`package-lock.json`.
 
 ## Basic Developer Workflows
 
-The `Makefile` simply offers shortcuts to `uv` commands for developer convenience.
-(For clarity, GitHub Actions don’t use the Makefile and just call `uv` directly.)
+The `Makefile` simply offers shortcuts to `uv` and `npx` commands for developer
+convenience.
+(For clarity, GitHub Actions don’t use the Makefile and just call `uv`/`npx`
+directly.)
 
 ```shell
 # First, install all dependencies and set up your virtual environment.
-# This simply runs `uv sync --all-extras` to install all packages,
-# including dev dependencies and optional dependencies.
+# This runs `uv sync --all-extras` (all packages including dev and optional
+# dependencies) plus `npm ci` (the pinned JS toolchain for the lint gate).
 make install
 
-# Run uv sync, lint, and test:
+# Install the git hooks (lefthook; see lefthook.yml). Pre-commit hooks
+# auto-format staged Python (ruff), JS/CSS/JSON (Biome), Markdown (flowmark),
+# and fix spelling; pre-push runs the tests and the extraction safety check.
+make hooks-install
+
+# Run install, format, lint, and test:
 make
+
+# Auto-format Markdown (flowmark; honors .flowmarkignore):
+make format
 
 # Build wheel:
 make build

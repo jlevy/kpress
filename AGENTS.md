@@ -31,21 +31,32 @@ actions rather than telling them to run commands.
 
 ## Build & Test
 
-*Add your build and test commands here*
-
 ```bash
-# Example:
-# npm install
-# npm test
+uv sync --all-extras                    # install everything (or: make install)
+uv run pytest tests --tb=short -q      # tests (or: make test)
+uv run python devtools/lint.py --check  # full lint gate, matching CI (or: make lint-check)
 ```
+
+The lint gate runs Ruff, basedpyright, codespell, Biome 2, TypeScript `checkJs`,
+browserless DOM tests for the ESM helpers, and the extraction safety checks
+(`devtools/extraction_check.py`).
 
 ## Architecture Overview
 
-*Add a brief overview of your project architecture*
+KPress is a Python library and CLI that renders Markdown into readable HTML documents
+and publishes them as static sites.
+[README.md](README.md) is the orientation map; [kpress-design.md](kpress-design.md) is
+the architecture and public-contract reference.
 
 ## Conventions & Patterns
 
-*Add your project-specific conventions here*
+- The public surface (Python names, CSS classes/variables, template variables, data
+  attributes, manifest markers) is pinned in `kpress.contract` and enforced by tests.
+  Change it only with contract, docs, tests, and goldens updated in the same patch —
+  never via compatibility shims.
+- Browser assets are source-first native ESM with no build step; do not add a bundler or
+  host build requirement (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+- Docs follow `tbd guidelines common-doc-guidelines` and carry its footer comment.
 
 <!-- BEGIN FLOWMARK INTEGRATION format=f02 surface=agents-md -->
 ## flowmark

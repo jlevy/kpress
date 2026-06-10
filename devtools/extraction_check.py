@@ -33,6 +33,10 @@ PUBLIC_ROOT_FILES: Final = (
     "kpress-icons.md",
     "kpress-reader-features.md",
     "pyproject.toml",
+    "package.json",
+    "lefthook.yml",
+    "biome.json",
+    "tsconfig.json",
 )
 
 PUBLIC_DIRS: Final = ("docs", "src/kpress")

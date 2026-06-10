@@ -8,8 +8,8 @@ This is the single home for KPress manual e2e testing.
 It does **not** repeat the automated gates (lint, pytest, golden, JS-DOM) or the
 CLI/publishing checks — those live in
 [kpress-validation.runbook.md](./kpress-validation.runbook.md).
-For KPress **embedded in a host**, use
-[metabrowser-e2e-testing.runbook.md](../../../metabrowser/metabrowser-e2e-testing.runbook.md).
+For KPress **embedded in a host**, use the host application’s own e2e runbook (for
+MetaBrowser, `metabrowser-e2e-testing.runbook.md` in that repo).
 
 Each step is tagged:
 
@@ -37,9 +37,8 @@ real engine.
 
 All commands run from the repo root.
 
-The review surface is the **reader showcase** at `packages/kpress/tests/e2e/` — one
-document that exercises every reader feature, plus a second page for cross-page
-navigation.
+The review surface is the **reader showcase** at `tests/e2e/` — one document that
+exercises every reader feature, plus a second page for cross-page navigation.
 It is *not* a golden fixture (so it can stay rich); the golden fixtures under
 `tests/fixtures/documents/` stay minimal for byte-stable comparison.
 
@@ -51,17 +50,17 @@ rm -rf /tmp/kpress-e2e && mkdir -p /tmp/kpress-e2e
 
 # 1) Single standalone document (self-contained: package assets, KaTeX, and the
 #    document's images are all emitted beside the HTML):
-uv run --project packages/kpress kpress render \
-  packages/kpress/tests/e2e/docs/index.md \
+uv run kpress render \
+  tests/e2e/docs/index.md \
   --output /tmp/kpress-e2e/showcase.html --asset-mode hashed
 
 # 2) Static site (readable) and 3) a production-style sealed build. The build collects
 #    the document's images automatically, so figures resolve from the output root:
-uv run --project packages/kpress kpress build \
-  --config packages/kpress/tests/e2e/kpress.yml \
+uv run kpress build \
+  --config tests/e2e/kpress.yml \
   --output-dir /tmp/kpress-e2e/site-readable --asset-mode hashed
-uv run --project packages/kpress kpress build \
-  --config packages/kpress/tests/e2e/kpress.yml \
+uv run kpress build \
+  --config tests/e2e/kpress.yml \
   --output-dir /tmp/kpress-e2e/site-sealed --asset-mode sealed --optimizer full
 ```
 

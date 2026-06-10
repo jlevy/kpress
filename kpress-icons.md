@@ -87,11 +87,11 @@ the obvious word.
 | `list` | `list` | Collapsed TOC toggle |
 | `triangle-alert` | `triangle-alert` (was Feather `alert-triangle`) | Code-copy error state |
 
-**MetaBrowser** keeps its own glyph set today
-([`metabrowser/src/metabrowser/static/icons.js`](../../metabrowser/src/metabrowser/static/icons.js)),
-a superset that also has app-chrome glyphs KPress does not need (`folder`, `file`,
-`file-text`, `layout-grid`, `activity`, `printer`, `box`, `chevron-right`, and the
-bespoke reading-font `serif`/`sans` and viz `step` shapes).
+**MetaBrowser** (an embedding host application, developed in its own repository) keeps
+its own glyph set today (`metabrowser/static/icons.js` in that repo), a superset that
+also has app-chrome glyphs KPress does not need (`folder`, `file`, `file-text`,
+`layout-grid`, `activity`, `printer`, `box`, `chevron-right`, and the bespoke
+reading-font `serif`/`sans` and viz `step` shapes).
 It shares the same Lucide family and attribute signature so overlapping glyphs match
 KPress. The direction (see `kpress-design.md`) is for MetaBrowser to lean on the KPress
 sprite for the shared glyphs rather than keep its own copies; that move is tracked
@@ -150,6 +150,6 @@ Until there is a real second consumer, the single sprite plus this doc are the r
 amount of structure.
 The provenance comments are what make the eventual extraction cheap.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

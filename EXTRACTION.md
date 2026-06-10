@@ -1,9 +1,9 @@
 # KPress Extraction Checklist
 
 KPress was extracted from its original monorepo into this standalone repository
-(github.com/jlevy/kpress) in June 2026.
-This checklist defines the public package boundary; `devtools/extraction_check.py`
-enforces the safety rules below as part of the lint gate.
+(github.com/jlevy/kpress) in June 2026. This checklist defines the public package
+boundary; `devtools/extraction_check.py` enforces the safety rules below as part of the
+lint gate.
 
 ## Public Package Inventory
 

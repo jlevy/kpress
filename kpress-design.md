@@ -96,10 +96,10 @@ The durable catalog of document-reader features and their intended behavior is
 detail).
 
 Implementation status and the remaining reader-parity work are tracked in
-`../../docs/project/specs/active/plan-2026-05-18-kpress-mvp-stability-and-doctor.md`
-(authoritative remaining-work map, including the moved per-feature parity ledger) and
-`docs/kpress-completion-plan.md`. This design doc is architecture and public contract
-only and does not carry a status ledger or reference-system comparisons.
+[`TODO.md`](TODO.md) and
+[`docs/kpress-completion-plan.md`](docs/kpress-completion-plan.md).
+This design doc is architecture and public contract only and does not carry a status
+ledger or reference-system comparisons.
 
 ## Product Boundaries
 
@@ -800,9 +800,9 @@ phase closes.
 ## Conscious Departures from kash/textpress
 
 KPress mirrors the kash/textpress design system for TOC, tooltips, footnotes, and serif
-typography (the visual-parity reconciliation in
-[plan-2026-06-01-kpress-visual-polish.md](../../docs/project/specs/done/plan-2026-06-01-kpress-visual-polish.md),
-with the full divergence matrix in that spec’s evidence file).
+typography (the visual-parity reconciliation spec
+`plan-2026-06-01-kpress-visual-polish.md`, with the full divergence matrix in its
+evidence file, lives in the originating monorepo’s spec archive).
 Parity is pinned by
 `tests/test_asset_contract.py::test_visual_parity_css_contract_pins_kash_reconciliation`
 and the golden/DOM suites.
@@ -1701,6 +1701,6 @@ remains open.
 7. **Host readiness:** accessibility, current public contract, host integration
    contract, and package docs are stable.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

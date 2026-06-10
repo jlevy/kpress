@@ -582,6 +582,6 @@ Current validated state (2026-06-05 consolidation pass):
   passing.
 - `git diff --check`: passed.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

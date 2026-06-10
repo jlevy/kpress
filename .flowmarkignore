@@ -1,0 +1,23 @@
+# Directories and files flowmark should never touch.
+# Uses gitignore syntax; lives at repo root.
+# Flowmark-rs also honors .gitignore, so paths listed there
+# (node_modules/, attic/, dist/, .venv/, etc.) do not need repeating.
+
+# Golden fixtures and curated test documents (byte-exact comparisons).
+tests/fixtures/
+tests/golden/
+
+# KPress e2e reader showcase: hand-authored `:::` container blocks (semantic
+# blocks, tabs, video gallery) that flowmark collapses into run-on lines.
+tests/e2e/
+
+# Example site content renders through kpress itself; preserve the authored
+# Markdown (it includes `:::` container blocks) verbatim.
+examples/
+
+# Third-party agent state vendored by `tbd setup` and similar; managed
+# externally and overwritten on resync.
+.tbd/
+.claude/
+.codex/
+.agents/

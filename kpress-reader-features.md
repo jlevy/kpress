@@ -10,10 +10,9 @@ KPress-rendered document supports and how each feature is meant to behave.
 
 It is intentionally free of implementation status, bead ids, and any comparison to or
 porting notes from other systems.
-Current status and the remaining-work tracker live in
-`../../docs/project/specs/active/plan-2026-05-16-kpress-package-and-publisher.md` and
-`docs/kpress-completion-plan.md`. Architecture and the public contract live in
-`kpress-design.md`.
+Current status and the remaining-work tracker live in [`TODO.md`](TODO.md) and
+[`docs/kpress-completion-plan.md`](docs/kpress-completion-plan.md).
+Architecture and the public contract live in [`kpress-design.md`](kpress-design.md).
 
 ## Foundation
 
@@ -134,6 +133,6 @@ Current status and the remaining-work tracker live in
   and restore for modal surfaces), support keyboard operation and Escape close, and
   target adequate contrast.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

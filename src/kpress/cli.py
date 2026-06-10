@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import cast
 
+from kpress._version import __version__
 from kpress.errors import KPressMissingOptionalDependencyError
 from kpress.format import DocumentInput, RenderOptions, render_page
 from kpress.output import write_text_atomic
@@ -173,15 +175,19 @@ def _cmd_clean(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="kpress")
-    parser.add_argument("--work-root", default=".kpress")
+    parser = argparse.ArgumentParser(
+        prog="kpress",
+        description="Render Markdown into polished HTML documents and publish static sites.",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--work-root", default=".kpress", help="Workspace directory for outputs.")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    init = sub.add_parser("init")
+    init = sub.add_parser("init", help="Write a starter kpress.yml config.")
     init.add_argument("--config", default="kpress.yml")
     init.set_defaults(func=_cmd_init)
 
-    convert = sub.add_parser("convert")
+    convert = sub.add_parser("convert", help="Copy a Markdown-compatible input into the workspace.")
     convert.add_argument("input")
     convert.add_argument("--output")
     convert.set_defaults(func=_cmd_convert)
@@ -190,43 +196,45 @@ def build_parser() -> argparse.ArgumentParser:
     # (trading-7ehk); `sealed` is the supported offline output.
     asset_mode_choices = ["hosted", "linked", "hashed", "sealed"]
 
-    fmt = sub.add_parser("format")
+    fmt = sub.add_parser(
+        "format", help="Render a Markdown file to paired Markdown and HTML outputs."
+    )
     fmt.add_argument("input")
     fmt.add_argument("--output-dir")
     fmt.add_argument("--asset-mode", choices=asset_mode_choices, default="linked")
     fmt.add_argument("--show", action="store_true")
     fmt.set_defaults(func=_cmd_format)
 
-    render = sub.add_parser("render")
+    render = sub.add_parser("render", help="Render one Markdown input to a single HTML file.")
     render.add_argument("input")
     render.add_argument("--output")
     render.add_argument("--asset-mode", choices=asset_mode_choices, default="linked")
     render.add_argument("--show", action="store_true")
     render.set_defaults(func=_cmd_render)
 
-    paste = sub.add_parser("paste")
+    paste = sub.add_parser("paste", help="Create a document from pasted or piped text.")
     paste.add_argument("--title", default="Pasted Document")
     paste.add_argument("--text")
     paste.add_argument("--plaintext", action="store_true")
     paste.add_argument("--show", action="store_true")
     paste.set_defaults(func=_cmd_paste)
 
-    files = sub.add_parser("files")
+    files = sub.add_parser("files", help="List files in the work root.")
     files.add_argument("--all", action="store_true")
     files.set_defaults(func=_cmd_files)
 
-    export = sub.add_parser("export")
+    export = sub.add_parser("export", help="Export a document to HTML and optional PDF/DOCX.")
     export.add_argument("input")
     export.add_argument("--html")
     export.add_argument("--pdf")
     export.add_argument("--docx")
     export.set_defaults(func=_cmd_export)
 
-    clean = sub.add_parser("clean")
+    clean = sub.add_parser("clean", help="Remove the build output directory and work root.")
     clean.add_argument("--config", default="kpress.yml")
     clean.set_defaults(func=_cmd_clean)
 
-    build = sub.add_parser("build")
+    build = sub.add_parser("build", help="Build the static site from kpress.yml.")
     build.add_argument("--config", default="kpress.yml")
     build.add_argument("--output-dir")
     build.add_argument("--asset-mode", choices=asset_mode_choices)
@@ -234,14 +242,16 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--precompress", action="append", choices=["gzip", "br"])
     build.set_defaults(func=_cmd_build)
 
-    optimize = sub.add_parser("optimize")
+    optimize = sub.add_parser("optimize", help="Minify an HTML/CSS/JS file.")
     optimize.add_argument("input")
     optimize.add_argument("--output")
     optimize.add_argument("--kind", choices=["html", "css", "js"], default="html")
     optimize.add_argument("--backend", choices=["none", "full"], default="none")
     optimize.set_defaults(func=_cmd_optimize)
 
-    doctor = sub.add_parser("doctor")
+    doctor = sub.add_parser(
+        "doctor", help="Probe optional capabilities (render, publish, optimizer, PDF)."
+    )
     doctor.add_argument("--profile", choices=["render", "publish", "optimize", "pdf"])
     doctor.add_argument("--config")
     doctor.add_argument("--allow-network", action="store_true")
@@ -359,7 +369,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     handler = cast(Callable[[argparse.Namespace], int], args.func)
-    return handler(args)
+    try:
+        return handler(args)
+    except KeyboardInterrupt:
+        print("Interrupted.", file=sys.stderr)
+        return 130
 
 
 if __name__ == "__main__":

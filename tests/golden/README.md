@@ -15,6 +15,6 @@ Update flow:
 The helper normalizes temp paths and keeps update mode opt-in so CI fails on unexpected
 changes.
 
-<!-- This document follows std-doc-guidelines.md.
-Review guidelines before editing.
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
 -->
