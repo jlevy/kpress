@@ -20,6 +20,45 @@ KPress owns document presentation.
 Host applications own browser chrome, navigation, workspace state, tabs, file trees,
 authentication, deployment, and service-specific publishing.
 
+## Core Principles
+
+These govern what belongs in KPress and how it is built.
+
+1. **Simple should be simple; complex should be possible.** Common customizations —
+   changing a few colors, swapping a font — are trivial; arbitrary customization stays
+   reachable. Convenience layers are optional and sit *on top of* the primitives, never
+   in place of them.
+
+2. **Adhere to and expose native browser abstractions.** Prefer the web platform — CSS
+   custom properties, plain HTML/CSS/JS — over framework machinery, so output stays
+   maintainable and customizable without bloat.
+   The themeable design system *is* a documented set of CSS variables (the `--kpress-*`
+   / `--kpress-host-*` contract); a host themes by setting those vars and, for anything
+   beyond them, by injecting its own HTML/CSS/JS.
+
+3. **Batteries included as optional building blocks.** The core knowledge-presentation
+   features ship first-class and polished by default — tooltips and footnote previews,
+   the mobile-friendly table of contents, tables, math and diagrams, code highlighting,
+   the settings menu with light/dark mode, and responsive support — but each is a
+   **component that can be turned off or customized**, down to its sub-settings (e.g.
+   when the TOC appears or collapses).
+   Complete by default; nothing forced.
+   Built-in **palette themes** (named bundles of the CSS-var contract, e.g. `neutral`
+   and `warm`) are convenience presets in this same spirit — selectable, overridable,
+   never special-cased.
+   Every setting maps to a **specific component or aspect**; KPress does not accumulate
+   an arbitrary grab-bag of flags or named layouts.
+
+4. **Own the document layer, not the app.** KPress focuses on the document model,
+   rendering, and efficient packaging of web assets.
+   It does **not** own app or publishing workflows — static-site building, navigation,
+   deployment, and other service-specific concerns belong to the host.
+   Site headers, nav pages, back-links, and similar chrome are authored by the client’s
+   own workflow and injected through the chrome slots (`header_html` / `footer_html` /
+   `head_extra_html`): KPress provides the slots, not the content or the workflow.
+   Composing a site out of different feature sets is likewise a host concern, not a
+   KPress setting.
+
 ## Current Implementation Status
 
 The current package slice is the first end-to-end implementation of the package
