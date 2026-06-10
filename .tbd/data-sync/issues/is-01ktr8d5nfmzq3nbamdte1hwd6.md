@@ -5,14 +5,14 @@ title: Rewrite or prune internal monorepo planning docs before public release
 kind: task
 status: open
 priority: 2
-version: 2
+version: 3
 labels: []
 dependencies: []
 created_at: 2026-06-10T07:54:30.958Z
-updated_at: 2026-06-10T08:36:53.313Z
+updated_at: 2026-06-10T08:49:31.630Z
 ---
 TODO.md, docs/kpress-completion-plan.md, and the docs/*.runbook.md files carry trading-* bead references and monorepo paths from the original repo. Per EXTRACTION.md, rewrite for a standalone audience or prune before the repo/package goes public. Also: remove the 'Private :: Do Not Upload' classifier in pyproject.toml and finalize SECURITY.md reporting process at first publish (see EXTRACTION.md Release Blockers).
 
 ## Notes
 
-Doc review pass 2026-06-10 made a first cut at this: README.md rewritten as a concise orientation doc with a doc map; footers normalized to common-doc-guidelines.md; AGENTS.md placeholders filled; broken ../../ monorepo links fixed in kpress-design.md, kpress-reader-features.md, kpress-icons.md, and the e2e runbook; stale packages/kpress paths fixed in kpress-design.md, TODO.md, and docs/kpress-completion-plan.md; kpress.yml config example moved from README into docs/kpress-static-publish.runbook.md. REMAINING for this bead: TODO.md (~46 trading-* bead refs, monorepo spec links, MetaBrowser/TableView narrative), docs/kpress-completion-plan.md (~100 trading-* refs, monorepo links), and kpress-design.md's 'Implementation Beads' + 'Current Implementation Status' ledger sections (~98 trading-* refs; the doc itself says it should not carry status) all still need a standalone-audience rewrite. SECURITY.md placeholder reporting process still stands (see EXTRACTION.md release blockers).
+2026-06-10: Internal-name scrub landed on extract-kpress-standalone (commit db51e3d): host-app/plugin names (MetaBrowser, TableView) genericized across src/tests/docs; pre-extraction bead IDs renamed trading-* -> orig-* (convention documented at top of TODO.md); monorepo-only spec links converted to plain text; goldens regenerated; vacuous host-import contract test removed; extraction commit message + PR #2 body reworded to drop the monorepo name. Remaining for this bead: optional deeper rewrite/prune of planning docs for a standalone audience, remove Private::Do-Not-Upload classifier, finalize SECURITY.md contact. Note: pre-scrub file contents still exist in intermediate commits of the PR branch; squash-merge PR #2 (and delete the branch) to keep them out of mainline history.
