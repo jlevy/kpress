@@ -32,13 +32,18 @@
   }
 
   /* The document viewport is a 100dvh scroll container on screen; for print it
-     must release its height and overflow (and drop containment + the transform
-     layer) so the whole document flows across pages instead of clipping to one
-     screen. */
+     must release its height and overflow (and drop containment) so the whole
+     document flows across pages instead of clipping to one screen. The frame's
+     transform layer must go too: a transformed ancestor breaks print
+     fragmentation. (The viewport keeps `transform: none` defensively.) */
   .kpress-viewport {
     block-size: auto;
     container-type: normal;
     overflow: visible;
+    transform: none;
+  }
+
+  .kpress-frame {
     transform: none;
   }
 

@@ -531,7 +531,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
   {theme_bootstrap}
   {asset_tags}{head_extra}
 </head>
-<body>
+<body class="kpress-frame" data-kpress-frame>
   <main class="kpress-page-main kpress-viewport" data-kpress-viewport>{site_header}
     {_render_settings_menu(options.theme_mode)}
     {fragment.html}{site_footer}
