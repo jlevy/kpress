@@ -1,20 +1,33 @@
 /* The document viewport: the one element a KPress document scrolls inside.
-   It is the `@container kpress-doc` query container AND the containing block for
-   the TOC drawer/toggle's `position: fixed`. The standalone page shell sets it
-   on `kpress-page-main`; an embedding host sets the same class/attribute on its
-   own scroll pane. This is what lets the TOC react to the document's real width
-   and pin its floating UI to the pane rather than the browser window.
+   It is the `@container kpress-doc` query container. The standalone page shell
+   sets it on `kpress-page-main`; an embedding host sets the same class/attribute
+   on its own scroll pane. This is what lets the TOC react to the document's real
+   width.
 
-   `container-type` alone should establish the fixed containing block, but not
-   every engine honors container containment for fixed descendants (only
-   absolute), which lets the floating UI escape to the window (over host chrome
-   when embedded). `transform` is the universally-honored trigger; since the
-   viewport is the scroller and does not move with the window, the floating UI
-   stays pinned to its frame while content scrolls beneath it. */
+   CRITICAL: the viewport must NOT be a containing block for `position: fixed`
+   descendants — no transform/filter/perspective/backdrop-filter here. A
+   transformed ancestor makes fixed descendants behave like `position: absolute`,
+   and absolutely-positioned children of a scroller move with the scrolled
+   content: every piece of floating UI (TOC toggle/drawer/backdrop, settings
+   menu) would sit at the top of the *document* and scroll away exactly when it
+   should appear. The fixed containing block lives one level up, on the
+   non-scrolling `.kpress-frame`. */
 .kpress-viewport {
   block-size: 100dvh;
   overflow-y: auto;
   container: kpress-doc / inline-size;
+}
+
+/* The document frame: a non-scrolling wrapper of the viewport that pins the
+   floating UI. `transform` is the universally-honored trigger that makes it the
+   containing block for `position: fixed` descendants; because the frame does not
+   scroll, the floating UI stays pinned to its box while the viewport's content
+   scrolls beneath it. Standalone, the page shell marks `<body>` (whose box is
+   exactly the window). An embedding host puts this class/attribute on a
+   non-scrolling wrapper of its scroll pane so the floating UI pins to the pane
+   instead of escaping over the host's own chrome; a host that omits it gets
+   window-pinned floating UI. */
+.kpress-frame {
   transform: translateZ(0);
 }
 
@@ -367,9 +380,9 @@
   text-transform: var(--kpress-caps-transform);
 }
 
-/* `position: fixed` resolves against the `.kpress-viewport` container (it is the
+/* `position: fixed` resolves against the non-scrolling `.kpress-frame` (the
    containing block for fixed descendants), so `inset: 0` covers the document
-   viewport — the whole window standalone, just the pane when embedded. */
+   frame — the whole window standalone, just the pane when embedded. */
 .kpress-toc-backdrop {
   background-color: rgb(0 0 0 / 50%);
   display: none;
@@ -1450,8 +1463,8 @@
 /* Narrow document: TOC collapses to a floating list-icon button that fades in
    once toc.js detects the reader has scrolled past the first section; clicking
    it slides a fixed drawer (with backdrop) over the prose. Fixed positioning
-   resolves against the viewport container, so the drawer covers the document
-   pane, not the browser window. */
+   resolves against the non-scrolling `.kpress-frame`, so the drawer covers the
+   document pane, not the browser window. */
 @container kpress-doc (max-width: 74.99rem) {
   .kpress-toc-toggle {
     left: 1rem;

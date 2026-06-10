@@ -1,8 +1,8 @@
 {
   "compressed": [
-    "_kpress/assets/css/components.141e917d297f08f5.css.gz",
+    "_kpress/assets/css/components.01e65b6521d3672d.css.gz",
     "_kpress/assets/css/document.47d59f672d1a93dd.css.gz",
-    "_kpress/assets/css/print.4b6ec1c4d97404f1.css.gz",
+    "_kpress/assets/css/print.2fffaa3240934011.css.gz",
     "_kpress/assets/css/style-tokens.b701f7ea26484177.css.gz",
     "_kpress/assets/css/syntax.4dc0e3ae65382774.css.gz",
     "_kpress/assets/css/theme-dark.a40b8171da12d3a5.css.gz",
@@ -24,9 +24,9 @@
     "index.html.gz"
   ],
   "hashed": [
-    "_kpress/assets/css/components.141e917d297f08f5.css",
+    "_kpress/assets/css/components.01e65b6521d3672d.css",
     "_kpress/assets/css/document.47d59f672d1a93dd.css",
-    "_kpress/assets/css/print.4b6ec1c4d97404f1.css",
+    "_kpress/assets/css/print.2fffaa3240934011.css",
     "_kpress/assets/css/style-tokens.b701f7ea26484177.css",
     "_kpress/assets/css/syntax.4dc0e3ae65382774.css",
     "_kpress/assets/css/theme-dark.a40b8171da12d3a5.css",
@@ -47,9 +47,9 @@
   ],
   "readable_only": [],
   "sealed_only": [
-    "_kpress/assets/css/components.141e917d297f08f5.css.gz",
+    "_kpress/assets/css/components.01e65b6521d3672d.css.gz",
     "_kpress/assets/css/document.47d59f672d1a93dd.css.gz",
-    "_kpress/assets/css/print.4b6ec1c4d97404f1.css.gz",
+    "_kpress/assets/css/print.2fffaa3240934011.css.gz",
     "_kpress/assets/css/style-tokens.b701f7ea26484177.css.gz",
     "_kpress/assets/css/syntax.4dc0e3ae65382774.css.gz",
     "_kpress/assets/css/theme-dark.a40b8171da12d3a5.css.gz",

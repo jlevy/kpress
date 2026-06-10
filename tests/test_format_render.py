@@ -214,6 +214,9 @@ def test_render_page_ports_standalone_social_metadata() -> None:
     assert '<meta property="og:site_name" content="KPress">' in page.html
     assert '<meta name="twitter:site" content="@kpressdocs">' in page.html
     assert '<main class="kpress-page-main kpress-viewport" data-kpress-viewport>' in page.html
+    # The body is the non-scrolling frame that pins floating UI (TOC toggle/drawer,
+    # settings); the scrolling viewport itself must never be a fixed containing block.
+    assert '<body class="kpress-frame" data-kpress-frame>' in page.html
 
 
 def test_render_page_outputs_document_thumbnail_when_available() -> None:

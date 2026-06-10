@@ -491,8 +491,9 @@ Current public variables (from `contract.py::PUBLIC_CSS_VARIABLES`):
 
 Body-level overlays.
 Tooltips and footnote previews are appended to `<body>` (outside the `.kpress` subtree)
-so their `position: fixed` resolves against the window rather than the
-`.kpress-viewport` container.
+so their `position: fixed` resolves against the non-scrolling `.kpress-frame` (the
+standalone shell marks `<body>` itself as the frame) rather than scrolling away inside
+the `.kpress-viewport` scroller.
 The document tokens above are scoped to `.kpress`, so those overlay selectors
 (`.kpress-tooltip`) must be listed alongside `.kpress` in the token-defining rules
 (`style-tokens.css`, `theme-light.css`, `theme-dark.css`); otherwise they resolve no
@@ -574,9 +575,11 @@ It is ported from the original host app’s settings control and re-tokenized on
 document tokens, so standalone KPress and the embedded host share one design and the
 same theme contract; more choosers (e.g. a font chooser) can be added as further
 `.kpress-menu-chooser` groups.
-The menu is server-rendered **inside** `.kpress-viewport`, so its `position: fixed` pins
-to the pane and it inherits the document tokens (rather than living outside `.kpress`
-where tokens would not resolve).
+The menu is server-rendered **inside** `.kpress-viewport` so it inherits the document
+tokens (rather than living outside `.kpress` where tokens would not resolve); its
+`position: fixed` pins to the enclosing non-scrolling `.kpress-frame` — the viewport
+itself must never be a fixed containing block, or the gear (and all floating UI) would
+scroll away with the content.
 `theme.js` (`bindSettingsMenu`) wires open/close — gear click, outside-click and Escape
 dismiss — and marks the active segment with `aria-checked`. Selection persists in
 `localStorage` (`kpress.theme`) and the pre-paint bootstrap reads it back.

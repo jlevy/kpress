@@ -148,7 +148,7 @@ def test_build_site_routes_document_by_public_path(tmp_path: Path) -> None:
     html = out.read_text(encoding="utf-8")
     # Frontmatter drives the title and is no longer literal body text.
     assert "<title>Pinned Page</title>" in html
-    assert "public_path" not in html.split("<body>")[0]
+    assert "public_path" not in html.split("<body", 1)[0]
 
     assert report.routes["/pinned/place.html"] == "pinned/place.html"
     manifest = json.loads(
