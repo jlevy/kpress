@@ -1,0 +1,12 @@
+site:
+  title: Fixture
+
+sources:
+  - path: docs
+
+publish:
+  output_dir: public
+  asset_mode: hashed
+
+optimizer:
+  precompress: [gzip]

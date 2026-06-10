@@ -1,0 +1,253 @@
+/* KPress design tokens -- the source of truth for the KPress design system.
+ *
+ * Defines the --kpress-* token tree: typography, color + the shared surface family, the
+ * corner-radius scale, spacing/measure, motion (one easing + transition speeds), and
+ * scrollbars. Design RULES are kept here as comments next to each group, close to the code
+ * (kpress-design.md is the map, not a duplicate ledger). The public subset is pinned by
+ * contract.py::PUBLIC_CSS_VARIABLES. Core doc tokens read var(--kpress-host-*, <default>)
+ * so an embedding host app can theme them; static pages and static-site builds override
+ * via the same variables. */
+.kpress,
+.kpress-page-main,
+.kpress-tooltip {
+  /* Adapted from Kash base_styles.css.jinja and base_webpage.html.jinja.
+     Core doc tokens use var(--kpress-host-*, <default>) so an embedding host
+     app can set --kpress-host-bg etc. on :root and have them flow through
+     instead of being shadowed by this scope. */
+  --kpress-font-body: var(
+    --kpress-host-font-body,
+    "Source Sans 3 Variable",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif
+  );
+  --kpress-font-prose: var(
+    --kpress-host-font-prose,
+    "LocalPunct",
+    "PT Serif",
+    Georgia,
+    "Times New Roman",
+    serif
+  );
+  --kpress-font-sans: var(
+    --kpress-host-font-sans,
+    "Source Sans 3 Variable",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif
+  );
+  --kpress-font-mono: var(
+    --kpress-host-font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace
+  );
+  --kpress-font-footnote: var(--kpress-host-font-footnote, var(--kpress-font-sans));
+  --kpress-font-table: var(--kpress-host-font-table, var(--kpress-font-sans));
+  --kpress-font-punctuation: "LocalPunct";
+  --kpress-font-features-sans: normal;
+  --kpress-font-weight-sans-light: 370;
+  --kpress-font-weight-sans-medium: 550;
+  --kpress-font-weight-sans-bold: 650;
+  --kpress-font-size-large: 1.2rem;
+  --kpress-font-size-normal: 1rem;
+  --kpress-font-size-small: 0.95rem;
+  --kpress-font-size-smaller: 0.9rem;
+  --kpress-font-size-tiny: 0.85rem;
+  --kpress-font-size-mono: 0.82rem;
+  --kpress-font-size-mono-small: 0.75rem;
+  --kpress-font-size-mono-tiny: 0.7rem;
+  --kpress-line-height-normal: 1.5;
+  --kpress-line-height-tight: 1.2;
+  /* Section labels use real uppercase, not small-caps. Our subset Source Sans may
+     not ship true `smcp` glyphs, so `font-variant: small-caps` synthesized thin,
+     mis-sized caps that the 1.42 multiplier then propped up. Uppercase renders the
+     font's real capital glyphs at exactly the size we ask for, so no compensation
+     is needed and the multiplier is 1 (kept as a tunable dial, not removed, so the
+     `calc(base * multiplier)` consumers don't all have to change). */
+  --kpress-caps-transform: uppercase;
+  --kpress-caps-variant: normal;
+  --kpress-caps-spacing: 0.021em;
+  --kpress-caps-heading-size-multiplier: 1;
+  --kpress-caps-heading-line-height: calc(1.2 / var(--kpress-caps-heading-size-multiplier));
+  /* One canonical uppercase section-label size (TOC title, metadata summary, tab
+     labels, diagnostics) so they all match instead of drifting. */
+  --kpress-caps-label-size: calc(
+    var(--kpress-font-size-smaller) *
+    var(--kpress-caps-heading-size-multiplier)
+  );
+  /* Prose reading measure. 48rem (~768px) matches kash's --content-width; the
+     earlier 76ch (~640px in serif) read narrower than the reference. */
+  --kpress-measure: 48rem;
+  --kpress-doc-bg: var(--kpress-host-bg, #ffffff);
+  --kpress-doc-text: var(--kpress-host-text, #111827);
+  --kpress-doc-muted: var(--kpress-host-muted, #5b6472);
+  --kpress-doc-border: var(--kpress-host-border, #d8dee8);
+  --kpress-doc-link: var(--kpress-host-link, #0756a5);
+  --kpress-doc-code-bg: var(--kpress-host-code-bg, #f6f8fb);
+  --kpress-doc-accent: #0f766e;
+  --kpress-print-page-margin: 0.7in;
+  --kpress-print-font-size: 11pt;
+  --kpress-print-footer: "Formatted by KPress";
+  --font-sans: var(--kpress-font-sans);
+  --font-serif: var(--kpress-font-prose);
+  --font-mono: var(--kpress-font-mono);
+  --font-features-sans: var(--kpress-font-features-sans);
+  --font-weight-sans-medium: var(--kpress-font-weight-sans-medium);
+  --font-weight-sans-bold: var(--kpress-font-weight-sans-bold);
+  --font-size-large: var(--kpress-font-size-large);
+  --font-size-normal: var(--kpress-font-size-normal);
+  --font-size-small: var(--kpress-font-size-small);
+  --font-size-smaller: var(--kpress-font-size-smaller);
+  --font-size-tiny: var(--kpress-font-size-tiny);
+  --font-size-mono: var(--kpress-font-size-mono);
+  --font-size-mono-small: var(--kpress-font-size-mono-small);
+  --font-size-mono-tiny: var(--kpress-font-size-mono-tiny);
+  --line-height-normal: var(--kpress-line-height-normal);
+  --line-height-tight: var(--kpress-line-height-tight);
+  --caps-transform: var(--kpress-caps-transform);
+  --caps-caps-variant: var(--kpress-caps-variant);
+  --caps-spacing: var(--kpress-caps-spacing);
+  --caps-heading-size-multiplier: var(--kpress-caps-heading-size-multiplier);
+  --caps-heading-line-height: var(--kpress-caps-heading-line-height);
+  --color-bg: var(--kpress-doc-bg);
+  --color-bg-solid: var(--kpress-doc-bg);
+  --color-bg-alt: var(--kpress-doc-surface-bg);
+  --color-bg-alt-solid: var(--kpress-doc-surface-bg);
+  --color-bg-meta-solid: var(--kpress-doc-surface-bg);
+  --color-bg-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
+  --color-text: var(--kpress-doc-text);
+  --color-primary: var(--kpress-doc-link);
+  --color-primary-light: color-mix(in srgb, var(--kpress-doc-link) 72%, white);
+  --color-secondary: var(--kpress-doc-muted);
+  --color-hint: var(--kpress-doc-muted);
+  --color-hint-strong: var(--kpress-doc-muted);
+  --color-hint-gentle: var(--kpress-doc-border);
+  --color-border-hint: var(--kpress-doc-border);
+  --color-hover-bg: color-mix(in srgb, var(--kpress-doc-link) 8%, transparent);
+  --color-hover: var(--kpress-doc-border);
+  --color-selection: color-mix(in srgb, var(--kpress-doc-link) 18%, transparent);
+  --color-scrollbar: color-mix(in srgb, var(--kpress-doc-muted) 45%, transparent);
+  --color-scrollbar-hover: color-mix(in srgb, var(--kpress-doc-muted) 70%, transparent);
+  --color-success: #15803d;
+  /* Subtle surface fill shared by code blocks, table headers, and the metadata
+     block, so they read as one family. Points at the host-overridable code bg. */
+  --kpress-doc-surface-bg: var(--kpress-doc-code-bg);
+  /* Task-list checkbox size: slightly larger than body text so the check glyph
+     is clearly legible at a glance and not confused with a bullet. */
+  --kpress-checkbox-size: 1.15em;
+  /* Square list bullet — one size for prose lists, claim markers, and concept
+     items, so every bulleted list matches. */
+  --kpress-bullet-size: 0.8rem;
+  /* Corner radii — one scale used everywhere. Rounded-vs-square is a deliberate
+     per-surface choice (use --kpress-radius-none for square). */
+  --kpress-radius-none: 0;
+  --kpress-radius-sm: 3px;
+  --kpress-radius-md: 6px;
+  --kpress-radius-lg: 0.5rem;
+  --kpress-radius-pill: 999px;
+  /* Shared motion. One easing; a fast transition for hovers and size/shape
+     changes, a slower fade for overlays. Suppressed under prefers-reduced-motion
+     (see the reduce block in components.css). */
+  --kpress-ease: ease-in-out;
+  --kpress-transition-fast: 0.15s var(--kpress-ease);
+  --kpress-transition-med: 0.2s var(--kpress-ease);
+  --kpress-transition-slow: 0.4s var(--kpress-ease);
+  --kpress-transition-fade: 0.3s var(--kpress-ease);
+}
+
+/* Global font switch. Default ("custom", set by render.py on the .kpress
+   wrapper) uses the vendored PT Serif / Source Sans reader faces below.
+   "system" opts out of the vendored faces and uses the platform system
+   font stack, so no reader fonts are downloaded. Switchable via
+   RenderOptions.font_mode. */
+.kpress[data-kpress-fonts="system"] {
+  --kpress-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --kpress-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --kpress-font-prose: Georgia, "Times New Roman", Times, serif;
+  --kpress-font-punctuation: Georgia, "Times New Roman", Times, serif;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url("../fonts/pt-serif-latin-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  font-style: normal;
+  font-display: block;
+  font-weight: 700;
+  src: url("../fonts/pt-serif-latin-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  font-style: italic;
+  font-display: block;
+  font-weight: 400;
+  src: url("../fonts/pt-serif-latin-400-italic.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  font-style: italic;
+  font-display: block;
+  font-weight: 700;
+  src: url("../fonts/pt-serif-latin-700-italic.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "LocalPunct";
+  src: local("Georgia");
+  unicode-range: U+0022, U+0027, U+2018, U+2019, U+201C, U+201D;
+}
+
+@font-face {
+  font-family: "Source Sans 3 Variable";
+  font-style: normal;
+  font-display: block;
+  font-weight: 200 900;
+  src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "Source Sans 3 Variable";
+  font-style: italic;
+  font-display: block;
+  font-weight: 200 900;
+  src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}

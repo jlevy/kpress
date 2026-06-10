@@ -1,0 +1,3 @@
+# About
+
+Static publishing fixture.

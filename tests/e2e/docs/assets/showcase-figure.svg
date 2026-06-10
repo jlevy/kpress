@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 120" role="img" aria-label="KPress showcase figure">
+  <title>KPress showcase figure</title>
+  <rect x="1" y="1" width="238" height="118" rx="8" fill="none" stroke="currentColor" stroke-width="2"/>
+  <circle cx="60" cy="60" r="28" fill="none" stroke="currentColor" stroke-width="2"/>
+  <path d="M110 88 L150 32 L190 88 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <text x="120" y="110" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor">figure with caption</text>
+</svg>

@@ -1,0 +1,263 @@
+.kpress,
+:root[data-kpress-resolved-theme="light"] .kpress {
+  --kpress-syntax-text: var(--kpress-doc-text);
+  --kpress-syntax-comment: #4f6f70;
+  --kpress-syntax-error: #b42318;
+  --kpress-syntax-keyword: #0a6c0a;
+  --kpress-syntax-operator: #5f6368;
+  --kpress-syntax-punctuation: var(--kpress-doc-text);
+  --kpress-syntax-deleted: #9f1239;
+  --kpress-syntax-inserted: #15803d;
+  --kpress-syntax-heading: #1d4ed8;
+  --kpress-syntax-output: #6b7280;
+  --kpress-syntax-prompt: #1d4ed8;
+  --kpress-syntax-type: #9d174d;
+  --kpress-syntax-number: #5f6368;
+  --kpress-syntax-string: #a83232;
+  --kpress-syntax-attribute: #64748b;
+  --kpress-syntax-builtin: #047857;
+  --kpress-syntax-class: #1d4ed8;
+  --kpress-syntax-constant: #991b1b;
+  --kpress-syntax-decorator: #7c3aed;
+  --kpress-syntax-entity: #6b7280;
+  --kpress-syntax-function: #1d4ed8;
+  --kpress-syntax-label: #737300;
+  --kpress-syntax-tag: #0a6c0a;
+  --kpress-syntax-variable: #3730a3;
+  --kpress-syntax-whitespace: #a6adb7;
+  --kpress-syntax-mark-bg: #fef3c7;
+  --kpress-syntax-deleted-bg: #fee2e2;
+  --kpress-syntax-inserted-bg: #dcfce7;
+}
+
+:root[data-kpress-resolved-theme="dark"] .kpress,
+.kpress[data-kpress-theme="dark"] {
+  --kpress-syntax-text: #e6edf3;
+  --kpress-syntax-comment: #9babb8;
+  --kpress-syntax-error: #ff7b72;
+  --kpress-syntax-keyword: #ff7b72;
+  --kpress-syntax-operator: #ff9d72;
+  --kpress-syntax-punctuation: #c9d1d9;
+  --kpress-syntax-deleted: #ffa198;
+  --kpress-syntax-inserted: #56d364;
+  --kpress-syntax-heading: #79c0ff;
+  --kpress-syntax-output: #9babb8;
+  --kpress-syntax-prompt: #79c0ff;
+  --kpress-syntax-type: #ff7b72;
+  --kpress-syntax-number: #a5d6ff;
+  --kpress-syntax-string: #a5d6ff;
+  --kpress-syntax-attribute: #c9d8e8;
+  --kpress-syntax-builtin: #7ee787;
+  --kpress-syntax-class: #f0883e;
+  --kpress-syntax-constant: #79c0ff;
+  --kpress-syntax-decorator: #d2a8ff;
+  --kpress-syntax-entity: #ffa657;
+  --kpress-syntax-function: #d2a8ff;
+  --kpress-syntax-label: #79c0ff;
+  --kpress-syntax-tag: #7ee787;
+  --kpress-syntax-variable: #79c0ff;
+  --kpress-syntax-whitespace: #8b949e;
+  --kpress-syntax-mark-bg: #334155;
+  --kpress-syntax-deleted-bg: #490202;
+  --kpress-syntax-inserted-bg: #0f5323;
+}
+
+.kpress-code {
+  color: var(--kpress-syntax-text);
+}
+
+.kpress-code .hll {
+  background-color: var(--kpress-syntax-mark-bg);
+}
+
+.kpress-code .kpress-token-c,
+.kpress-code .kpress-token-ch,
+.kpress-code .kpress-token-cm,
+.kpress-code .kpress-token-cpf,
+.kpress-code .kpress-token-c1 {
+  color: var(--kpress-syntax-comment);
+  font-style: italic;
+}
+
+.kpress-code .kpress-token-cp,
+.kpress-code .kpress-token-cs {
+  color: var(--kpress-syntax-comment);
+  font-style: italic;
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-err,
+.kpress-code .kpress-token-gr,
+.kpress-code .kpress-token-gt {
+  color: var(--kpress-syntax-error);
+}
+
+.kpress-code .kpress-token-k,
+.kpress-code .kpress-token-kc,
+.kpress-code .kpress-token-kd,
+.kpress-code .kpress-token-kn,
+.kpress-code .kpress-token-kr {
+  color: var(--kpress-syntax-keyword);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-kp {
+  color: var(--kpress-syntax-keyword);
+}
+
+.kpress-code .kpress-token-o,
+.kpress-code .kpress-token-ow {
+  color: var(--kpress-syntax-operator);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-gd {
+  background-color: var(--kpress-syntax-deleted-bg);
+  color: var(--kpress-syntax-deleted);
+}
+
+.kpress-code .kpress-token-gi {
+  background-color: var(--kpress-syntax-inserted-bg);
+  color: var(--kpress-syntax-inserted);
+}
+
+.kpress-code .kpress-token-ge {
+  font-style: italic;
+}
+
+.kpress-code .kpress-token-ges {
+  font-style: italic;
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-gh,
+.kpress-code .kpress-token-gp,
+.kpress-code .kpress-token-gu {
+  color: var(--kpress-syntax-heading);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-go {
+  color: var(--kpress-syntax-output);
+}
+
+.kpress-code .kpress-token-gs {
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-kt {
+  color: var(--kpress-syntax-type);
+}
+
+.kpress-code .kpress-token-m,
+.kpress-code .kpress-token-mb,
+.kpress-code .kpress-token-mf,
+.kpress-code .kpress-token-mh,
+.kpress-code .kpress-token-mi,
+.kpress-code .kpress-token-mo,
+.kpress-code .kpress-token-il {
+  color: var(--kpress-syntax-number);
+}
+
+.kpress-code .kpress-token-s,
+.kpress-code .kpress-token-sa,
+.kpress-code .kpress-token-sb,
+.kpress-code .kpress-token-sc,
+.kpress-code .kpress-token-dl,
+.kpress-code .kpress-token-s2,
+.kpress-code .kpress-token-sh,
+.kpress-code .kpress-token-si,
+.kpress-code .kpress-token-sr,
+.kpress-code .kpress-token-s1,
+.kpress-code .kpress-token-ss {
+  color: var(--kpress-syntax-string);
+}
+
+.kpress-code .kpress-token-sd {
+  color: var(--kpress-syntax-string);
+  font-style: italic;
+}
+
+.kpress-code .kpress-token-se {
+  color: var(--kpress-syntax-string);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-sx {
+  color: var(--kpress-syntax-builtin);
+}
+
+.kpress-code .kpress-token-na {
+  color: var(--kpress-syntax-attribute);
+}
+
+.kpress-code .kpress-token-nb,
+.kpress-code .kpress-token-bp {
+  color: var(--kpress-syntax-builtin);
+}
+
+.kpress-code .kpress-token-nc {
+  color: var(--kpress-syntax-class);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-no {
+  color: var(--kpress-syntax-constant);
+}
+
+.kpress-code .kpress-token-nd {
+  color: var(--kpress-syntax-decorator);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-ni {
+  color: var(--kpress-syntax-entity);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-ne {
+  color: var(--kpress-syntax-class);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-nf,
+.kpress-code .kpress-token-fm {
+  color: var(--kpress-syntax-function);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-nl {
+  color: var(--kpress-syntax-label);
+}
+
+.kpress-code .kpress-token-nn {
+  color: var(--kpress-syntax-keyword);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-nt {
+  color: var(--kpress-syntax-tag);
+  font-weight: 700;
+}
+
+.kpress-code .kpress-token-nv,
+.kpress-code .kpress-token-vc,
+.kpress-code .kpress-token-vg,
+.kpress-code .kpress-token-vi,
+.kpress-code .kpress-token-vm {
+  color: var(--kpress-syntax-variable);
+}
+
+.kpress-code .kpress-token-p,
+.kpress-code .kpress-token-pm {
+  color: var(--kpress-syntax-punctuation);
+}
+
+.kpress-code .kpress-token-n,
+.kpress-code .kpress-token-nx {
+  color: var(--kpress-syntax-text);
+}
+
+.kpress-code .kpress-token-w {
+  color: var(--kpress-syntax-whitespace);
+}

@@ -1,0 +1,31 @@
+# KPress static-site example.
+#
+# This is the "competent generator" path: point KPress at a tree of Markdown
+# files and it publishes a complete, self-contained static site (styled HTML,
+# CSS and JS, and web fonts) with no outer tooling. See ../README.md for how this
+# differs from the wrapped-site example.
+
+site:
+  title: KPress Static Site Example
+
+sources:
+  # Every *.md under content/ becomes a page. Directory layout maps to URLs:
+  #   content/index.md                -> /
+  #   content/guides/getting-started.md -> /guides/getting-started.html
+  # A page can also override its own URL via `public_path:` frontmatter
+  # (see content/reference/api.md, which publishes to /reference/api/).
+  - path: content
+
+format:
+  math: auto
+  diagrams: auto
+  toc: auto
+
+publish:
+  output_dir: public
+  # `hashed` fingerprints asset filenames for long-lived caching. Use `sealed`
+  # for a fully offline bundle, or `inline` to fold CSS/JS into each page.
+  asset_mode: hashed
+
+optimizer:
+  precompress: [gzip]

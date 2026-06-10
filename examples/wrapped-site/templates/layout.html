@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="generator" content="example-wrapper (embedding kpress)">
+  <title>{{title}} · Acme Docs</title>
+
+  <!-- ── The OUTER site's own chrome styles. This is the wrapper's territory:
+       branding, layout shell, navigation. KPress never sees this. ──────────── -->
+  <style>
+    :root { --brand: #4f46e5; --shell-bg: #0b1020; --shell-fg: #e7e9f3; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    .shell { display: grid; grid-template-columns: 16rem 1fr; min-height: 100vh; }
+    .shell__sidebar {
+      background: var(--shell-bg); color: var(--shell-fg);
+      padding: 1.5rem 1rem; position: sticky; top: 0; height: 100vh;
+    }
+    .shell__brand { font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem; }
+    .shell__brand span { color: var(--brand); }
+    .shell__nav a {
+      display: block; padding: 0.4rem 0.6rem; border-radius: 6px;
+      color: var(--shell-fg); text-decoration: none; opacity: 0.8;
+    }
+    .shell__nav a:hover { background: rgba(255,255,255,0.08); opacity: 1; }
+    .shell__nav a[aria-current="page"] { background: var(--brand); opacity: 1; }
+    .shell__main { min-width: 0; }
+    .shell__topbar {
+      border-bottom: 1px solid #e5e7eb; padding: 0.75rem 2rem;
+      font-size: 0.85rem; color: #6b7280;
+    }
+    .shell__content { padding: 2rem; max-width: 56rem; margin: 0 auto; }
+  </style>
+
+  <!-- ── KPress's asset bundle, copied into this site by build.py and linked
+       here. These tags are produced exactly the way KPress would produce them
+       (CSS as <link>, reader modules as type="module"). ─────────────────────── -->
+  {{kpress_styles}}
+</head>
+<body>
+  <div class="shell">
+    <aside class="shell__sidebar">
+      <div class="shell__brand">Acme <span>Docs</span></div>
+      <nav class="shell__nav">
+        {{nav}}
+      </nav>
+    </aside>
+    <div class="shell__main">
+      <div class="shell__topbar">Acme Docs / {{title}}</div>
+      <div class="shell__content">
+        <!-- ── KPress-rendered document fragment goes here. The wrapper treats
+             it as an opaque, fully-styled block. ──────────────────────────── -->
+        {{kpress_content}}
+      </div>
+    </div>
+  </div>
+
+  {{kpress_scripts}}
+</body>
+</html>

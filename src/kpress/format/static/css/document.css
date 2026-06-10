@@ -1,0 +1,459 @@
+.kpress {
+  background: var(--kpress-doc-bg, #fff);
+  box-sizing: border-box;
+  color: var(--kpress-doc-text, #111827);
+  font-family: var(--kpress-font-body, system-ui, sans-serif);
+  /* Allow height transitions to/from `auto` (e.g. <details> expansion). */
+  interpolate-size: allow-keywords;
+  line-height: var(--kpress-line-height-normal, 1.5);
+  overflow-wrap: break-word;
+}
+
+.kpress *,
+.kpress *::before,
+.kpress *::after {
+  box-sizing: inherit;
+}
+
+.kpress-doc {
+  margin: 0 auto;
+  max-width: min(100%, calc(var(--kpress-measure, 76ch) + 2rem));
+  padding: 2rem 1rem 3rem;
+}
+
+.kpress-print-surface {
+  background: var(--kpress-doc-bg, #fff);
+}
+
+.kpress-doc-header,
+.kpress-source-header {
+  border-bottom: 1px solid var(--kpress-doc-border, #d8dee8);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+}
+
+.kpress-metadata {
+  color: var(--kpress-doc-text, #111827);
+}
+
+.kpress-doc-header h1,
+.kpress-source-header h1 {
+  font-family: var(--kpress-font-prose, Georgia, serif);
+  font-size: clamp(1.75rem, 4.5vw, 2.3rem);
+  font-weight: 400;
+  line-height: 1.12;
+  margin: 0;
+}
+
+.kpress-source-meta {
+  color: var(--kpress-doc-muted, #5b6472);
+  font-family: var(--kpress-font-sans, system-ui, sans-serif);
+  margin: 0.5rem 0 0;
+}
+
+.kpress-frontmatter-error,
+.kpress-source-truncation-warning {
+  background: color-mix(in srgb, #b42318 8%, var(--kpress-doc-bg));
+  border: 1px solid color-mix(in srgb, #b42318 42%, var(--kpress-doc-border));
+  border-radius: var(--kpress-radius-sm);
+  color: color-mix(in srgb, #b42318 84%, var(--kpress-doc-text));
+  font-family: var(--kpress-font-sans, system-ui, sans-serif);
+  font-size: var(--kpress-font-size-small, 0.95rem);
+  line-height: 1.35;
+  margin: 1rem 0;
+  padding: 0.65rem 0.8rem;
+}
+
+.kpress-frontmatter-error strong,
+.kpress-source-truncation-warning strong {
+  display: block;
+  font-weight: var(--kpress-font-weight-sans-bold, 650);
+  margin-bottom: 0.15rem;
+}
+
+.kpress-doc-layout {
+  margin: 0 auto;
+  max-width: var(--kpress-measure, 76ch);
+}
+
+.kpress-prose {
+  font-family: var(--kpress-font-prose, Georgia, serif);
+  font-size: var(--kpress-font-size-normal, 1rem);
+  line-height: var(--kpress-line-height-normal, 1.5);
+}
+
+.kpress-prose h1,
+.kpress-prose h2,
+.kpress-prose h3,
+.kpress-prose h4,
+.kpress-prose h5,
+.kpress-prose h6 {
+  font-feature-settings: var(--kpress-font-features-sans, normal);
+  font-family: var(--kpress-font-sans, system-ui, sans-serif);
+  font-weight: var(--kpress-font-weight-sans-bold, 650);
+  line-height: var(--kpress-line-height-tight, 1.2);
+}
+
+.kpress-prose h1 {
+  font-family: var(--kpress-font-prose, Georgia, serif);
+  font-size: 1.7rem;
+  font-weight: 400;
+  margin: 2rem 0 1rem;
+}
+
+.kpress-prose h2 {
+  font-family: var(--kpress-font-prose, Georgia, serif);
+  font-size: 1.32rem;
+  font-style: italic;
+  font-weight: 400;
+  margin: 2rem 0 1rem;
+}
+
+.kpress-prose h3 {
+  font-size: calc(1.15rem * var(--kpress-caps-heading-size-multiplier, 1));
+  font-variant-caps: var(--kpress-caps-variant, normal);
+  font-weight: var(--kpress-font-weight-sans-medium, 550);
+  letter-spacing: var(--kpress-caps-spacing, 0);
+  line-height: var(--kpress-caps-heading-line-height, 1.2);
+  margin: 1.4rem 0 0.7rem;
+  text-transform: var(--kpress-caps-transform, none);
+}
+
+.kpress-prose h4 {
+  font-size: 1.12rem;
+  font-style: italic;
+  font-weight: 540;
+  letter-spacing: 0.015em;
+  margin: 1rem 0 0.7rem;
+}
+
+.kpress-prose h5 {
+  font-family: var(--kpress-font-prose, Georgia, serif);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0.7rem 0 0.5rem;
+}
+
+.kpress-prose h6 {
+  font-family: var(--kpress-font-prose, Georgia, serif);
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 400;
+  margin: 0.7rem 0 0.5rem;
+}
+
+.kpress-prose h2 + h3 {
+  margin-top: 1.1rem;
+}
+
+.kpress-prose p,
+.kpress-prose pre {
+  margin-block: 0.75rem;
+}
+
+/* Tighten the gap after a low-level heading (declared after `p` so the
+   higher-specificity adjacent selector is not a descending-specificity
+   override). */
+.kpress-prose h4 + p,
+.kpress-prose h5 + p,
+.kpress-prose h6 + p {
+  margin-top: 0;
+}
+
+.kpress-prose ul,
+.kpress .concepts ul {
+  list-style-type: none;
+  margin-bottom: 0.7rem;
+  margin-left: 1.8rem;
+  padding-left: 0;
+}
+
+.kpress-prose li,
+.kpress .concepts li {
+  margin-block-start: 0.7rem;
+  position: relative;
+}
+
+.kpress-prose li > p {
+  margin-block-end: 0;
+}
+
+.kpress-prose ul > li::before,
+.kpress .concepts ul > li::before {
+  content: "\25AA\FE0E";
+  font-size: var(--kpress-bullet-size);
+  left: -0.85rem;
+  position: absolute;
+  top: 0.25rem;
+}
+
+.kpress-prose ol {
+  list-style-type: decimal;
+  margin-bottom: 0.7rem;
+  margin-left: 1.8rem;
+  padding-left: 0;
+}
+
+.kpress-prose ol > li {
+  padding-left: 0.25rem;
+}
+
+.kpress a {
+  color: var(--kpress-doc-link, #0756a5);
+  text-decoration: none;
+  transition: color var(--kpress-transition-fast);
+}
+
+.kpress a:hover {
+  color: var(--color-primary-light);
+  text-decoration: underline;
+}
+
+/* GFM strikethrough: keep the text legible (body colour) but draw the line in the
+   muted tone so it reads as struck-through without the heavy dark rule. */
+.kpress del,
+.kpress s {
+  text-decoration-color: var(--kpress-doc-muted);
+}
+
+.kpress img,
+.kpress-image {
+  height: auto;
+  margin-block: 1rem;
+  max-width: 100%;
+}
+
+.kpress-figure {
+  margin: 1.5rem auto;
+  text-align: center;
+}
+
+.kpress-figure .kpress-image {
+  display: block;
+  margin: 0 auto;
+}
+
+.kpress-figcaption {
+  color: var(--kpress-doc-muted, #5b6472);
+  font-family: var(--kpress-font-sans, system-ui, sans-serif);
+  font-size: var(--kpress-font-size-small, 0.95rem);
+  line-height: 1.35;
+  margin-block-start: 0.55rem;
+}
+
+.kpress .thumbnail {
+  border-radius: var(--kpress-radius-lg);
+  display: block;
+  margin: 1rem auto 2rem;
+  max-height: 24rem;
+  object-fit: contain;
+}
+
+.kpress blockquote {
+  margin: 1.5rem 4rem 1.5rem 1rem;
+  padding-inline-start: 1rem;
+}
+
+.kpress code,
+.kpress-code {
+  background: var(--kpress-doc-surface-bg, #f6f8fb);
+  font-family: var(--kpress-font-mono, ui-monospace, monospace);
+  font-size: var(--kpress-font-size-mono, 0.82rem);
+  letter-spacing: -0.025em;
+}
+
+.kpress code {
+  transition: color var(--kpress-transition-slow);
+}
+
+.kpress code:not(pre code) {
+  border: 1px solid var(--color-hint-gentle);
+  border-radius: var(--kpress-radius-sm);
+  padding: 0.25em 0.2em 0.1em 0.2em;
+}
+
+.kpress-code {
+  border: 1px solid var(--color-hint-gentle);
+  border-radius: var(--kpress-radius-none);
+  line-height: 1.5;
+  margin: 0;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  padding: 0.45rem 0.5rem;
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+  transition:
+    background-color var(--kpress-transition-slow),
+    border-color var(--kpress-transition-slow);
+  white-space: pre;
+}
+
+.kpress-source {
+  margin: 0;
+  padding: 1.25rem;
+}
+
+.kpress-frontmatter {
+  border: 1px solid var(--kpress-doc-border, #d8dee8);
+  font-family: var(--kpress-font-sans, system-ui, sans-serif);
+  margin: 1rem 0;
+}
+
+.kpress-frontmatter dl {
+  display: grid;
+  gap: 0.35rem 0.75rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+/* Distinguish keys from values: keys are medium-weight in the document text
+   color, values are muted. Without this both render in the same tertiary grey
+   (see the .kpress .kpress-frontmatter rule below), which reads as unstyled. */
+.kpress-frontmatter dt {
+  color: var(--kpress-doc-text);
+  font-weight: var(--kpress-font-weight-sans-medium, 550);
+}
+
+.kpress-frontmatter dd {
+  color: var(--kpress-doc-muted);
+  margin: 0;
+}
+
+.kpress details {
+  border: 1px solid var(--kpress-doc-border, #d8dee8);
+  color: var(--kpress-doc-text, #111827);
+  font-family: var(--kpress-font-sans, system-ui, sans-serif);
+  font-feature-settings: var(--kpress-font-features-sans, normal);
+  margin: 0.75rem 0;
+}
+
+/* Disclosure summary: a single background (no two-tone header) plus the canonical
+   chevron toggle below. The label text uses the shared small-caps section-label
+   treatment — same muted color, caps variant, weight, spacing, and size formula as
+   `.kpress-toc-title` (all driven by the `--kpress-caps-*` tokens) so every toggle
+   label and the TOC read as one design language. */
+.kpress summary {
+  align-items: center;
+  color: var(--kpress-doc-muted, #5b6472);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--kpress-font-sans, system-ui, sans-serif);
+  font-size: var(--kpress-caps-label-size);
+  font-variant-caps: var(--kpress-caps-variant);
+  font-weight: var(--kpress-font-weight-sans-medium);
+  gap: 0.4rem;
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: var(--kpress-caps-heading-line-height);
+  list-style: none;
+  padding: 0.5rem 0.75rem;
+  text-transform: var(--kpress-caps-transform);
+  transition: color var(--kpress-transition-fast);
+  user-select: none;
+}
+
+.kpress summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Canonical disclosure toggle: the shared Lucide `chevron-right` glyph (drawn via
+   a mask so it inherits the summary color), rotated 90deg when open. One treatment
+   for every <details> in KPress; host apps can mirror it for their own chrome. */
+.kpress summary::before {
+  background-color: currentColor;
+  content: "";
+  flex: none;
+  /* Slightly smaller than the cap height, nudged down via `top` (not transform,
+     which the open-state rotate owns) so the glyph sits on the label baseline. */
+  height: 0.85em;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  position: relative;
+  top: 0.06em;
+  transition: transform var(--kpress-transition-fast);
+  width: 0.85em;
+}
+
+.kpress details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.kpress summary:hover {
+  color: var(--color-primary-light);
+}
+
+.kpress details > :not(summary) {
+  padding: 0.25rem 0.75rem 0.5rem;
+}
+
+.kpress details[open] summary {
+  border-bottom: 1px solid var(--kpress-doc-border, #d8dee8);
+}
+
+.kpress summary:focus-visible {
+  outline: 3px solid var(--kpress-doc-link);
+  outline-offset: 2px;
+}
+
+/* Gently animate expansion where the browser supports it; older browsers open
+   instantly. `interpolate-size` lets the height transition to/from `auto`. */
+.kpress details::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size var(--kpress-transition-fast),
+    content-visibility var(--kpress-transition-fast);
+  transition-behavior: allow-discrete;
+}
+
+.kpress details[open]::details-content {
+  block-size: auto;
+}
+
+.kpress details.metadata,
+.kpress .kpress-frontmatter {
+  color: var(--color-secondary);
+}
+
+.kpress details.metadata summary,
+.kpress .kpress-frontmatter summary {
+  color: var(--color-secondary);
+  font-size: var(--kpress-caps-label-size);
+  font-weight: var(--kpress-font-weight-sans-medium, 550);
+  font-variant-caps: var(--kpress-caps-variant);
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: var(--kpress-caps-heading-line-height);
+  text-transform: var(--kpress-caps-transform);
+}
+
+.kpress hr {
+  border: 0;
+  height: 1.5rem;
+  margin: 0.5rem auto;
+  overflow: visible;
+  position: relative;
+  text-align: center;
+}
+
+.kpress hr::before {
+  border-top: 1px solid var(--kpress-doc-muted);
+  content: "";
+  display: block;
+  left: calc(50% - 2rem);
+  position: absolute;
+  top: 50%;
+  width: 4rem;
+}
+
+.kpress b,
+.kpress strong {
+  font-weight: var(--kpress-font-weight-sans-bold, 650);
+}
+
+.kpress ::selection {
+  background-color: var(--color-selection);
+  color: inherit;
+}
+
+.kpress sup {
+  font-size: 85%;
+}

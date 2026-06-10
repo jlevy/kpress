@@ -1,0 +1,17 @@
+site:
+  title: KPress Reader Showcase
+
+sources:
+  - path: docs
+
+format:
+  math: auto
+  diagrams: auto
+  toc: auto
+
+publish:
+  output_dir: public
+  asset_mode: hashed
+
+optimizer:
+  precompress: [gzip]

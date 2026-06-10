@@ -1,0 +1,12 @@
+/* KPress standalone page-shell reset. render_page owns html/body so `.kpress-page-main`
+   is the single scroll context (no nested window scrollbar). Inlined render-blocking in
+   <head> by render_page only; the embeddable fragment never carries it, so an embedding
+   host's own global styles stay untouched. See kpress-design.md "Standalone scroll model"
+   / Conscious Departures #14/#15. Lives here, in a real CSS file -- not as a Python string. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
