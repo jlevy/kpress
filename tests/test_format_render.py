@@ -280,6 +280,23 @@ def test_render_page_surfaces_frontmatter_parse_errors() -> None:
     ]
 
 
+def test_show_frontmatter_toggles_the_frontmatter_disclosure() -> None:
+    doc = DocumentInput(
+        title="Doc",
+        source_text="# Body",
+        source_path="doc.md",
+        body_markdown="# Body",
+        frontmatter={"title": "Doc", "draft": True},
+    )
+
+    shown = render_page(doc, RenderOptions(include_toc="off")).html
+    assert "<summary>Frontmatter</summary>" in shown
+    assert "<dt>draft</dt>" in shown
+
+    hidden = render_page(doc, RenderOptions(include_toc="off", show_frontmatter=False)).html
+    assert "<summary>Frontmatter</summary>" not in hidden
+
+
 def test_diagnostics_script_block_is_valid_json_and_script_safe() -> None:
     import json
     import re

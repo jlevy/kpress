@@ -220,6 +220,67 @@ def test_heading_metadata_uses_plain_text_and_toc_skips_single_leading_h1() -> N
     ]
 
 
+def test_toc_normalizes_levels_when_top_levels_are_absent() -> None:
+    # A document of only H3s (no H1/H2) should list flat at the TOC top level, not
+    # indented three deep as if the missing H1/H2 ancestors existed. The rendered <h3>
+    # tags are unchanged; this is a TOC-nesting concern only.
+    tree = parse_markdown(
+        dedent(
+            """
+            ### Finding Me
+
+            ### Selected Work
+            """
+        ).strip(),
+        title="Joshua Levy",
+    )
+    assert [(item.level, item.title) for item in tree.headings] == [
+        (3, "Finding Me"),
+        (3, "Selected Work"),
+    ]
+    assert [(item.level, item.title) for item in tree.toc] == [
+        (1, "Finding Me"),
+        (1, "Selected Work"),
+    ]
+
+
+def test_toc_compresses_an_interior_level_gap() -> None:
+    # H2 then H4 with no H3 between: the H4 nests one level under the H2, not two.
+    tree = parse_markdown(
+        dedent(
+            """
+            ## Overview
+
+            #### Detail
+            """
+        ).strip(),
+        title="Doc",
+    )
+    assert [(item.level, item.title) for item in tree.toc] == [(1, "Overview"), (2, "Detail")]
+
+
+def test_toc_preserves_relative_nesting_without_extra_indentation() -> None:
+    # A gap-free hierarchy keeps its shape, and the shallowest shown heading sits at the
+    # TOC top level (no leading indentation) — here H2/H3 map to TOC levels 1/2.
+    tree = parse_markdown(
+        dedent(
+            """
+            ## Section One
+
+            ### Sub
+
+            ## Section Two
+            """
+        ).strip(),
+        title="Doc",
+    )
+    assert [(item.level, item.title) for item in tree.toc] == [
+        (1, "Section One"),
+        (2, "Sub"),
+        (1, "Section Two"),
+    ]
+
+
 def test_internal_links_emit_diagnostics_for_missing_heading_targets_only() -> None:
     tree = parse_markdown(
         dedent(

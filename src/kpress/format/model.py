@@ -104,6 +104,9 @@ class RenderOptions:
     # that already show the title in their own chrome (e.g. an embedding app's
     # file header) pass False to suppress it, rather than hiding it with host CSS.
     show_doc_header: bool = True
+    # Render frontmatter as a collapsible "Metadata" disclosure. Sites that treat
+    # frontmatter as build-only metadata (not reader-facing) pass False to omit it.
+    show_frontmatter: bool = True
     math: MathMode = "auto"
     diagrams: DiagramMode = "auto"
     printable: bool = True

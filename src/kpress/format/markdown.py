@@ -916,8 +916,15 @@ def _toc_entries(headings: list[Heading]) -> list[TocEntry]:
     toc_headings = headings
     if headings and headings[0].level == 1 and sum(item.level == 1 for item in headings) == 1:
         toc_headings = headings[1:]
+    # Normalize nesting so the TOC has no gaps. A document whose headings skip a level
+    # (only H3s, or an H1 then H3 with no H2 between) would otherwise indent the TOC as
+    # if the missing ancestor levels existed. Map each heading's level to its rank among
+    # the distinct levels present, so nesting is contiguous from the top. This is a TOC
+    # concern only — the rendered heading tags (<h3> etc.) are unchanged.
+    rank_of = {level: rank for rank, level in enumerate(sorted({h.level for h in toc_headings}), 1)}
     return [
-        TocEntry(level=item.level, title=item.title, href=f"#{item.id}") for item in toc_headings
+        TocEntry(level=rank_of[item.level], title=item.title, href=f"#{item.id}")
+        for item in toc_headings
     ]
 
 

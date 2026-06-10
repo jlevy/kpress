@@ -115,7 +115,7 @@ def _render_frontmatter(document: DocumentInput) -> str:
         for key, value in sorted(document.frontmatter.items(), key=lambda item: str(item[0]))
     )
     return (
-        '<details class="kpress-frontmatter kpress-no-print"><summary>Metadata</summary>'
+        '<details class="kpress-frontmatter kpress-no-print"><summary>Frontmatter</summary>'
         f"<dl>{rows}</dl></details>"
     )
 
@@ -176,7 +176,7 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
         )
     toc = _render_toc(tree, options)
     frontmatter_error = _render_frontmatter_error(document)
-    frontmatter = _render_frontmatter(document)
+    frontmatter = _render_frontmatter(document) if options.show_frontmatter else ""
     thumbnail = _render_thumbnail(document, str(title))
     # Both `data-kpress-theme` (user preference: system|light|dark) and
     # `data-kpress-resolved-theme` (light|dark, the host's resolution of

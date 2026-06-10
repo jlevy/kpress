@@ -35,6 +35,7 @@ class FormatConfig:
     toc_min_headings: int = 4
     math: MathMode = "auto"
     diagrams: str = "auto"
+    show_frontmatter: bool = True
 
 
 @dataclass(frozen=True)
@@ -168,10 +169,22 @@ def _int_value(value: object, default: int) -> int:
     return default
 
 
+def _bool_value(value: object, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "yes", "on", "1"}:
+            return True
+        if normalized in {"false", "no", "off", "0"}:
+            return False
+    return default
+
+
 _KNOWN_TOP_LEVEL_KEYS = frozenset({"site", "publish", "format", "pdf", "optimizer", "sources"})
 _KNOWN_PUBLISH_KEYS = frozenset({"output_dir", "asset_mode"})
 _KNOWN_FORMAT_KEYS = frozenset(
-    {"theme", "color_mode", "toc", "toc_min_headings", "math", "diagrams"}
+    {"theme", "color_mode", "toc", "toc_min_headings", "math", "diagrams", "show_frontmatter"}
 )
 _KNOWN_OPTIMIZER_KEYS = frozenset({"mode", "precompress"})
 _KNOWN_PDF_KEYS = frozenset({"enabled", "page_size"})
@@ -330,6 +343,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             toc_min_headings=_int_value(fmt.get("toc_min_headings"), 4),
             math=cast(MathMode, math),
             diagrams=str(fmt.get("diagrams", "auto")),
+            show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),
         ),
         publish=PublishConfig(
             output_dir=str(publish.get("output_dir", "public")),
