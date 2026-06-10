@@ -30,5 +30,5 @@
   --color-selection: color-mix(in srgb, var(--kpress-doc-link) 24%, transparent);
   --color-scrollbar: color-mix(in srgb, var(--kpress-doc-muted) 45%, transparent);
   --color-scrollbar-hover: color-mix(in srgb, var(--kpress-doc-muted) 70%, transparent);
-  --color-success: oklch(72.27% 0.1920 149.6);
+  --color-success: oklch(72.27% 0.192 149.6);
 }

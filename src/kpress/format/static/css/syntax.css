@@ -18,14 +18,14 @@
   --kpress-syntax-builtin: oklch(50.81% 0.1049 165.6);
   --kpress-syntax-class: oklch(48.82% 0.2172 264.4);
   --kpress-syntax-constant: oklch(44.37% 0.1613 26.9);
-  --kpress-syntax-decorator: oklch(54.13% 0.2466 293.0);
+  --kpress-syntax-decorator: oklch(54.13% 0.2466 293);
   --kpress-syntax-entity: oklch(55.10% 0.0234 264.4);
   --kpress-syntax-function: oklch(48.82% 0.2172 264.4);
   --kpress-syntax-label: oklch(53.77% 0.1172 109.8);
   --kpress-syntax-tag: oklch(46.20% 0.1513 142.6);
   --kpress-syntax-variable: oklch(39.84% 0.1773 277.4);
   --kpress-syntax-whitespace: oklch(74.52% 0.0164 257.2);
-  --kpress-syntax-mark-bg: oklch(96.19% 0.0580 95.6);
+  --kpress-syntax-mark-bg: oklch(96.19% 0.058 95.6);
   --kpress-syntax-deleted-bg: oklch(93.56% 0.0309 17.7);
   --kpress-syntax-inserted-bg: oklch(96.24% 0.0434 156.7);
 }
@@ -33,15 +33,15 @@
 :root[data-kpress-resolved-theme="dark"] .kpress,
 .kpress[data-kpress-theme="dark"] {
   --kpress-syntax-text: oklch(94.25% 0.0111 243.7);
-  --kpress-syntax-comment: oklch(73.29% 0.0260 242.5);
+  --kpress-syntax-comment: oklch(73.29% 0.026 242.5);
   --kpress-syntax-error: oklch(73.45% 0.1626 25.8);
   --kpress-syntax-keyword: oklch(73.45% 0.1626 25.8);
   --kpress-syntax-operator: oklch(78.74% 0.1308 44.1);
-  --kpress-syntax-punctuation: oklch(85.69% 0.0141 248.0);
+  --kpress-syntax-punctuation: oklch(85.69% 0.0141 248);
   --kpress-syntax-deleted: oklch(80.14% 0.1134 25.8);
-  --kpress-syntax-inserted: oklch(77.17% 0.1880 145.5);
+  --kpress-syntax-inserted: oklch(77.17% 0.188 145.5);
   --kpress-syntax-heading: oklch(78.57% 0.1153 246.7);
-  --kpress-syntax-output: oklch(73.29% 0.0260 242.5);
+  --kpress-syntax-output: oklch(73.29% 0.026 242.5);
   --kpress-syntax-prompt: oklch(78.57% 0.1153 246.7);
   --kpress-syntax-type: oklch(73.45% 0.1626 25.8);
   --kpress-syntax-number: oklch(85.60% 0.0768 244.1);
@@ -58,7 +58,7 @@
   --kpress-syntax-variable: oklch(78.57% 0.1153 246.7);
   --kpress-syntax-whitespace: oklch(66.25% 0.0181 250.9);
   --kpress-syntax-mark-bg: oklch(37.17% 0.0392 257.3);
-  --kpress-syntax-deleted-bg: oklch(25.70% 0.1020 28.5);
+  --kpress-syntax-deleted-bg: oklch(25.70% 0.102 28.5);
   --kpress-syntax-inserted-bg: oklch(38.94% 0.1019 148.4);
 }
 

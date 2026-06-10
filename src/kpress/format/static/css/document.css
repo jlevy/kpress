@@ -46,7 +46,7 @@
 }
 
 .kpress-source-meta {
-  color: var(--kpress-doc-muted, oklch(50.06% 0.0250 259.2));
+  color: var(--kpress-doc-muted, oklch(50.06% 0.025 259.2));
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
   margin: 0.5rem 0 0;
 }
@@ -234,7 +234,7 @@
 }
 
 .kpress-figcaption {
-  color: var(--kpress-doc-muted, oklch(50.06% 0.0250 259.2));
+  color: var(--kpress-doc-muted, oklch(50.06% 0.025 259.2));
   font-family: var(--kpress-font-sans, system-ui, sans-serif);
   font-size: var(--kpress-font-size-small, 0.95rem);
   line-height: 1.35;
@@ -333,7 +333,7 @@
    label and the TOC read as one design language. */
 .kpress summary {
   align-items: center;
-  color: var(--kpress-doc-muted, oklch(50.06% 0.0250 259.2));
+  color: var(--kpress-doc-muted, oklch(50.06% 0.025 259.2));
   cursor: pointer;
   display: flex;
   font-family: var(--kpress-font-sans, system-ui, sans-serif);

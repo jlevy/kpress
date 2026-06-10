@@ -1158,7 +1158,8 @@
 .kpress .kpress-video-placeholder {
   align-items: center;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, oklch(0.00% 0 0 / 0.72), oklch(0.00% 0 0 / 0.42)), var(--color-primary);
+  background:
+    linear-gradient(135deg, oklch(0.00% 0 0 / 0.72), oklch(0.00% 0 0 / 0.42)), var(--color-primary);
   border: 1px solid var(--kpress-doc-border);
   border-radius: var(--kpress-radius-none);
   color: oklch(100.00% 0 0);
