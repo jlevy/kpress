@@ -5,15 +5,15 @@
  * scrollbars. Design RULES are kept here as comments next to each group, close to the code
  * (kpress-design.md is the map, not a duplicate ledger). The public subset is pinned by
  * contract.py::PUBLIC_CSS_VARIABLES. Core doc tokens read var(--kpress-host-*, <default>)
- * so a host (MetaBrowser) can theme them; static pages and static-site builds override via
- * the same variables. */
+ * so an embedding host app can theme them; static pages and static-site builds override
+ * via the same variables. */
 .kpress,
 .kpress-page-main,
 .kpress-tooltip {
   /* Adapted from Kash base_styles.css.jinja and base_webpage.html.jinja.
      Core doc tokens use var(--kpress-host-*, <default>) so an embedding host
-     (e.g. metabrowser) can set --kpress-host-bg etc. on :root and have them
-     flow through instead of being shadowed by this scope. */
+     app can set --kpress-host-bg etc. on :root and have them flow through
+     instead of being shadowed by this scope. */
   --kpress-font-body: var(
     --kpress-host-font-body,
     "Source Sans 3 Variable",

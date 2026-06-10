@@ -165,7 +165,7 @@ publish:
 
 
 def test_build_site_inline_asset_mode_inlines_package_css_and_js(tmp_path: Path) -> None:
-    # `inline` is config-rejected until truly self-contained (trading-7ehk);
+    # `inline` is config-rejected until truly self-contained (orig-7ehk);
     # the programmatic BuildOptions override remains for the equivalence
     # harness and the future single-file work, exercised here.
     (tmp_path / "docs").mkdir()
@@ -293,7 +293,7 @@ def test_workflow_format_and_export_html_pdf(tmp_path: Path) -> None:
 def test_workflow_format_export_have_no_dangling_kpress_refs(tmp_path: Path) -> None:
     """Every ./_kpress/assets URL the formatted and exported HTML references
     must resolve to a real file beside the HTML, so a single-doc format/export
-    opens offline with zero dangling assets (trading-quj4).
+    opens offline with zero dangling assets (orig-quj4).
     """
     source = tmp_path / "doc.md"
     source.write_text("# Doc\n\nBody with `code` and a [link](https://x.test).\n", encoding="utf-8")
@@ -327,7 +327,7 @@ def test_workflow_format_export_have_no_dangling_kpress_refs(tmp_path: Path) -> 
     )
 
 
-# --- invalid config values must raise, not silently downgrade (trading-1tkb) -
+# --- invalid config values must raise, not silently downgrade (orig-1tkb) -
 
 
 def test_invalid_publish_asset_mode_raises(tmp_path: Path) -> None:
@@ -617,7 +617,7 @@ def test_static_passthrough_rejects_reserved_and_colliding_paths(tmp_path: Path)
 
 
 def test_inline_asset_mode_and_single_file_export_are_gated(tmp_path: Path) -> None:
-    """Until single-file output is truly self-contained (trading-7ehk), the
+    """Until single-file output is truly self-contained (orig-7ehk), the
     config surface and the single-file export refuse loudly instead of
     emitting pages whose ES-module imports would 404 after relocation.
     """

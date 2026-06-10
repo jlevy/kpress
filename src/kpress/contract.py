@@ -200,8 +200,8 @@ PUBLIC_CSS_VARIABLES = (
 )
 
 # Stable per-cell table data-* hooks kpress emits for downstream enrichment. These are
-# part of the public contract: kpress emits them so a downstream decorator (the MetaBrowser
-# TableView plugin, a future static-site builder) can select a column by name and detect
+# part of the public contract: kpress emits them so a downstream decorator (a host app's
+# table plugin, a future static-site builder) can select a column by name and detect
 # numeric columns. kpress itself never consumes them and never imports a decorator.
 PUBLIC_DATA_ATTRIBUTES = (
     "data-col",

@@ -1,4 +1,4 @@
-"""Tests for the locked full-optimizer dependency layer (trading-zc7g).
+"""Tests for the locked full-optimizer dependency layer (orig-zc7g).
 
 The full optimizer manages html-minifier-next in a package-owned cache
 directory with a pinned lockfile and file-locked installs. These tests

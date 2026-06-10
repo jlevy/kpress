@@ -113,7 +113,7 @@ def test_probe_result_has_stable_shape() -> None:
     assert r2.reason == "npx_not_found"
 
 
-# --- Optimizer preflight in build_site / build_html (trading-owjr) ---
+# --- Optimizer preflight in build_site / build_html (orig-owjr) ---
 
 
 def test_build_html_full_preflight_fails_before_writing(

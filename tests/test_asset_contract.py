@@ -34,7 +34,7 @@ def test_hashed_js_imports_resolve_via_import_map() -> None:
     to its hashed file. This pins that contract: every `./x.js` a module imports has an
     import-map entry pointing at the actually-emitted hashed file (the same path the
     `<script src>` resolves to), and no hashed specifier is ever written into the JS source.
-    Regression for trading-7x4v (404 on hashed imports) and trading-zjvc (no JS rewriting)."""
+    Regression for orig-7x4v (404 on hashed imports) and orig-zjvc (no JS rewriting)."""
     from kpress.format.assets import (
         DEFAULT_JS_ASSETS,
         TRANSITIVE_JS_ASSETS,

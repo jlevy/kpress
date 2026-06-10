@@ -23,7 +23,7 @@
    this targets the standalone-only `.kpress-page-main`, not `.kpress-viewport`). */
 .kpress-page-main {
   /* Standalone-only gutters (the embedded fragment uses the host's pane, so
-     these never affect MetaBrowser). Tunable; a couple ems of breathing room so
+     these never affect embedding hosts). Tunable; a couple ems of breathing room so
      the reading column does not run to the window edges, plus a little more
      above so the title is not jammed against the top of the window. */
   --kpress-page-margin-inline: 2rem;
@@ -119,9 +119,9 @@
 }
 
 /* Settings menu: a gear button that opens a popover of segmented icon
-   choosers (theme today; more can be added). Ported from metabrowser's
-   settings control, re-tokenized onto KPress document tokens so it themes
-   with the document. The wrapper's `aria-expanded` drives menu visibility. */
+   choosers (theme today; more can be added). Ported from the original host
+   app's settings control, re-tokenized onto KPress document tokens so it
+   themes with the document. The wrapper's `aria-expanded` drives menu visibility. */
 .kpress-settings {
   inset-block-start: 0.75rem;
   inset-inline-end: 0.75rem;
@@ -697,7 +697,7 @@
 }
 
 /* Icon-only copy control, revealed on hover/focus of the code block
-   (MetaBrowser parity). The label lives in aria-label/title, never as text. */
+   (host-app parity). The label lives in aria-label/title, never as text. */
 .kpress-code-copy {
   align-items: center;
   background: var(--kpress-doc-bg);
@@ -1335,8 +1335,8 @@
   /* Departure from kash (DEP-FONT-WIDE): kash only bumps prose above 1rem for
      print; on screen it stays 1rem at every width. We nudge the on-screen
      reading size to 1.1rem on wide panes only, because PT Serif's small
-     x-height reads smaller than the sans chrome sitting beside it in
-     metabrowser. Base stays 1rem, so narrow/embedded panes keep kash parity. */
+     x-height reads smaller than the sans chrome an embedding host app puts
+     beside it. Base stays 1rem, so narrow/embedded panes keep kash parity. */
   .kpress {
     --kpress-font-size-normal: 1.1rem;
   }

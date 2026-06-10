@@ -3,7 +3,7 @@
 Builds the kpress wheel, installs it into a fresh venv, and renders/builds in
 a scratch directory with no repo imports — proving package data (CSS, JS,
 fonts, icon sprite, KaTeX, templates) ships in the wheel and resolves via
-``importlib.resources``. This is the v0.1 publishability gate (trading-wp8v).
+``importlib.resources``. This is the v0.1 publishability gate (orig-wp8v).
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@
  * the inline YouTube player — no popup. The player (and its only network
  * request) loads when this script runs, and lazily once it scrolls into view.
  *
- * Embedding hosts (e.g. metabrowser) inject the document fragment after this
+ * Embedding host apps inject the document fragment after this
  * module loads, so a MutationObserver also embeds placeholders added later.
  *
  * NOTE: the filename is historical (this used to be a click-to-open popover);

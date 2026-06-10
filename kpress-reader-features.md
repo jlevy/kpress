@@ -79,8 +79,8 @@ Architecture and the public contract live in [`kpress-design.md`](kpress-design.
 - **Light, dark, and system modes** with localStorage persistence,
   `prefers-color-scheme` response, and a synchronous pre-paint no-flash bootstrap.
 - **Standalone settings menu.** Full pages ship an accessible, no-print gear-icon
-  popover with a `system`/`light`/`dark` icon chooser (ported from metabrowser’s
-  design); embedded hosts own the control instead.
+  popover with a `system`/`light`/`dark` icon chooser (ported from the original host
+  app’s design); embedded hosts own the control instead.
 - **Font model.** A global `font_mode` selects vendored reader faces (`custom`) or the
   platform stack (`system`); reader fonts, when used, are vendored and sealed offline
   (no CDN at publish).

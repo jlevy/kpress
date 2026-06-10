@@ -193,7 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
     convert.set_defaults(func=_cmd_convert)
 
     # `inline` is deliberately not offered: it is not yet self-contained
-    # (trading-7ehk); `sealed` is the supported offline output.
+    # (orig-7ehk); `sealed` is the supported offline output.
     asset_mode_choices = ["hosted", "linked", "hashed", "sealed"]
 
     fmt = sub.add_parser(

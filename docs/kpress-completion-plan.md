@@ -11,12 +11,12 @@ author: Claude under Levy
 
 ## Executive Summary
 
-“KPress end-to-end works” means every row in the reader parity ledger (moved to
-`../../../docs/project/specs/active/plan-2026-05-18-kpress-mvp-stability-and-doctor.md`)
-reads **Implemented**, every open/in-progress bead under `trading-xgzj` (reader parity
-epic) and `trading-wkzp` (package/publisher epic) is closed with acceptance evidence,
-and both dynamic rendering and sealed static publishing produce equivalent document
-surfaces across desktop, mobile, dark mode, print, and PDF.
+“KPress end-to-end works” means every row in the reader parity ledger (moved to the
+2026-05-18 MVP-stability-and-doctor plan spec, in the original monorepo) reads
+**Implemented**, every open/in-progress bead under `orig-xgzj` (reader parity epic) and
+`orig-wkzp` (package/publisher epic) is closed with acceptance evidence, and both
+dynamic rendering and sealed static publishing produce equivalent document surfaces
+across desktop, mobile, dark mode, print, and PDF.
 
 The single structural blocker is that the majority of remaining beads are “code-side
 done, manual browser acceptance remains.”
@@ -45,83 +45,83 @@ Category key:
 
 | Bead | Title | Category | Status | Exit criterion |
 | --- | --- | --- | --- | --- |
-| `trading-xgzj` | KPress reader feature parity completion | GROUPING/GATE | in_progress | All child feature beads closed with acceptance evidence. |
-| `trading-wkzp` | KPress package and static publisher | GROUPING/GATE | open | All child publishing/runtime beads closed. |
-| `trading-mfwo` | Host-embedded KPress document views and print support | GROUPING/GATE | in_progress | Host integration beads closed. |
-| `trading-08y5` | Final reader parity audit and closure gate | GROUPING/GATE | open | Every parity ledger row is Implemented, goldens/browser checks linked, TODO.md clean. |
+| `orig-xgzj` | KPress reader feature parity completion | GROUPING/GATE | in_progress | All child feature beads closed with acceptance evidence. |
+| `orig-wkzp` | KPress package and static publisher | GROUPING/GATE | open | All child publishing/runtime beads closed. |
+| `orig-mfwo` | Host-embedded KPress document views and print support | GROUPING/GATE | in_progress | Host integration beads closed. |
+| `orig-08y5` | Final reader parity audit and closure gate | GROUPING/GATE | open | Every parity ledger row is Implemented, goldens/browser checks linked, TODO.md clean. |
 
 ### Publishing and Optimizer Beads
 
 | Bead | Title | Category | Status | Remaining work | Exit criterion |
 | --- | --- | --- | --- | --- | --- |
-| `trading-owjr` | Preflight full optimizer before output | ACTIONABLE-CODE | open | Preflight the `full` optimizer before any output is written, so a missing `npx` fails early. | `kpress build --optimizer full` fails before writing any output when `npx` is absent. |
-| `trading-zc7g` | Locked sminify/html-minifier-next dependency layer | ACTIONABLE-CODE | open | Replace raw `npx --package` with a locked dependency cache for `html-minifier-next`. | Optimizer `full` uses a locked dependency rather than live `npx` resolution. |
-| `trading-8kis` | Dynamic-vs-sealed equivalence harness | AUTOMATED-HARNESS | in_progress | Harness code done. Manual browser console/network, interaction, computed-style, mobile, dark-mode, print, PDF review evidence remains. | Only accepted differences are URL shape, hashing, minification, compression, and documented optional optimizations. |
-| `trading-aquv` | Static publishing production maturity | ACTIONABLE-CODE | in_progress | Routes, sitemap, and cache-invalidation done. Frontmatter-format precedence fixtures remain. | Deterministic routes, complete metadata, clear diagnostics, cache invalidation proofs. |
+| `orig-owjr` | Preflight full optimizer before output | ACTIONABLE-CODE | open | Preflight the `full` optimizer before any output is written, so a missing `npx` fails early. | `kpress build --optimizer full` fails before writing any output when `npx` is absent. |
+| `orig-zc7g` | Locked sminify/html-minifier-next dependency layer | ACTIONABLE-CODE | open | Replace raw `npx --package` with a locked dependency cache for `html-minifier-next`. | Optimizer `full` uses a locked dependency rather than live `npx` resolution. |
+| `orig-8kis` | Dynamic-vs-sealed equivalence harness | AUTOMATED-HARNESS | in_progress | Harness code done. Manual browser console/network, interaction, computed-style, mobile, dark-mode, print, PDF review evidence remains. | Only accepted differences are URL shape, hashing, minification, compression, and documented optional optimizations. |
+| `orig-aquv` | Static publishing production maturity | ACTIONABLE-CODE | in_progress | Routes, sitemap, and cache-invalidation done. Frontmatter-format precedence fixtures remain. | Deterministic routes, complete metadata, clear diagnostics, cache invalidation proofs. |
 
 ### Grouping Beads (Older Broad Parity)
 
 | Bead | Title | Category | Status | Exit criterion |
 | --- | --- | --- | --- | --- |
-| `trading-8is3` | Markdown/GFM and document-tree reader parity | GROUPING/GATE | open | Child markdown/document beads closed with accepted goldens and manual rich-Markdown visual review. |
-| `trading-131h` | Document CSS, theme assets, print CSS, JS helpers | GROUPING/GATE | open | CSS/theme/print/font beads closed with selector coverage and manual review. |
-| `trading-d6g2` | TOC, footnotes, tooltips, tables, code components | GROUPING/GATE | open | Interaction beads closed with DOM tests and browser acceptance. |
-| `trading-selz` | Semantic content and document-format component parity | GROUPING/GATE | open | Semantic beads closed with selector tests and manual desktop/mobile/dark/print review. |
-| `trading-5dmd` | Font and packaged asset sealing reader parity | GROUPING/GATE | open | Font/asset beads closed with offline verification and computed-style probes. |
-| `trading-n7ok` | Browser-print PDF artifact generation | GROUPING/GATE | open | PDF backend done (via `trading-14v1`); real fixture PDFs and manual inspection remain. |
-| `trading-0xa1` | Public-contract hardening, accessibility, host readiness | GROUPING/GATE | open | Accessibility/ARIA review, host contract, and manual keyboard/mobile acceptance complete. |
+| `orig-8is3` | Markdown/GFM and document-tree reader parity | GROUPING/GATE | open | Child markdown/document beads closed with accepted goldens and manual rich-Markdown visual review. |
+| `orig-131h` | Document CSS, theme assets, print CSS, JS helpers | GROUPING/GATE | open | CSS/theme/print/font beads closed with selector coverage and manual review. |
+| `orig-d6g2` | TOC, footnotes, tooltips, tables, code components | GROUPING/GATE | open | Interaction beads closed with DOM tests and browser acceptance. |
+| `orig-selz` | Semantic content and document-format component parity | GROUPING/GATE | open | Semantic beads closed with selector tests and manual desktop/mobile/dark/print review. |
+| `orig-5dmd` | Font and packaged asset sealing reader parity | GROUPING/GATE | open | Font/asset beads closed with offline verification and computed-style probes. |
+| `orig-n7ok` | Browser-print PDF artifact generation | GROUPING/GATE | open | PDF backend done (via `orig-14v1`); real fixture PDFs and manual inspection remain. |
+| `orig-0xa1` | Public-contract hardening, accessibility, host readiness | GROUPING/GATE | open | Accessibility/ARIA review, host contract, and manual keyboard/mobile acceptance complete. |
 
 ### Reader Feature Beads (Code-Side Done, Browser Acceptance Remains)
 
 | Bead | Title | Category | Status | Remaining work | Exit criterion |
 | --- | --- | --- | --- | --- | --- |
-| `trading-97c1` | GFM Markdown block/inline document tree | MANUAL-BROWSER | in_progress | Manual rich-Markdown visual review. | Accepted goldens and visual confirmation for all GFM row features. |
-| `trading-1rc7` | Raw HTML trust and sanitizer matrix | MANUAL-BROWSER | in_progress | SVG/iframe/script policy detail, duplicate-id diagnostics, browser review. | Sanitizer fixtures and browser-rendered proof of safe/unsafe handling. |
-| `trading-oxs3` | Images, figures, captions, local media | MANUAL-BROWSER | in_progress | Manual image/static-output review, responsive variants, sidematter precedence. | Fixtures for local/relative/absolute/missing assets with browser no-network check. |
-| `trading-c5xy` | Code fences, source profiles, syntax highlighting | MANUAL-BROWSER | in_progress | Source-profile language fallback, host adapter regression, manual code visual review. | Fixtures cover language/no-language fences, long lines, source files, print, and syntax-highlighted output. |
-| `trading-g0ra` | `off`/lazy-`auto` KaTeX math | ACTIONABLE-CODE + MANUAL-BROWSER | in_progress | Math `off` + lazy `auto` KaTeX refactor (KaTeX active, MathML kept as semantic/accessibility output); backend matrix deferred; manual browser/PDF review remains. | Documents without math load no math assets; documents with math render through KaTeX while preserving MathML as semantic/accessibility output. |
-| `trading-lir6` | Diagram rendering providers | MANUAL-BROWSER | in_progress | Manual browser/PDF review; bundled Mermaid/pre-rendering decision. | Browser diagram rendering and sealed output confirmation. |
-| `trading-vdbu` | Typography, document CSS, themes | MANUAL-BROWSER | in_progress | Host control mapping, dark component review, manual light/dark/system browser acceptance. | Computed-style probes and human review confirm long-prose quality. |
-| `trading-boxw` | Print CSS and print profiles | MANUAL-BROWSER | in_progress | Manual print preview and browser-backed PDF fixture review. | Print-media browser probes and manual print preview readable for all content types. |
-| `trading-i4rj` | Desktop TOC behavior | MANUAL-BROWSER | in_progress | Manual desktop browser review for scroll, active states, anchors. | Browser tests and DOM-state goldens cover desktop TOC. |
-| `trading-o59o` | Mobile TOC drawer behavior | MANUAL-BROWSER | in_progress | Manual mobile viewport review for drawer open/close, scroll locking. | Mobile browser tests and manual narrow-viewport review. |
-| `trading-2z84` | Internal-link preview tooltips | MANUAL-BROWSER | in_progress | Manual tooltip browser/touch review. | Browser tests for all preview target classes. |
-| `trading-09i3` | Responsive tables and numeric-cell hooks | MANUAL-BROWSER | in_progress | Manual wide-table desktop/mobile/print browser review. | Fixtures for narrow/wide/numeric tables with mobile/print confirmation. |
-| `trading-vy98` | Code-copy controls | MANUAL-BROWSER | in_progress | Manual code-copy browser review. | Browser interaction tests cover success/error/reset. |
-| `trading-m83y` | Video popovers and embedded media policy | MANUAL-BROWSER | in_progress | Manual desktop/mobile/sealed-output video review. | Browser tests and no-network audits for desktop/mobile/sealed output. |
-| `trading-wv4m` | Tabbed content components | MANUAL-BROWSER | in_progress | Manual desktop/mobile/accessibility tab review. | Fixtures and browser tests cover tab switching, keyboard, print, nested components. |
-| `trading-3l2o` | Semantic content components | MANUAL-BROWSER | in_progress | Manual desktop/mobile/dark/print visual review. | Selector coverage, goldens, and manual review for every semantic class. |
-| `trading-mzp0` | Fonts and packaged reader assets | MANUAL-BROWSER | in_progress | Browser-computed font confirmation, no-network sealed output. | Font assets deterministic, offline, verified by computed-style/browser audits. |
-| `trading-4mdl` | Canonical fixture corpus and accepted goldens | AUTOMATED-HARNESS | in_progress | Build fixture corpus and accepted goldens for every reader feature. | Each fixture has accepted KPress goldens with documented approval status. |
-| `trading-azna` | Manual browser acceptance playbook | MANUAL-BROWSER | in_progress | Run the playbook, record results, document deviations. | Playbook run results recorded for accepted fixtures. |
-| `trading-zwc2` | Browser-backed PDF generation and fixtures | MANUAL-BROWSER | open | Real Chromium fixture PDFs, cache/report metadata, manual PDF inspection. | PDF tests and manual review prove production-ready output. |
-| `trading-t2rf` | Accessibility and host-readiness checks | MANUAL-BROWSER | in_progress | Manual host iframe handling, keyboard/ARIA/contrast review. | Automated checks plus manual keyboard/mobile review pass. |
+| `orig-97c1` | GFM Markdown block/inline document tree | MANUAL-BROWSER | in_progress | Manual rich-Markdown visual review. | Accepted goldens and visual confirmation for all GFM row features. |
+| `orig-1rc7` | Raw HTML trust and sanitizer matrix | MANUAL-BROWSER | in_progress | SVG/iframe/script policy detail, duplicate-id diagnostics, browser review. | Sanitizer fixtures and browser-rendered proof of safe/unsafe handling. |
+| `orig-oxs3` | Images, figures, captions, local media | MANUAL-BROWSER | in_progress | Manual image/static-output review, responsive variants, sidematter precedence. | Fixtures for local/relative/absolute/missing assets with browser no-network check. |
+| `orig-c5xy` | Code fences, source profiles, syntax highlighting | MANUAL-BROWSER | in_progress | Source-profile language fallback, host adapter regression, manual code visual review. | Fixtures cover language/no-language fences, long lines, source files, print, and syntax-highlighted output. |
+| `orig-g0ra` | `off`/lazy-`auto` KaTeX math | ACTIONABLE-CODE + MANUAL-BROWSER | in_progress | Math `off` + lazy `auto` KaTeX refactor (KaTeX active, MathML kept as semantic/accessibility output); backend matrix deferred; manual browser/PDF review remains. | Documents without math load no math assets; documents with math render through KaTeX while preserving MathML as semantic/accessibility output. |
+| `orig-lir6` | Diagram rendering providers | MANUAL-BROWSER | in_progress | Manual browser/PDF review; bundled Mermaid/pre-rendering decision. | Browser diagram rendering and sealed output confirmation. |
+| `orig-vdbu` | Typography, document CSS, themes | MANUAL-BROWSER | in_progress | Host control mapping, dark component review, manual light/dark/system browser acceptance. | Computed-style probes and human review confirm long-prose quality. |
+| `orig-boxw` | Print CSS and print profiles | MANUAL-BROWSER | in_progress | Manual print preview and browser-backed PDF fixture review. | Print-media browser probes and manual print preview readable for all content types. |
+| `orig-i4rj` | Desktop TOC behavior | MANUAL-BROWSER | in_progress | Manual desktop browser review for scroll, active states, anchors. | Browser tests and DOM-state goldens cover desktop TOC. |
+| `orig-o59o` | Mobile TOC drawer behavior | MANUAL-BROWSER | in_progress | Manual mobile viewport review for drawer open/close, scroll locking. | Mobile browser tests and manual narrow-viewport review. |
+| `orig-2z84` | Internal-link preview tooltips | MANUAL-BROWSER | in_progress | Manual tooltip browser/touch review. | Browser tests for all preview target classes. |
+| `orig-09i3` | Responsive tables and numeric-cell hooks | MANUAL-BROWSER | in_progress | Manual wide-table desktop/mobile/print browser review. | Fixtures for narrow/wide/numeric tables with mobile/print confirmation. |
+| `orig-vy98` | Code-copy controls | MANUAL-BROWSER | in_progress | Manual code-copy browser review. | Browser interaction tests cover success/error/reset. |
+| `orig-m83y` | Video popovers and embedded media policy | MANUAL-BROWSER | in_progress | Manual desktop/mobile/sealed-output video review. | Browser tests and no-network audits for desktop/mobile/sealed output. |
+| `orig-wv4m` | Tabbed content components | MANUAL-BROWSER | in_progress | Manual desktop/mobile/accessibility tab review. | Fixtures and browser tests cover tab switching, keyboard, print, nested components. |
+| `orig-3l2o` | Semantic content components | MANUAL-BROWSER | in_progress | Manual desktop/mobile/dark/print visual review. | Selector coverage, goldens, and manual review for every semantic class. |
+| `orig-mzp0` | Fonts and packaged reader assets | MANUAL-BROWSER | in_progress | Browser-computed font confirmation, no-network sealed output. | Font assets deterministic, offline, verified by computed-style/browser audits. |
+| `orig-4mdl` | Canonical fixture corpus and accepted goldens | AUTOMATED-HARNESS | in_progress | Build fixture corpus and accepted goldens for every reader feature. | Each fixture has accepted KPress goldens with documented approval status. |
+| `orig-azna` | Manual browser acceptance playbook | MANUAL-BROWSER | in_progress | Run the playbook, record results, document deviations. | Playbook run results recorded for accepted fixtures. |
+| `orig-zwc2` | Browser-backed PDF generation and fixtures | MANUAL-BROWSER | open | Real Chromium fixture PDFs, cache/report metadata, manual PDF inspection. | PDF tests and manual review prove production-ready output. |
+| `orig-t2rf` | Accessibility and host-readiness checks | MANUAL-BROWSER | in_progress | Manual host iframe handling, keyboard/ARIA/contrast review. | Automated checks plus manual keyboard/mobile review pass. |
 
 ### Matrix-Specific Beads Still Open
 
 | Bead | Title | Category | Status | Remaining work |
 | --- | --- | --- | --- | --- |
-| `trading-dz9t` | Ship syntax highlight themes | MANUAL-BROWSER | in_progress | Manual browser/print visual acceptance of light/dark Pygments themes. |
-| `trading-4iuf` | Frontmatter-error reader affordance | MANUAL-BROWSER | in_progress | Host placement review, manual browser acceptance. |
-| `trading-o2vp` | Source large-file guard | MANUAL-BROWSER | in_progress | Host adapter regression, manual source-print acceptance. |
-| `trading-viq1` | Code-copy control styling | MANUAL-BROWSER | in_progress | Manual browser acceptance of position/hover/focus/copied/error states. |
+| `orig-dz9t` | Ship syntax highlight themes | MANUAL-BROWSER | in_progress | Manual browser/print visual acceptance of light/dark Pygments themes. |
+| `orig-4iuf` | Frontmatter-error reader affordance | MANUAL-BROWSER | in_progress | Host placement review, manual browser acceptance. |
+| `orig-o2vp` | Source large-file guard | MANUAL-BROWSER | in_progress | Host adapter regression, manual source-print acceptance. |
+| `orig-viq1` | Code-copy control styling | MANUAL-BROWSER | in_progress | Manual browser acceptance of position/hover/focus/copied/error states. |
 
 ### Closed Beads (Done)
 
 | Bead | Title | Category | Status |
 | --- | --- | --- | --- |
-| `trading-pufr` | Production asset graph and CDN sealing | ACTIONABLE-CODE | done |
-| `trading-gsre` | Production optimizer and precompressed output | ACTIONABLE-CODE | done |
-| `trading-kf28` | Genericize host references in KPress docs | ACTIONABLE-CODE | done |
-| `trading-5bjm` | Overlay primitive | ACTIONABLE-CODE | done |
-| `trading-bkr6` | Component contract | ACTIONABLE-CODE | done |
-| `trading-4uwa` | Dev/production mode removal | ACTIONABLE-CODE | done |
+| `orig-pufr` | Production asset graph and CDN sealing | ACTIONABLE-CODE | done |
+| `orig-gsre` | Production optimizer and precompressed output | ACTIONABLE-CODE | done |
+| `orig-kf28` | Genericize host references in KPress docs | ACTIONABLE-CODE | done |
+| `orig-5bjm` | Overlay primitive | ACTIONABLE-CODE | done |
+| `orig-bkr6` | Component contract | ACTIONABLE-CODE | done |
+| `orig-4uwa` | Dev/production mode removal | ACTIONABLE-CODE | done |
 
 ### Standalone Cleanup Beads
 
 | Bead | Title | Category | Status | Remaining work |
 | --- | --- | --- | --- | --- |
-| `trading-hoq7` | Shrink host markdown CSS | ACTIONABLE-CODE | open | Audit `metabrowser/src/metabrowser/static/styles.css` `.md-body` rules, remove KPress-redundant subset, verify lmdb views. |
+| `orig-hoq7` | Shrink host markdown CSS | ACTIONABLE-CODE | open | Audit the host app’s `styles.css` `.md-body` rules (in the host repo), remove KPress-redundant subset, verify plugin views. |
 
 ## Dependency-Ordered Execution Plan: ACTIONABLE-CODE Beads
 
@@ -129,61 +129,59 @@ These beads can be completed by an automated agent right now.
 
 ### Phase 1: Production Publishing Hardening
 
-**`trading-pufr` (production asset graph and CDN sealing)** — CLOSED.
+**`orig-pufr` (production asset graph and CDN sealing)** — CLOSED.
 
-**`trading-gsre` (production optimizer and precompressed output)** — CLOSED.
+**`orig-gsre` (production optimizer and precompressed output)** — CLOSED.
 
 The optimizer is two explicit modes only: `none` (default, no Node) and `full`
 (`html-minifier-next@6.2.3` via `npx --package`; hard error if absent; no fallback; no
 built-in pseudo-minifier).
 Precompression is explicit, off by default, orthogonal to the optimizer.
 
-**1. `trading-owjr` (preflight full optimizer before output)**
+**1. `orig-owjr` (preflight full optimizer before output)**
 
 Remaining scope:
 - Preflight the `full` optimizer at build start, before any output is written, so a
   missing `npx` fails early rather than after partial output
 
-Files: `packages/kpress/src/kpress/publish/optimizer.py`, `publish/build.py`
+Files: `src/kpress/publish/optimizer.py`, `publish/build.py`
 
-Tests: `packages/kpress/tests/test_optimizer.py`
+Tests: `tests/test_optimizer.py`
 
 Acceptance test: `kpress build --optimizer full` with no `npx` fails before writing any
 output files.
 
-**2. `trading-zc7g` (locked sminify/html-minifier-next dependency layer)**
+**2. `orig-zc7g` (locked sminify/html-minifier-next dependency layer)**
 
 Remaining scope:
 - Replace raw `npx --package` invocation with a locked dependency cache for
   `html-minifier-next`
 
-Files: `packages/kpress/src/kpress/publish/optimizer.py`
+Files: `src/kpress/publish/optimizer.py`
 
-Tests: `packages/kpress/tests/test_optimizer.py`
+Tests: `tests/test_optimizer.py`
 
 Acceptance test: optimizer `full` resolves the tool from a locked cache rather than live
 `npx` resolution.
 
-**3. `trading-aquv` (static publishing production maturity)**
+**3. `orig-aquv` (static publishing production maturity)**
 
 Routes, sitemap, and cache-invalidation are done.
 
 Remaining scope:
 - Add publisher fixtures for shared `frontmatter-format` precedence contract
 
-Files: `packages/kpress/src/kpress/publish/routes.py`, `publish/build.py`,
-`publish/cache.py`
+Files: `src/kpress/publish/routes.py`, `publish/build.py`, `publish/cache.py`
 
-Tests: `packages/kpress/tests/test_routes.py`,
-`packages/kpress/tests/test_cache_invalidation.py`,
-`packages/kpress/tests/test_golden_publish.py`
+Tests: `tests/test_routes.py`, `tests/test_cache_invalidation.py`,
+`tests/test_golden_publish.py`
 
 Acceptance test: frontmatter-format precedence fixtures pass and routes respect
 frontmatter-driven overrides.
 
 ### Phase 2: Fixture and Harness Expansion
 
-**4. `trading-4mdl` (canonical fixture corpus and accepted goldens)**
+**4. `orig-4mdl` (canonical fixture corpus and accepted goldens)**
 
 Remaining scope:
 - Build fixture documents for every reader feature (prose, headings, lists, tables,
@@ -191,45 +189,44 @@ Remaining scope:
   semantic components, tabs, video)
 - Add accepted goldens with fixture metadata documenting approval status
 
-Files: `packages/kpress/tests/fixtures/documents/`,
-`packages/kpress/tests/golden/scenarios/`, `packages/kpress/tests/golden/accepted/`
+Files: `tests/fixtures/documents/`, `tests/golden/scenarios/`, `tests/golden/accepted/`
 
 Acceptance test: each fixture has an accepted golden; `test_golden_render.py` passes.
 
-**5. `trading-8kis` (dynamic-vs-sealed equivalence harness)**
+**5. `orig-8kis` (dynamic-vs-sealed equivalence harness)**
 
-Depends on: `trading-pufr` (closed), `trading-gsre` (closed)
+Depends on: `orig-pufr` (closed), `orig-gsre` (closed)
 
 Harness code is done.
 Remaining scope (browser portion):
 - Manual browser console/network, interaction, computed-style, mobile, dark-mode, print,
   PDF review evidence
 
-Files: `packages/kpress/tests/test_equivalence.py`
+Files: `tests/test_equivalence.py`
 
 Note: the browser console/network/interaction/print portion of this bead’s exit
 criterion falls under MANUAL-BROWSER and cannot be completed by an agent.
 
 ### Phase 3: Standalone Cleanup
 
-**`trading-kf28` (genericize host references in KPress docs)** — CLOSED.
+**`orig-kf28` (genericize host references in KPress docs)** — CLOSED.
 
-**6. `trading-hoq7` (shrink host markdown CSS)**
+**6. `orig-hoq7` (shrink host markdown CSS)**
 
 Remaining scope:
-- Audit `metabrowser/src/metabrowser/static/styles.css` `.md-body` rules
+- Audit the host app’s `styles.css` `.md-body` rules (in the host repo)
 - Remove reader-only subset that KPress replaced
-- Keep lmdb/other plugin subset
-- Verify lmdb + structured plugin views visually
+- Keep the other plugin subset
+- Verify structured plugin views visually
 
-Files: `metabrowser/src/metabrowser/static/styles.css`
+Files: the host app’s `styles.css` (host repo)
 
 Acceptance test: `styles.css` net-reduced; lmdb views render correctly.
 
 ## Manual Browser Acceptance Process
 
 This section describes exactly how to discharge the MANUAL-BROWSER beads using the
-existing validation runbook at `packages/kpress/docs/kpress-validation.runbook.md`.
+existing validation runbook at `docs/kpress-validation.runbook.md`.
 
 ### Prerequisites
 
@@ -244,7 +241,7 @@ Run acceptance in this order, because later groups depend on earlier visual base
 
 **Round 1: Typography, themes, and layout foundations**
 
-Beads: `trading-vdbu`, `trading-dz9t`, `trading-mzp0`
+Beads: `orig-vdbu`, `orig-dz9t`, `orig-mzp0`
 
 1. Serve the production static site (runbook Part 5, “Local Browser Smoke”).
 2. Review prose typography, heading scale, font rendering (PT Serif body, Source Sans
@@ -257,13 +254,13 @@ Beads: `trading-vdbu`, `trading-dz9t`, `trading-mzp0`
 6. Record evidence: screenshots of light, dark, and system modes; computed-style
    font-family values.
 
-Maps to closing: `trading-vdbu`, `trading-dz9t` (syntax highlight visual confirmation),
-`trading-mzp0` (computed font confirmation).
+Maps to closing: `orig-vdbu`, `orig-dz9t` (syntax highlight visual confirmation),
+`orig-mzp0` (computed font confirmation).
 
 **Round 2: Document tree and content rendering**
 
-Beads: `trading-97c1`, `trading-1rc7`, `trading-oxs3`, `trading-c5xy`, `trading-g0ra`,
-`trading-lir6`, `trading-3l2o`, `trading-4iuf`, `trading-o2vp`
+Beads: `orig-97c1`, `orig-1rc7`, `orig-oxs3`, `orig-c5xy`, `orig-g0ra`, `orig-lir6`,
+`orig-3l2o`, `orig-4iuf`, `orig-o2vp`
 
 1. Open the rich-components fixture and any supplemental fixtures from the corpus.
 2. Verify GFM tables, nested lists, blockquotes, task lists, strikethrough, footnote
@@ -283,13 +280,13 @@ Beads: `trading-97c1`, `trading-1rc7`, `trading-oxs3`, `trading-c5xy`, `trading-
 9. Verify raw HTML trust modes: safe HTML preserved, unsafe stripped.
 10. Record evidence: screenshots of each content type.
 
-Maps to closing: `trading-97c1`, `trading-1rc7`, `trading-oxs3`, `trading-c5xy`,
-`trading-g0ra`, `trading-lir6`, `trading-3l2o`, `trading-4iuf`, `trading-o2vp`.
+Maps to closing: `orig-97c1`, `orig-1rc7`, `orig-oxs3`, `orig-c5xy`, `orig-g0ra`,
+`orig-lir6`, `orig-3l2o`, `orig-4iuf`, `orig-o2vp`.
 
 **Round 3: Interactive components**
 
-Beads: `trading-i4rj`, `trading-o59o`, `trading-2z84`, `trading-09i3`, `trading-vy98`,
-`trading-m83y`, `trading-wv4m`, `trading-viq1`
+Beads: `orig-i4rj`, `orig-o59o`, `orig-2z84`, `orig-09i3`, `orig-vy98`, `orig-m83y`,
+`orig-wv4m`, `orig-viq1`
 
 1. **TOC (desktop):** confirm sticky rail, active heading highlight on scroll, smooth
    scroll to heading, “Contents” scroll-to-top, progressive toggle visibility on
@@ -313,12 +310,12 @@ Beads: `trading-i4rj`, `trading-o59o`, `trading-2z84`, `trading-09i3`, `trading-
    In print preview: confirm all panels show with titles.
 8. Record evidence: interaction screenshots, console logs.
 
-Maps to closing: `trading-i4rj`, `trading-o59o`, `trading-2z84`, `trading-09i3`,
-`trading-vy98`, `trading-m83y`, `trading-wv4m`, `trading-viq1`.
+Maps to closing: `orig-i4rj`, `orig-o59o`, `orig-2z84`, `orig-09i3`, `orig-vy98`,
+`orig-m83y`, `orig-wv4m`, `orig-viq1`.
 
 **Round 4: Print and PDF**
 
-Beads: `trading-boxw`, `trading-zwc2`
+Beads: `orig-boxw`, `orig-zwc2`
 
 1. Open print preview (Command+P or `window.print()`).
 2. Verify: page margins/footer/page-number, light paper palette, heading/table/code
@@ -326,17 +323,17 @@ Beads: `trading-boxw`, `trading-zwc2`
    simplification, code wrapping, TOC/video/copy-button suppression, print-only surfaces
    visible.
 3. Generate browser-backed PDFs for the fixture corpus:
-   `uv run --project packages/kpress kpress export fixture.md --pdf fixture.pdf`
-   (requires `kpress[pdf]` and Chromium).
+   `uv run kpress export fixture.md --pdf fixture.pdf` (requires `kpress[pdf]` and
+   Chromium).
 4. Open each PDF. Verify page breaks, wide tables, footnotes, images, math, diagrams,
    fonts, and print-only controls.
 5. Record evidence: print preview screenshots, PDF file hashes, and visual observations.
 
-Maps to closing: `trading-boxw`, `trading-zwc2`.
+Maps to closing: `orig-boxw`, `orig-zwc2`.
 
 **Round 5: Accessibility and host readiness**
 
-Beads: `trading-t2rf`, `trading-azna`
+Beads: `orig-t2rf`, `orig-azna`
 
 1. Keyboard-navigate the document: Tab through TOC, tooltips, tabs, popovers, theme
    toggle, code-copy buttons.
@@ -347,9 +344,9 @@ Beads: `trading-t2rf`, `trading-azna`
    `kpress:close` postMessage events fire correctly.
    Confirm Escape-close opt-in.
 5. Run through the full runbook Part 6 checklist.
-6. Record the completed Part 6 checklist as the playbook evidence for `trading-azna`.
+6. Record the completed Part 6 checklist as the playbook evidence for `orig-azna`.
 
-Maps to closing: `trading-t2rf`, `trading-azna`.
+Maps to closing: `orig-t2rf`, `orig-azna`.
 
 **Round 6: No-network sealed output review**
 
@@ -357,8 +354,7 @@ Maps to closing: `trading-t2rf`, `trading-azna`.
    tab).
 2. Confirm zero unexpected remote requests.
 3. Confirm all assets load from local hashed files.
-4. This satisfies the no-network portions of `trading-pufr`, `trading-8kis`, and
-   `trading-mzp0`.
+4. This satisfies the no-network portions of `orig-pufr`, `orig-8kis`, and `orig-mzp0`.
 
 ### Evidence Format
 
@@ -371,48 +367,47 @@ For each round, record:
 
 ## Closure Chain
 
-### From feature beads to `trading-08y5` (final audit/closure gate)
+### From feature beads to `orig-08y5` (final audit/closure gate)
 
-`trading-08y5` depends on (blocks) `trading-xgzj`. It closes when:
+`orig-08y5` depends on (blocks) `orig-xgzj`. It closes when:
 
-1. Every child feature bead of `trading-xgzj` is closed.
+1. Every child feature bead of `orig-xgzj` is closed.
 2. Every row in the parity ledger (moved to the 2026-05-18 MVP stability plan spec)
    reads **Implemented**.
 3. Tests, goldens, and browser checks are linked per row.
 4. Manual approvals are recorded.
 5. `TODO.md` has no open reader-parity feature gaps.
 
-### From `trading-08y5` to `trading-xgzj` (epic)
+### From `orig-08y5` to `orig-xgzj` (epic)
 
-`trading-xgzj` (reader parity epic) closes when `trading-08y5` and all other child beads
-are closed.
+`orig-xgzj` (reader parity epic) closes when `orig-08y5` and all other child beads are
+closed.
 
 ### Full closure dependency order
 
 Phase A (can proceed in parallel):
-- CLOSED: `trading-pufr`, `trading-gsre`, `trading-kf28`, `trading-5bjm`,
-  `trading-bkr6`, `trading-4uwa`
-- ACTIONABLE-CODE beads: `trading-owjr`, `trading-zc7g` (optimizer hardening)
-- ACTIONABLE-CODE beads: `trading-aquv` (frontmatter precedence remains)
-- ACTIONABLE-CODE beads: `trading-hoq7` (host CSS shrink)
-- ACTIONABLE-CODE + MANUAL-BROWSER: `trading-g0ra` (math off+lazy-auto KaTeX refactor)
-- AUTOMATED-HARNESS: `trading-4mdl` (fixture corpus)
+- CLOSED: `orig-pufr`, `orig-gsre`, `orig-kf28`, `orig-5bjm`, `orig-bkr6`, `orig-4uwa`
+- ACTIONABLE-CODE beads: `orig-owjr`, `orig-zc7g` (optimizer hardening)
+- ACTIONABLE-CODE beads: `orig-aquv` (frontmatter precedence remains)
+- ACTIONABLE-CODE beads: `orig-hoq7` (host CSS shrink)
+- ACTIONABLE-CODE + MANUAL-BROWSER: `orig-g0ra` (math off+lazy-auto KaTeX refactor)
+- AUTOMATED-HARNESS: `orig-4mdl` (fixture corpus)
 
 Phase B (requires real browser, depends on Phase A fixture corpus):
 - MANUAL-BROWSER Rounds 1-6 (all reader feature beads)
-- `trading-azna` closes when the playbook has been run and results recorded
-- `trading-zwc2` closes when real Chromium PDFs pass manual inspection
+- `orig-azna` closes when the playbook has been run and results recorded
+- `orig-zwc2` closes when real Chromium PDFs pass manual inspection
 
 Phase C (gates, close automatically when children close):
-- `trading-8is3`, `trading-131h`, `trading-d6g2`, `trading-selz`, `trading-5dmd`,
-  `trading-n7ok`, `trading-0xa1` close when their child feature beads close.
-- `trading-q72a` closes when the acceptance playbook, fixture corpus, and browser checks
+- `orig-8is3`, `orig-131h`, `orig-d6g2`, `orig-selz`, `orig-5dmd`, `orig-n7ok`,
+  `orig-0xa1` close when their child feature beads close.
+- `orig-q72a` closes when the acceptance playbook, fixture corpus, and browser checks
   are complete.
 
 Phase D (final):
-- `trading-08y5` closes (final audit gate).
-- `trading-xgzj` closes (reader parity epic).
-- `trading-wkzp` closes (package/publisher epic).
+- `orig-08y5` closes (final audit gate).
+- `orig-xgzj` closes (reader parity epic).
+- `orig-wkzp` closes (package/publisher epic).
 
 ## What an Automated Agent Cannot Do and Why
 
@@ -469,11 +464,11 @@ output to review.
 
 | Category | Count |
 | --- | --- |
-| CLOSED | 6 (`trading-pufr`, `trading-gsre`, `trading-kf28`, `trading-5bjm`, `trading-bkr6`, `trading-4uwa`) |
-| ACTIONABLE-CODE (open/in_progress) | 5 (`trading-owjr`, `trading-zc7g`, `trading-aquv`, `trading-hoq7`, plus code portion of `trading-g0ra`) |
-| AUTOMATED-HARNESS | 2 (`trading-4mdl`, `trading-8kis`, both also have MANUAL-BROWSER exit criteria) |
-| MANUAL-BROWSER | 24 (all reader feature beads, matrix beads, `trading-azna`, `trading-zwc2`, `trading-t2rf`) |
-| GROUPING/GATE | 11 (`trading-xgzj`, `trading-wkzp`, `trading-mfwo`, `trading-08y5`, `trading-8is3`, `trading-131h`, `trading-d6g2`, `trading-selz`, `trading-5dmd`, `trading-n7ok`, `trading-0xa1`) |
+| CLOSED | 6 (`orig-pufr`, `orig-gsre`, `orig-kf28`, `orig-5bjm`, `orig-bkr6`, `orig-4uwa`) |
+| ACTIONABLE-CODE (open/in_progress) | 5 (`orig-owjr`, `orig-zc7g`, `orig-aquv`, `orig-hoq7`, plus code portion of `orig-g0ra`) |
+| AUTOMATED-HARNESS | 2 (`orig-4mdl`, `orig-8kis`, both also have MANUAL-BROWSER exit criteria) |
+| MANUAL-BROWSER | 24 (all reader feature beads, matrix beads, `orig-azna`, `orig-zwc2`, `orig-t2rf`) |
+| GROUPING/GATE | 11 (`orig-xgzj`, `orig-wkzp`, `orig-mfwo`, `orig-08y5`, `orig-8is3`, `orig-131h`, `orig-d6g2`, `orig-selz`, `orig-5dmd`, `orig-n7ok`, `orig-0xa1`) |
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

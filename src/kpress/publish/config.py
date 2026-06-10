@@ -132,7 +132,7 @@ def _validated_optimizer_mode(optimizer: dict[str, object]) -> str:
 
     Omitted → default `"none"`. Provided-but-invalid → `KPressPublishError`
     so a typo in production config fails the build instead of silently
-    downgrading (trading-1tkb).
+    downgrading (orig-1tkb).
     """
 
     if "mode" not in optimizer:
@@ -282,7 +282,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     # loudly. A typo in production config silently shipping a different
     # asset/optimizer/math policy than the operator intended is a real
     # publishing risk and inconsistent with KPress's elsewhere-strict
-    # reserved-path / collision / unsafe-asset stance (trading-1tkb).
+    # reserved-path / collision / unsafe-asset stance (orig-1tkb).
     if "math" in fmt:
         math = str(fmt.get("math"))
         if math not in {"off", "auto"}:
@@ -293,7 +293,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     if "asset_mode" in publish:
         asset_mode = publish.get("asset_mode")
         # `inline` is rejected at the config surface until it is truly
-        # self-contained (trading-7ehk): inlined ES modules still import
+        # self-contained (orig-7ehk): inlined ES modules still import
         # sibling files, so the published pages would silently lose reader
         # features. The programmatic BuildOptions override keeps accepting it
         # for the equivalence harness and future single-file work.

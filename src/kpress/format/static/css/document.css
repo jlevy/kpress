@@ -356,7 +356,7 @@
 
 /* Canonical disclosure toggle: the shared Lucide `chevron-right` glyph (drawn via
    a mask so it inherits the summary color), rotated 90deg when open. One treatment
-   for every <details> in KPress; MetaBrowser's `.toggle-chevron` mirrors it. */
+   for every <details> in KPress; host apps can mirror it for their own chrome. */
 .kpress summary::before {
   background-color: currentColor;
   content: "";

@@ -600,7 +600,7 @@ export function initKpressTooltips(root = document) {
 
 initKpressTooltips();
 
-// Embedding hosts (e.g. metabrowser) inject the document fragment after this
+// Embedding host apps inject the document fragment after this
 // module loads, so footnote and internal-link anchors appear later. A
 // MutationObserver wires them as they arrive (wiring is idempotent).
 if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.body) {

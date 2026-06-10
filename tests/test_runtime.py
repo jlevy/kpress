@@ -12,8 +12,8 @@ _VSEG = f"v{__version__}"
 
 
 def test_static_asset_url_is_version_keyed() -> None:
-    # Hosts (e.g. metabrowser chrome) preload/link a packaged asset from their
-    # own page using this; it must match the version-keyed URL embedded
+    # Hosts (e.g. an embedding app's chrome) preload/link a packaged asset from
+    # their own page using this; it must match the version-keyed URL embedded
     # documents request so the two share one download and cache entry.
     assert (
         runtime.static_asset_url("fonts/source-sans-3-latin-wght-normal.woff2")
@@ -116,7 +116,7 @@ def test_runtime_static_root_override(tmp_path: Path) -> None:
     assert asset.content == b".x{}\n"
 
 
-# --- security: dynamic render must strip active content (trading-w14p) -----
+# --- security: dynamic render must strip active content (orig-w14p) -----
 
 
 _XSS_PAYLOADS = [
@@ -132,10 +132,9 @@ _XSS_PAYLOADS = [
 @pytest.mark.parametrize(("label", "payload"), _XSS_PAYLOADS)
 def test_dynamic_render_strips_active_content_from_document_body(label: str, payload: str) -> None:
     """The dynamic render path serves arbitrary host-supplied documents.
-    The returned HTML fragment is injected into the host shell via
-    `innerHTML` (see metabrowser/builtin_plugins/markdown/index.js), so
-    active content in the document body must not survive sanitization.
-    Regression for trading-w14p.
+    Host apps inject the returned HTML fragment into their shell via
+    `innerHTML`, so active content in the document body must not survive
+    sanitization. Regression for orig-w14p.
     """
 
     source = f"# Title\n\n{payload}\n"

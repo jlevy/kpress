@@ -101,8 +101,8 @@ class RenderOptions:
     include_toc: TocMode = "auto"
     toc_min_headings: int = 4
     # The document profile renders an <h1> doc header from the title. Hosts
-    # that already show the title in their own chrome (e.g. metabrowser's file
-    # header) pass False to suppress it, rather than hiding it with host CSS.
+    # that already show the title in their own chrome (e.g. an embedding app's
+    # file header) pass False to suppress it, rather than hiding it with host CSS.
     show_doc_header: bool = True
     math: MathMode = "auto"
     diagrams: DiagramMode = "auto"

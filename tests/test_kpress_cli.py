@@ -45,7 +45,7 @@ def test_cli_format_asset_mode_lever(tmp_path: Path) -> None:
 
     # An unknown asset mode is rejected by the choices constraint, and
     # `inline` is deliberately not offered until it is self-contained
-    # (trading-7ehk).
+    # (orig-7ehk).
     for rejected in ("bogus", "inline"):
         with pytest.raises(SystemExit):
             _ = main(["--work-root", work, "format", str(src), "--asset-mode", rejected])

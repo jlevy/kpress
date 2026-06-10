@@ -399,7 +399,7 @@ references and ES module scripts only resolve over HTTP, never `file://`. Choose
 viewer by build shape, not an ad-hoc server:
 
 - **Multi-file output (developer `linked` / production `hashed`+`sealed`):** review
-  through the MetaBrowser host harness, which is the contracted dynamic KPress surface
+  through the host-app harness, which is the contracted dynamic KPress surface
   (`/api/kpress/render` plus the `test_kpress_*` suite).
   A focused standalone static server is intentionally not part of this runbook unless a
   concrete need appears; see the lever model in [kpress-design.md](../kpress-design.md)

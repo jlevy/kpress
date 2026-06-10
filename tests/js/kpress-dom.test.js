@@ -537,7 +537,7 @@ A--&gt;B</code></pre>
     document.body.innerHTML = "";
     await importFresh("tooltips.js");
 
-    // An embedding host (e.g. metabrowser) injects the rendered document after
+    // An embedding host app injects the rendered document after
     // tooltips.js has loaded and self-initialized, so its footnote anchors
     // appear later. The MutationObserver must wire them.
     const host = document.createElement("div");
@@ -968,8 +968,8 @@ A--&gt;B</code></pre>
       '<button class="kpress-video-placeholder" data-kpress-video-id="abc123" data-kpress-video-title="Late"></button>';
     document.body.appendChild(host);
 
-    // The MutationObserver embeds host-injected placeholders (e.g. metabrowser),
-    // which inject the document fragment after this module loads.
+    // The MutationObserver embeds host-injected placeholders (host apps
+    // inject the document fragment after this module loads).
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(host.querySelector("[data-kpress-video-id]")).toBeNull();
@@ -1001,7 +1001,7 @@ describe("print.js reader-export contract", () => {
   it("exposes printKpressDocument and delegates to window.print", async () => {
     // print.js is intentionally trivial — a host helper, not an interaction
     // surface. But a regression that drops the export or stops calling
-    // window.print() would break Command-P from the metabrowser shell, so
+    // window.print() would break Command-P from an embedding host's shell, so
     // pin the contract here. happy-dom does not provide window.print by
     // default; install a fake first so spying on it succeeds.
     const original = globalThis.print;

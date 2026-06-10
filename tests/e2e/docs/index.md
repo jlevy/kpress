@@ -131,7 +131,7 @@ graph TD
   A[Markdown] --> B[KPress]
   B --> C[Standalone page]
   B --> D[Static site]
-  B --> E[MetaBrowser embed]
+  B --> E[Host app embed]
 ```
 
 An inline SVG fence (sanitized inline figure):

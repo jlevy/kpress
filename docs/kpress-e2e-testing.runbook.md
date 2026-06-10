@@ -8,8 +8,8 @@ This is the single home for KPress manual e2e testing.
 It does **not** repeat the automated gates (lint, pytest, golden, JS-DOM) or the
 CLI/publishing checks — those live in
 [kpress-validation.runbook.md](./kpress-validation.runbook.md).
-For KPress **embedded in a host**, use the host application’s own e2e runbook (for
-MetaBrowser, `metabrowser-e2e-testing.runbook.md` in that repo).
+For KPress **embedded in a host**, use the host application’s own e2e runbook
+(maintained in that application’s repo).
 
 Each step is tagged:
 
@@ -218,7 +218,6 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 
 ## Candidates to automate (so this runbook stays minimal)
 
-Tracked under the **Golden backend-session testing expansion** epic (`trading-lktq`).
 When a check below becomes a deterministic test, delete it from the manual list above:
 
 - CLI/diagnostic goldens: `kpress doctor --json`, render diagnostics payloads.

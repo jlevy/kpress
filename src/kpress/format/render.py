@@ -423,7 +423,7 @@ def _standalone_page_reset() -> str:
 def _render_settings_menu(theme_mode: str) -> str:
     """Render the gear settings menu: a popover with an icon theme chooser.
 
-    Mirrors metabrowser's settings control (gear button → menu of segmented
+    Mirrors the host app's settings control (gear button → menu of segmented
     icon choosers) so standalone KPress and the embedded host share one design.
     The segments keep the `data-kpress-theme-choice` contract that theme.js binds;
     the wrapper's `aria-expanded` drives menu visibility via CSS.

@@ -1,4 +1,4 @@
-"""End-to-end cache-invalidation proofs for the static build (trading-aquv).
+"""End-to-end cache-invalidation proofs for the static build (orig-aquv).
 
 The static build output must be a pure, deterministic function of its inputs:
 identical inputs reproduce identical content hashes, and any meaningful input
@@ -99,7 +99,7 @@ def test_unchanged_rebuild_is_stable_under_repeat(tmp_path: Path) -> None:
     assert first == second
 
 
-# --- stale output removal (trading-8qo4) -----------------------------------
+# --- stale output removal (orig-8qo4) -----------------------------------
 
 
 def test_deleted_source_is_purged_from_next_build_output(tmp_path: Path) -> None:

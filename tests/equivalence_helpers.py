@@ -191,7 +191,7 @@ def _render_sealed(fixture: EquivalenceFixture, tmp_path: Path) -> str:
     )
 
     # `inline` is config-rejected for end users until self-contained
-    # (trading-7ehk); the harness selects it programmatically because the
+    # (orig-7ehk); the harness selects it programmatically because the
     # equivalence comparison wants fully-embedded CSS/JS text.
     build_site(config, BuildOptions(asset_mode="inline"))
 

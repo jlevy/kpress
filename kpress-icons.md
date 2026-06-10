@@ -1,6 +1,6 @@
 ---
 title: KPress Icons
-description: The shared icon set for KPress — one SVG sprite as the source of truth, the SVG contract, how server and client reference glyphs, how to add one, how to swap icon families, and the kpress<->metabrowser glyph map.
+description: The shared icon set for KPress — one SVG sprite as the source of truth, the SVG contract, how server and client reference glyphs, how to add one, how to swap icon families, and the kpress<->host glyph map.
 author: Claude under Levy
 ---
 # KPress Icons
@@ -87,15 +87,14 @@ the obvious word.
 | `list` | `list` | Collapsed TOC toggle |
 | `triangle-alert` | `triangle-alert` (was Feather `alert-triangle`) | Code-copy error state |
 
-**MetaBrowser** (an embedding host application, developed in its own repository) keeps
-its own glyph set today (`metabrowser/static/icons.js` in that repo), a superset that
-also has app-chrome glyphs KPress does not need (`folder`, `file`, `file-text`,
-`layout-grid`, `activity`, `printer`, `box`, `chevron-right`, and the bespoke
-reading-font `serif`/`sans` and viz `step` shapes).
-It shares the same Lucide family and attribute signature so overlapping glyphs match
-KPress. The direction (see `kpress-design.md`) is for MetaBrowser to lean on the KPress
-sprite for the shared glyphs rather than keep its own copies; that move is tracked
-separately and not yet done.
+**The host app** (an embedding host application, developed in its own repository) keeps
+its own glyph set today (an `icons.js` in that repo), a superset that also has
+app-chrome glyphs KPress does not need (`folder`, `file`, `file-text`, `layout-grid`,
+`activity`, `printer`, `box`, `chevron-right`, and bespoke reading-font `serif`/`sans`
+shapes). It shares the same Lucide family and attribute signature so overlapping glyphs
+match KPress. The direction (see `kpress-design.md`) is for the host app to lean on the
+KPress sprite for the shared glyphs rather than keep its own copies; that move is
+tracked separately and not yet done.
 
 ## How to add a glyph
 
@@ -132,7 +131,7 @@ archaeological. Because every glyph is one `<symbol>` in one file, the swap touc
 4. Re-fetch and re-inline each glyph’s inner elements into its `<symbol>`, updating the
    family/version header comment at the top of `icons.svg` and this doc.
 5. Regenerate KPress goldens and do a visual pass across the three KPress consumers
-   (standalone page, static site, MetaBrowser embed) in light and dark.
+   (standalone page, static site, host-app embed) in light and dark.
 
 ## Future: pluggable icon sets in KPress
 
@@ -143,7 +142,7 @@ icons, a different family for one site):
 - Let `render_*` accept an optional sprite override (an alternate `icons.svg`, or a
   name→symbol map merged over the built-in set) so the default stays batteries-included
   and zero-config.
-- Have MetaBrowser consume the KPress sprite for the shared glyphs instead of
+- Have the host app consume the KPress sprite for the shared glyphs instead of
   duplicating them, keeping one source of truth across the two packages.
 
 Until there is a real second consumer, the single sprite plus this doc are the right

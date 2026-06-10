@@ -29,15 +29,15 @@ document client. The package-local implementation ledger is [`TODO.md`](TODO.md)
 
 Implemented now:
 
-- `packages/kpress/` package location and `pyproject.toml`
+- the standalone package layout and `pyproject.toml`
 - importable `kpress`, `kpress.format`, and `kpress.runtime`
-- public dynamic-host models in `packages/kpress/src/kpress/models.py`
+- public dynamic-host models in `src/kpress/models.py`
 - runtime normalization, render caching, print profile normalization, static asset
-  lookup, and export delegation in `packages/kpress/src/kpress/runtime.py`
+  lookup, and export delegation in `src/kpress/runtime.py`
 - format models, Markdown normalization, `nh3` sanitizer, render fragment/page, package
   template resources, theme/font hooks, asset helpers, and deterministic PDF artifact
-  generation under `packages/kpress/src/kpress/format/`, with an explicit missing-extra
-  error for the not-yet-implemented browser backend
+  generation under `src/kpress/format/`, with an explicit missing-extra error for the
+  not-yet-implemented browser backend
 - package CSS and native ESM JavaScript assets for document layout, theme, TOC,
   tooltips, tables, code-copy, video popovers, tabs, and print controls
 - `markdown-it-py` plus `mdit-py-plugins` based GFM normalization, stable duplicate
@@ -52,8 +52,7 @@ Implemented now:
   click/keyboard access, and theme initialization
 - publisher config loading, source discovery, routes, output manifests, site files,
   cache helpers, static build, content-hashed package assets, `full`-optimizer
-  HTML/CSS/JS minification, and optimizer primitives under
-  `packages/kpress/src/kpress/publish/`
+  HTML/CSS/JS minification, and optimizer primitives under `src/kpress/publish/`
 - package CSS/JS asset modes (`hosted`/`linked`/`hashed`/`inline`) wired into both the
   dynamic runtime and `build_site()`; KaTeX bundle copied unhashed when math is present
 - local workflow APIs and CLI commands for `init`, `convert`, `format`, `render`,
@@ -157,7 +156,7 @@ Planned dependency tiers:
 Target layout:
 
 ```text
-packages/kpress/
+kpress/
   kpress-design.md
   pyproject.toml
   biome.json
@@ -294,8 +293,8 @@ KPress emits semantic HTML and namespaced classes.
 Host chrome must not appear in KPress fragments or pages.
 
 The current public contract is encoded in `kpress.contract` and tested by
-`packages/kpress/tests/test_public_contract.py`. This is a new package, so keep the
-contract direct and current rather than adding a compatibility shim layer.
+`tests/test_public_contract.py`. This is a new package, so keep the contract direct and
+current rather than adding a compatibility shim layer.
 Changing public names means changing `kpress.contract`, docs, tests, and accepted
 goldens in the same patch.
 
@@ -386,8 +385,8 @@ video-item
 
 Current template variables are public where they are listed in
 `kpress.contract.PUBLIC_TEMPLATE_VARIABLES`. They cover the packaged Jinja files under
-`packages/kpress/src/kpress/format/templates`. The tests assert that each declared
-variable exists in the corresponding packaged template.
+`src/kpress/format/templates`. The tests assert that each declared variable exists in
+the corresponding packaged template.
 
 The contract module also declares:
 
@@ -403,11 +402,11 @@ The contract module also declares:
 - `full_optimizer_available()` in `publish.optimize`
 - `PUBLIC_DATA_ATTRIBUTES`: the stable per-cell table `data-*` hooks kpress emits for
   downstream enrichment — `data-col` (the column slug derived from the header row) and
-  `data-kpress-numeric`. This is the renderer-agnostic seam a downstream decorator (the
-  MetaBrowser TableView plugin, a future static-site builder) consumes to select a
-  column by name or detect numeric columns.
+  `data-kpress-numeric`. This is the renderer-agnostic seam a downstream decorator (a
+  host app’s table plugin, a future static-site builder) consumes to select a column by
+  name or detect numeric columns.
   kpress emits them and never consumes them; it never imports a decorator and never
-  knows TableView exists.
+  knows any table plugin exists.
 
 There is no `BuildMode` type.
 The former `publish.mode` / `BuildReport.mode` / manifest `"mode"` key have been
@@ -432,7 +431,7 @@ Two sources of truth:
   Each group carries its design rule inline as a CSS comment (e.g. “rounded-vs-square is
   a deliberate per-surface choice”; “one easing; fast for hovers, slow fade for
   overlays”). The public subset is pinned by `contract.py::PUBLIC_CSS_VARIABLES`. Core
-  doc tokens read `var(--kpress-host-*, <default>)` so a host (MetaBrowser) can theme
+  doc tokens read `var(--kpress-host-*, <default>)` so an embedding host app can theme
   them; the rest are overridable by static-site generators and standalone pages.
 - **Icons — `format/static/icons/icons.svg`** (+ the contract doc `kpress-icons.md`).
   The one place KPress SVGs live: a real SVG sprite — the Lucide v1.17.0 (ISC) set as
@@ -443,13 +442,13 @@ Two sources of truth:
   `<svg><use href="#kpress-icon-<name>"></svg>` — no SVG geometry is authored in Python
   or JS. The contract is enforced by `tests/test_icons.py`.
 
-**Relationship to MetaBrowser.** MetaBrowser keeps the design that is genuinely
-app-chrome-specific (the tree pane, tabs, shell, and its own `--viz-*`/app token tree)
-but **leans on KPress for the shared, document-level design** — the same Lucide icon
-family and the `--kpress-*` / `data-kpress-*` contract — rather than re-implementing it.
-KPress owns and maintains the shared design layer; the three consumers (standalone page,
-static-site build, MetaBrowser embed) inherit it.
-See `kpress-icons.md` for the KPress↔MetaBrowser glyph map.
+**Relationship to the host app.** An embedding host app keeps the design that is
+genuinely app-chrome-specific (e.g. a tree pane, tabs, shell, and its own app token
+tree) but **leans on KPress for the shared, document-level design** — the same Lucide
+icon family and the `--kpress-*` / `data-kpress-*` contract — rather than
+re-implementing it. KPress owns and maintains the shared design layer; the three
+consumers (standalone page, static-site build, host-app embed) inherit it.
+See `kpress-icons.md` for the KPress↔host glyph map.
 
 ## CSS Contract
 
@@ -535,17 +534,16 @@ than re-styling:
   hover/focus of the code block.
   Glyphs come from the shared Lucide set (see `kpress-icons.md`).
 
-These primitives and tokens live in the KPress static layer deliberately: MetaBrowser
-consumes the same design (it already shares the Lucide icon set) rather than
+These primitives and tokens live in the KPress static layer deliberately: an embedding
+host app consumes the same design (sharing the Lucide icon set) rather than
 re-implementing it.
 
 ### Tailwind Migration Matrix
 
 KPress core does not ship Tailwind runtime, generated Tailwind CSS, or a Tailwind build
 step. The active Tailwind-backed behavior observed in the KPress/TextPress reference
-templates is inventoried in
-`packages/kpress/tests/fixtures/textpress_kash/tailwind-migration.json` and covered by
-`packages/kpress/tests/test_tailwind_migration.py`.
+templates is inventoried in `tests/fixtures/textpress_kash/tailwind-migration.json` and
+covered by `tests/test_tailwind_migration.py`.
 
 | Reference utility | KPress-owned replacement | Behavior preserved |
 | --- | --- | --- |
@@ -572,9 +570,9 @@ Settings menu. The standalone page shell renders a gear-icon settings popover
 (`.kpress-settings`) in the top-right of the viewport: a button that opens a menu
 (`.kpress-menu`) of segmented icon choosers (`.kpress-menu-seg`), today a single
 `system | light | dark` theme chooser.
-It is ported from metabrowser’s settings control and re-tokenized onto the document
-tokens, so standalone KPress and the embedded host share one design and the same theme
-contract; more choosers (e.g. a font chooser) can be added as further
+It is ported from the original host app’s settings control and re-tokenized onto the
+document tokens, so standalone KPress and the embedded host share one design and the
+same theme contract; more choosers (e.g. a font chooser) can be added as further
 `.kpress-menu-chooser` groups.
 The menu is server-rendered **inside** `.kpress-viewport`, so its `position: fixed` pins
 to the pane and it inherits the document tokens (rather than living outside `.kpress`
@@ -630,7 +628,7 @@ override any single role on its own, and otherwise the vendored reader faces app
 | `--kpress-font-mono` | mono — system mono stack | code blocks | `--kpress-host-font-mono` |
 
 The reading body is therefore serif by default and is settable serif↔sans per role: a
-host flips it by setting `--kpress-host-font-prose` (metabrowser’s serif/sans
+host flips it by setting `--kpress-host-font-prose` (a host app’s serif/sans
 reading-font toggle does exactly this), and `font_mode="system"` swaps every vendored
 face for the platform stack.
 Footnotes and tables each carry their own stack (`--kpress-font-footnote`,
@@ -772,30 +770,30 @@ phase closes.
 
 | Capability | Reference behavior | KPress-owned surface | Required fixtures and tests | Bead |
 | --- | --- | --- | --- | --- |
-| Markdown/GFM document tree | TextPress/Kash Markdown-to-HTML path and item frontmatter/sidematter handling | `markdown.py`, `model.py`, `sanitize.py`, document component templates | GFM/nested-list/raw-HTML/image/code/math/diagram golden fixtures, duplicate-ID and anchor assertions | `trading-8is3` |
-| Standalone page shell and metadata | Kash base page and TextPress page template | `page.html.jinja`, metadata/social model fields, static page render path | standalone page golden, social metadata assertions, landmark checks | `trading-selz`, `trading-0xa1` |
-| Prose typography and headings | Kash base/content CSS and TextPress page template | `document.css`, `style-tokens.css`, `fragment.html.jinja`, `page.html.jinja` | prose page golden, heading-ID structural assertions, desktop/mobile/print manual style review | `trading-131h`, `trading-pyhv` |
-| Light, dark, and system theme | TextPress/Kash theme setup and toggle behavior | `theme-light.css`, `theme-dark.css`, `theme.js`, theme data attributes | theme DOM state, pre-paint bootstrap smoke, light/dark manual screenshot review | `trading-131h`, `trading-q72a` |
-| Print-ready document surface | TextPress/Kash print CSS | `print.css`, `.kpress-print-surface`, print profile metadata | print-media HTML/CSS probes, browser PDF artifact checks, no host chrome assertions | `trading-131h`, `trading-n7ok`, `trading-q72a` |
-| Mobile document layout | Kash responsive layout and TOC affordances | responsive document CSS, TOC mobile controls | narrow viewport manual screenshot review, max-width/margin observations, mobile TOC state | `trading-131h`, `trading-d6g2`, `trading-q72a` |
-| TOC | Kash TOC scripts/styles | `toc.html.jinja`, `toc.js`, `components.css` | TOC threshold tests, generated IDs, active-heading browser state, print suppression | `trading-d6g2` |
-| Footnotes | Marko/Kash footnote output and tooltip behavior | footnote postprocessing, `footnotes.html.jinja`, `tooltips.js` | footnote/backref structural golden, hover/touch preview browser state, print simplification | `trading-xmov`, `trading-d6g2` |
-| Internal-link tooltips | Kash tooltip scripts/styles | `tooltips.js`, `.kpress-tooltip`, preview markup | heading/figure/table/code/details preview fixtures, Escape close and expansion states | `trading-d6g2` |
-| Tables | Kash table wrapping and content CSS | `table.html.jinja`, `tables.js`, table CSS | wide table/mobile scroll/print flattening fixtures, numeric-cell hooks | `trading-xmov`, `trading-d6g2` |
-| Code blocks and source views | Kash code-copy and source rendering behavior | `source.html.jinja`, `code-block.html.jinja`, `code-copy.js`, source profile CSS | source-file golden, copy-control browser state, long-line print wrapping | `trading-xmov`, `trading-d6g2` |
-| Frontmatter and metadata | TextPress/Kash metadata components and sidematter copying | `frontmatter.html.jinja`, `metadata.html.jinja`, metadata model fields | frontmatter/sidematter precedence tests, print policy fixture | `trading-xmov`, `trading-ngq8` |
-| Images and local assets | TextPress image URL rewriting and sidematter assets | asset model, URL rewriter, static seal/copy pipeline | local image fixture, rewritten URL assertions, sealed asset manifest | `trading-xmov`, `trading-lghl` |
-| Math | net-new KPress behavior | `off`/lazy-`auto` math modes, KaTeX renderer, semantic MathML accessibility output | no-math fixture proving zero math assets, inline/block math fixtures, `off` mode, `auto` lazy detection, sealed static output, browser/PDF review | `trading-xmov`, `trading-q72a` |
-| Diagrams | explicit KPress image/SVG/Mermaid hooks | diagram adapter, Mermaid optional asset path | SVG passthrough fixture, Mermaid fixture, offline/sealed mode checks | `trading-xmov`, `trading-lghl`, `trading-q72a` |
-| Video popovers | Kash YouTube popover scripts/styles | `video-popover.js`, video component CSS/templates | open/close browser-state fixture, no unexpected network in sealed mode, raw iframe placeholder fixture | `trading-d6g2`, `trading-lghl` |
-| Tabbed content | Kash tabbed page template | `tabs.js`, tab component templates/CSS | tab switching browser state and accessibility checks | `trading-d6g2`, `trading-0xa1` |
-| Semantic content components | Kash content styles for citations, claims, summaries, concepts, annotations, frame captures, and video galleries | `document.css`, `components.css`, semantic content fixtures | selector coverage, manual style observations, desktop/mobile/print visual review | `trading-selz`, `trading-q72a` |
-| Custom fonts | TextPress/Kash PT Serif, Source Sans 3, mono, punctuation fallback | theme/font model, `FontMode` (`custom`/`system`), CSS variables, `data-kpress-fonts` attribute, sealed font assets | font variable tests, `font_mode` switching, manual font-family review, sealed font manifest | `trading-131h`, `trading-lghl` |
-| Sealed reader assets | Kash CDN font/assets and TextPress sidematter assets | `assets.py`, `seal.py`, `build.py`, package manifests | linked/hashed/inline output goldens, offline tree checks, font/image manifest assertions | `trading-5dmd`, `trading-lghl` |
-| Tailwind-backed layout behavior | active utility classes in Kash/TextPress templates | semantic KPress classes and CSS replacements | Tailwind migration matrix, class coverage tests, accepted layout snapshots | `trading-8kp9`, `trading-131h` |
-| Browser asset quality | planned native ESM JS/CSS package source | `biome.json`, `tsconfig.json`, `devtools/*`, JS assets | Biome CI, `tsc --checkJs`, browserless DOM tests, manual browser console/network review | `trading-bht8`, `trading-q72a` |
-| Static publishing | earlier KPress static builder conventions | `publish/*`, `workflow/*`, `kpress.yml` | static output tree goldens, route/manifest/cache tests | `trading-ngq8`, `trading-lghl`, `trading-jm5n` |
-| Local document workflows | TextPress convert/format/paste/files/export ergonomics | `workflow/*`, CLI commands, workspace/cache report model | CLI golden tests for outputs, reports, missing extras, `--rerun`, `--refetch` | `trading-2l9z` |
+| Markdown/GFM document tree | TextPress/Kash Markdown-to-HTML path and item frontmatter/sidematter handling | `markdown.py`, `model.py`, `sanitize.py`, document component templates | GFM/nested-list/raw-HTML/image/code/math/diagram golden fixtures, duplicate-ID and anchor assertions | `orig-8is3` |
+| Standalone page shell and metadata | Kash base page and TextPress page template | `page.html.jinja`, metadata/social model fields, static page render path | standalone page golden, social metadata assertions, landmark checks | `orig-selz`, `orig-0xa1` |
+| Prose typography and headings | Kash base/content CSS and TextPress page template | `document.css`, `style-tokens.css`, `fragment.html.jinja`, `page.html.jinja` | prose page golden, heading-ID structural assertions, desktop/mobile/print manual style review | `orig-131h`, `orig-pyhv` |
+| Light, dark, and system theme | TextPress/Kash theme setup and toggle behavior | `theme-light.css`, `theme-dark.css`, `theme.js`, theme data attributes | theme DOM state, pre-paint bootstrap smoke, light/dark manual screenshot review | `orig-131h`, `orig-q72a` |
+| Print-ready document surface | TextPress/Kash print CSS | `print.css`, `.kpress-print-surface`, print profile metadata | print-media HTML/CSS probes, browser PDF artifact checks, no host chrome assertions | `orig-131h`, `orig-n7ok`, `orig-q72a` |
+| Mobile document layout | Kash responsive layout and TOC affordances | responsive document CSS, TOC mobile controls | narrow viewport manual screenshot review, max-width/margin observations, mobile TOC state | `orig-131h`, `orig-d6g2`, `orig-q72a` |
+| TOC | Kash TOC scripts/styles | `toc.html.jinja`, `toc.js`, `components.css` | TOC threshold tests, generated IDs, active-heading browser state, print suppression | `orig-d6g2` |
+| Footnotes | Marko/Kash footnote output and tooltip behavior | footnote postprocessing, `footnotes.html.jinja`, `tooltips.js` | footnote/backref structural golden, hover/touch preview browser state, print simplification | `orig-xmov`, `orig-d6g2` |
+| Internal-link tooltips | Kash tooltip scripts/styles | `tooltips.js`, `.kpress-tooltip`, preview markup | heading/figure/table/code/details preview fixtures, Escape close and expansion states | `orig-d6g2` |
+| Tables | Kash table wrapping and content CSS | `table.html.jinja`, `tables.js`, table CSS | wide table/mobile scroll/print flattening fixtures, numeric-cell hooks | `orig-xmov`, `orig-d6g2` |
+| Code blocks and source views | Kash code-copy and source rendering behavior | `source.html.jinja`, `code-block.html.jinja`, `code-copy.js`, source profile CSS | source-file golden, copy-control browser state, long-line print wrapping | `orig-xmov`, `orig-d6g2` |
+| Frontmatter and metadata | TextPress/Kash metadata components and sidematter copying | `frontmatter.html.jinja`, `metadata.html.jinja`, metadata model fields | frontmatter/sidematter precedence tests, print policy fixture | `orig-xmov`, `orig-ngq8` |
+| Images and local assets | TextPress image URL rewriting and sidematter assets | asset model, URL rewriter, static seal/copy pipeline | local image fixture, rewritten URL assertions, sealed asset manifest | `orig-xmov`, `orig-lghl` |
+| Math | net-new KPress behavior | `off`/lazy-`auto` math modes, KaTeX renderer, semantic MathML accessibility output | no-math fixture proving zero math assets, inline/block math fixtures, `off` mode, `auto` lazy detection, sealed static output, browser/PDF review | `orig-xmov`, `orig-q72a` |
+| Diagrams | explicit KPress image/SVG/Mermaid hooks | diagram adapter, Mermaid optional asset path | SVG passthrough fixture, Mermaid fixture, offline/sealed mode checks | `orig-xmov`, `orig-lghl`, `orig-q72a` |
+| Video popovers | Kash YouTube popover scripts/styles | `video-popover.js`, video component CSS/templates | open/close browser-state fixture, no unexpected network in sealed mode, raw iframe placeholder fixture | `orig-d6g2`, `orig-lghl` |
+| Tabbed content | Kash tabbed page template | `tabs.js`, tab component templates/CSS | tab switching browser state and accessibility checks | `orig-d6g2`, `orig-0xa1` |
+| Semantic content components | Kash content styles for citations, claims, summaries, concepts, annotations, frame captures, and video galleries | `document.css`, `components.css`, semantic content fixtures | selector coverage, manual style observations, desktop/mobile/print visual review | `orig-selz`, `orig-q72a` |
+| Custom fonts | TextPress/Kash PT Serif, Source Sans 3, mono, punctuation fallback | theme/font model, `FontMode` (`custom`/`system`), CSS variables, `data-kpress-fonts` attribute, sealed font assets | font variable tests, `font_mode` switching, manual font-family review, sealed font manifest | `orig-131h`, `orig-lghl` |
+| Sealed reader assets | Kash CDN font/assets and TextPress sidematter assets | `assets.py`, `seal.py`, `build.py`, package manifests | linked/hashed/inline output goldens, offline tree checks, font/image manifest assertions | `orig-5dmd`, `orig-lghl` |
+| Tailwind-backed layout behavior | active utility classes in Kash/TextPress templates | semantic KPress classes and CSS replacements | Tailwind migration matrix, class coverage tests, accepted layout snapshots | `orig-8kp9`, `orig-131h` |
+| Browser asset quality | planned native ESM JS/CSS package source | `biome.json`, `tsconfig.json`, `devtools/*`, JS assets | Biome CI, `tsc --checkJs`, browserless DOM tests, manual browser console/network review | `orig-bht8`, `orig-q72a` |
+| Static publishing | earlier KPress static builder conventions | `publish/*`, `workflow/*`, `kpress.yml` | static output tree goldens, route/manifest/cache tests | `orig-ngq8`, `orig-lghl`, `orig-jm5n` |
+| Local document workflows | TextPress convert/format/paste/files/export ergonomics | `workflow/*`, CLI commands, workspace/cache report model | CLI golden tests for outputs, reports, missing extras, `--rerun`, `--refetch` | `orig-2l9z` |
 
 ## Conscious Departures from kash/textpress
 
@@ -852,12 +850,11 @@ kash; they are the recorded exceptions:
 24. **`kpress-footnote-nav` / `kpress-footnote-nav-link` classes** instead of reusing
     kash’s `.footnote` class (avoids kash’s `display: none` override hack).
 
-In addition, an embedding host (e.g. metabrowser) keeps KPress’s vendored PT Serif /
-Source Sans reader faces by default, so an embed reads with the kash look rather than
-the host’s UI fonts.
+In addition, an embedding host app keeps KPress’s vendored PT Serif / Source Sans reader
+faces by default, so an embed reads with the kash look rather than the host’s UI fonts.
 A host overrides a font per role through the `--kpress-host-font-*` hooks (see the
-font-role table under [Theme and Fonts](#theme-and-fonts)); metabrowser uses this for
-its serif/sans reading-font toggle, which sets `--kpress-host-font-prose`. Color tokens
+font-role table under [Theme and Fonts](#theme-and-fonts)); a host app can use this for
+a serif/sans reading-font toggle, which sets `--kpress-host-font-prose`. Color tokens
 bridge the same way through the other `--kpress-host-*` variables.
 
 ## Tailwind Migration
@@ -989,7 +986,7 @@ conveniences over the underlying axes, not coarse build modes that hide them.
 
 | Mode | Layer | `asset_mode` | `strict` | `optimizer` | `precompress` | Entry point | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Dynamic multifile dev** | Runtime | host-served package assets, unmodified | n/a | n/a | n/a | `runtime.render_view` + `/kpress-static/...` | Stable; current MetaBrowser default |
+| **Dynamic multifile dev** | Runtime | host-served package assets, unmodified | n/a | n/a | n/a | `runtime.render_view` + `/kpress-static/...` | Stable; current host-app default |
 | **Dynamic multifile (production embed)** | Runtime | host-served, optionally hashed/optimized package variants | n/a | host-side, if any | host-side (CDN/edge) | `runtime.render_view` from an embedding host | Same code path as dev; no pre-optimized package variants ship today |
 | **Static build dev** | `kpress build` | `linked` | n/a | `none` | none | `kpress build` | Stable; readable multi-file tree. Document-local and external asset URLs pass through verbatim — the deploy layer owns them. |
 | **Static build prod** | `kpress build` | `hashed` | n/a | `full` | `gzip` (`br` with `kpress[optimize]`) | `kpress build` | Stable; content-hashed package assets, immutable cache, minified. Document-local and external asset URLs pass through verbatim. |
@@ -1066,7 +1063,7 @@ Surface as one composable lever (`reader_js=module|classic`, kept independent of
 `asset_mode=inline, reader_js=classic, font_inline=true`. Don’t introduce a 6th opaque
 `asset_mode` value — that breaks the no-coarse-modes stance.
 
-Tracking: `trading-547y` (classic-JS reader output lever).
+Tracking: `orig-547y` (classic-JS reader output lever).
 
 #### Dynamic multifile (production embed): host-owned optimization
 
@@ -1112,7 +1109,7 @@ KPress sees four kinds of assets:
 Package asset modes (`asset_mode` in `publish` config):
 
 - `hosted` — the embedding host serves package assets at a configured URL prefix
-  (default `/kpress-static/`). Used by the dynamic MetaBrowser path; emits no copies.
+  (default `/kpress-static/`). Used by the dynamic host-app path; emits no copies.
 - `linked` — package assets copied to `_kpress/assets/...` with stable (unhashed) paths.
   Readable, dev-friendly.
 - `hashed` — package assets copied with `<name>.<sha>.<ext>` names so the CDN can mark
@@ -1135,7 +1132,7 @@ depends on whether the URL fingerprints the asset by **content** or only by **ve
   This is a true content fingerprint, so these are served
   `cache-control: public, max-age=31536000, immutable` — the browser never revalidates,
   and a changed asset is a new URL.
-- **`hosted` (dynamic serve, e.g. MetaBrowser).** The URL is version-addressed
+- **`hosted` (dynamic serve from an embedding host app).** The URL is version-addressed
   (`/kpress-static/v<version>/...`), not content-addressed.
   An upgrade bumps `<version>` and yields a fresh URL, so released upgrades never
   collide with a cached older build.
@@ -1179,7 +1176,7 @@ Why deferred:
   platform (Netlify, Vercel, GitHub Pages, S3), or reverse-proxy already handles asset
   fetching, hashing, integrity pins, and serving.
   v1 KPress emits HTML + package assets; the deploy layer handles delivery.
-- **No current consumer requires it.** Both the dynamic MetaBrowser path and the typical
+- **No current consumer requires it.** Both the dynamic host-app path and the typical
   “publish a doc site behind a CDN” workflow work without sealing.
   Document-local images stay local; CDN script refs stay on the CDN.
 
@@ -1381,7 +1378,7 @@ Required layers:
 
 - canonical source fixture corpus
 - optional reference artifacts from TextPress/Kash for implementation review only
-- accepted KPress golden artifacts under `packages/kpress/tests/golden/accepted/`
+- accepted KPress golden artifacts under `tests/golden/accepted/`
 - normalized DOM structural diffs
 - HTML validity checks: duplicate IDs, broken anchors, ARIA references, landmarks,
   sanitizer expectations
@@ -1581,12 +1578,12 @@ should catch it specifically rather than catching all `ValueError`s.
 
 ### Reference adapter
 
-MetaBrowser’s `metabrowser/src/metabrowser/kpress_adapter.py` is the canonical embedding
-reference: optional import (`try: from kpress import runtime`), translated exceptions
-(every KPress exception type is re-wrapped into a metabrowser-side type so callers never
-need to import kpress), and an explicit `kpress_available()` probe for graceful
-degradation. Other embedding hosts (Electron viewers, hosted MetaBrowser deployments,
-custom web apps) should follow the same pattern.
+The original host app’s `kpress_adapter.py` is the canonical embedding reference:
+optional import (`try: from kpress import runtime`), translated exceptions (every KPress
+exception type is re-wrapped into a host-side type so callers never need to import
+kpress), and an explicit `kpress_available()` probe for graceful degradation.
+Other embedding hosts (Electron viewers, hosted web deployments, custom web apps) should
+follow the same pattern.
 
 ## Implementation Beads
 
@@ -1595,90 +1592,90 @@ Key beads:
 
 | Bead | Scope | Status |
 | --- | --- | --- |
-| `trading-wkzp` | KPress package and static publisher epic | open |
-| `trading-xgzj` | granular KPress reader feature parity epic | open; child beads now own every missing reader feature |
-| `trading-bht8` | package skeleton, workspace wiring, import boundary | implemented in PR #111 |
-| `trading-h2xx` | write this public design contract | implemented in PR #111 |
-| `trading-kfwn` | full typed models, validation, theme, resources | implemented in PR #111 |
-| `trading-skuk` | golden testing harness and accepted fixtures | implemented in PR #111 |
-| `trading-pyhv` | render fragment/page runtime | implemented in PR #111 |
-| `trading-xmov` | Markdown, sanitizer, source rendering | initial implementation in PR #111 |
-| `trading-8is3` | Markdown/GFM and document-tree reader parity | open; full parity required |
-| `trading-131h` | document CSS, theme assets, print CSS, JS helpers | source-adapted typography/theme/print first pass implemented; visual acceptance open |
-| `trading-d6g2` | TOC, footnotes, tooltips, tables, code components | initial source-adapted components and DOM tests implemented; deeper browser behavior open |
-| `trading-selz` | semantic content and document-format component parity | source-adapted semantic CSS/page metadata first pass implemented; fixtures and visual acceptance open |
-| `trading-5dmd` | font and packaged asset sealing reader parity | packaged PT Serif/Source Sans assets implemented; broader reader asset sealing open |
-| `trading-q72a` | document acceptance browser/PDF fixture suite | structural/PDF checks implemented; browser visual suite open |
-| `trading-8kp9` | Tailwind behavior migration into KPress CSS | implemented in PR #111; visual parity hardening remains future work |
-| `trading-ngq8` | publisher config, discovery, metadata, routes | implemented in PR #111 |
-| `trading-lghl` | asset manifest, cache, sealing, offline verification | implemented in PR #111 |
-| `trading-jm5n` | static build pipeline, site files, CLI | implemented in PR #111 |
-| `trading-u1mo` | optional dependency boundary hardening | implemented in PR #111 |
-| `trading-25bk` | package-owned JS quality gate and browserless DOM tests | implemented in PR #111 |
-| `trading-v4an` | repository-wide package release cooldown and exact tool pins | implemented in PR #111 |
-| `trading-2l9z` | TextPress-compatible local workflows | initial workflows implemented in PR #111 |
-| `trading-p5q6` | optional optimizer and precompression | current implementation includes rendered HTML optimization, CSS/JS asset optimization, hashed assets, manifests, gzip precompression, and Brotli optional-extra precompression; locked Node package and optimizer metadata remain future hardening |
-| `trading-n7ok` | browser-print PDF generation | deterministic PDF artifact implemented; optional Playwright browser backend is code-side implemented; fixture PDFs and manual inspection remain open |
-| `trading-0xa1` | public contract hardening and host readiness | current API/CSS/template/manifest contract implemented; accessibility and host-readiness review remain open |
-| `trading-obq5` | PR #111 review cleanup | implemented in review follow-up: sanitizer, sanitized-local, fence-safe Markdown, offline sealing, theme bootstrap, interactions, strict typing, publishing API cleanup, optional extras, and status docs |
-| `trading-t3ud` | remove asset sealing for v1; defer to v2 roadmap | open; epic — strips regex-driven HTML/CSS/JS rewriter from v1, keeps package-asset copying, parks sealing on the v2 roadmap (real parser or JS bundler). See `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md` |
-| `trading-mfvi` | v2 sealing: real parser or JS bundler over the asset graph | open; v2 roadmap — drives HTML/CSS/JS through a real parser or delegates to Vite/Parcel/esbuild/Bun at publish; restores `verify_offline_tree` and air-gapped `Static build sealed` mode |
+| `orig-wkzp` | KPress package and static publisher epic | open |
+| `orig-xgzj` | granular KPress reader feature parity epic | open; child beads now own every missing reader feature |
+| `orig-bht8` | package skeleton, workspace wiring, import boundary | implemented in PR #111 |
+| `orig-h2xx` | write this public design contract | implemented in PR #111 |
+| `orig-kfwn` | full typed models, validation, theme, resources | implemented in PR #111 |
+| `orig-skuk` | golden testing harness and accepted fixtures | implemented in PR #111 |
+| `orig-pyhv` | render fragment/page runtime | implemented in PR #111 |
+| `orig-xmov` | Markdown, sanitizer, source rendering | initial implementation in PR #111 |
+| `orig-8is3` | Markdown/GFM and document-tree reader parity | open; full parity required |
+| `orig-131h` | document CSS, theme assets, print CSS, JS helpers | source-adapted typography/theme/print first pass implemented; visual acceptance open |
+| `orig-d6g2` | TOC, footnotes, tooltips, tables, code components | initial source-adapted components and DOM tests implemented; deeper browser behavior open |
+| `orig-selz` | semantic content and document-format component parity | source-adapted semantic CSS/page metadata first pass implemented; fixtures and visual acceptance open |
+| `orig-5dmd` | font and packaged asset sealing reader parity | packaged PT Serif/Source Sans assets implemented; broader reader asset sealing open |
+| `orig-q72a` | document acceptance browser/PDF fixture suite | structural/PDF checks implemented; browser visual suite open |
+| `orig-8kp9` | Tailwind behavior migration into KPress CSS | implemented in PR #111; visual parity hardening remains future work |
+| `orig-ngq8` | publisher config, discovery, metadata, routes | implemented in PR #111 |
+| `orig-lghl` | asset manifest, cache, sealing, offline verification | implemented in PR #111 |
+| `orig-jm5n` | static build pipeline, site files, CLI | implemented in PR #111 |
+| `orig-u1mo` | optional dependency boundary hardening | implemented in PR #111 |
+| `orig-25bk` | package-owned JS quality gate and browserless DOM tests | implemented in PR #111 |
+| `orig-v4an` | repository-wide package release cooldown and exact tool pins | implemented in PR #111 |
+| `orig-2l9z` | TextPress-compatible local workflows | initial workflows implemented in PR #111 |
+| `orig-p5q6` | optional optimizer and precompression | current implementation includes rendered HTML optimization, CSS/JS asset optimization, hashed assets, manifests, gzip precompression, and Brotli optional-extra precompression; locked Node package and optimizer metadata remain future hardening |
+| `orig-n7ok` | browser-print PDF generation | deterministic PDF artifact implemented; optional Playwright browser backend is code-side implemented; fixture PDFs and manual inspection remain open |
+| `orig-0xa1` | public contract hardening and host readiness | current API/CSS/template/manifest contract implemented; accessibility and host-readiness review remain open |
+| `orig-obq5` | PR #111 review cleanup | implemented in review follow-up: sanitizer, sanitized-local, fence-safe Markdown, offline sealing, theme bootstrap, interactions, strict typing, publishing API cleanup, optional extras, and status docs |
+| `orig-t3ud` | remove asset sealing for v1; defer to v2 roadmap | open; epic — strips regex-driven HTML/CSS/JS rewriter from v1, keeps package-asset copying, parks sealing on the v2 roadmap (real parser or JS bundler). See `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md` |
+| `orig-mfvi` | v2 sealing: real parser or JS bundler over the asset graph | open; v2 roadmap — drives HTML/CSS/JS through a real parser or delegates to Vite/Parcel/esbuild/Bun at publish; restores `verify_offline_tree` and air-gapped `Static build sealed` mode |
 
-Reader parity child beads under `trading-xgzj`:
+Reader parity child beads under `orig-xgzj`:
 
 | Bead | Reader feature |
 | --- | --- |
-| `trading-97c1` | GFM Markdown block and inline document tree |
-| `trading-1rc7` | raw HTML trust and sanitizer matrix |
-| `trading-oxs3` | images, figures, captions, and local media assets |
-| `trading-c5xy` | code fences, source profiles, and syntax highlighting |
-| `trading-g0ra` | `off`/lazy-`auto` KaTeX math design |
-| `trading-lir6` | diagram rendering providers |
-| `trading-vdbu` | typography, document CSS, and themes |
-| `trading-boxw` | print CSS and print profiles |
-| `trading-i4rj` | desktop TOC behavior |
-| `trading-o59o` | mobile TOC drawer behavior |
-| `trading-1u4r` | footnote hover and touch tooltips |
-| `trading-2z84` | internal-link preview tooltips |
-| `trading-09i3` | responsive tables and numeric-cell hooks |
-| `trading-vy98` | code-copy controls |
-| `trading-m83y` | video popovers and embedded media policy |
-| `trading-wv4m` | tabbed content components |
-| `trading-3l2o` | semantic content components |
-| `trading-mzp0` | fonts and packaged reader assets |
-| `trading-4mdl` | canonical fixture corpus and accepted goldens |
-| `trading-azna` | manual browser acceptance playbook |
-| `trading-zwc2` | browser-backed PDF generation and fixtures |
-| `trading-t2rf` | accessibility and host-readiness checks |
-| `trading-08y5` | final reader parity audit and closure gate |
+| `orig-97c1` | GFM Markdown block and inline document tree |
+| `orig-1rc7` | raw HTML trust and sanitizer matrix |
+| `orig-oxs3` | images, figures, captions, and local media assets |
+| `orig-c5xy` | code fences, source profiles, and syntax highlighting |
+| `orig-g0ra` | `off`/lazy-`auto` KaTeX math design |
+| `orig-lir6` | diagram rendering providers |
+| `orig-vdbu` | typography, document CSS, and themes |
+| `orig-boxw` | print CSS and print profiles |
+| `orig-i4rj` | desktop TOC behavior |
+| `orig-o59o` | mobile TOC drawer behavior |
+| `orig-1u4r` | footnote hover and touch tooltips |
+| `orig-2z84` | internal-link preview tooltips |
+| `orig-09i3` | responsive tables and numeric-cell hooks |
+| `orig-vy98` | code-copy controls |
+| `orig-m83y` | video popovers and embedded media policy |
+| `orig-wv4m` | tabbed content components |
+| `orig-3l2o` | semantic content components |
+| `orig-mzp0` | fonts and packaged reader assets |
+| `orig-4mdl` | canonical fixture corpus and accepted goldens |
+| `orig-azna` | manual browser acceptance playbook |
+| `orig-zwc2` | browser-backed PDF generation and fixtures |
+| `orig-t2rf` | accessibility and host-readiness checks |
+| `orig-08y5` | final reader parity audit and closure gate |
 
 Matrix-specific closure beads created from
 `docs/project/reviews/review-2026-05-17-kpress-feature-parity-matrix.md`:
 
 | Bead | Matrix issue |
 | --- | --- |
-| `trading-dz9t` | ship Pygments syntax-highlight themes for light and dark mode |
-| `trading-blqw` | harden Markdown/GFM edge parity |
-| `trading-4iuf` | add a visible frontmatter parse-error affordance |
-| `trading-o2vp` | add source large-file and truncation handling |
-| `trading-mgct` | implement image URL rewriting, sidecar assets, figures, and captions |
-| `trading-mne3` | define and implement external link target/rel policy |
-| `trading-hne1` | complete TOC behavior fidelity |
-| `trading-m84t` | port the full footnote/internal-link tooltip system |
-| `trading-viq1` | style code-copy controls and states |
-| `trading-jhxx` | specify and implement math rendering as net-new work |
-| `trading-32r0` | specify and implement diagram rendering |
-| `trading-2vx3` | decide and implement standalone theme toggle behavior |
-| `trading-1fwg` | finish table responsive and print polish |
-| `trading-ntct` | finish video popover maximize/coexistence/network behavior |
-| `trading-vy1h` | generate Kash/TextPress semantic document components |
-| `trading-iape` | finish tab authoring surface, styling, and print policy |
-| `trading-f3e8` | complete print CSS parity |
-| `trading-14v1` | implement browser-backed PDF generation |
-| `trading-9h7y` | define host embedding resize/expand/close protocol |
-| `trading-2h7t` | complete accessibility and reduced-motion parity |
+| `orig-dz9t` | ship Pygments syntax-highlight themes for light and dark mode |
+| `orig-blqw` | harden Markdown/GFM edge parity |
+| `orig-4iuf` | add a visible frontmatter parse-error affordance |
+| `orig-o2vp` | add source large-file and truncation handling |
+| `orig-mgct` | implement image URL rewriting, sidecar assets, figures, and captions |
+| `orig-mne3` | define and implement external link target/rel policy |
+| `orig-hne1` | complete TOC behavior fidelity |
+| `orig-m84t` | port the full footnote/internal-link tooltip system |
+| `orig-viq1` | style code-copy controls and states |
+| `orig-jhxx` | specify and implement math rendering as net-new work |
+| `orig-32r0` | specify and implement diagram rendering |
+| `orig-2vx3` | decide and implement standalone theme toggle behavior |
+| `orig-1fwg` | finish table responsive and print polish |
+| `orig-ntct` | finish video popover maximize/coexistence/network behavior |
+| `orig-vy1h` | generate Kash/TextPress semantic document components |
+| `orig-iape` | finish tab authoring surface, styling, and print policy |
+| `orig-f3e8` | complete print CSS parity |
+| `orig-14v1` | implement browser-backed PDF generation |
+| `orig-9h7y` | define host embedding resize/expand/close protocol |
+| `orig-2h7t` | complete accessibility and reduced-motion parity |
 
-The final audit bead `trading-08y5` depends on every matrix-specific bead above.
+The final audit bead `orig-08y5` depends on every matrix-specific bead above.
 That dependency is intentional: parity cannot be declared complete while any matrix gap
 remains open.
 

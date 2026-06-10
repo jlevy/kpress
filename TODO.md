@@ -4,28 +4,33 @@ This file is the package-local implementation status ledger for KPress.
 The plan specs remain the detailed source of truth; this file keeps the current package
 state readable without scanning every design document.
 
-Last reviewed: 2026-06-05 (spec/TODO consolidation tracked as `trading-x1sb`). The
-2026-06-05 pass folded the open-source packaging-readiness assessment + static-publish
-(SSG) workflow analysis into the umbrella spec — see
-[Open-Source Packaging Readiness](../../docs/project/specs/active/plan-2026-05-16-kpress-package-and-publisher.md#open-source-packaging-readiness)
-and the SSG/deploy-sync decision (`trading-en4h`). Verdict: the dependency graph and the
-MetaBrowser↔KPress contract are clean and test-enforced (past the “too intermingled”
-risk); remaining is reader parity, the host-contract finalization (`trading-0xa1`), and
-final release metadata (`trading-ljov`). Channel decided 2026-06-05: **PyPI** (npm is
-out of scope).
+KPress was extracted from a private monorepo (see [EXTRACTION.md](EXTRACTION.md)). Bead
+IDs of the form `orig-xxxx` refer to the pre-extraction issue tracker there and are kept
+as stable historical references; plan specs that lived outside the package are
+referenced by name only and are not included in this repo.
+“The host app” below refers to the document-browsing application KPress was originally
+embedded in.
 
-**2026-06-06 — kpress goes first (epic `trading-iwz6`).** kpress is pulled out first as
-a standalone, highly reusable, clean document renderer with **zero TableView
-dependency**, consumable by static-site builders, MetaBrowser, and any TableView user.
-The “pull-out / OSS-ready” sign-off is gate bead `trading-z5lf` (depends on parity
-`trading-08y5`, the single-renderer cutover `trading-r3g8`, host contract
-`trading-0xa1`, release metadata `trading-ljov`, the new reuse/enrichment contract
-`trading-m5ao`, and design-system consolidation `trading-evta`). New seam: kpress emits
-a renderer-agnostic table enrichment contract (`data-col` + a tiny YAML-frontmatter
-binding, `trading-m5ao`) that downstream layers decorate; kpress never imports a
-decorator and never knows TableView exists.
-TableView is layered **above** kpress as a MetaBrowser plugin (`trading-ebsr`, v2),
-never the reverse. Direction validated by spike `trading-0b6g`.
+Last reviewed: 2026-06-05 (spec/TODO consolidation tracked as `orig-x1sb`). The
+2026-06-05 pass folded the open-source packaging-readiness assessment + static-publish
+(SSG) workflow analysis into the umbrella package/publisher spec (its “Open-Source
+Packaging Readiness” section) and the SSG/deploy-sync decision (`orig-en4h`). Verdict:
+the dependency graph and the host↔KPress contract are clean and test-enforced (past the
+“too intermingled” risk); remaining is reader parity, the host-contract finalization
+(`orig-0xa1`), and final release metadata (`orig-ljov`). Channel decided 2026-06-05:
+**PyPI** (npm is out of scope).
+
+**2026-06-06 — kpress goes first (epic `orig-iwz6`).** kpress is pulled out first as a
+standalone, highly reusable, clean document renderer with **zero table-plugin
+dependency**, consumable by static-site builders, the host app, and any table-plugin
+user. The “pull-out / OSS-ready” sign-off is gate bead `orig-z5lf` (depends on parity
+`orig-08y5`, the single-renderer cutover `orig-r3g8`, host contract `orig-0xa1`, release
+metadata `orig-ljov`, the new reuse/enrichment contract `orig-m5ao`, and design-system
+consolidation `orig-evta`). New seam: kpress emits a renderer-agnostic table enrichment
+contract (`data-col` + a tiny YAML-frontmatter binding, `orig-m5ao`) that downstream
+layers decorate; kpress never imports a decorator and never knows any table plugin
+exists. The host app’s table plugin is layered **above** kpress (`orig-ebsr`, v2), never
+the reverse. Direction validated by spike `orig-0b6g`.
 
 ## Cleanup & Consolidation (top priorities)
 
@@ -39,28 +44,27 @@ Trailing tech debt and spec confusion to retire, highest-leverage first.
    Source-Port References below.
    It is easy to be confused about which is canonical and whether the upstream is still
    maintained. Add a short “Provenance & relationship to TextPress/Kash” note to
-   `kpress-design.md`: kpress is the canonical reader for this monorepo; the
-   TextPress/Kash files are the source-port origin, not a live dependency; the
-   host-neutral TOC work (2026-06-01) moved kpress *past* a straight port (container
-   queries + a `data-kpress-viewport` integration seam the upstream doesn’t have).
-3. **Finish reader parity → enable the metabrowser single-renderer cutover.** The
+   `kpress-design.md`: kpress is the canonical reader; the TextPress/Kash files are the
+   source-port origin, not a live dependency; the host-neutral TOC work (2026-06-01)
+   moved kpress *past* a straight port (container queries + a `data-kpress-viewport`
+   integration seam the upstream doesn’t have).
+3. **Finish reader parity → enable the host app’s single-renderer cutover.** The
    remaining open work is manual reader-parity acceptance (visual/PDF review) and font
-   sealing. Closing it unblocks deleting metabrowser’s `marked` fallback renderer
-   (metabrowser TODO item 2) and promoting kpress to a hard dependency.
+   sealing. Closing it unblocks deleting the host app’s `marked` fallback renderer
+   (tracked in the host app’s own TODO) and promoting kpress to a hard dependency.
 4. **Generalize the `data-kpress-viewport` seam to the other window-coupled behaviors.**
    The 2026-06-01 TOC work introduced a shared `ScrollContext` + viewport seam so the
    TOC is host-neutral.
-   The overlay/resize/tooltip/video-popover viewport seam landed under `trading-2gjm`
+   The overlay/resize/tooltip/video-popover viewport seam landed under `orig-2gjm`
    (closed): `viewport.js` is packaged as a transitive ESM asset and the floating UI
    shares viewport context.
    The footnote/internal-link tooltip wiring on host-injected fragments — a concrete
-   instance of the same drift — is fixed under `trading-16rg` (commit `c41c611a2`,
-   MutationObserver + idempotent wiring; pending final visual confirmation in
-   MetaBrowser). Confirm `overlay.js`/`tooltips.js`/ `video-popover.js` are fully
-   migrated before deleting the host fallback.
-   Original fast-follow context:
-   [plan-2026-06-01-kpress-reusable-toc-and-scroll-context.md](../../docs/project/specs/done/plan-2026-06-01-kpress-reusable-toc-and-scroll-context.md),
-   now in `done/`.
+   instance of the same drift — is fixed under `orig-16rg` (commit `c41c611a2`,
+   MutationObserver + idempotent wiring; pending final visual confirmation in the host
+   app). Confirm `overlay.js`/`tooltips.js`/ `video-popover.js` are fully migrated before
+   deleting the host fallback.
+   Original fast-follow context: the reusable-TOC-and-scroll-context plan spec (original
+   monorepo, now in its `done/`).
 
 **Design-system consolidation (active 2026-06-04).** KPress is the batteries-included
 design layer for document visualization.
@@ -70,8 +74,8 @@ landed in `b2cd4ec4d`; icons moved to a documented Lucide set
 (`format/static/icons/icons.svg`) referenced via `<use>` from both server and client —
 no SVG geometry in Python or JS. The code-copy/video-close affordances are icon-ized.
 Remaining design-system work — the standalone single-scroll-context fix, numbered
-footnote superscripts, and MetaBrowser icon/button alignment — is tracked in
-[plan-2026-06-04-kpress-metabrowser-design-system-consolidation.md](../../docs/project/specs/active/plan-2026-06-04-kpress-metabrowser-design-system-consolidation.md).
+footnote superscripts, and host-app icon/button alignment — is tracked in the 2026-06-04
+design-system consolidation plan spec (original monorepo).
 Manual browser e2e validation is codified in
 [docs/kpress-e2e-testing.runbook.md](docs/kpress-e2e-testing.runbook.md).
 
@@ -104,11 +108,11 @@ Manual browser e2e validation is codified in
 | [`kpress-reader-features.md`](kpress-reader-features.md) | Long-lived reader feature catalog (no status) | Current |
 | [`kpress-icons.md`](kpress-icons.md) | Icon set contract + origins (Lucide) | Current |
 | [`docs/kpress-e2e-testing.runbook.md`](docs/kpress-e2e-testing.runbook.md) | Manual browser e2e validation runbook | Current |
-| [`../../docs/project/specs/active/plan-2026-06-04-kpress-metabrowser-design-system-consolidation.md`](../../docs/project/specs/active/plan-2026-06-04-kpress-metabrowser-design-system-consolidation.md) | KPress + MetaBrowser design-system consolidation plan | Active |
-| [`../../docs/project/specs/done/plan-2026-05-18-kpress-mvp-stability-and-doctor.md`](../../docs/project/specs/done/plan-2026-05-18-kpress-mvp-stability-and-doctor.md) | MVP stability + doctor plan | **Done** (moved to `done/` 2026-06-01); the reader-parity ledger it carried is now historical — see this TODO’s Cleanup item 1 for the single live source |
-| [`../../docs/project/specs/active/plan-2026-05-16-kpress-package-and-publisher.md`](../../docs/project/specs/active/plan-2026-05-16-kpress-package-and-publisher.md) | Main package/static publisher plan (active umbrella) | Active; foundation + doctor + sealing-removal + host-neutral TOC shipped; full reader parity (manual visual/PDF acceptance) + the metabrowser single-renderer cutover remain open |
-| [`../../docs/project/research/research-2026-05-15-static-document-publishing-packaging.md`](../../docs/project/research/research-2026-05-15-static-document-publishing-packaging.md) | Static publishing and optimizer research | Complete research brief; informs the open optimizer/sealing work |
-| [`../../docs/project/research/research-2026-05-05-small-web-app-packaging.md`](../../docs/project/research/research-2026-05-05-small-web-app-packaging.md) | JavaScript/TypeScript/browser-tooling research | Updated for source-first ESM, optional TypeScript emit, and KPress-style static publishing |
+| Design-system consolidation plan spec (2026-06-04, original monorepo) | KPress + host-app design-system consolidation plan | Active |
+| MVP stability + doctor plan spec (2026-05-18, original monorepo) | MVP stability + doctor plan | **Done** (moved to `done/` 2026-06-01); the reader-parity ledger it carried is now historical — see this TODO’s Cleanup item 1 for the single live source |
+| Package-and-publisher plan spec (2026-05-16, original monorepo) | Main package/static publisher plan (active umbrella) | Active; foundation + doctor + sealing-removal + host-neutral TOC shipped; full reader parity (manual visual/PDF acceptance) + the host app’s single-renderer cutover remain open |
+| Static-document-publishing research brief (2026-05-15, original monorepo) | Static publishing and optimizer research | Complete research brief; informs the open optimizer/sealing work |
+| Small-web-app packaging research brief (2026-05-05, original monorepo) | JavaScript/TypeScript/browser-tooling research | Updated for source-first ESM, optional TypeScript emit, and KPress-style static publishing |
 
 ## Source-Port References
 
@@ -138,8 +142,8 @@ production publisher.
 
 Implemented now:
 
-- `packages/kpress/` package location, import boundary, typed public surfaces, package
-  resources, and public contract tests
+- the package location, import boundary, typed public surfaces, package resources, and
+  public contract tests
 - dynamic render/runtime path for host-neutral fragments and package static assets
 - first host adapter path for KPress-backed document rendering and printable view
   metadata
@@ -217,7 +221,7 @@ Not implemented yet:
   For “share a rendered doc by link”, prefer Static build prod deployed to a CDN.
   Concise revisit notes (effort tiers, recommended lever shape) live in
   `kpress-design.md` under “Self-contained single file: deferred”.
-  Tracked by `trading-547y`.
+  Tracked by `orig-547y`.
 - full production publishing maturity: route edge cases, redirect generation, cache
   invalidation proofs, external asset policies, and readable-vs-sealed review goldens
 
@@ -235,8 +239,8 @@ Not implemented yet:
 | Static publisher | Partial | Config, discovery, routes, output tree, manifests, site files, explicit asset/strict/optimizer/precompression axes, integrated external sealing, package CSS/JS inline mode, optimizer wiring, goldens, full-corpus dynamic-vs-sealed equivalence harness, and readable-vs-sealed output-tree goldens exist. Route/metadata/cache/browser-review maturity remains open. |
 | Package/local asset handling | Partial | Package assets and PT Serif/Source Sans font files are copied/hashed/manifested; package CSS/JS can be linked, hashed, optimized, or inlined. Document-local refs (`./image.png` etc.) are emitted into the rendered HTML verbatim in v1 — the deploy layer places the file. Document-local asset *copying* returns with the v2 sealing roadmap. |
 | External/CDN asset sealing | **Deferred to v2** | Sealing the document-local and external-URL asset graph (fetch + integrity-pin + HTML/CSS/JS URL rewrite + offline-tree verify) is on the v2 roadmap. v1 leaves document-local and external refs in the rendered HTML verbatim; the deploy layer (CDN, S3, static-host platform) owns delivery and caching. Regex-driven Python rewriting over arbitrary HTML/CSS/JS was the wrong abstraction — v2 returns via a real parser or a JS bundler (Vite/Parcel/esbuild/Bun). See `kpress-design.md` § “Asset sealing: deferred for v1” and the v1-removal plan at `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md`. |
-| Inline asset mode | Partial; full single-file deferred | Package CSS/JS inline mode is implemented and manifested; package fonts remain copied with static-safe URLs. Local/external CSS/JS are still sealed to files rather than inlined. Truly self-contained single-file output is deferred — for “share by link” use cases, point at a CDN-hosted asset bundle and publish via Static build prod. Revisit plan and effort tiers in `kpress-design.md` under “Self-contained single file: deferred”; tracked by `trading-547y`. |
-| Optimizer and compression | Done for current contract; preflight open | Two explicit modes only: `none` (default, zero-dep, content unchanged, no Node needed) and `full` (`html-minifier-next@6.2.3` installed via locked `npm ci` cache at `~/.cache/kpress/npm/`; file-locked for parallel builds; hard error if absent; no fallback; no built-in pseudo-minifier). Precompression is explicit, off by default, orthogonal: `gzip` (stdlib) and/or `br` (`kpress[optimize]`). Manifests record `optimizer_backend`, `original_size`, `compression`, `source_path` per file plus build-level metadata. Locked dependency layer is done (`trading-zc7g`); remaining hardening is build-start preflight before output writes (`trading-owjr`). |
+| Inline asset mode | Partial; full single-file deferred | Package CSS/JS inline mode is implemented and manifested; package fonts remain copied with static-safe URLs. Local/external CSS/JS are still sealed to files rather than inlined. Truly self-contained single-file output is deferred — for “share by link” use cases, point at a CDN-hosted asset bundle and publish via Static build prod. Revisit plan and effort tiers in `kpress-design.md` under “Self-contained single file: deferred”; tracked by `orig-547y`. |
+| Optimizer and compression | Done for current contract; preflight open | Two explicit modes only: `none` (default, zero-dep, content unchanged, no Node needed) and `full` (`html-minifier-next@6.2.3` installed via locked `npm ci` cache at `~/.cache/kpress/npm/`; file-locked for parallel builds; hard error if absent; no fallback; no built-in pseudo-minifier). Precompression is explicit, off by default, orthogonal: `gzip` (stdlib) and/or `br` (`kpress[optimize]`). Manifests record `optimizer_backend`, `original_size`, `compression`, `source_path` per file plus build-level metadata. Locked dependency layer is done (`orig-zc7g`); remaining hardening is build-start preflight before output writes (`orig-owjr`). |
 | Local workflows | Partial | CLI/API paths exist. TextPress-compatible golden tests for paired outputs, reports, `--show`, `--rerun`, `--refetch`, and missing extras need more coverage. |
 | PDF | Partial | Deterministic minimal PDF output remains available for smoke tests. Optional `backend="browser"` now runs a Playwright print pipeline through the `kpress[pdf]` extra, uses the rendered KPress page/print CSS, and is covered by fake-adapter contract tests. Real Chromium installation, fixture PDFs, cache/report metadata, and manual visual/PDF acceptance review remain open. |
 | Quality gates | Partial | KPress pytest and `devtools/lint.py --check` cover Python, docs, package policy, Biome 2, `tsc --checkJs`, and browserless DOM tests. Focused host adapter regression (run in the host repo) passes. Real-browser acceptance is a manual Playwright-assisted playbook, not a required CI dependency. |
@@ -347,7 +351,7 @@ Execute the finish work in this order:
    JavaScript, CSS, JSON, and docs so local edits use the same Biome, `tsc --checkJs`,
    pytest, ruff, basedpyright, and Markdown hygiene expected by CI. Exit criteria:
    staged KPress asset/doc edits run the right narrow checks and the documented
-   `packages/kpress/devtools/lint.py --check` remains the package-wide gate.
+   `devtools/lint.py --check` remains the package-wide gate.
    Current status: implemented for staged Python, JavaScript, CSS, JSON, docs spelling,
    npm package policy, and browserless JavaScript DOM tests.
 2. **Harden the production asset graph.** The current integrated slice is implemented:
@@ -358,12 +362,12 @@ Execute the finish work in this order:
    JS/import-map graph discovery, richer diagnostics, and optional local/external inline
    output.
 3. **Harden optimizer and compression integration.** The `full` optimizer now uses a
-   locked dependency layer (`trading-zc7g`): `html-minifier-next@6.2.3` is installed via
+   locked dependency layer (`orig-zc7g`): `html-minifier-next@6.2.3` is installed via
    `npm ci` into `~/.cache/kpress/npm/`, file-locked for parallel builds, and run from
    the cache’s `node_modules/.bin/`. `none` (default) publishes content unchanged and
    does not need Node. Missing npm/npx raises a clear missing-extra error with no silent
    fallback. Remaining hardening is build-start preflight before output writes
-   (`trading-owjr`). Precompression is explicit, off by default, and orthogonal.
+   (`orig-owjr`). Precompression is explicit, off by default, and orthogonal.
    Manifests record per-file and build-level optimizer/compression metadata.
 4. **Extend dynamic-vs-sealed equivalence.** Full-corpus browserless equivalence harness
    and readable-vs-sealed output-tree goldens now cover the document fixture corpus.
@@ -396,12 +400,11 @@ Execute the finish work in this order:
 
 ### P0: Status and Contract Hygiene
 
-- [x] Keep `packages/kpress/TODO.md` as the plain implementation-status ledger.
-- [x] Synchronize `packages/kpress/TODO.md`, `kpress-design.md`, the active plan specs,
-  and JavaScript tooling research for the 2026-05-17 package-policy and browserless DOM
-  test update.
-- [x] Re-check `packages/kpress/TODO.md`, `kpress-design.md`, the active plan specs, and
-  relevant research docs whenever KPress implementation status changes.
+- [x] Keep `TODO.md` as the plain implementation-status ledger.
+- [x] Synchronize `TODO.md`, `kpress-design.md`, the active plan specs, and JavaScript
+  tooling research for the 2026-05-17 package-policy and browserless DOM test update.
+- [x] Re-check `TODO.md`, `kpress-design.md`, the active plan specs, and relevant
+  research docs whenever KPress implementation status changes.
 - [x] Add KPress-specific staged-file lefthook entries for JS/CSS/JSON so the local
   workflow matches the documented quality gate.
 - [x] Close the PR #111 review defects in code and tests: `nh3` sanitizer replacement,
@@ -431,7 +434,7 @@ Execute the finish work in this order:
   for most documents. For “share a rendered doc by link”, prefer Static build prod
   deployed to a CDN-hosted asset bundle.
   Revisit plan with effort tiers is in `kpress-design.md` under “Self-contained single
-  file: deferred”; classic-JS reader lever tracked by `trading-547y`.
+  file: deferred”; classic-JS reader lever tracked by `orig-547y`.
 - [ ] Add a no-network production review step to the manual Playwright playbook.
 - [x] Add a browserless dynamic-vs-sealed equivalence smoke test for the document
   surface.
@@ -469,44 +472,44 @@ Execute the finish work in this order:
   reproduce identical hashes; source, optimize, and asset-mode changes invalidate
   output). External response-metadata / `--refetch` invalidation is covered by
   `tests/test_seal_hardening.py`. PDF-profile cache invalidation remains with the PDF
-  fixture work (`trading-zwc2`/`trading-14v1`).
+  fixture work (`orig-zwc2`/`orig-14v1`).
 
 ### P2: Document Runtime Parity
 
-Detailed reader parity is now tracked by `trading-xgzj` and its child beads.
+Detailed reader parity is now tracked by `orig-xgzj` and its child beads.
 The older broad parity beads remain open as grouping beads and are blocked by the
 feature-level beads below.
 The feature parity matrix in
 `docs/project/reviews/review-2026-05-17-kpress-feature-parity-matrix.md` is now the
 controlling checklist for reader parity.
 Every matrix gap is mapped to a matrix-specific bead below, and the final parity audit
-bead `trading-08y5` depends on all of them.
+bead `orig-08y5` depends on all of them.
 
 | Reader feature | Bead | Coarse owner |
 | --- | --- | --- |
-| GFM Markdown block/inline document tree | `trading-97c1` | `trading-8is3` |
-| Raw HTML trust and sanitizer matrix | `trading-1rc7` | `trading-8is3` |
-| Images, figures, captions, and local media assets | `trading-oxs3` | `trading-8is3`, `trading-5dmd` |
-| Code fences, source profiles, and syntax highlighting | `trading-c5xy` | `trading-8is3`, `trading-d6g2` |
-| Math `off`/lazy-`auto` KaTeX design | `trading-g0ra` | `trading-8is3`, `trading-5dmd` |
-| Diagram rendering providers | `trading-lir6` | `trading-8is3`, `trading-5dmd` |
-| Typography, document CSS, and themes | `trading-vdbu` | `trading-131h` |
-| Print CSS and print profiles | `trading-boxw` | `trading-131h`, `trading-n7ok` |
-| Desktop TOC behavior | `trading-i4rj` | `trading-d6g2` |
-| Mobile TOC drawer behavior | `trading-o59o` | `trading-d6g2` |
-| Footnote hover and touch tooltips | `trading-1u4r` | `trading-d6g2`, `trading-0xa1` |
-| Internal-link preview tooltips | `trading-2z84` | `trading-d6g2`, `trading-0xa1` |
-| Responsive tables and numeric-cell hooks | `trading-09i3` | `trading-8is3`, `trading-d6g2` |
-| Code-copy controls | `trading-vy98` | `trading-d6g2` |
-| Video popovers and embedded media policy | `trading-m83y` | `trading-d6g2`, `trading-selz` |
-| Tabbed content components | `trading-wv4m` | `trading-d6g2`, `trading-selz`, `trading-0xa1` |
-| Semantic content components | `trading-3l2o` | `trading-selz` |
-| Fonts and packaged reader assets | `trading-mzp0` | `trading-5dmd` |
-| Canonical fixture corpus and accepted goldens | `trading-4mdl` | `trading-q72a` |
-| Manual browser acceptance playbook | `trading-azna` | `trading-q72a` |
-| Browser-backed PDF generation and fixtures | `trading-zwc2` | `trading-n7ok`, `trading-q72a` |
-| Accessibility and host-readiness checks | `trading-t2rf` | `trading-0xa1` |
-| Final reader parity audit and closure gate | `trading-08y5` | `trading-xgzj` |
+| GFM Markdown block/inline document tree | `orig-97c1` | `orig-8is3` |
+| Raw HTML trust and sanitizer matrix | `orig-1rc7` | `orig-8is3` |
+| Images, figures, captions, and local media assets | `orig-oxs3` | `orig-8is3`, `orig-5dmd` |
+| Code fences, source profiles, and syntax highlighting | `orig-c5xy` | `orig-8is3`, `orig-d6g2` |
+| Math `off`/lazy-`auto` KaTeX design | `orig-g0ra` | `orig-8is3`, `orig-5dmd` |
+| Diagram rendering providers | `orig-lir6` | `orig-8is3`, `orig-5dmd` |
+| Typography, document CSS, and themes | `orig-vdbu` | `orig-131h` |
+| Print CSS and print profiles | `orig-boxw` | `orig-131h`, `orig-n7ok` |
+| Desktop TOC behavior | `orig-i4rj` | `orig-d6g2` |
+| Mobile TOC drawer behavior | `orig-o59o` | `orig-d6g2` |
+| Footnote hover and touch tooltips | `orig-1u4r` | `orig-d6g2`, `orig-0xa1` |
+| Internal-link preview tooltips | `orig-2z84` | `orig-d6g2`, `orig-0xa1` |
+| Responsive tables and numeric-cell hooks | `orig-09i3` | `orig-8is3`, `orig-d6g2` |
+| Code-copy controls | `orig-vy98` | `orig-d6g2` |
+| Video popovers and embedded media policy | `orig-m83y` | `orig-d6g2`, `orig-selz` |
+| Tabbed content components | `orig-wv4m` | `orig-d6g2`, `orig-selz`, `orig-0xa1` |
+| Semantic content components | `orig-3l2o` | `orig-selz` |
+| Fonts and packaged reader assets | `orig-mzp0` | `orig-5dmd` |
+| Canonical fixture corpus and accepted goldens | `orig-4mdl` | `orig-q72a` |
+| Manual browser acceptance playbook | `orig-azna` | `orig-q72a` |
+| Browser-backed PDF generation and fixtures | `orig-zwc2` | `orig-n7ok`, `orig-q72a` |
+| Accessibility and host-readiness checks | `orig-t2rf` | `orig-0xa1` |
+| Final reader parity audit and closure gate | `orig-08y5` | `orig-xgzj` |
 
 The matrix-specific bead list lives in tbd and in the parity-matrix review.
 Do not copy the full status table back into this TODO; keep this section to routing,
@@ -568,18 +571,16 @@ acceptance rules, and current top-level blockers.
 Run these from the repository root:
 
 ```bash
-uv run --project packages/kpress pytest packages/kpress/tests --tb=short -q
-uv run --project packages/kpress python packages/kpress/devtools/lint.py --check
+uv run pytest tests --tb=short -q
+uv run python devtools/lint.py --check
 git diff --check
 ```
 
-Current validated state (2026-06-05 consolidation pass):
+Current validated state (2026-06-05 consolidation pass, in the originating monorepo):
 
-- `uv run --project packages/kpress pytest packages/kpress/tests --tb=short -q`: 356
-  passed, 1 skipped.
-- `uv run --project metabrowser pytest metabrowser/tests --tb=short -q`: 661 passed.
-- host adapter regression (the MetaBrowser KPress render route + version tests):
-  passing.
+- KPress package tests: 356 passed, 1 skipped.
+- Host-app integration tests and the host adapter regression (the host’s KPress render
+  route + version tests, run in the host repo): passing.
 - `git diff --check`: passed.
 
 <!-- This document follows common-doc-guidelines.md.

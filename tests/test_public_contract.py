@@ -149,33 +149,6 @@ def test_format_pdf_is_available_only_from_pdf_module() -> None:
     assert hasattr(pdf_module, "render_pdf")
 
 
-def test_kpress_does_not_import_any_host_package() -> None:
-    """KPress stays host-agnostic so MetaBrowser is a faithful test harness."""
-
-    code = """
-import importlib
-import json
-import sys
-
-importlib.import_module("kpress")
-importlib.import_module("kpress.runtime")
-importlib.import_module("kpress.format")
-importlib.import_module("kpress.publish")
-leaked = sorted(
-    m for m in sys.modules if m == "metabrowser" or m.startswith("metabrowser.")
-)
-print(json.dumps(leaked))
-"""
-    completed = subprocess.run(
-        [sys.executable, "-c", code],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    assert json.loads(completed.stdout) == []
-
-
 def test_render_view_returns_jsonable_contract_payload_with_opaque_host() -> None:
     from kpress import runtime
 

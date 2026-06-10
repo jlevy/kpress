@@ -374,7 +374,7 @@ def build_site(
     # Delete KPress-owned outputs from the previous build before writing this
     # one. Without this, deleting a source file leaves its rendered HTML in
     # `output_dir` forever — the static publish output stops being a pure
-    # function of the current inputs (trading-8qo4). We only delete files
+    # function of the current inputs (orig-8qo4). We only delete files
     # listed in the prior manifest (plus the `_kpress/` infrastructure tree
     # we own); user files that happen to share the directory are untouched.
     _purge_prior_kpress_outputs(output_dir)
@@ -613,7 +613,7 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
     destination = Path(request.destination) if request.destination else source.with_suffix(".html")
     source_text = source.read_text(encoding="utf-8")
     # `single-file` is not yet truly self-contained: inlined ES modules still
-    # import sibling `./x.js` files and fonts stay external (trading-7ehk), so
+    # import sibling `./x.js` files and fonts stay external (orig-7ehk), so
     # a relocated single file would silently lose its reader features. Refuse
     # rather than emit a broken artifact; `sealed` is the supported
     # self-contained output.
