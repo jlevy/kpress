@@ -47,3 +47,19 @@ Auto-format Markdown with `flowmark` for clean, semantic git diffs.
 - Python build (library / newest patch): `uvx --from flowmark==0.7.2 flowmark`.
 
 <!-- END FLOWMARK INTEGRATION -->
+
+<!-- BEGIN PPROSE INTEGRATION format=f01 -->
+## Practical Prose (pprose)
+
+Practical Prose: an evaluation toolkit and editorial workflows for practical documents.
+Use when the user asks to improve, audit, score, or compare practical documents.
+
+Discover the tool from the CLI itself: `pprose --help` for commands, `pprose about` for
+the project narrative, and `pprose skill --list` / `pprose shortcut --list` /
+`pprose guidelines --list` / `pprose runbook --list` for on-demand workflows, playbooks,
+style guides, and procedures.
+
+Run pprose as `pprose <command>` if on PATH, else `uvx pprose@0.1.0 <command>`
+(zero-install via uv).
+
+<!-- END PPROSE INTEGRATION -->
