@@ -1,6 +1,18 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on this project.
+This file provides instructions and context for AI coding agents working on this
+project.
+
+## Supply-Chain Security (read before installing anything)
+
+Before adding, upgrading, or running any dependency — including zero-install runners
+(`npx`, `uvx`, `pnpm dlx`, `bunx`) — follow
+[`SUPPLY-CHAIN-SECURITY.md`](SUPPLY-CHAIN-SECURITY.md).
+
+- **14-day cool-off** on all third-party packages; pin exact versions; never `@latest`.
+- **First-party exemption:** packages we publish from `github.com/jlevy/*` (tbd,
+  flowmark-rs, repren, pprose) skip the cool-off but are still pinned to exact versions.
+- Full policy: `tbd guidelines supply-chain-hardening`.
 
 <!-- BEGIN TBD INTEGRATION format=f04 surface=agents-md -->
 ## tbd
@@ -19,7 +31,7 @@ actions rather than telling them to run commands.
 
 ## Build & Test
 
-_Add your build and test commands here_
+*Add your build and test commands here*
 
 ```bash
 # Example:
@@ -29,11 +41,11 @@ _Add your build and test commands here_
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+*Add a brief overview of your project architecture*
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+*Add your project-specific conventions here*
 
 <!-- BEGIN FLOWMARK INTEGRATION format=f02 surface=agents-md -->
 ## flowmark
