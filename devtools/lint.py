@@ -1,4 +1,9 @@
+"""Quality gate for KPress: Python lint/format/typecheck, codespell, extraction
+safety check, and the JS gates (Biome, tsc, vitest DOM tests) for the browser
+assets shipped in the wheel."""
+
 import argparse
+import shutil
 import subprocess
 import sys
 
@@ -8,7 +13,25 @@ from rich import print as rprint
 
 # Update as needed.
 SRC_PATHS = ["src", "tests", "devtools"]
-DOC_PATHS = ["README.md"]
+DOC_PATHS = [
+    "README.md",
+    "CONTRIBUTING.md",
+    "EXTRACTION.md",
+    "NOTICE.md",
+    "SECURITY.md",
+    "TODO.md",
+    "kpress-design.md",
+    "kpress-icons.md",
+    "kpress-reader-features.md",
+    "docs",
+]
+
+# JS gates run via npx with exact pins from devtools/npm_policy.py.
+JS_GATES: list[list[str]] = [
+    [sys.executable, "devtools/biome.py", "ci", "src", "tests", "biome.json"],
+    [sys.executable, "devtools/tsc_check.py"],
+    [sys.executable, "devtools/js_dom_tests.py"],
+]
 
 
 reconfigure(emoji=not get_console().options.legacy_windows)  # No emojis on legacy windows.
@@ -33,6 +56,16 @@ def main() -> int:
         errcount += run(["ruff", "check", "--fix", *SRC_PATHS])
         errcount += run(["ruff", "format", *SRC_PATHS])
     errcount += run(["basedpyright", "--stats", *SRC_PATHS])
+    errcount += run([sys.executable, "devtools/extraction_check.py"])
+
+    if shutil.which("npx"):
+        for cmd in JS_GATES:
+            errcount += run(cmd)
+    else:
+        rprint(
+            "[bold red]Error: npx not found; the JS gates (Biome, tsc, vitest) require Node.[/bold red]"
+        )
+        errcount += 1
 
     rprint()
 

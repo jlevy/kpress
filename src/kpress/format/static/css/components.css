@@ -1,0 +1,1679 @@
+/* The document viewport: the one element a KPress document scrolls inside.
+   It is the `@container kpress-doc` query container AND the containing block for
+   the TOC drawer/toggle's `position: fixed`. The standalone page shell sets it
+   on `kpress-page-main`; an embedding host sets the same class/attribute on its
+   own scroll pane. This is what lets the TOC react to the document's real width
+   and pin its floating UI to the pane rather than the browser window.
+
+   `container-type` alone should establish the fixed containing block, but not
+   every engine honors container containment for fixed descendants (only
+   absolute), which lets the floating UI escape to the window (over host chrome
+   when embedded). `transform` is the universally-honored trigger; since the
+   viewport is the scroller and does not move with the window, the floating UI
+   stays pinned to its frame while content scrolls beneath it. */
+.kpress-viewport {
+  block-size: 100dvh;
+  overflow-y: auto;
+  container: kpress-doc / inline-size;
+  transform: translateZ(0);
+}
+
+/* The standalone page scroller carries the document background/text so the
+   whole window is themed (the embedded host owns its own pane background, so
+   this targets the standalone-only `.kpress-page-main`, not `.kpress-viewport`). */
+.kpress-page-main {
+  /* Standalone-only gutters (the embedded fragment uses the host's pane, so
+     these never affect MetaBrowser). Tunable; a couple ems of breathing room so
+     the reading column does not run to the window edges, plus a little more
+     above so the title is not jammed against the top of the window. */
+  --kpress-page-margin-inline: 2rem;
+  --kpress-page-margin-block-start: 2.5rem;
+  background: var(--kpress-doc-bg);
+  color: var(--kpress-doc-text);
+  padding-inline: var(--kpress-page-margin-inline);
+  padding-block-start: var(--kpress-page-margin-block-start);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Document layout + Table of Contents: the responsive system.
+
+   READ THIS BEFORE TOUCHING THE TOC OR TABLE WIDTHS — the pieces are
+   coupled and the failure modes are non-obvious.
+
+   DOM (emitted by format/render.py):
+     article.kpress-doc                       reading-measure cap #1
+       div.kpress-doc-layout.kpress-content-with-toc   cap #2 + TOC grid
+         nav.kpress-toc                        the TOC (sidebar OR drawer)
+         div.kpress-prose.kpress-long-text     the article body
+
+   TWO elements carry the reading-measure cap and BOTH centre via
+   margin:auto (in document.css): `.kpress-doc` (max-width measure + 2rem)
+   and the inner `.kpress-doc-layout` (max-width = measure). Plain single-
+   column reading wants both caps. Any layout that needs the full pane must
+   uncap BOTH — uncapping only the article leaves `.kpress-doc-layout`
+   centred at the measure, which reads as a large left margin with the
+   grid tracks spilling off its right edge.
+
+   Everything responsive keys off `@container kpress-doc` — the width of the
+   scroll pane (`.kpress-viewport`), NOT the window — so it is correct both
+   standalone and embedded in a host pane narrower than the window. Three
+   mutually exclusive bands, each defined once below:
+
+     >= 75rem   WIDE     TOC is a sticky left sidebar. Uncaps both caps;
+                         grid is `15rem 51rem`, left-aligned (justify-
+                         content: start) so the reading column is a constant
+                         48rem and all extra width is one right-hand margin.
+     48-75rem   TABLET   Single column; TOC is a fixed drawer + toggle.
+     < 48rem    MOBILE   Single column; drawer; tighter type.
+
+   TABLE INVARIANT: the base `.kpress-table-wrap` rule (further down) is a
+   viewport-centred full-bleed — left:50% + translateX(-50%), width keyed
+   off 100vw. That is only right for a standalone, window-width single
+   column. EVERY band above MUST neutralise it (left:0; transform:none; a
+   left-anchored width) or wide tables centre on the WINDOW and spill past
+   the pane on both sides. All three bands carry that reset today; if you
+   add a band, add the reset too.
+   ───────────────────────────────────────────────────────────────── */
+.kpress-content-with-toc {
+  position: relative;
+}
+
+.kpress-content-with-toc.has-toc,
+.kpress-content-with-toc:has(.kpress-toc) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.kpress-long-text {
+  background: var(--kpress-doc-bg);
+  margin-inline: auto;
+  max-width: min(100%, 48rem);
+  padding: 1rem 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .kpress-long-text {
+    padding-inline: 4rem;
+  }
+}
+
+.kpress-header-row {
+  align-items: center;
+  display: flex;
+}
+
+.kpress-header-grow {
+  flex: 1 1 auto;
+  margin-inline-start: 0.5rem;
+}
+
+.kpress-header-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+}
+
+.kpress-page-spacer {
+  margin-top: 1.5rem;
+}
+
+/* Settings menu: a gear button that opens a popover of segmented icon
+   choosers (theme today; more can be added). Ported from metabrowser's
+   settings control, re-tokenized onto KPress document tokens so it themes
+   with the document. The wrapper's `aria-expanded` drives menu visibility. */
+.kpress-settings {
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
+  position: fixed;
+  z-index: 250;
+}
+
+.kpress-settings-btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  padding: 4px;
+  transition:
+    color var(--kpress-transition-fast),
+    background var(--kpress-transition-fast),
+    border-color var(--kpress-transition-fast);
+  width: 28px;
+}
+
+.kpress-settings-btn:hover,
+.kpress-settings[aria-expanded="true"] .kpress-settings-btn {
+  background: var(--color-hover-bg);
+  border-color: var(--kpress-doc-border);
+  color: var(--kpress-doc-text);
+}
+
+.kpress-settings-btn:focus-visible {
+  outline: 3px solid var(--color-primary-light);
+  outline-offset: 2px;
+}
+
+.kpress-settings-btn svg {
+  height: 16px;
+  width: 16px;
+}
+
+.kpress-settings-menu {
+  display: none;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-end: 0;
+  position: absolute;
+}
+
+.kpress-settings[aria-expanded="true"] .kpress-settings-menu {
+  display: flex;
+}
+
+.kpress-menu {
+  background: var(--kpress-doc-bg);
+  border: 1px solid var(--kpress-doc-border);
+  border-radius: var(--kpress-radius-sm);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 10%),
+    0 2px 4px -1px rgb(0 0 0 / 6%);
+  flex-direction: column;
+  min-width: 124px;
+  padding: 4px;
+  z-index: 300;
+}
+
+.kpress-menu-chooser {
+  display: flex;
+  gap: 2px;
+}
+
+.kpress-menu-seg {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-muted);
+  cursor: pointer;
+  display: flex;
+  flex: 1;
+  height: 30px;
+  justify-content: center;
+  min-width: 34px;
+  padding: 0;
+  transition:
+    color var(--kpress-transition-fast),
+    background var(--kpress-transition-fast);
+}
+
+.kpress-menu-seg:hover,
+.kpress-menu-seg:focus-visible {
+  background: var(--color-hover-bg);
+  color: var(--kpress-doc-text);
+  outline: none;
+}
+
+.kpress-menu-seg[aria-checked="true"] {
+  background: var(--color-bg-selected);
+  color: var(--kpress-doc-link);
+}
+
+.kpress-menu-seg svg {
+  height: 16px;
+  width: 16px;
+}
+
+.kpress-toc {
+  border: 1px solid var(--kpress-doc-border);
+  color: var(--kpress-doc-muted);
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-font-size-smaller);
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0.7rem 1rem 1.2rem;
+}
+
+.kpress-toc ol {
+  line-height: 1.2;
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.kpress-toc a {
+  border-left: 2px solid transparent;
+  color: inherit;
+  display: block;
+  padding-block: 0.2rem;
+  text-decoration: none;
+  transition:
+    background var(--kpress-transition-slow),
+    all var(--kpress-transition-fast);
+}
+
+/* Hover and active both shift the text to the secondary tone; the colored
+   left indicator (plus the selected background) is what marks the active
+   section. The 2px transparent border above keeps text from shifting when
+   active. */
+.kpress-toc a:hover {
+  background-color: var(--color-hover-bg);
+  color: var(--color-secondary);
+  text-decoration: none;
+}
+
+.kpress-toc a[data-active="true"],
+.kpress-toc a.active {
+  background-color: var(--color-bg-selected);
+  border-left-color: var(--kpress-doc-link);
+  color: var(--color-secondary);
+  text-decoration: none;
+}
+
+/* Each entry indents by heading level. The padding sits on the link (the
+   element carrying the active border-left bar) so the bar pins to the
+   container edge while the text indents away from it; the -1em hanging
+   indent keeps wrapped lines aligned under the first. Deeper levels indent
+   further and lighten in weight, echoing the document's heading hierarchy. */
+.kpress-toc-level-1 > a,
+.kpress-toc-level-2 > a,
+.kpress-toc-level-3 > a,
+.kpress-toc-level-4 > a,
+.kpress-toc-level-5 > a,
+.kpress-toc-level-6 > a {
+  text-indent: -1em;
+}
+
+.kpress-toc-level-1 > a,
+.kpress-toc-level-2 > a {
+  font-weight: var(--kpress-font-weight-sans-medium);
+  letter-spacing: 0.007em;
+}
+
+.kpress-toc-level-3 > a,
+.kpress-toc-level-4 > a,
+.kpress-toc-level-5 > a,
+.kpress-toc-level-6 > a {
+  font-weight: var(--kpress-font-weight-sans-light);
+}
+
+.kpress-toc-level-1 > a {
+  padding-left: 1.3rem;
+}
+
+.kpress-toc-level-2 > a {
+  padding-left: 2rem;
+}
+
+.kpress-toc-level-3 > a {
+  padding-left: 2.7rem;
+}
+
+.kpress-toc-level-4 > a {
+  padding-left: 3.4rem;
+}
+
+.kpress-toc-level-5 > a {
+  padding-left: 4.1rem;
+}
+
+.kpress-toc-level-6 > a {
+  padding-left: 4.8rem;
+}
+
+.kpress-toc-toggle {
+  align-items: center;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--kpress-doc-border);
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  height: 2.2rem;
+  justify-content: center;
+  padding: 0;
+  transition:
+    color var(--kpress-transition-fast),
+    border-color var(--kpress-transition-fast),
+    background-color var(--kpress-transition-fast);
+  width: 2.2rem;
+}
+
+.kpress-toc-toggle:hover {
+  background-color: var(--color-hover-bg);
+  border-color: var(--kpress-doc-link);
+  color: var(--kpress-doc-link);
+}
+
+.kpress-toc-toggle-icon {
+  display: block;
+}
+
+.kpress-toc-title {
+  border-bottom: 1px solid var(--kpress-doc-border);
+  border-left: none;
+  font-size: var(--kpress-caps-label-size);
+  font-variant-caps: var(--kpress-caps-variant);
+  font-weight: var(--kpress-font-weight-sans-medium);
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: var(--kpress-caps-heading-line-height);
+  padding-left: 0.3rem;
+  text-transform: var(--kpress-caps-transform);
+}
+
+/* `position: fixed` resolves against the `.kpress-viewport` container (it is the
+   containing block for fixed descendants), so `inset: 0` covers the document
+   viewport — the whole window standalone, just the pane when embedded. */
+.kpress-toc-backdrop {
+  background-color: rgb(0 0 0 / 50%);
+  display: none;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  transition:
+    opacity var(--kpress-transition-fade),
+    visibility var(--kpress-transition-fade);
+  visibility: hidden;
+  z-index: 199;
+}
+
+.kpress-toc-backdrop.kpress-visible {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.kpress-footnotes {
+  border-top: 1px solid var(--kpress-doc-border);
+  color: var(--kpress-doc-muted);
+  font-family: var(--kpress-font-footnote);
+  font-size: 0.9em;
+  margin-top: 2rem;
+  padding-top: 1rem;
+}
+
+.kpress-footnote-ref a,
+.kpress-footnote-backref {
+  background-color: var(--color-bg-meta-solid);
+  border-radius: var(--kpress-radius-md);
+  color: var(--color-hint-strong);
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-style: normal;
+  font-weight: 600;
+  margin-right: 0.15rem;
+  padding: 0 0.15rem;
+  text-decoration: none;
+  transition: all var(--kpress-transition-fast);
+}
+
+.kpress-footnote-ref a:hover,
+.kpress-footnote-backref:hover {
+  background-color: var(--color-hover-bg);
+  color: var(--color-primary-light);
+  text-decoration: none;
+}
+
+.kpress-tooltip {
+  background: var(--color-bg-meta-solid);
+  border: 1px solid var(--kpress-doc-border);
+  border-left: 2px solid var(--kpress-doc-link);
+  border-radius: var(--kpress-radius-none);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  color: var(--kpress-doc-text);
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-font-size-small);
+  font-weight: 400;
+  hyphens: auto;
+  line-height: 1.4;
+  max-width: min(20rem, calc(100vw - 2rem));
+  min-width: 8rem;
+  opacity: 0;
+  overflow-wrap: break-word;
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+  position: fixed;
+  transition:
+    opacity 0.6s ease-in-out,
+    visibility 0.6s ease-in-out;
+  visibility: hidden;
+  white-space: normal;
+  width: max-content;
+  word-break: normal;
+  z-index: 300;
+}
+
+.kpress-tooltip.kpress-tooltip-visible {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.kpress-tooltip::after {
+  border: 5px solid transparent;
+  content: "";
+  position: absolute;
+}
+
+.kpress-tooltip a {
+  color: var(--kpress-doc-link);
+  cursor: pointer;
+  overflow-wrap: break-word;
+  pointer-events: auto;
+  text-decoration: underline;
+  transition: color var(--kpress-transition-med);
+}
+
+.kpress-tooltip a:hover {
+  color: var(--color-primary-light);
+  text-decoration: underline;
+}
+
+.kpress-tooltip code,
+.kpress-tooltip pre {
+  font-size: 0.9em;
+  overflow-wrap: break-word;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.kpress-tooltip p,
+.kpress-tooltip span,
+.kpress-tooltip div {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.kpress-tooltip-footnote {
+  font-family: var(--kpress-font-footnote);
+  line-height: 1.5;
+  max-width: min(25rem, calc(100vw - 2rem));
+  min-width: 12rem;
+  text-align: left;
+}
+
+.kpress-tooltip-bottom::after {
+  border-bottom-color: var(--kpress-doc-border);
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.kpress-tooltip-bottom-right::after {
+  border-bottom-color: var(--kpress-doc-border);
+  bottom: 100%;
+  left: 1rem;
+}
+
+.kpress-tooltip-bottom-left::after {
+  border-bottom-color: var(--kpress-doc-border);
+  bottom: 100%;
+  right: 1rem;
+}
+
+.kpress-tooltip-top::after {
+  border-top-color: var(--kpress-doc-border);
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+}
+
+.kpress-tooltip-top-right::after {
+  border-top-color: var(--kpress-doc-border);
+  left: 1rem;
+  top: 100%;
+}
+
+.kpress-tooltip-top-left::after {
+  border-top-color: var(--kpress-doc-border);
+  right: 1rem;
+  top: 100%;
+}
+
+.kpress-tooltip-left::after {
+  border-left-color: var(--kpress-doc-border);
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.kpress-tooltip-right::after {
+  border-right-color: var(--kpress-doc-border);
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.kpress-tooltip-wide-right {
+  max-width: 24rem;
+}
+
+.kpress-tooltip-wide-right::after {
+  border-right-color: var(--kpress-doc-border);
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.kpress-tooltip-mobile-bottom {
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 18%);
+  box-sizing: border-box;
+  max-width: none;
+  padding: 0.9rem 1rem;
+  text-align: left;
+}
+
+.kpress-tooltip-mobile-bottom::after {
+  display: none;
+}
+
+.kpress-footnote-nav {
+  float: right;
+  margin-inline-start: 0.5rem;
+}
+
+.kpress-tooltip .kpress-footnote-nav-link {
+  text-decoration: none;
+}
+
+.kpress-tooltip .kpress-footnote-nav-link:hover {
+  text-decoration: none;
+}
+
+.kpress-table-wrap {
+  background-color: var(--kpress-doc-bg);
+  box-sizing: border-box;
+  left: 50%;
+  margin: 2rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+  transform: translateX(-50%);
+  width: min(calc(100vw - 2rem), max(100%, var(--kpress-measure)));
+}
+
+.kpress-table {
+  border: 1px solid var(--color-border-hint);
+  border-collapse: collapse;
+  font-family: var(--kpress-font-table);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-font-size-small);
+  line-height: 1.3;
+  min-width: 100%;
+  width: auto;
+  word-break: break-word;
+}
+
+.kpress-table th,
+.kpress-table td {
+  max-width: 40rem;
+  min-width: 6rem;
+  padding: 0.3rem 0.6rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+.kpress-table th {
+  background-color: var(--color-bg-alt-solid);
+  border-bottom: 1px solid var(--color-border-hint);
+  font-size: var(--kpress-caps-label-size);
+  font-variant-caps: var(--kpress-caps-variant);
+  font-weight: var(--kpress-font-weight-sans-bold);
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: var(--kpress-caps-heading-line-height);
+  text-align: center;
+  text-transform: var(--kpress-caps-transform);
+}
+
+.kpress-table tbody tr:nth-child(even) {
+  background-color: var(--color-bg-alt-solid);
+}
+
+.kpress-table [data-kpress-numeric="true"] {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* Task-list checkboxes: one clean box (no extra prose bullet), drawn with the
+   shared Lucide `square` / `square-check` glyphs via a mask. Unchecked is a dimmer
+   gray empty box; checked is a darker box with a check. The disabled <input> stays
+   for its accessible checked/unchecked state. */
+.kpress-prose ul > li.kpress-task::before {
+  content: none;
+}
+
+.kpress-task {
+  list-style: none;
+}
+
+.kpress-task input[type="checkbox"] {
+  appearance: none;
+  background-color: var(--kpress-doc-muted);
+  block-size: var(--kpress-checkbox-size);
+  cursor: default;
+  inline-size: var(--kpress-checkbox-size);
+  margin-inline-end: 0.4rem;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  vertical-align: -0.15em;
+}
+
+.kpress-task input[type="checkbox"]:checked {
+  background-color: var(--kpress-doc-text);
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' stroke-width='2'/%3E%3Cpath d='m7 12.5 3.5 3.5 6.5-7' stroke-width='2.5'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.kpress-code-scroll {
+  overflow-x: auto;
+}
+
+/* Minimal scrollbar on the remaining doc scroll surfaces (the main viewport
+   keeps the OS scrollbar; tables/code/tabs set theirs inline). */
+.kpress-code-scroll,
+.kpress-math-display,
+.kpress-diagram-source,
+.kpress-diagram-rendered {
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+}
+
+.kpress-code:has(.kpress-code-copy) {
+  position: relative;
+}
+
+/* Icon-only copy control, revealed on hover/focus of the code block
+   (MetaBrowser parity). The label lives in aria-label/title, never as text. */
+.kpress-code-copy {
+  align-items: center;
+  background: var(--kpress-doc-bg);
+  border: 1px solid var(--kpress-doc-border);
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-muted);
+  cursor: pointer;
+  display: flex;
+  inset-block-start: 0.4rem;
+  inset-inline-end: 0.4rem;
+  justify-content: center;
+  opacity: 0;
+  padding: 0.3rem;
+  position: absolute;
+  transition:
+    background-color var(--kpress-transition-fast),
+    border-color var(--kpress-transition-fast),
+    color var(--kpress-transition-fast),
+    opacity var(--kpress-transition-fast);
+  z-index: 1;
+}
+
+.kpress-code-copy svg {
+  block-size: 15px;
+  display: block;
+  inline-size: 15px;
+}
+
+.kpress-code:hover .kpress-code-copy,
+.kpress-code:focus-within .kpress-code-copy,
+.kpress-code-copy:focus-visible {
+  opacity: 1;
+}
+
+.kpress-code-copy:hover {
+  background: var(--color-hover-bg);
+  border-color: var(--kpress-doc-link);
+  color: var(--kpress-doc-link);
+}
+
+.kpress-code-copy:focus-visible {
+  outline: 3px solid var(--kpress-doc-link);
+  outline-offset: 2px;
+}
+
+.kpress-code-copy[data-kpress-copy-state="copied"] {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  border-color: var(--color-success);
+  color: var(--color-success);
+  opacity: 1;
+}
+
+.kpress-code-copy[data-kpress-copy-state="error"] {
+  background: color-mix(in srgb, #b42318 12%, transparent);
+  border-color: #b42318;
+  color: #b42318;
+  opacity: 1;
+}
+
+.kpress-math {
+  font-family: var(--kpress-font-prose);
+  line-height: 1.4;
+}
+
+.kpress-math math {
+  color: inherit;
+  font-size: 1.02em;
+}
+
+.kpress-math-inline {
+  display: inline-block;
+  max-width: 100%;
+  /* Let KaTeX's / the MathML fallback's own baseline seat on the text baseline;
+     the previous -0.1em nudge dropped inline math ~half an x-height too low. */
+  vertical-align: baseline;
+}
+
+.kpress-math-display {
+  display: block;
+  margin-block: 1rem;
+  overflow-x: auto;
+  padding-block: 0.25rem;
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+  text-align: center;
+}
+
+.kpress-math-display math {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* KaTeX progressive enhancement: the semantic MathML renders by default and
+   as the no-JS fallback; the TeX source node stays hidden until KaTeX
+   replaces it. Once rendered, KaTeX is shown and the MathML is kept in the
+   accessibility tree only. */
+.kpress-math-render {
+  display: none;
+}
+
+.kpress-math[data-kpress-math-rendered="true"] .kpress-math-render {
+  display: inline;
+}
+
+.kpress-math-display[data-kpress-math-rendered="true"] .kpress-math-render {
+  display: block;
+}
+
+.kpress-math[data-kpress-math-rendered="true"] .kpress-math-semantic {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.kpress-math[data-kpress-math-error="true"] {
+  background: color-mix(in srgb, #b42318 10%, transparent);
+  border: 1px solid color-mix(in srgb, #b42318 45%, transparent);
+  border-radius: var(--kpress-radius-sm);
+  color: #b42318;
+  font-family: var(--kpress-font-mono);
+  font-size: var(--kpress-font-size-mono);
+  padding: 0.05rem 0.25rem;
+}
+
+.kpress-diagram {
+  margin: 1.5rem 0;
+}
+
+.kpress-diagram svg {
+  display: block;
+  height: auto;
+  margin-inline: auto;
+  max-width: 100%;
+}
+
+.kpress-svg-diagram,
+.kpress-mermaid {
+  background: var(--kpress-doc-bg);
+  border: 1px solid var(--kpress-doc-border);
+  padding: 1rem;
+}
+
+.kpress-diagram-source {
+  margin: 0;
+  overflow-x: auto;
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+  white-space: pre;
+}
+
+.kpress-diagram-rendered {
+  overflow-x: auto;
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+}
+
+.kpress-diagram[data-kpress-diagram-status="rendered"] .kpress-diagram-source[hidden] {
+  display: none;
+}
+
+.kpress-diagram[data-kpress-diagram-status="error"] {
+  border-color: color-mix(in srgb, #b42318 45%, var(--kpress-doc-border));
+}
+
+.kpress-video-popover[hidden] {
+  display: none;
+}
+
+/* Tabs: all panels share one grid cell so the container sizes to the TALLEST
+   panel and does not jump when switching tabs; capped at ~half a page with
+   internal scroll. Inactive panels stay in layout (for sizing) but are hidden
+   from view and from the a11y / focus order. */
+.kpress-tabs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 1.5rem 0;
+}
+
+.kpress-tab-list,
+.kpress-tabs [role="tablist"] {
+  align-items: flex-end;
+  border-bottom: 1px solid var(--kpress-doc-border);
+  display: flex;
+  gap: 0.25rem;
+  grid-column: 1;
+  grid-row: 1;
+  overflow-x: auto;
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+}
+
+.kpress-tab-panel {
+  grid-column: 1;
+  grid-row: 2;
+  max-block-size: 50vh;
+  overflow-y: auto;
+  padding-block: 1rem;
+  scrollbar-color: var(--color-scrollbar) transparent;
+  scrollbar-width: thin;
+}
+
+.kpress-tab-panel[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+.kpress .highlight {
+  border-radius: var(--kpress-radius-lg);
+  padding: 0 0.5rem;
+}
+
+.kpress .citation {
+  border-radius: var(--kpress-radius-sm);
+  color: var(--color-secondary);
+  display: inline-block;
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  height: 1.3rem;
+  padding: 0 0.4rem;
+  transition:
+    background-color var(--kpress-transition-med),
+    color var(--kpress-transition-med);
+}
+
+.kpress .citation::before {
+  content: "[";
+}
+
+.kpress .citation::after {
+  content: "]";
+}
+
+.kpress .citation:hover {
+  background-color: var(--color-hover-bg);
+  color: var(--color-primary);
+}
+
+.kpress .debug {
+  color: var(--color-hint);
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-font-size-tiny);
+  font-weight: 400;
+}
+
+.kpress .hero h1 {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: 1.6rem;
+  font-weight: var(--kpress-font-weight-sans-medium);
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+  margin-block: 1rem 0;
+  text-transform: uppercase;
+}
+
+.kpress .hero h1 i {
+  font-family: var(--kpress-font-prose);
+  font-size: 1.5rem;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.kpress .subtitle {
+  font-family: var(--kpress-font-prose);
+  font-size: var(--kpress-font-size-normal);
+  font-style: italic;
+}
+
+.kpress .boxed-text {
+  border: 1px solid var(--kpress-doc-border);
+  margin: 1rem 0;
+  padding: 0 1rem;
+}
+
+.kpress .shaded-text {
+  background-color: var(--kpress-doc-code-bg);
+}
+
+.kpress .centered-headers h1,
+.kpress .centered-headers h2,
+.kpress .centered-headers h3 {
+  text-align: center;
+}
+
+.kpress .justify p {
+  text-align: justify;
+  text-align-last: left;
+}
+
+.kpress .description {
+  color: var(--color-secondary);
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-font-size-small);
+  margin: 2rem 0;
+}
+
+.kpress .key-claims,
+.kpress .summary,
+.kpress .concepts {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-font-size-small);
+  margin: 1rem 0;
+  padding: 1rem;
+}
+
+.kpress .key-claims,
+.kpress .concepts {
+  border: 1px solid var(--color-hint-gentle);
+}
+
+.kpress .key-claims::before,
+.kpress .summary::before,
+.kpress .concepts::before {
+  display: block;
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: calc(1.2rem * var(--kpress-caps-heading-size-multiplier));
+  font-variant-caps: var(--kpress-caps-variant);
+  font-weight: var(--kpress-font-weight-sans-medium);
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: var(--kpress-caps-heading-line-height);
+  margin-bottom: 0.5rem;
+  text-align: center;
+  text-transform: var(--kpress-caps-transform);
+}
+
+.kpress .key-claims::before {
+  content: "Key Claims";
+}
+
+.kpress .summary::before {
+  content: "Summary";
+}
+
+.kpress .concepts {
+  column-count: 3;
+  column-gap: 2rem;
+  font-weight: var(--kpress-font-weight-sans-bold);
+  padding-top: 3.5rem;
+  position: relative;
+}
+
+.kpress .concepts::before {
+  content: "Concepts";
+  left: 50%;
+  position: absolute;
+  top: 1rem;
+  transform: translateX(-50%);
+  width: 100%;
+}
+
+.kpress .claim {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-weight: var(--kpress-font-weight-sans-bold);
+  margin: 0.7rem 0 0.7rem 1.8rem;
+  position: relative;
+}
+
+.kpress .claim::before {
+  content: "\25AA\FE0E";
+  font-size: var(--kpress-bullet-size);
+  left: -0.85rem;
+  position: absolute;
+  top: 0.25rem;
+}
+
+.kpress .full-text {
+  margin: 1rem 0;
+}
+
+.kpress .annotated-para {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.kpress .annotated-para .para-caption {
+  align-self: center;
+  border-right: 2px solid var(--color-hint);
+  color: var(--color-secondary);
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-font-size-smaller);
+  margin: 0.5rem 1rem 0.5rem 0;
+  max-height: 15rem;
+  order: 0;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  scrollbar-color: var(--color-hint-gentle) transparent;
+  scrollbar-width: thin;
+  width: 20%;
+}
+
+.kpress .annotated-para .para {
+  order: 1;
+  width: 80%;
+}
+
+.kpress .frame-capture {
+  border: 1px solid var(--color-hint);
+  border-radius: var(--kpress-radius-lg);
+  display: block;
+  margin: 1rem auto;
+  max-width: 225px;
+}
+
+.kpress .video-gallery {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.kpress .video-item {
+  background-color: var(--kpress-doc-bg);
+  border: 1px solid var(--kpress-doc-border);
+  border-radius: var(--kpress-radius-lg);
+  padding: 1rem;
+}
+
+/* Inline YouTube player. The server emits a safe placeholder (no iframe, so
+   sanitized + sealed output stay network-free); video-popover.js swaps in this
+   responsive 16:9 frame on load. */
+.kpress-video {
+  margin: 1.5rem 0;
+}
+
+.kpress-video-embed {
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: var(--kpress-radius-sm);
+  display: block;
+  width: 100%;
+}
+
+.kpress .kpress-video-placeholder {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, rgb(0 0 0 / 72%), rgb(0 0 0 / 42%)), var(--color-primary);
+  border: 1px solid var(--kpress-doc-border);
+  border-radius: var(--kpress-radius-none);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  gap: 0.75rem;
+  justify-content: center;
+  min-height: 12rem;
+  padding: 1rem;
+  text-align: center;
+  width: 100%;
+}
+
+.kpress .kpress-video-placeholder:focus-visible {
+  outline: 3px solid var(--kpress-doc-link);
+  outline-offset: 3px;
+}
+
+.kpress .kpress-video-placeholder-action {
+  align-items: center;
+  background: rgb(255 255 255 / 92%);
+  border-radius: var(--kpress-radius-pill);
+  color: #111111;
+  display: inline-flex;
+  font-size: var(--kpress-font-size-small);
+  font-weight: 700;
+  height: 3rem;
+  justify-content: center;
+  line-height: 1;
+  width: 3rem;
+}
+
+.kpress .kpress-video-placeholder-title {
+  font-size: var(--kpress-font-size-small);
+  font-weight: 700;
+}
+
+.kpress-video-popover iframe {
+  aspect-ratio: 16 / 9;
+  border: 0;
+  width: 100%;
+}
+
+.kpress .video-item iframe {
+  border: 0;
+  border-radius: var(--kpress-radius-lg);
+  height: 200px;
+  width: 100%;
+}
+
+.kpress .tab-button,
+.kpress-tab-button {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--color-secondary);
+  cursor: pointer;
+  flex: 1 1 auto;
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: var(--kpress-caps-label-size);
+  font-variant-caps: var(--kpress-caps-variant);
+  font-weight: 600;
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: 1.2;
+  max-width: 10rem;
+  min-width: 5rem;
+  outline: none;
+  padding: 0 0.5rem;
+  text-align: center;
+  text-transform: var(--kpress-caps-transform);
+}
+
+.kpress-tab-button:focus-visible {
+  outline: 3px solid var(--kpress-doc-link);
+  outline-offset: 2px;
+}
+
+.kpress .tab-button-active,
+.kpress-tab-button[aria-selected="true"] {
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.kpress .tab-button-inactive,
+.kpress-tab-button[aria-selected="false"] {
+  border-color: transparent;
+  color: var(--color-secondary);
+}
+
+.kpress .tab-button-inactive:hover,
+.kpress-tab-button[aria-selected="false"]:hover {
+  border-color: var(--color-hover);
+  color: var(--color-primary);
+}
+
+.hidden {
+  display: none;
+}
+
+.kpress .hidden {
+  display: none;
+}
+
+.kpress-video-backdrop {
+  background-color: rgb(0 0 0 / 50%);
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  transition:
+    opacity var(--kpress-transition-fade),
+    visibility var(--kpress-transition-fade);
+  visibility: hidden;
+  z-index: 199;
+}
+
+.kpress-video-backdrop.kpress-visible {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.kpress-video-popover {
+  background: var(--kpress-doc-bg);
+  border: 1px solid var(--kpress-doc-border);
+  color: var(--kpress-doc-text);
+  display: flex;
+  flex-direction: column;
+  left: 1rem;
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  position: fixed;
+  top: 1rem;
+  width: min(44rem, calc(100dvw - 2rem));
+  z-index: 200;
+}
+
+.kpress-video-popover.kpress-maximized {
+  bottom: 1rem;
+  right: 1rem;
+  width: auto;
+}
+
+.kpress-video-header {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem 0.5rem 0.85rem;
+}
+
+/* Icon-only close (Lucide `x`), not a text button. */
+.kpress-video-header [data-kpress-video-close] {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-muted);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  padding: 0.25rem;
+  transition:
+    background var(--kpress-transition-fast),
+    color var(--kpress-transition-fast);
+}
+
+.kpress-video-header [data-kpress-video-close]:hover,
+.kpress-video-header [data-kpress-video-close]:focus-visible {
+  background: var(--color-hover-bg);
+  color: var(--kpress-doc-text);
+}
+
+.kpress-video-header [data-kpress-video-close] svg {
+  block-size: 18px;
+  display: block;
+  inline-size: 18px;
+}
+
+/* Wide document: TOC is a sticky sidebar. Widths track the document viewport
+   via `cqw` (not the window), so this is correct standalone and embedded. */
+@container kpress-doc (min-width: 75rem) {
+  /* Departure from kash (DEP-FONT-WIDE): kash only bumps prose above 1rem for
+     print; on screen it stays 1rem at every width. We nudge the on-screen
+     reading size to 1.1rem on wide panes only, because PT Serif's small
+     x-height reads smaller than the sans chrome sitting beside it in
+     metabrowser. Base stays 1rem, so narrow/embedded panes keep kash parity. */
+  .kpress {
+    --kpress-font-size-normal: 1.1rem;
+  }
+
+  body.kpress-video-open .kpress-toc,
+  .kpress-viewport.kpress-video-open .kpress-toc {
+    display: none;
+  }
+
+  /* The TOC sidebar needs the full document width. Both the article
+     (`.kpress-doc`, max-width 76ch+2rem) AND the inner grid wrapper
+     (`.kpress-doc-layout`, max-width 76ch) are otherwise capped at the
+     single-column reading measure and centred via margin:auto — so left
+     in place the two-column grid is crushed into ~600px and shoved toward
+     the centre/right (a left margin on the TOC, the fixed tracks spilling
+     past the cap to the right). Uncap both so the sidebar + content span
+     the pane, left-aligned. */
+  .kpress-doc:has(.kpress-toc),
+  .kpress-doc-layout:has(.kpress-toc) {
+    margin-inline: 0;
+    max-width: none;
+  }
+
+  /* BOTH columns are fixed widths, and the pair is left-aligned with
+     justify-content. Neither track contains a pane-coupled term (no cqw/vw, no
+     1fr), so the content column is a hard constant 48rem at every pane width.
+     The earlier `clamp(.., 15cqw, ..)` TOC column grew with the pane and, under
+     a fixed 68rem group cap, ate into the 1fr content column -- so the text got
+     narrower the wider you dragged. Fixed tracks remove that coupling entirely;
+     left-aligning pins the TOC + content to the start so all extra pane width
+     becomes a single trailing margin -- no empty band to the left of the TOC. */
+  .kpress-content-with-toc.has-toc,
+  .kpress-content-with-toc:has(.kpress-toc) {
+    align-items: start;
+    column-gap: 3rem;
+    grid-template-columns: 15rem 51rem;
+    justify-content: start;
+    min-height: 100dvh;
+  }
+
+  /* The content track is 51rem = the 48rem reading measure + 2×1.5rem inset.
+     The base md rule pads .kpress-long-text by 4rem inline (kash's md:px-16,
+     meant to inset text from the screen edge in a full-width single-column
+     view). Here the column is already inset by the 3rem TOC gap and a large
+     symmetric outer margin, so we trim that padding back to 1.5rem; with the
+     widened track the *text* lands at the full 48rem measure (border-box), not
+     the 40rem it shrank to under 4rem padding. */
+  .kpress-content-with-toc .kpress-long-text {
+    grid-column: 2;
+    margin: 0;
+    max-width: none;
+    padding-inline: 1.5rem;
+  }
+
+  .kpress-toc {
+    align-self: start;
+    grid-column: 1;
+    margin: 0;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    position: sticky;
+    scrollbar-color: var(--kpress-doc-border) transparent;
+    scrollbar-width: thin;
+    top: 2rem;
+    width: auto;
+  }
+
+  .kpress-toc::-webkit-scrollbar {
+    width: 2px;
+  }
+
+  .kpress-toc::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .kpress-toc::-webkit-scrollbar-thumb {
+    background: var(--kpress-doc-border);
+    border-radius: var(--kpress-radius-sm);
+  }
+
+  .kpress-toc-toggle,
+  .kpress-toc-backdrop {
+    display: none;
+  }
+
+  /* Wide tables bleed rightward into the trailing margin instead of scrolling
+     inside the reading column. The grid is 15rem TOC + 3rem gap + 51rem column
+     (left-aligned), and `.kpress-long-text` insets 1.5rem, so the table's left
+     edge sits 19.5rem from the pane's left; cap the width at the pane's right
+     edge (a matching 1.5rem inset → `100cqw - 21rem`). Narrow tables still fill
+     the reading column (`min-width: 100%`); wider ones grow to their content and
+     scroll internally only once they pass the pane edge. `100cqw` is the pane,
+     so the table never centres on / spills past the window. */
+  .kpress-content-with-toc.has-toc .kpress-table-wrap,
+  .kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap {
+    left: 0;
+    margin-inline: 0;
+    max-width: calc(100cqw - 21rem);
+    min-width: 100%;
+    transform: none;
+    width: max-content;
+  }
+
+  .kpress-content-with-toc.has-toc .kpress-table,
+  .kpress-content-with-toc:has(.kpress-toc) .kpress-table {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+/* Narrow document: TOC collapses to a floating list-icon button that fades in
+   once toc.js detects the reader has scrolled past the first section; clicking
+   it slides a fixed drawer (with backdrop) over the prose. Fixed positioning
+   resolves against the viewport container, so the drawer covers the document
+   pane, not the browser window. */
+@container kpress-doc (max-width: 74.99rem) {
+  .kpress-toc-toggle {
+    left: 1rem;
+    opacity: 0;
+    position: fixed;
+    top: 1rem;
+    transition:
+      opacity var(--kpress-transition-fade),
+      visibility var(--kpress-transition-fade),
+      color var(--kpress-transition-fast),
+      border-color var(--kpress-transition-fast),
+      background-color var(--kpress-transition-fast);
+    visibility: hidden;
+    z-index: 201;
+  }
+
+  .kpress-toc-toggle.show-toggle {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .kpress-toc-backdrop {
+    display: block;
+  }
+
+  .kpress-toc {
+    -webkit-overflow-scrolling: touch;
+    background: var(--kpress-doc-code-bg);
+    color: var(--color-secondary);
+    left: 1rem;
+    max-height: calc(100vh - 5rem);
+    max-width: 24rem;
+    opacity: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: none;
+    position: fixed;
+    top: 4rem;
+    touch-action: pan-y;
+    transform: translateY(-0.5rem);
+    transition:
+      opacity var(--kpress-transition-fade),
+      transform var(--kpress-transition-fade),
+      visibility var(--kpress-transition-fade);
+    visibility: hidden;
+    width: calc(100cqw - 2rem);
+    z-index: 200;
+  }
+
+  .kpress-toc a {
+    color: var(--color-secondary);
+  }
+
+  .kpress-toc a:hover {
+    color: var(--kpress-doc-text);
+  }
+
+  .kpress-toc a[data-active="true"],
+  .kpress-toc a.active {
+    color: var(--kpress-doc-text);
+  }
+
+  .kpress-toc-title {
+    font-size: var(--kpress-caps-label-size);
+  }
+
+  .kpress-toc ol {
+    font-size: var(--kpress-font-size-small);
+  }
+
+  .kpress-toc.kpress-mobile-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  .kpress .annotated-para {
+    display: block;
+  }
+
+  .kpress .annotated-para .para,
+  .kpress .annotated-para .para-caption {
+    width: auto;
+  }
+
+  /* Tablet band (48–75rem): the wide (>=75rem) and mobile (<48rem) blocks
+     both neutralize the base `.kpress-table-wrap` full-bleed (left:50% +
+     translateX(-50%) centred on the viewport), but this band did not — so
+     the centred bleed leaked through. Embedded in a host pane narrower than
+     the window, that centres the table on the window and spills it past the
+     pane on both sides. Anchor it to the prose column and scroll internally,
+     matching the other two breakpoints. */
+  .kpress-table-wrap {
+    left: 0;
+    margin-inline: 0;
+    max-width: 100%;
+    transform: none;
+    width: 100%;
+  }
+
+  .kpress-table {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+@container kpress-doc (max-width: 47.99rem) {
+  .kpress-long-text {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .kpress-table-wrap {
+    left: 0;
+    margin-left: auto;
+    margin-right: 0;
+    transform: none;
+    width: calc(100cqw - 1.5rem);
+  }
+
+  .kpress-table {
+    font-size: var(--kpress-font-size-smaller);
+    max-width: none;
+    min-width: 100%;
+    width: auto;
+  }
+
+  .kpress-table code,
+  .kpress-table pre {
+    font-size: var(--kpress-font-size-mono-small);
+  }
+}
+
+@media (max-width: 1199px) {
+  body.kpress-video-open {
+    overflow: hidden;
+    position: fixed;
+    touch-action: none;
+    width: 100%;
+  }
+
+  .kpress-viewport.kpress-video-open {
+    overflow: hidden;
+    touch-action: none;
+  }
+}
+
+@media (min-width: 1200px) {
+  .kpress-tooltip-wide-right {
+    max-width: 22rem;
+    min-width: 16rem;
+  }
+
+  .kpress-tooltip-footnote.kpress-tooltip-wide-right {
+    max-width: 24rem;
+    min-width: 18rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .kpress-tooltip-wide-right {
+    max-width: 28rem;
+    min-width: 20rem;
+  }
+
+  .kpress-tooltip-footnote.kpress-tooltip-wide-right {
+    max-width: 30rem;
+    min-width: 22rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpress [class],
+  .kpress [class]::before,
+  .kpress [class]::after,
+  .kpress summary,
+  .kpress summary::before,
+  .kpress details::details-content,
+  .kpress-toc-backdrop,
+  .kpress-video-backdrop {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+  }
+}
+
+/* Site chrome slots. The header/footer content is site-owned raw HTML (page
+   chrome slots); these wrappers only align it with the document column and
+   hand it the document's sans typography and theme tokens. KPress never
+   styles the slot's inner markup. */
+.kpress-site-header,
+.kpress-site-footer {
+  box-sizing: border-box;
+  color: var(--kpress-doc-text);
+  font-family: var(--kpress-font-sans);
+  font-size: var(--kpress-font-size-small);
+  margin: 0 auto;
+  max-width: var(--kpress-measure);
+  padding: 0.75rem 1.5rem;
+  width: 100%;
+}
+
+.kpress-site-header {
+  border-bottom: 1px solid var(--kpress-doc-border);
+}
+
+.kpress-site-footer {
+  border-top: 1px solid var(--kpress-doc-border);
+  color: var(--kpress-doc-muted);
+  margin-top: 2rem;
+}
+
+.kpress-site-header a,
+.kpress-site-footer a {
+  color: var(--kpress-doc-link);
+  text-decoration: none;
+}
+
+.kpress-site-header a:hover,
+.kpress-site-footer a:hover {
+  text-decoration: underline;
+}

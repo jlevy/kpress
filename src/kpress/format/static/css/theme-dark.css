@@ -1,0 +1,32 @@
+:root[data-kpress-resolved-theme="dark"] .kpress,
+:root[data-kpress-resolved-theme="dark"] .kpress-page-main,
+:root[data-kpress-resolved-theme="dark"] .kpress-tooltip,
+.kpress[data-kpress-theme="dark"] {
+  color-scheme: dark;
+  --kpress-doc-bg: var(--kpress-host-bg, #111418);
+  --kpress-doc-text: var(--kpress-host-text, #e8edf3);
+  --kpress-doc-muted: var(--kpress-host-muted, #aab4c0);
+  --kpress-doc-border: var(--kpress-host-border, #303842);
+  --kpress-doc-link: var(--kpress-host-link, #7eb6ff);
+  --kpress-doc-code-bg: var(--kpress-host-code-bg, #1b2027);
+  --color-bg: var(--kpress-doc-bg);
+  --color-bg-solid: var(--kpress-doc-bg);
+  --color-bg-alt: var(--kpress-doc-code-bg);
+  --color-bg-alt-solid: var(--kpress-doc-code-bg);
+  --color-bg-meta-solid: var(--kpress-doc-code-bg);
+  --color-bg-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
+  --color-text: var(--kpress-doc-text);
+  --color-primary: var(--kpress-doc-link);
+  --color-primary-light: color-mix(in srgb, var(--kpress-doc-link) 72%, white);
+  --color-secondary: var(--kpress-doc-muted);
+  --color-hint: var(--kpress-doc-muted);
+  --color-hint-strong: var(--kpress-doc-muted);
+  --color-hint-gentle: var(--kpress-doc-border);
+  --color-border-hint: var(--kpress-doc-border);
+  --color-hover-bg: color-mix(in srgb, var(--kpress-doc-muted) 85%, var(--kpress-doc-bg));
+  --color-hover: var(--kpress-doc-border);
+  --color-selection: color-mix(in srgb, var(--kpress-doc-link) 24%, transparent);
+  --color-scrollbar: color-mix(in srgb, var(--kpress-doc-muted) 45%, transparent);
+  --color-scrollbar-hover: color-mix(in srgb, var(--kpress-doc-muted) 70%, transparent);
+  --color-success: #22c55e;
+}

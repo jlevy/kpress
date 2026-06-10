@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en" data-kpress-theme="{{ theme_mode }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  {{ asset_tags }}
+  {{ head_extra_html }}
+</head>
+<body>
+  {% if header_html %}<header class="kpress-site-header">{{ header_html }}</header>{% endif %}
+  {{ fragment_html }}
+  {% if footer_html %}<footer class="kpress-site-footer">{{ footer_html }}</footer>{% endif %}
+</body>
+</html>

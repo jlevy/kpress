@@ -1,0 +1,344 @@
+@page {
+  margin: var(--kpress-print-page-margin);
+
+  @bottom-left {
+    color: #555555;
+    content: var(--kpress-print-footer);
+    font-family: var(--kpress-font-sans);
+    font-size: var(--kpress-font-size-small);
+  }
+
+  @bottom-right {
+    color: #111111;
+    content: counter(page);
+    font-family: var(--kpress-font-prose);
+    font-size: var(--kpress-font-size-small);
+  }
+}
+
+@media print {
+  :root,
+  .kpress {
+    color-scheme: light;
+    --kpress-doc-bg: #ffffff;
+    --kpress-doc-text: #111111;
+    --kpress-doc-muted: #444444;
+    --kpress-doc-border: #b8b8b8;
+    --kpress-doc-link: #000000;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  /* The document viewport is a 100dvh scroll container on screen; for print it
+     must release its height and overflow (and drop containment + the transform
+     layer) so the whole document flows across pages instead of clipping to one
+     screen. */
+  .kpress-viewport {
+    block-size: auto;
+    container-type: normal;
+    overflow: visible;
+    transform: none;
+  }
+
+  .kpress {
+    background: #ffffff;
+    color: #111111;
+    font-size: var(--kpress-print-font-size);
+    line-height: 1.4;
+  }
+
+  .kpress-no-print,
+  .kpress button,
+  .kpress-site-footer,
+  .kpress-site-header,
+  .kpress-tooltip,
+  .kpress-toc,
+  .kpress-toc-backdrop,
+  .kpress-video-backdrop,
+  .kpress-video-popover {
+    display: none;
+  }
+
+  .kpress-print-only {
+    display: block;
+  }
+
+  .kpress h1,
+  .kpress h2,
+  .kpress h3,
+  .kpress h4,
+  .kpress h5,
+  .kpress h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .kpress p,
+  .kpress li,
+  .kpress blockquote {
+    hyphens: auto;
+    orphans: 3;
+    text-align: justify;
+    widows: 3;
+  }
+
+  .kpress p {
+    margin-block: 0.65rem;
+  }
+
+  .kpress li {
+    margin-block-start: 0.6rem;
+  }
+
+  .kpress li > p:first-child {
+    margin-block-start: 0;
+  }
+
+  .kpress li > p:last-child {
+    margin-block-end: 0;
+  }
+
+  .kpress-long-text {
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .kpress blockquote,
+  .kpress pre,
+  .kpress table,
+  .kpress figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .kpress tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .kpress thead {
+    display: table-header-group;
+  }
+
+  .kpress sup {
+    font-size: 110%;
+  }
+
+  .kpress details.metadata {
+    display: none;
+  }
+
+  .kpress-tabs [role="tablist"] {
+    display: none;
+  }
+
+  .kpress-tab-panel,
+  .kpress-tab-panel[hidden] {
+    break-inside: avoid;
+    display: block;
+    max-block-size: none;
+    overflow: visible;
+    page-break-inside: avoid;
+    padding-block: 0.75rem;
+    visibility: visible;
+  }
+
+  .kpress-tab-panel::before {
+    color: #111111;
+    content: attr(data-kpress-tab-title);
+    display: block;
+    font-family: var(--kpress-font-sans);
+    font-feature-settings: var(--kpress-font-features-sans);
+    font-size: calc(1rem * var(--kpress-caps-heading-size-multiplier));
+    font-variant-caps: var(--kpress-caps-variant);
+    font-weight: var(--kpress-font-weight-sans-medium);
+    letter-spacing: var(--kpress-caps-spacing);
+    line-height: var(--kpress-caps-heading-line-height);
+    margin-block: 0 0.5rem;
+    text-transform: var(--kpress-caps-transform);
+  }
+
+  .kpress-table-wrap {
+    margin-inline: 0;
+    overflow: visible;
+  }
+
+  .kpress-code {
+    background-color: transparent;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .kpress-math,
+  .kpress-math math {
+    color: #111111;
+  }
+
+  .kpress-math-display {
+    break-inside: avoid;
+    overflow: visible;
+    page-break-inside: avoid;
+  }
+
+  .kpress-math[data-kpress-math-error="true"] {
+    background: transparent;
+    border-color: #111111;
+    color: #111111;
+  }
+
+  .kpress-diagram,
+  .kpress-diagram svg {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .kpress-diagram {
+    border-color: #111111;
+  }
+
+  .kpress-diagram-source {
+    overflow: visible;
+    white-space: pre-wrap;
+  }
+
+  .kpress-diagram-rendered {
+    overflow: visible;
+  }
+
+  .kpress ol {
+    counter-reset: kpress-print-list-item;
+    list-style: none;
+    margin-left: 1rem;
+    padding-left: 0;
+  }
+
+  .kpress ol > li {
+    align-items: baseline;
+    break-inside: avoid;
+    counter-increment: kpress-print-list-item;
+    display: grid;
+    gap: 0 0.5rem;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    margin-block: 0 0.5rem;
+    padding-left: 0;
+    page-break-inside: avoid;
+    position: static;
+  }
+
+  .kpress ol > li::before {
+    content: counter(kpress-print-list-item) ".";
+    font-family: var(--kpress-font-prose);
+    grid-column: 1;
+    text-align: right;
+  }
+
+  .kpress ol > li > * {
+    grid-column: 2;
+    hyphens: auto;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .kpress ol > li p,
+  .kpress ol > li blockquote {
+    text-align: left;
+    text-justify: none;
+  }
+
+  .kpress ol ol,
+  .kpress ol ul {
+    margin-left: 1.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .kpress ol ol {
+    counter-reset: none;
+    list-style: decimal outside;
+  }
+
+  .kpress ol ul {
+    list-style: none;
+  }
+
+  .kpress ol ol > li,
+  .kpress ol ul > li {
+    display: list-item;
+    margin-top: 0.4rem;
+    padding-left: 0.25rem;
+    text-align: left;
+    text-justify: none;
+  }
+
+  .kpress ol ol > li::before {
+    content: none;
+  }
+
+  .kpress ol ul > li::before {
+    content: "\25AA\FE0E";
+    font-size: 0.62rem;
+    left: -0.85rem;
+    position: absolute;
+    top: 0.25rem;
+  }
+
+  .kpress .kpress-long-list,
+  .kpress .kpress-long-list > li {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .kpress-footnote-ref a,
+  .kpress-footnote-backref,
+  .footnote-ref a,
+  .footnote {
+    background-color: transparent;
+    color: #111111;
+    font-family: var(--kpress-font-prose);
+    font-feature-settings: normal;
+    font-variant-caps: all-small-caps;
+    font-weight: 400;
+    padding: 0 0.05rem;
+  }
+
+  .kpress-footnote-backref,
+  a[href^="#fnref"],
+  .reversefootnote {
+    display: none;
+  }
+
+  .kpress .concepts {
+    column-count: 2;
+  }
+
+  .kpress .video-gallery {
+    display: block;
+  }
+
+  .kpress .kpress-video-placeholder {
+    aspect-ratio: auto;
+    background: transparent;
+    border: 1px solid #999999;
+    color: #111111;
+    min-height: 0;
+    padding: 0.75rem;
+  }
+
+  .kpress .kpress-video-placeholder-action {
+    display: none;
+  }
+
+  .kpress .video-item,
+  .kpress .boxed-text,
+  .kpress .frame-capture,
+  .kpress .key-claims,
+  .kpress .summary,
+  .kpress .concepts {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

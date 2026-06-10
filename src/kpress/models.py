@@ -1,0 +1,60 @@
+"""Public KPress runtime data models."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Literal
+
+PrintProfile = Literal["document", "source", "table", "tree", "plain"]
+ThemeMode = Literal["system", "light", "dark"]
+
+
+@dataclass(frozen=True)
+class KPressAsset:
+    """Resolved KPress package asset ready for a host response."""
+
+    content: bytes
+    media_type: str
+    etag: str
+    cache_control: str = "no-cache"
+
+
+@dataclass(frozen=True)
+class KPressRenderRequest:
+    """Normalized dynamic render request accepted by KPress hosts."""
+
+    source_text: str
+    source_path: str
+    kind: str
+    view: str
+    ext: str
+    mtime_hash: str
+    size: int
+    frontmatter: dict[str, Any] = field(default_factory=dict)
+    frontmatter_error: str | None = None
+    profile: str | None = None
+    theme_mode: ThemeMode = "system"
+    resolved_theme: Literal["light", "dark"] = "light"
+    host: str = "host"
+    asset_url_prefix: str = "/kpress-static/"
+    # Hosts that show the document title in their own chrome suppress the
+    # rendered <h1> doc header (default keeps it, as standalone pages want it).
+    show_doc_header: bool = True
+
+
+@dataclass(frozen=True)
+class KPressExportRequest:
+    """Request to render a KPress document into a publishable artifact."""
+
+    path: str
+    kind: str
+    view: str
+    print_profile: PrintProfile = "document"
+    theme_mode: ThemeMode = "system"
+    export_mode: Literal["page", "single-file", "static-hosted", "sealed-static-hosted", "pdf"] = (
+        "page"
+    )
+    asset_mode: Literal["linked", "inline", "sealed"] = "linked"
+    optimize: bool = False
+    destination: str | Path | None = None
