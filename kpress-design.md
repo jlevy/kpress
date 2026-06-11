@@ -517,10 +517,13 @@ KPress emits semantic HTML and namespaced classes.
 Host chrome must not appear in KPress fragments or pages.
 
 The current public contract is encoded in `kpress.contract` and tested by
-`tests/test_public_contract.py`. This is a new package, so keep the contract direct and
-current rather than adding a compatibility shim layer.
-Changing public names means changing `kpress.contract`, docs, tests, and accepted
-goldens in the same patch.
+`tests/test_public_contract.py`. This is a new package and evolves by **hard cuts**:
+keep the contract direct and current — no deprecation shims, no backward-compatibility
+layers, no aliases kept around for old callers.
+A breaking change is acceptable when an out-of-date caller fails loudly with a clear
+error message; what is never acceptable is silent fallback or silently different
+behavior. Changing public names means changing `kpress.contract`, docs, tests, and
+accepted goldens in the same patch; the release/PR notes are the migration guide.
 
 Current public classes (from `contract.py::PUBLIC_CSS_CLASSES`):
 

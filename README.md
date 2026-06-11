@@ -61,11 +61,20 @@ Project status and process:
 - [TODO.md](TODO.md): implementation status ledger.
 - [docs/kpress-completion-plan.md](docs/kpress-completion-plan.md): map of remaining
   work to verified completion.
-- [EXTRACTION.md](EXTRACTION.md): the public package boundary and release blockers.
 - [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md): dev
   setup and the quality gate.
 - [SECURITY.md](SECURITY.md), [SUPPLY-CHAIN-SECURITY.md](SUPPLY-CHAIN-SECURITY.md),
   [NOTICE.md](NOTICE.md): security policy, dependency policy, and third-party notices.
+
+## Compatibility policy
+
+KPress is a young package and evolves by **hard cuts**: API and contract changes land
+directly, with no deprecation shims and no backward-compatibility layers.
+A change is acceptable when an out-of-date caller fails loudly with a clear error
+message — never silently.
+The supported surface is pinned in `kpress.contract` (`PUBLIC_*` names) and enforced by
+tests; changing a public name means updating the contract, docs, tests, and goldens in
+the same patch, and release/PR notes are the migration guide.
 
 ## Development
 

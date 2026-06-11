@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from devtools.extraction_check import find_violations, public_package_paths
+from devtools.public_hygiene import find_violations, public_package_paths
 
 
-def test_extraction_check_flags_private_path(tmp_path: Path) -> None:
+def test_public_hygiene_flags_private_path(tmp_path: Path) -> None:
     doc = tmp_path / "README.md"
     doc.write_text("Reference: /Users/example/private/source.py\n", encoding="utf-8")
 
@@ -14,7 +14,7 @@ def test_extraction_check_flags_private_path(tmp_path: Path) -> None:
     assert [(finding.rule, finding.line) for finding in findings] == [("private-path", 1)]
 
 
-def test_extraction_check_flags_secret_like_token(tmp_path: Path) -> None:
+def test_public_hygiene_flags_secret_like_token(tmp_path: Path) -> None:
     doc = tmp_path / "SECURITY.md"
     doc.write_text("Do not commit sk-" + ("a" * 24) + "\n", encoding="utf-8")
 

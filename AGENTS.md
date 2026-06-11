@@ -39,7 +39,7 @@ uv run python devtools/lint.py --check  # full lint gate, matching CI (or: make 
 
 The lint gate runs Ruff, basedpyright, codespell, Biome 2, TypeScript `checkJs`,
 browserless DOM tests for the ESM helpers, and the extraction safety checks
-(`devtools/extraction_check.py`).
+(`devtools/public_hygiene.py`).
 
 ## Architecture Overview
 

@@ -55,7 +55,7 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
-    extraction-check:
-      run: uv run python devtools/extraction_check.py
+    public-hygiene:
+      run: uv run python devtools/public_hygiene.py
     tests:
       run: uv run pytest -q
