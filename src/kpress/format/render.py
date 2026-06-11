@@ -519,6 +519,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         if options.footer_html
         else ""
     )
+    settings_menu = _render_settings_menu(options.theme_mode) if options.show_settings else ""
     html = f"""<!doctype html>
 <html lang="en" data-kpress-theme="{escape(options.theme_mode)}" data-kpress-resolved-theme="{escape(options.resolved_theme)}">
 <head>
@@ -534,7 +535,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
 </head>
 <body class="kpress-frame" data-kpress-frame>
   <main class="kpress-page-main kpress-viewport" data-kpress-viewport>{site_header}
-    {_render_settings_menu(options.theme_mode)}
+    {settings_menu}
     {fragment.html}{site_footer}
   </main>
   <div class="kpress-video-backdrop" aria-hidden="true"></div>

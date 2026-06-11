@@ -136,8 +136,8 @@
    app's settings control, re-tokenized onto KPress document tokens so it
    themes with the document. The wrapper's `aria-expanded` drives menu visibility. */
 .kpress-settings {
-  inset-block-start: 0.75rem;
-  inset-inline-end: 0.75rem;
+  inset-block-start: var(--kpress-settings-inset-block);
+  inset-inline-end: var(--kpress-settings-inset-inline);
   position: fixed;
   z-index: 250;
 }

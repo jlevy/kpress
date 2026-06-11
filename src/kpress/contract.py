@@ -197,6 +197,8 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-caps-spacing",
     "--kpress-caps-transform",
     "--kpress-measure",
+    "--kpress-settings-inset-block",
+    "--kpress-settings-inset-inline",
     "--kpress-print-font-size",
     "--kpress-print-footer",
     "--kpress-print-page-margin",

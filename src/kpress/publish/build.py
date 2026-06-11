@@ -449,6 +449,7 @@ def build_site(
                 toc_min_headings=config.format.toc_min_headings,
                 math=config.format.math,
                 show_frontmatter=config.format.show_frontmatter,
+                show_settings=config.format.show_settings,
                 head_extra_html=config.head_extra_html,
                 header_html=config.header_html,
                 footer_html=config.footer_html,

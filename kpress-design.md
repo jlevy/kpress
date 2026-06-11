@@ -560,15 +560,16 @@ enforce “always use CSS vars”).
 - **Surface fill** — `--kpress-doc-surface-bg` is the single subtle fill shared by code
   blocks, table headers, and (where applicable) metadata/shaded surfaces.
   `--kpress-doc-surface-hover` and `--kpress-doc-surface-selected` extend the family for
-  interaction highlights (TOC hover/active, hovered controls), deepening with interaction
-  strength. All three are **host-overridable** — they read
+  interaction highlights (TOC hover/active, hovered controls), deepening with
+  interaction strength.
+  All three are **host-overridable** — they read
   `var(--kpress-host-surface-*, <neutral default>)`, so a host (or a palette preset) can
-  retarget the highlights, not just the code background. The neutral default is a subtle
-  link tint, re-derived per light/dark theme.
+  retarget the highlights, not just the code background.
+  The neutral default is a subtle link tint, re-derived per light/dark theme.
   All first-party color literals are written as `oklch()` (exact, round-trip-verified
   conversions; see `devtools/css_to_oklch.py`).
-- **Palette presets** — reasonable default sets for common cases, each a *named bundle of
-  the `--kpress-host-*` contract* (not special-cased code), keyed on
+- **Palette presets** — reasonable default sets for common cases, each a *named bundle
+  of the `--kpress-host-*` contract* (not special-cased code), keyed on
   `.kpress[data-kpress-palette="<name>"]` and selected via `RenderOptions.palette` /
   `format.palette`. `neutral` is the default (no overrides); `warm` applies the original
   tan-paper ramp (`--kpress-host-code-bg` + `--kpress-host-surface-hover/-selected`). A
@@ -638,6 +639,35 @@ scroll away with the content.
 dismiss — and marks the active segment with `aria-checked`. Selection persists in
 `localStorage` (`kpress.theme`) and the pre-paint bootstrap reads it back.
 There is no text theme chooser; the icon menu is the only theme control.
+
+The gear is two host seams — *whether* and *where* — kept separate so a site controls
+each independently without forking kpress:
+
+- **Show/hide** (`RenderOptions.show_settings`, default `True`; `format.show_settings`
+  in a publish config).
+  Off renders no `.kpress-settings` at all — for hosts that drive theme through their
+  own chrome or want no settings UI. The gear is the only built-in theme control, so
+  turning it off in a standalone page leaves the reader on the server-resolved theme
+  with no switcher; pair it with your own control if you still want one.
+- **Position** (CSS vars).
+  The gear’s insets resolve through host hooks —
+  `inset-block-start: var(--kpress-settings-inset-block)` and
+  `inset-inline-end: var(--kpress-settings-inset-inline)`, each defaulting to
+  `var(--kpress-host-settings-inset-<block|inline>, 0.75rem)`. Set
+  `--kpress-host-settings-inset-block` / `--kpress-host-settings-inset-inline` on
+  `:root` to move it (the `--kpress-host-*` hooks are not redeclared on the token scope,
+  so a `:root` value flows through instead of being shadowed — the same pattern as the
+  color hooks). `.kpress-settings` is a child of the `@container kpress-doc` viewport, so
+  a host can also size the inset per layout band with a container query.
+  Example — align the gear to the right edge of the header underline (the content
+  column) instead of flush to the window:
+  `--kpress-host-settings-inset-inline: max(3rem, calc(50vw - 24rem))` for the centered
+  bands, where `24rem` is half the `--kpress-measure` reading width and `3rem` is the
+  page + document gutter floor for narrow widths.
+  (Use the literal half-measure rather than `var(--kpress-measure)` when setting this on
+  `:root`: `--kpress-measure` lives on the document scope, not `:root`, so a `var()`
+  reference there resolves to nothing and voids the inset.)
+  ojoshe.com uses exactly this.
 
 The standalone scroller `.kpress-page-main` carries the document `background`/`color`
 and the document tokens, so the whole window is themed.

@@ -85,6 +85,16 @@
   /* Prose reading measure. 48rem (~768px) matches kash's --content-width; the
      earlier 76ch (~640px in serif) read narrower than the reference. */
   --kpress-measure: 48rem;
+  /* Settings gear position (standalone page shell only). The gear is `position:
+     fixed`, pinned to the top-right of the document frame; these two tokens are
+     its block/inline insets. Host-overridable through the `--kpress-host-*`
+     hooks so a site can move it without touching kpress — e.g. align it to the
+     content column's right edge instead of flush to the window, by setting on :root
+       --kpress-host-settings-inset-inline: max(3rem, calc(50vw - 24rem));
+     (24rem = half the 48rem --kpress-measure; use the literal on :root, where
+     --kpress-measure is not in scope. See kpress-design.md → Settings menu.) */
+  --kpress-settings-inset-block: var(--kpress-host-settings-inset-block, 0.75rem);
+  --kpress-settings-inset-inline: var(--kpress-host-settings-inset-inline, 0.75rem);
   --kpress-doc-bg: var(--kpress-host-bg, oklch(100.00% 0 0));
   --kpress-doc-text: var(--kpress-host-text, oklch(21.01% 0.0318 264.7));
   --kpress-doc-muted: var(--kpress-host-muted, oklch(50.06% 0.025 259.2));

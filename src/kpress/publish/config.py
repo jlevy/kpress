@@ -37,6 +37,7 @@ class FormatConfig:
     math: MathMode = "auto"
     diagrams: str = "auto"
     show_frontmatter: bool = True
+    show_settings: bool = True
 
 
 @dataclass(frozen=True)
@@ -194,6 +195,7 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "math",
         "diagrams",
         "show_frontmatter",
+        "show_settings",
     }
 )
 _KNOWN_OPTIMIZER_KEYS = frozenset({"mode", "precompress"})
@@ -355,6 +357,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             math=cast(MathMode, math),
             diagrams=str(fmt.get("diagrams", "auto")),
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),
+            show_settings=_bool_value(fmt.get("show_settings"), True),
         ),
         publish=PublishConfig(
             output_dir=str(publish.get("output_dir", "public")),

@@ -356,6 +356,20 @@ def test_invalid_optimizer_mode_raises(tmp_path: Path) -> None:
         load_config(config)
 
 
+def test_format_show_settings_parses_and_defaults_on(tmp_path: Path) -> None:
+    from kpress.publish.config import load_config
+
+    default = load_config(tmp_path / "missing.yml")
+    assert default.format.show_settings is True
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  show_settings: false\n",
+        encoding="utf-8",
+    )
+    assert load_config(config).format.show_settings is False
+
+
 def test_invalid_format_math_raises(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config

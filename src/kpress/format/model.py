@@ -112,6 +112,11 @@ class RenderOptions:
     # Render frontmatter as a collapsible "Metadata" disclosure. Sites that treat
     # frontmatter as build-only metadata (not reader-facing) pass False to omit it.
     show_frontmatter: bool = True
+    # Render the standalone gear-icon settings popover (theme chooser) in the page
+    # shell. On by default; hosts that drive theme through their own chrome, or want
+    # no settings UI at all, pass False to omit it. Position is host-overridable via
+    # the --kpress-host-settings-inset-* CSS vars; this is the on/off switch.
+    show_settings: bool = True
     math: MathMode = "auto"
     diagrams: DiagramMode = "auto"
     printable: bool = True
