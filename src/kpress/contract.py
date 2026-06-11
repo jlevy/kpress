@@ -65,6 +65,7 @@ PUBLIC_FORMAT_API = (
 )
 
 PUBLIC_PUBLISH_API = (
+    "BuildExtensions",
     "BuildOptions",
     "BuildReport",
     "KPressConfig",
@@ -80,6 +81,7 @@ PUBLIC_PUBLISH_API = (
     "load_config",
     "optimize_text",
     "probe_capability",
+    "resolve_stage",
 )
 
 PUBLIC_CSS_CLASSES = (
@@ -235,6 +237,9 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
     "components/toc.html.jinja": ("toc_items",),
 }
 
+# Built-in build-pipeline stage names (BuildExtensions.pipeline entries).
+PUBLIC_PIPELINE_STAGES = ("kpress:none", "kpress:full")
+
 # Extension-model name contracts (kpress-design.md "Extension and Injection
 # Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
 
@@ -306,6 +311,7 @@ __all__ = [
     "PUBLIC_JS_EXPORTS",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",
+    "PUBLIC_PIPELINE_STAGES",
     "PUBLIC_PUBLISH_API",
     "PUBLIC_TEMPLATE_VARIABLES",
     "PUBLIC_WIDGETS",

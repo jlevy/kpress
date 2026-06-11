@@ -16,11 +16,19 @@ from kpress.format.assets import content_hash, package_asset_output_path
 from kpress.format.model import AssetMode, OptimizerMode
 from kpress.models import KPressExportRequest
 from kpress.output import write_bytes_atomic, write_text_atomic
-from kpress.publish.config import BuildOptions, KPressConfig, load_config
+from kpress.publish.config import BuildExtensions, BuildOptions, KPressConfig, load_config
 from kpress.publish.discover import discover_sources, discover_static_files
 from kpress.publish.frontmatter import DocumentSource, read_document_source, route_override
 from kpress.publish.manifest import BuildReport, ManifestAsset, OutputFile
-from kpress.publish.optimize import optimize_text, precompress_file
+from kpress.publish.optimize import (
+    ContentKind,
+    FullOptimizer,
+    NoneOptimizer,
+    OptimizerBackend,
+    optimize_text,
+    precompress_file,
+    resolve_stage,
+)
 from kpress.publish.routes import (
     RoutePlanEntry,
     plan_site_routes,
@@ -81,12 +89,51 @@ def _precompress(config: KPressConfig, options: BuildOptions | None) -> list[str
     return list(config.optimizer.precompress)
 
 
-def _asset_optimizer(optimizer: OptimizerMode) -> Callable[[str, str], str] | None:
-    if optimizer == "none":
+def _resolve_pipeline(
+    extensions: BuildExtensions | None, optimizer: OptimizerMode
+) -> list[OptimizerBackend]:
+    """The ordered stage list for this build.
+
+    A host pipeline (BuildExtensions.pipeline) wins; otherwise the list derives
+    from optimizer.mode — `none` is an empty pipeline (byte-identical output),
+    `full` is the single built-in `kpress:full` stage. Identity stages
+    (NoneOptimizer) are dropped: they change nothing and would pollute the
+    manifest's stage names.
+    """
+
+    if extensions is not None and extensions.pipeline is not None:
+        stages = [resolve_stage(stage) for stage in extensions.pipeline]
+    elif optimizer == "none":
+        stages = []
+    else:
+        stages = [resolve_stage("kpress:full")]
+    return [stage for stage in stages if not isinstance(stage, NoneOptimizer)]
+
+
+def _run_stages(stages: list[OptimizerBackend], content: str, kind: str) -> tuple[str, str | None]:
+    """Run the pipeline over one artifact; return (content, joined names).
+
+    The joined names cover stages that actually changed the content (the
+    manifest's `optimizer_backend`); None when nothing was rewritten.
+    """
+
+    normalized = cast(ContentKind, kind if kind in {"html", "css", "js"} else "other")
+    applied: list[str] = []
+    for stage in stages:
+        result = stage.optimize(content, kind=normalized)
+        if result.changed:
+            applied.append(stage.name)
+        content = result.content
+    return content, "+".join(applied) if applied else None
+
+
+def _asset_optimizer(stages: list[OptimizerBackend]) -> Callable[[str, str], str] | None:
+    if not stages:
         return None
 
     def optimize_asset(content: str, kind: str) -> str:
-        return optimize_text(content, kind=kind, backend=optimizer)
+        content, _names = _run_stages(stages, content, kind)
+        return content
 
     return optimize_asset
 
@@ -355,17 +402,25 @@ def _copy_static_passthrough(
 
 
 def build_site(
-    config_path: Path | str = "kpress.yml", options: BuildOptions | None = None
+    config_path: Path | str = "kpress.yml",
+    options: BuildOptions | None = None,
+    extensions: BuildExtensions | None = None,
 ) -> BuildReport:
-    """Build a static KPress site."""
+    """Build a static KPress site.
+
+    ``extensions`` is the host's build-pipeline seam (ordered stage plugins +
+    tree/page-HTML transforms); omitted, the build derives its single stage
+    from ``optimizer.mode`` exactly as before.
+    """
 
     config = load_config(config_path)
     base = _base_dir(config)
     output_dir = _output_dir(config, options)
     optimizer = _optimizer(config, options)
+    stages = _resolve_pipeline(extensions, optimizer)
 
     # Preflight: verify the full optimizer toolchain before writing any output.
-    if optimizer == "full":
+    if any(isinstance(stage, FullOptimizer) for stage in stages):
         from kpress.publish.capability import preflight_optimizer_full
 
         preflight_optimizer_full()
@@ -378,10 +433,9 @@ def build_site(
     # listed in the prior manifest (plus the `_kpress/` infrastructure tree
     # we own); user files that happen to share the directory are untouched.
     _purge_prior_kpress_outputs(output_dir)
-    optimized = optimizer != "none"
     asset_mode = _asset_mode(config, options)
     precompress = _precompress(config, options)
-    asset_optimizer = _asset_optimizer(optimizer)
+    asset_optimizer = _asset_optimizer(stages)
     files: list[OutputFile] = []
     assets: list[ManifestAsset] = []
     routes: dict[str, str] = {}
@@ -450,6 +504,7 @@ def build_site(
                 math=config.format.math,
                 show_frontmatter=config.format.show_frontmatter,
                 widgets=config.format.widgets,
+                transform_tree=extensions.transform_tree if extensions else None,
                 head_extra_html=config.head_extra_html,
                 header_html=config.header_html,
                 footer_html=config.footer_html,
@@ -457,12 +512,12 @@ def build_site(
         )
         any_math = any_math or page.has_math
         rendered_html = _rewrite_package_asset_urls(page.html, package_rewrites)
+        # Whole-page host transform (BuildExtensions.transform_page_html),
+        # applied before the pipeline stages so stages see the final page.
+        if extensions is not None and extensions.transform_page_html is not None:
+            rendered_html = extensions.transform_page_html(rendered_html, route)
         rendered_bytes = rendered_html.encode("utf-8")
-        html = (
-            optimize_text(rendered_html, kind="html", backend=optimizer)
-            if optimized
-            else rendered_html
-        )
+        html, applied_stages = _run_stages(stages, rendered_html, "html")
         write_text_atomic(out_path, html)
         routes[route] = out_path.relative_to(output_dir).as_posix()
         files.append(
@@ -470,8 +525,8 @@ def build_site(
                 out_path,
                 output_dir,
                 kind="html",
-                original_size=len(rendered_bytes) if optimized else None,
-                optimizer_backend=optimizer if optimized else None,
+                original_size=len(rendered_bytes) if applied_stages else None,
+                optimizer_backend=applied_stages,
             )
         )
         for asset_path in _collect_document_assets(
@@ -500,13 +555,14 @@ def build_site(
 
     files.extend(_precompress_outputs(output_dir, files, precompress))
 
+    pipeline_names = "+".join(stage.name for stage in stages) if stages else None
     report = BuildReport(
         output_dir=output_dir,
         files=files,
         assets=assets,
         routes=routes,
         diagnostics=[],
-        optimizer_backend=optimizer if optimized else None,
+        optimizer_backend=pipeline_names,
         precompress=precompress,
     )
     manifest = report.write_manifest()
@@ -517,7 +573,7 @@ def build_site(
         assets=assets,
         routes=routes,
         diagnostics=[],
-        optimizer_backend=optimizer if optimized else None,
+        optimizer_backend=pipeline_names,
         precompress=precompress,
     )
 

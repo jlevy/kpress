@@ -321,6 +321,35 @@ def optimize_text(content: str, *, kind: ContentKind | str, backend: str | None 
     return get_optimizer(backend).optimize(content, kind=normalized).content
 
 
+# Built-in pipeline stage names a host may reference in BuildExtensions.pipeline
+# (pinned by contract.PUBLIC_PIPELINE_STAGES).
+BUILTIN_PIPELINE_STAGES = ("kpress:none", "kpress:full")
+
+
+def resolve_stage(stage: OptimizerBackend | str) -> OptimizerBackend:
+    """Resolve one build-pipeline stage: a built-in name or a stage object.
+
+    Stage objects share the optimizer-backend shape (``name`` +
+    ``optimize(content, *, kind) -> OptimizerResult``). An unknown name is an
+    error, never a silent skip — same strictness as optimizer.mode.
+    """
+
+    if not isinstance(stage, str):
+        return stage
+    if stage == "kpress:none":
+        return NoneOptimizer()
+    if stage == "kpress:full":
+        return FullOptimizer()
+    from kpress.errors import KPressPublishError
+
+    msg = (
+        f"Unknown pipeline stage {stage!r}; built-in stages are "
+        f"{', '.join(repr(name) for name in BUILTIN_PIPELINE_STAGES)} "
+        f"(or pass a stage object)"
+    )
+    raise KPressPublishError(msg)
+
+
 def optimize_file(
     path: Path, *, kind: ContentKind | str, backend: str | None = "none"
 ) -> OutputFile:

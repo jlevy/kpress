@@ -172,6 +172,10 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
             math=options.math,
             diagrams=options.diagrams,
         )
+    # Build-time tree transform (BuildExtensions.transform_tree): applied
+    # before the TOC and page model derive from the tree.
+    if options.transform_tree is not None:
+        tree = options.transform_tree(tree)
     toc = _render_toc(tree, options)
     frontmatter_error = _render_frontmatter_error(document)
     frontmatter = _render_frontmatter(document) if options.show_frontmatter else ""

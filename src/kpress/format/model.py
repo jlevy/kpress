@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -123,6 +123,11 @@ class RenderOptions:
     # #kpress-page-model block for the widget's own JS (schema-with-the-code).
     # Defaults merge under this map (settings is on unless turned off here).
     widgets: dict[str, Any] = field(default_factory=dict)
+    # Optional document-tree transform (a callable, never serialized): applied
+    # right after parsing, before the TOC/page model derive from the tree, so a
+    # build-time transform (e.g. injected section anchors) is reflected in
+    # both. Threaded from BuildExtensions.transform_tree by the publisher.
+    transform_tree: Callable[[DocumentTree], DocumentTree] | None = None
     # Page chrome slots: opaque site-owned HTML emitted verbatim by render_page
     # (head extra inside <head>; header/footer wrapped in .kpress-site-header /
     # .kpress-site-footer). KPress styles the wrappers but never interprets the

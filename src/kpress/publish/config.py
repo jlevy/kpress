@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -112,6 +113,29 @@ class BuildOptions:
     asset_mode: AssetMode | None = None
     optimizer: OptimizerMode | None = None
     precompress: list[str] | None = None
+
+
+@dataclass(frozen=True)
+class BuildExtensions:
+    """Host build-pipeline extensions (the extension model's layer E; see
+    kpress-design.md "Extension and Injection Model").
+
+    These are callables and stage objects, not config-file values: the pipeline
+    is the Python-side extension seam (whole-artifact, build-time work). It
+    stays an explicit ordered list — no priorities, no hook lifecycle.
+    """
+
+    # Ordered stages run over each deployable text artifact (html/css/js).
+    # Entries are built-in stage names ("kpress:none" / "kpress:full") or stage
+    # objects with the optimizer-backend shape. None derives the list from
+    # optimizer.mode — full back-compat.
+    pipeline: Sequence[Any] | None = None
+    # Document-tree transform, applied after parsing and before the TOC/page
+    # model are derived (so injected headings show up in both).
+    transform_tree: Callable[[Any], Any] | None = None
+    # Whole-page transform `(html, route) -> html`, applied to each rendered
+    # page before the pipeline stages.
+    transform_page_html: Callable[[str, str], str] | None = None
 
 
 def _as_dict(value: object) -> YamlDict:
