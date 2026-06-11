@@ -236,9 +236,10 @@ def normalize_document_surface(html: str) -> str:
         flags=re.DOTALL,
     )
 
-    # Remove the diagnostics JSON block.
+    # Remove the diagnostics and page-model JSON blocks (the page model's
+    # `route` legitimately differs between dynamic and published renders).
     html = re.sub(
-        r'<script\s+type="application/json"\s+id="kpress-diagnostics">.*?</script>',
+        r'<script\s+type="application/json"\s+id="kpress-(diagnostics|page-model)">.*?</script>',
         "",
         html,
         flags=re.DOTALL,

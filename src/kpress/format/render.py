@@ -7,6 +7,7 @@ import re
 from functools import lru_cache
 from html import escape
 from pathlib import Path
+from typing import Any
 
 from kpress.format.assets import (
     katex_asset_refs,
@@ -449,6 +450,42 @@ def _render_settings_menu(theme_mode: str) -> str:
     )
 
 
+# Built-in widget defaults, merged UNDER RenderOptions.widgets: the settings
+# gear ships on unless the host turns it off (widgets={"settings": "off"}).
+_DEFAULT_WIDGETS: dict[str, Any] = {"settings": "on"}
+
+
+def _enabled_widgets(options: RenderOptions) -> dict[str, Any]:
+    """Resolve the widget presence map: defaults under host values, "off" removed.
+
+    Values pass through verbatim (a dict is the widget's opaque config and implies
+    on; "on"/"auto"/True are presence markers). KPress never interprets configs —
+    they ride the #kpress-page-model block to the widget's own JS.
+    """
+
+    merged: dict[str, Any] = {**_DEFAULT_WIDGETS, **dict(options.widgets)}
+    return {
+        widget_id: value
+        for widget_id, value in merged.items()
+        if value not in ("off", False)
+    }
+
+
+def _json_script_payload(value: Any) -> str:
+    """JSON for an application/json script block, unable to break out of it.
+
+    The three HTML-significant characters are unicode-escaped (same discipline as
+    the diagnostics block); keys sorted for deterministic output.
+    """
+
+    return (
+        json.dumps(value, ensure_ascii=False, sort_keys=True)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
+
+
 def _meta_value(document: DocumentInput, key: str) -> str | None:
     value = document.metadata.get(key, document.frontmatter.get(key))
     return None if value is None or value == "" else str(value)
@@ -495,14 +532,22 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         fragment.assets, options.asset_url_prefix, asset_mode=options.asset_mode
     )
     theme_bootstrap = _theme_bootstrap_script()
-    # Valid JSON for the application/json block, with the three HTML-significant
-    # characters unicode-escaped so the payload cannot break out of the
-    # <script> element. Keys sorted for deterministic output.
-    diagnostics_json = (
-        json.dumps(fragment.diagnostics, ensure_ascii=False, sort_keys=True)
-        .replace("<", "\\u003c")
-        .replace(">", "\\u003e")
-        .replace("&", "\\u0026")
+    diagnostics_json = _json_script_payload(fragment.diagnostics)
+    # The page model: published data client widgets compute from (layer A of the
+    # extension model; keys pinned by contract.PUBLIC_PAGE_MODEL_KEYS). Widget
+    # configs ride through verbatim; "off" widgets are absent entirely.
+    page_model_json = _json_script_payload(
+        {
+            "version": 1,
+            "title": title,
+            "route": document.logical_path or "",
+            "profile": fragment.profile,
+            "headings": [
+                {"level": entry.level, "title": entry.title, "href": entry.href}
+                for entry in fragment.toc
+            ],
+            "widgets": _enabled_widgets(options),
+        }
     )
     social_meta = _social_meta_tags(document, title)
     # Chrome slots are site-owned raw HTML, emitted verbatim. The header/footer
@@ -546,6 +591,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
     </header>
     <iframe id="kpress-video-frame" title="Embedded video" allowfullscreen></iframe>
   </section>
+  <script type="application/json" id="kpress-page-model">{page_model_json}</script>
   <script type="application/json" id="kpress-diagnostics">{diagnostics_json}</script>
 </body>
 </html>

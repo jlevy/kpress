@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -120,6 +121,13 @@ class RenderOptions:
     math: MathMode = "auto"
     diagrams: DiagramMode = "auto"
     printable: bool = True
+    # Widget presence + opaque config map (the extension model's layer D; see
+    # kpress-design.md "Extension and Injection Model"). Keys are widget ids;
+    # values are "on" | "off" | "auto" | bool | a config dict (dict implies on).
+    # KPress never interprets the config — it is serialized verbatim into the
+    # #kpress-page-model block for the widget's own JS (schema-with-the-code).
+    # Defaults merge under this map (settings is on unless turned off here).
+    widgets: Mapping[str, Any] = field(default_factory=dict)
     # Page chrome slots: opaque site-owned HTML emitted verbatim by render_page
     # (head extra inside <head>; header/footer wrapped in .kpress-site-header /
     # .kpress-site-footer). KPress styles the wrappers but never interprets the

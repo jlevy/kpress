@@ -317,6 +317,81 @@ def test_show_settings_toggles_the_settings_menu() -> None:
     assert "kpress-settings" not in hidden
 
 
+def _page_model(html: str) -> dict[str, object]:
+    import json
+    import re
+
+    match = re.search(
+        r'<script type="application/json" id="kpress-page-model">(.*?)</script>',
+        html,
+        re.DOTALL,
+    )
+    assert match, "page-model block missing"
+    return json.loads(match.group(1))
+
+
+def test_page_model_block_carries_contract_keys() -> None:
+    doc = DocumentInput(
+        title="Doc",
+        source_text="# Alpha\n\nText.\n\n## Beta\n\nMore.",
+        source_path="doc.md",
+        body_markdown="# Alpha\n\nText.\n\n## Beta\n\nMore.",
+        logical_path="/notes/doc",
+        frontmatter={"title": "Doc"},
+    )
+    model = _page_model(
+        render_page(
+            doc,
+            RenderOptions(
+                include_toc="on",
+                toc_min_headings=1,
+                widgets={"settings": {"choosers": ["theme", "reading-font"]}},
+            ),
+        ).html
+    )
+    assert model["version"] == 1
+    assert model["title"] == "Doc"
+    assert model["route"] == "/notes/doc"
+    assert model["profile"] == "document"
+    headings = model["headings"]
+    assert isinstance(headings, list) and headings
+    assert {"level", "title", "href"} <= set(headings[0])
+    # Widget config is opaque: passed through verbatim.
+    assert model["widgets"] == {"settings": {"choosers": ["theme", "reading-font"]}}
+
+
+def test_page_model_defaults_settings_on_and_off_removes_it() -> None:
+    doc = DocumentInput(
+        title="Doc", source_text="# Body", source_path="doc.md", body_markdown="# Body"
+    )
+    default_model = _page_model(render_page(doc, RenderOptions(include_toc="off")).html)
+    assert "settings" in default_model["widgets"]
+
+    off_model = _page_model(
+        render_page(doc, RenderOptions(include_toc="off", widgets={"settings": "off"})).html
+    )
+    assert "settings" not in off_model["widgets"]
+
+
+def test_page_model_block_is_script_safe() -> None:
+    doc = DocumentInput(
+        title='</script><script>alert("x")&',
+        source_text="# Body",
+        source_path="doc.md",
+        body_markdown="# Body",
+    )
+    html = render_page(doc, RenderOptions(include_toc="off")).html
+    model = _page_model(html)
+    assert model["title"] == '</script><script>alert("x")&'
+    # The raw payload must not contain an unescaped closing tag.
+    import re
+
+    block = re.search(
+        r'id="kpress-page-model">(.*?)</script>', html, re.DOTALL
+    )
+    assert block and "</script" not in block.group(1)
+
+
 def test_diagnostics_script_block_is_valid_json_and_script_safe() -> None:
     import json
     import re
