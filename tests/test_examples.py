@@ -74,6 +74,14 @@ def test_static_site_example_builds_multiple_urls(tmp_path: Path) -> None:
     extensions = (tmp_path / "extensions.html").read_text(encoding="utf-8")
     assert "data-gloss=" in extensions
 
+    # Build-pipeline demo stage: every published JS asset carries the banner
+    # the host stage stamped, and the manifest records the stage name.
+    js_assets = list((tmp_path / "_kpress" / "assets" / "js").glob("*.js"))
+    assert js_assets
+    for asset in js_assets:
+        assert asset.read_text(encoding="utf-8").startswith("/*!"), asset.name
+    assert report.optimizer_backend == "license-banner"
+
 
 def test_wrapped_site_example_embeds_fragments(tmp_path: Path) -> None:
     build_mod = _load("example_wrapped_build", EXAMPLES / "wrapped-site" / "build.py")
