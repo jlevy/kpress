@@ -84,6 +84,7 @@ PUBLIC_PUBLISH_API = (
     "optimize_text",
     "probe_capability",
     "resolve_stage",
+    "validate_config",
 )
 
 PUBLIC_CSS_CLASSES = (
@@ -210,6 +211,31 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-print-page-margin",
 )
 
+# The host-override seam: tokens KPress CSS *consumes* (never declares) via
+# `var(--kpress-host-X, <default>)`, so an embedding host or site can theme
+# documents from outside. Consumed-only means the declared-variable scan that
+# covers PUBLIC_CSS_VARIABLES cannot pin these; the contract test scans the
+# shipped CSS for var() consumption sites instead.
+PUBLIC_HOST_CSS_VARIABLES = (
+    "--kpress-host-bg",
+    "--kpress-host-border",
+    "--kpress-host-code-bg",
+    "--kpress-host-font-body",
+    "--kpress-host-font-footnote",
+    "--kpress-host-font-mono",
+    "--kpress-host-font-prose",
+    "--kpress-host-font-prose-sans",
+    "--kpress-host-font-sans",
+    "--kpress-host-font-table",
+    "--kpress-host-link",
+    "--kpress-host-muted",
+    "--kpress-host-settings-inset-block",
+    "--kpress-host-settings-inset-inline",
+    "--kpress-host-surface-hover",
+    "--kpress-host-surface-selected",
+    "--kpress-host-text",
+)
+
 # Stable per-cell table data-* hooks kpress emits for downstream enrichment. These are
 # part of the public contract: kpress emits them so a downstream decorator (a host app's
 # table plugin, a future static-site builder) can select a column by name and detect
@@ -310,6 +336,7 @@ __all__ = [
     "PUBLIC_CSS_VARIABLES",
     "PUBLIC_DATA_ATTRIBUTES",
     "PUBLIC_FORMAT_API",
+    "PUBLIC_HOST_CSS_VARIABLES",
     "PUBLIC_JS_EXPORTS",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",

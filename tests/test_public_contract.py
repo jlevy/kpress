@@ -20,6 +20,7 @@ from kpress.contract import (
     PUBLIC_CSS_VARIABLES,
     PUBLIC_DATA_ATTRIBUTES,
     PUBLIC_FORMAT_API,
+    PUBLIC_HOST_CSS_VARIABLES,
     PUBLIC_JS_EXPORTS,
     PUBLIC_PACKAGE_API,
     PUBLIC_PAGE_MODEL_KEYS,
@@ -119,6 +120,22 @@ def test_css_class_and_variable_contract_is_present_in_assets_and_markup() -> No
     assert set(PUBLIC_CSS_VARIABLES) <= declared_variables
 
 
+def test_host_css_variable_seam_matches_shipped_css() -> None:
+    """Host-override tokens are consumed (never declared) via
+    ``var(--kpress-host-X, <default>)``, so the declared-variable scan above
+    structurally cannot pin them; scan consumption sites instead and require
+    exact set equality so the seam only changes with the contract."""
+
+    css_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((_KPRESS_ROOT / "src/kpress/format/static/css").rglob("*.css"))
+    )
+    # var() calls wrap across lines; collapse whitespace before scanning.
+    collapsed = re.sub(r"\s+", " ", css_text)
+    consumed = set(re.findall(r"var\(\s*(--kpress-host-[a-z0-9-]+)", collapsed))
+    assert consumed == set(PUBLIC_HOST_CSS_VARIABLES)
+
+
 def test_public_data_attributes_are_emitted_on_rendered_tables() -> None:
     tree = kpress_format.parse_markdown(
         "| Ticker | Amount |\n| --- | ---: |\n| ACME | 12.5 |",
@@ -180,8 +197,12 @@ def test_render_view_returns_jsonable_contract_payload_with_opaque_host() -> Non
         "assets",
         "diagnostics",
         "widgets",
+        "model",
     }
     assert set(payload["assets"]) == {"css", "js"}
+    # Embeds get the full page model in the payload — same pinned keys as the
+    # static #kpress-page-model block.
+    assert set(payload["model"]) == set(PUBLIC_PAGE_MODEL_KEYS)
 
 
 def test_widget_behavior_and_js_export_contracts_match_the_js() -> None:

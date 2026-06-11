@@ -79,3 +79,35 @@ def test_full_corpus_content_equivalence(tmp_path: Path) -> None:
         result = assert_content_equivalence(fixture, work)
         results.append(result)
     assert all(r.passed for r in results)
+
+
+def test_page_model_comparison_catches_model_drift() -> None:
+    """The harness compares page models structurally (route normalized away):
+    a parity break in any other model field must surface as a difference."""
+
+    import json
+
+    from .equivalence_helpers import page_model_differences
+
+    def page(model: dict[str, object]) -> str:
+        return (
+            '<html><body><script type="application/json" id="kpress-page-model">'
+            + json.dumps(model)
+            + "</script></body></html>"
+        )
+
+    base: dict[str, object] = {
+        "version": 1,
+        "title": "Doc",
+        "route": "/a",
+        "profile": "document",
+        "headings": [{"level": 1, "title": "Beta", "href": "#beta"}],
+        "widgets": {"settings": "on"},
+    }
+    assert page_model_differences(page(base), page({**base, "route": "/b"})) == []
+
+    drifted: dict[str, object] = {**base, "title": "Other", "widgets": {}}
+    differences = page_model_differences(page(base), page(drifted))
+    assert any("title" in diff for diff in differences)
+    assert any("widgets" in diff for diff in differences)
+    assert not any("route" in diff for diff in differences)

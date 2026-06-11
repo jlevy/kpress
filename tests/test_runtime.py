@@ -239,3 +239,80 @@ def test_runtime_threads_widgets_map_into_payload() -> None:
     # config passed through verbatim.
     assert payload["widgets"] == {"settings": {"choosers": ["theme"]}}
     assert "minimap" not in payload["widgets"]
+
+
+def test_render_view_normalizes_widget_values_like_the_static_dialects() -> None:
+    """Static/dynamic parity: the same widget map publishes the same data.
+    Presence booleans normalize ("on"/"off"); invalid values raise instead of
+    being silently kept truthy."""
+
+    runtime.clear_render_cache()
+
+    def request(widgets: dict[str, object], tag: str) -> runtime.KPressRenderRequest:
+        return runtime.KPressRenderRequest(
+            source_text="# One\n\nBody\n",
+            source_path="docs/one.md",
+            kind="markdown",
+            view="rendered",
+            ext=".md",
+            mtime_hash=f"widget-norm-{tag}",
+            size=12,
+            widgets=widgets,
+        )
+
+    payload = runtime.render_view(request({"settings": True}, "bool"))
+    assert payload["widgets"] == {"settings": "on"}
+
+    with pytest.raises(runtime.KPressPublishError, match="widgets"):
+        runtime.render_view(request({"settings": "Off"}, "typo"))
+
+
+def test_render_view_payload_model_matches_the_static_page_model() -> None:
+    """Embeds get the full page model in the payload (same keys and data as
+    the static #kpress-page-model block); route is empty because the request
+    carries no site route."""
+
+    import json
+    import re
+
+    from kpress.contract import PUBLIC_PAGE_MODEL_KEYS
+    from kpress.format import DocumentInput, RenderOptions, render_page
+
+    runtime.clear_render_cache()
+    source = "# Alpha\n\nBody.\n\n## Beta\n\nMore.\n"
+    payload = runtime.render_view(
+        runtime.KPressRenderRequest(
+            source_text=source,
+            source_path="docs/guide.md",
+            kind="markdown",
+            view="rendered",
+            ext=".md",
+            mtime_hash="model-1",
+            size=len(source),
+            frontmatter={"title": "Guide"},
+        )
+    )
+    model = payload["model"]
+    assert set(model) == set(PUBLIC_PAGE_MODEL_KEYS)
+    assert model["route"] == ""
+    assert [heading["title"] for heading in model["headings"]] == ["Beta"]
+
+    page = render_page(
+        DocumentInput(
+            title="guide.md",
+            source_text=source,
+            body_markdown=source,
+            source_path="docs/guide.md",
+            frontmatter={"title": "Guide"},
+        ),
+        RenderOptions(),
+    )
+    match = re.search(
+        r'<script type="application/json" id="kpress-page-model">(.*?)</script>',
+        page.html,
+        re.DOTALL,
+    )
+    assert match
+    static_model = json.loads(match.group(1))
+    static_model["route"] = ""
+    assert model == static_model

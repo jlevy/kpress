@@ -17,10 +17,12 @@ compares the remaining document structure.
 from __future__ import annotations
 
 import html as html_module
+import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 from kpress.format import DocumentInput, RenderOptions, render_page
 from kpress.format.model import TocMode
@@ -236,8 +238,10 @@ def normalize_document_surface(html: str) -> str:
         flags=re.DOTALL,
     )
 
-    # Remove the diagnostics and page-model JSON blocks (the page model's
-    # `route` legitimately differs between dynamic and published renders).
+    # Remove the diagnostics and page-model JSON blocks from the *surface*
+    # comparison: the page model's `route` legitimately differs between
+    # dynamic and published renders. The page model itself is compared
+    # structurally (route normalized) via `page_model_differences`.
     html = re.sub(
         r'<script\s+type="application/json"\s+id="kpress-(diagnostics|page-model)">.*?</script>',
         "",
@@ -262,6 +266,45 @@ def normalize_document_surface(html: str) -> str:
     html = re.sub(r"\s+", " ", html).strip()
 
     return html
+
+
+_PAGE_MODEL_RE = re.compile(
+    r'<script\s+type="application/json"\s+id="kpress-page-model">(.*?)</script>',
+    re.DOTALL,
+)
+
+
+def extract_page_model(html: str) -> dict[str, object]:
+    """Parse the #kpress-page-model JSON block out of a rendered page."""
+
+    match = _PAGE_MODEL_RE.search(html)
+    if match is None:
+        raise AssertionError("page has no #kpress-page-model block")
+    return cast("dict[str, object]", json.loads(match.group(1)))
+
+
+def page_model_differences(dynamic_html: str, sealed_html: str) -> list[str]:
+    """Structurally compare the page models of two rendered pages.
+
+    Only `route` is genuinely mode-variant (a published page has a site
+    route; a dynamic render does not), so it is normalized away; every other
+    field must match exactly — this is the published-data contract widgets
+    compute from, and a parity break here is a real bug even when the
+    visible document surface still matches.
+    """
+
+    dynamic_model = extract_page_model(dynamic_html)
+    sealed_model = extract_page_model(sealed_html)
+    dynamic_model["route"] = ""
+    sealed_model["route"] = ""
+    differences: list[str] = []
+    for key in sorted(set(dynamic_model) | set(sealed_model)):
+        if dynamic_model.get(key) != sealed_model.get(key):
+            differences.append(
+                f"page model {key!r}: dynamic={dynamic_model.get(key)!r} "
+                f"sealed={sealed_model.get(key)!r}"
+            )
+    return differences
 
 
 def extract_document_elements(html: str) -> list[str]:
@@ -344,6 +387,10 @@ def assert_equivalence(
         differences.append(f"only in dynamic: {only_dynamic}")
     if only_sealed:
         differences.append(f"only in sealed: {only_sealed}")
+
+    # The page model is stripped from the surface comparison above; compare it
+    # structurally here so published-data parity breaks fail too.
+    differences.extend(page_model_differences(dynamic_html, sealed_html))
 
     result = EquivalenceResult(
         fixture_name=fixture.name,

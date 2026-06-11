@@ -14,6 +14,7 @@ from kpress.publish.config import (
     PublishConfig,
     SourceConfig,
     load_config,
+    validate_config,
 )
 from kpress.publish.manifest import BuildReport, OutputFile
 from kpress.publish.optimize import get_optimizer, optimize_text, resolve_stage
@@ -38,4 +39,5 @@ __all__ = [
     "optimize_text",
     "probe_capability",
     "resolve_stage",
+    "validate_config",
 ]

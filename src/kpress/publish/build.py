@@ -113,8 +113,13 @@ def _resolve_pipeline(
         stages = [resolve_stage(stage) for stage in extensions.pipeline]
     elif optimizer == "none":
         stages = []
-    else:
+    elif optimizer == "full":
         stages = [resolve_stage("kpress:full")]
+    else:
+        # An unknown mode must never fall through to the full optimizer: a
+        # typo'd cast-away value would silently rewrite every artifact.
+        msg = f"Invalid optimizer.mode {optimizer!r}; expected one of 'none', 'full'"
+        raise KPressPublishError(msg)
     return [stage for stage in stages if not isinstance(stage, NoneOptimizer)]
 
 
@@ -128,7 +133,14 @@ def _run_stages(stages: list[OptimizerBackend], content: str, kind: str) -> tupl
     normalized = cast(ContentKind, kind if kind in {"html", "css", "js"} else "other")
     applied: list[str] = []
     for stage in stages:
-        result = stage.optimize(content, kind=normalized)
+        try:
+            result = stage.optimize(content, kind=normalized)
+        except Exception as e:
+            # Prior outputs were already purged when stages run, so a bare
+            # stage traceback leaves the operator with nothing actionable:
+            # name the failing stage and artifact kind.
+            msg = f"Build pipeline stage {stage.name!r} failed on a {kind!r} artifact: {e}"
+            raise KPressPublishError(msg) from e
         if result.changed:
             applied.append(stage.name)
         content = result.content

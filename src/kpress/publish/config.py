@@ -8,7 +8,15 @@ from pathlib import Path
 from typing import Any, cast
 
 from kpress.errors import KPressPublishError
-from kpress.format.model import AssetMode, MathMode, OptimizerMode, TocMode
+from kpress.format.model import (
+    AssetMode,
+    DocumentTree,
+    MathMode,
+    OptimizerMode,
+    TocMode,
+    parse_widgets,
+)
+from kpress.publish.optimize import OptimizerBackend
 
 YamlDict = dict[str, object]
 
@@ -98,17 +106,19 @@ class KPressConfig:
     footer_html: str = ""
     redirects: list[dict[str, object]] = field(default_factory=list)
     sources: list[SourceConfig] = field(default_factory=lambda: [SourceConfig()])
-    format: FormatConfig = FormatConfig()
-    publish: PublishConfig = PublishConfig()
-    pdf: PdfPublishConfig = PdfPublishConfig()
-    optimizer: OptimizerOptions = OptimizerOptions()
+    # Nested configs use default_factory: a shared default instance would leak
+    # one caller's mutations (e.g. the widgets map) into every other config.
+    format: FormatConfig = field(default_factory=FormatConfig)
+    publish: PublishConfig = field(default_factory=PublishConfig)
+    pdf: PdfPublishConfig = field(default_factory=PdfPublishConfig)
+    optimizer: OptimizerOptions = field(default_factory=OptimizerOptions)
     config_path: Path | None = None
     # Path anchor for relative sources/output and the document-asset boundary.
     # File-based configs anchor on the config file's directory; programmatic
     # configs (no file) set this explicitly — otherwise the current directory
     # is the anchor, and staged content outside it would lose its media.
     # Mutually exclusive with config_path: the build rejects a config with both.
-    base_dir: Path | None = None
+    base_dir: str | Path | None = None
 
 
 @dataclass(frozen=True)
@@ -135,10 +145,10 @@ class BuildExtensions:
     # Entries are built-in stage names ("kpress:none" / "kpress:full") or stage
     # objects with the optimizer-backend shape. None derives the list from
     # optimizer.mode — full back-compat.
-    pipeline: Sequence[Any] | None = None
+    pipeline: Sequence[str | OptimizerBackend] | None = None
     # Document-tree transform, applied after parsing and before the TOC/page
     # model are derived (so injected headings show up in both).
-    transform_tree: Callable[[Any], Any] | None = None
+    transform_tree: Callable[[DocumentTree], DocumentTree] | None = None
     # Whole-page transform `(html, route) -> html`, applied to each rendered
     # page before the pipeline stages.
     transform_page_html: Callable[[str, str], str] | None = None
@@ -164,6 +174,33 @@ def _string_list(value: object, default: list[str]) -> list[str]:
     return list(default)
 
 
+# Closed value sets, shared by the YAML loader and validate_config so both
+# dialects accept and reject exactly the same values. Open strings (theme,
+# palette — hosts may ship their own preset CSS) are deliberately absent.
+_TOC_MODES = ("off", "auto", "on")
+_MATH_MODES = ("off", "auto")
+_DIAGRAM_MODES = ("off", "auto", "mermaid")
+_COLOR_MODES = ("system", "light", "dark")
+_ASSET_MODES = ("hosted", "linked", "hashed", "sealed")
+_OPTIMIZER_MODES = ("none", "full")
+_PRECOMPRESS_METHODS = ("gzip", "br")
+
+
+def _checked_choice(name: str, value: object, allowed: tuple[str, ...]) -> str:
+    """Membership-check a closed enum-like config value.
+
+    Provided-but-invalid → `KPressPublishError` so a typo in production
+    config fails the build instead of silently shipping a different policy
+    (orig-1tkb). Omitted-value defaults are the caller's concern.
+    """
+
+    if not isinstance(value, str) or value not in allowed:
+        expected = ", ".join(repr(item) for item in allowed)
+        msg = f"Invalid {name} {value!r}; expected one of {expected}"
+        raise KPressPublishError(msg)
+    return value
+
+
 def _validated_optimizer_mode(optimizer: dict[str, object]) -> str:
     """Return the optimizer.mode value, raising on invalid provided values.
 
@@ -174,11 +211,7 @@ def _validated_optimizer_mode(optimizer: dict[str, object]) -> str:
 
     if "mode" not in optimizer:
         return "none"
-    mode = optimizer.get("mode")
-    if mode not in {"none", "full"}:
-        msg = f"Invalid optimizer.mode {mode!r}; expected one of 'none', 'full'"
-        raise KPressPublishError(msg)
-    return cast(str, mode)
+    return _checked_choice("optimizer.mode", optimizer.get("mode"), _OPTIMIZER_MODES)
 
 
 def _validated_precompress(value: object) -> list[str]:
@@ -188,9 +221,7 @@ def _validated_precompress(value: object) -> list[str]:
         return []
     methods = _string_list(value, [])
     for method in methods:
-        if method not in {"gzip", "br"}:
-            msg = f"Invalid optimizer.precompress method {method!r}; expected 'gzip' or 'br'"
-            raise KPressPublishError(msg)
+        _ = _checked_choice("optimizer.precompress method", method, _PRECOMPRESS_METHODS)
     return methods
 
 
@@ -295,46 +326,29 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     ``load_config`` enforces these for the YAML dialect at parse time; the
     typed (programmatic) dialect must fail just as loudly — a type-legal value
     like ``asset_mode="inline"`` silently ships a feature-broken site
-    (orig-7ehk), and a widget-presence typo must not silently ship different
-    chrome (orig-1tkb). Returns the config with widget presence scalars
-    normalized, so both dialects publish identical page-model data. The
-    ``BuildOptions.asset_mode`` override remains the deliberate escape hatch
-    (it is applied from options, after this check).
+    (orig-7ehk), a widget-presence typo must not silently ship different
+    chrome (orig-1tkb), and every closed value set (asset/optimizer/math/toc/
+    diagrams/color-mode/precompress) is membership-checked so a cast-away typo
+    cannot ship a different publish policy. Returns the config with widget
+    presence scalars normalized, so both dialects publish identical page-model
+    data. The ``BuildOptions.asset_mode`` override remains the deliberate
+    escape hatch (it is applied from options, after this check).
     """
 
     if config.publish.asset_mode == "inline":
         raise KPressPublishError(_INLINE_ASSET_MODE_ERROR)
-    widgets = _parse_widgets(config.format.widgets)
+    _ = _checked_choice("publish.asset_mode", config.publish.asset_mode, _ASSET_MODES)
+    _ = _checked_choice("optimizer.mode", config.optimizer.mode, _OPTIMIZER_MODES)
+    for method in config.optimizer.precompress:
+        _ = _checked_choice("optimizer.precompress method", method, _PRECOMPRESS_METHODS)
+    _ = _checked_choice("format.toc", config.format.toc, _TOC_MODES)
+    _ = _checked_choice("format.math", config.format.math, _MATH_MODES)
+    _ = _checked_choice("format.diagrams", config.format.diagrams, _DIAGRAM_MODES)
+    _ = _checked_choice("format.color_mode", config.format.color_mode, _COLOR_MODES)
+    widgets = parse_widgets(config.format.widgets)
     if widgets != config.format.widgets:
         config = replace(config, format=replace(config.format, widgets=widgets))
     return config
-
-
-def _parse_widgets(value: object) -> dict[str, Any]:
-    """Normalize ``format.widgets``: presence scalars + opaque config dicts.
-
-    Each value becomes "on" | "off" | "auto" (bools normalize to on/off) or
-    passes through verbatim as the widget's config dict (which implies on).
-    Anything else fails loudly — consistent with the strict format.math /
-    asset_mode stance (orig-1tkb): a typo must not silently ship different
-    chrome than the operator intended.
-    """
-
-    widgets: dict[str, Any] = {}
-    for widget_id, raw in _as_dict(value).items():
-        if isinstance(raw, bool):
-            widgets[str(widget_id)] = "on" if raw else "off"
-        elif isinstance(raw, str) and raw in {"on", "off", "auto"}:
-            widgets[str(widget_id)] = raw
-        elif isinstance(raw, dict):
-            widgets[str(widget_id)] = raw
-        else:
-            msg = (
-                f"Invalid format.widgets value for {widget_id!r}: {raw!r}; "
-                f"expected 'on', 'off', 'auto', a boolean, or a config mapping"
-            )
-            raise KPressPublishError(msg)
-    return widgets
 
 
 def _resolve_chrome_slot(site: YamlDict, name: str, config_dir: Path) -> str:
@@ -389,21 +403,23 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
                 static=_string_list(item.get("static"), []),
             )
         )
-    toc = str(fmt.get("toc", "auto"))
-    if toc not in {"off", "auto", "on"}:
-        toc = "auto"
     # Omitted enum-like fields default; provided-but-invalid values fail
     # loudly. A typo in production config silently shipping a different
     # asset/optimizer/math policy than the operator intended is a real
     # publishing risk and inconsistent with KPress's elsewhere-strict
     # reserved-path / collision / unsafe-asset stance (orig-1tkb).
-    if "math" in fmt:
-        math = str(fmt.get("math"))
-        if math not in {"off", "auto"}:
-            msg = f"Invalid format.math {math!r}; expected one of 'off', 'auto'"
-            raise KPressPublishError(msg)
-    else:
-        math = "auto"
+    toc = _checked_choice("format.toc", fmt.get("toc"), _TOC_MODES) if "toc" in fmt else "auto"
+    math = _checked_choice("format.math", fmt.get("math"), _MATH_MODES) if "math" in fmt else "auto"
+    diagrams = (
+        _checked_choice("format.diagrams", fmt.get("diagrams"), _DIAGRAM_MODES)
+        if "diagrams" in fmt
+        else "auto"
+    )
+    color_mode = (
+        _checked_choice("format.color_mode", fmt.get("color_mode"), _COLOR_MODES)
+        if "color_mode" in fmt
+        else "system"
+    )
     if "asset_mode" in publish:
         asset_mode = publish.get("asset_mode")
         # `inline` is rejected at the config surface until it is truly
@@ -435,13 +451,13 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         format=FormatConfig(
             theme=str(fmt.get("theme", "default")),
             palette=str(fmt.get("palette", "neutral")),
-            color_mode=str(fmt.get("color_mode", "system")),
+            color_mode=color_mode,
             toc=cast(TocMode, toc),
             toc_min_headings=_int_value(fmt.get("toc_min_headings"), 4),
             math=cast(MathMode, math),
-            diagrams=str(fmt.get("diagrams", "auto")),
+            diagrams=diagrams,
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),
-            widgets=_parse_widgets(fmt.get("widgets")),
+            widgets=parse_widgets(fmt.get("widgets")),
         ),
         publish=PublishConfig(
             output_dir=str(publish.get("output_dir", "public")),

@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
+from kpress.errors import KPressPublishError
 from kpress.models import PrintProfile, ThemeMode
 
 DocumentProfile = PrintProfile
@@ -143,6 +144,38 @@ class RenderOptions:
 DEFAULT_WIDGETS: dict[str, Any] = {"settings": "on"}
 
 
+def parse_widgets(value: object) -> dict[str, Any]:
+    """Normalize a widgets map: presence scalars + opaque config dicts.
+
+    Each value becomes "on" | "off" | "auto" (bools normalize to on/off) or
+    passes through verbatim as the widget's config dict (which implies on).
+    Anything else fails loudly — consistent with the strict format.math /
+    asset_mode stance (orig-1tkb): a typo must not silently ship different
+    chrome than the operator intended. Every dialect (YAML ``format.widgets``,
+    typed configs, dynamic ``KPressRenderRequest.widgets``) runs this so all
+    surfaces publish identical widget data.
+    """
+
+    widgets: dict[str, Any] = {}
+    raw_map: Mapping[object, object] = (
+        cast("Mapping[object, object]", value) if isinstance(value, Mapping) else {}
+    )
+    for widget_id, raw in raw_map.items():
+        if isinstance(raw, bool):
+            widgets[str(widget_id)] = "on" if raw else "off"
+        elif isinstance(raw, str) and raw in {"on", "off", "auto"}:
+            widgets[str(widget_id)] = raw
+        elif isinstance(raw, dict):
+            widgets[str(widget_id)] = raw
+        else:
+            msg = (
+                f"Invalid format.widgets value for {widget_id!r}: {raw!r}; "
+                f"expected 'on', 'off', 'auto', a boolean, or a config mapping"
+            )
+            raise KPressPublishError(msg)
+    return widgets
+
+
 def resolve_widgets(widgets: Mapping[str, Any]) -> dict[str, Any]:
     """Resolve a widget presence map: defaults under host values, "off" removed.
 
@@ -153,7 +186,13 @@ def resolve_widgets(widgets: Mapping[str, Any]) -> dict[str, Any]:
     """
 
     merged: dict[str, Any] = {**DEFAULT_WIDGETS, **dict(widgets)}
-    return {widget_id: value for widget_id, value in merged.items() if value not in ("off", False)}
+    # Only explicit off markers remove a widget: `value not in ("off", False)`
+    # would also drop integer 0 via `0 == False`.
+    return {
+        widget_id: value
+        for widget_id, value in merged.items()
+        if not (value is False or value == "off")
+    }
 
 
 @dataclass(frozen=True)

@@ -24,6 +24,7 @@ from kpress.format.model import (
     RenderedDocument,
     RenderedPage,
     RenderOptions,
+    TocEntry,
     resolve_widgets,
 )
 from kpress.models import PrintProfile
@@ -496,12 +497,50 @@ def _social_meta_tags(document: DocumentInput, title: str) -> str:
     return "\n  ".join(parts)
 
 
+def page_title(document: DocumentInput) -> str:
+    """The page-level title: a frontmatter ``title`` wins over the host-supplied one."""
+
+    return str(document.frontmatter.get("title") or document.title)
+
+
+def build_page_model(
+    *,
+    title: str,
+    route: str,
+    profile: str,
+    toc: list[TocEntry],
+    widgets: dict[str, Any],
+) -> dict[str, Any]:
+    """The page-model payload (keys pinned by contract.PUBLIC_PAGE_MODEL_KEYS).
+
+    One builder serves both surfaces: ``render_page`` serializes it into the
+    ``#kpress-page-model`` block; ``runtime.render_view`` echoes it in the
+    dynamic payload so embeds read the same data (kpress-design.md "Page model
+    block and widget mounts").
+
+    ``headings`` carries the post-processed TOC entries — a lone leading H1 is
+    stripped and levels renormalized to contiguous ranks — not raw document
+    heading levels.
+    """
+
+    return {
+        "version": 1,
+        "title": title,
+        "route": route,
+        "profile": profile,
+        "headings": [
+            {"level": entry.level, "title": entry.title, "href": entry.href} for entry in toc
+        ],
+        "widgets": widgets,
+    }
+
+
 def render_page(document: DocumentInput, options: RenderOptions | None = None) -> RenderedPage:
     """Render a complete HTML page from a KPress document."""
 
     options = options or RenderOptions(asset_mode="linked")
     fragment = render_fragment(document, options)
-    title = str(document.frontmatter.get("title") or document.title)
+    title = page_title(document)
     asset_tags = _asset_tags(
         fragment.assets, options.asset_url_prefix, asset_mode=options.asset_mode
     )
@@ -512,17 +551,13 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
     # extension model; keys pinned by contract.PUBLIC_PAGE_MODEL_KEYS). Widget
     # configs ride through verbatim; "off" widgets are absent entirely.
     page_model_json = _json_script_payload(
-        {
-            "version": 1,
-            "title": title,
-            "route": document.logical_path or "",
-            "profile": fragment.profile,
-            "headings": [
-                {"level": entry.level, "title": entry.title, "href": entry.href}
-                for entry in fragment.toc
-            ],
-            "widgets": enabled_widgets,
-        }
+        build_page_model(
+            title=title,
+            route=document.logical_path or "",
+            profile=fragment.profile,
+            toc=fragment.toc,
+            widgets=enabled_widgets,
+        )
     )
     social_meta = _social_meta_tags(document, title)
     # Chrome slots are site-owned raw HTML, emitted verbatim. The header/footer

@@ -25,7 +25,8 @@ def config_base_dir(config: KPressConfig) -> Path:
                 "the config file's directory)"
             )
             raise KPressPublishError(msg)
-        return config.base_dir.resolve()
+        # base_dir is str | Path (like the sibling path fields); normalize here.
+        return Path(config.base_dir).resolve()
     return (config.config_path.parent if config.config_path else Path.cwd()).resolve()
 
 

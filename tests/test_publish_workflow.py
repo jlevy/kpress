@@ -431,6 +431,49 @@ def test_omitted_enum_values_still_use_defaults(tmp_path: Path) -> None:
     assert cfg.optimizer.mode == "none"
     assert cfg.format.math == "auto"
     assert cfg.optimizer.precompress == []
+    assert cfg.format.toc == "auto"
+    assert cfg.format.diagrams == "auto"
+    assert cfg.format.color_mode == "system"
+
+
+def test_invalid_format_toc_raises(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text("sources:\n  - path: .\nformat:\n  toc: sideways\n", encoding="utf-8")
+    with pytest.raises(KPressPublishError, match="format.toc"):
+        load_config(config)
+
+
+def test_invalid_format_diagrams_and_color_mode_raise(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text("sources:\n  - path: .\nformat:\n  diagrams: graphviz\n", encoding="utf-8")
+    with pytest.raises(KPressPublishError, match="format.diagrams"):
+        load_config(config)
+
+    config.write_text("sources:\n  - path: .\nformat:\n  color_mode: sepia\n", encoding="utf-8")
+    with pytest.raises(KPressPublishError, match="format.color_mode"):
+        load_config(config)
+
+
+def test_format_palette_and_theme_stay_open_strings(tmp_path: Path) -> None:
+    """Palette and theme are open sets: a host can ship its own preset CSS
+    (`.kpress[data-kpress-palette="..."]`), so arbitrary names must load."""
+
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  palette: my-brand\n  theme: custom\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(config)
+    assert cfg.format.palette == "my-brand"
+    assert cfg.format.theme == "custom"
 
 
 def test_external_and_local_refs_pass_through_verbatim(tmp_path: Path) -> None:
@@ -866,6 +909,166 @@ def test_programmatic_config_fails_as_loudly_as_yaml(tmp_path: Path) -> None:
     build_site(config(format=FormatConfig(widgets={"minimap": True})))
     html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
     assert '"minimap": "on"' in html
+
+
+def test_programmatic_enum_typos_fail_as_loudly_as_yaml() -> None:
+    """validate_config membership-checks every closed value set the YAML
+    loader checks — a type-cast typo in the typed dialect must not silently
+    ship a different publish policy (validation parity)."""
+
+    from typing import cast
+
+    from kpress.errors import KPressPublishError
+    from kpress.format.model import AssetMode, MathMode, OptimizerMode, TocMode
+    from kpress.publish import (
+        FormatConfig,
+        KPressConfig,
+        OptimizerOptions,
+        PublishConfig,
+        validate_config,
+    )
+
+    cases: list[tuple[str, KPressConfig]] = [
+        (
+            "optimizer.mode",
+            KPressConfig(optimizer=OptimizerOptions(mode=cast("OptimizerMode", "bogus"))),
+        ),
+        ("precompress", KPressConfig(optimizer=OptimizerOptions(precompress=["snappy"]))),
+        (
+            "publish.asset_mode",
+            KPressConfig(publish=PublishConfig(asset_mode=cast("AssetMode", "typo"))),
+        ),
+        ("format.math", KPressConfig(format=FormatConfig(math=cast("MathMode", "katex")))),
+        ("format.toc", KPressConfig(format=FormatConfig(toc=cast("TocMode", "sideways")))),
+        ("format.diagrams", KPressConfig(format=FormatConfig(diagrams="graphviz"))),
+        ("format.color_mode", KPressConfig(format=FormatConfig(color_mode="sepia"))),
+    ]
+    for expected_match, config in cases:
+        with pytest.raises(KPressPublishError, match=expected_match):
+            _ = validate_config(config)
+
+
+def test_unknown_programmatic_optimizer_mode_fails_the_build(tmp_path: Path) -> None:
+    """A typo'd optimizer mode must never silently run the FULL optimizer
+    (any unknown mode used to fall through to the `kpress:full` stage)."""
+
+    from typing import cast
+
+    from kpress.errors import KPressPublishError
+    from kpress.format.model import OptimizerMode
+    from kpress.publish import (
+        KPressConfig,
+        OptimizerOptions,
+        PublishConfig,
+        SourceConfig,
+        build_site,
+    )
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Doc\n", encoding="utf-8")
+
+    with pytest.raises(KPressPublishError, match="optimizer.mode"):
+        build_site(
+            KPressConfig(
+                base_dir=tmp_path,
+                sources=[SourceConfig(path=content)],
+                publish=PublishConfig(output_dir=tmp_path / "public"),
+                optimizer=OptimizerOptions(mode=cast("OptimizerMode", "bogus")),
+            )
+        )
+
+
+def test_build_options_unknown_optimizer_mode_fails_the_build(tmp_path: Path) -> None:
+    """The BuildOptions override is applied after validate_config; the
+    pipeline resolver itself must reject unknown modes rather than
+    defaulting to the full optimizer."""
+
+    from typing import cast
+
+    from kpress.errors import KPressPublishError
+    from kpress.format.model import OptimizerMode
+
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "index.md").write_text("# Home\n", encoding="utf-8")
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: docs\npublish:\n  output_dir: public\n", encoding="utf-8"
+    )
+
+    with pytest.raises(KPressPublishError, match="optimizer"):
+        build_site(config, BuildOptions(optimizer=cast("OptimizerMode", "bogus")))
+
+
+def test_programmatic_base_dir_accepts_a_plain_string(tmp_path: Path) -> None:
+    """base_dir is str | Path like the sibling path fields; a plain string
+    must anchor discovery instead of crashing with a raw AttributeError."""
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Anchored\n", encoding="utf-8")
+
+    report = build_site(
+        KPressConfig(
+            base_dir=str(tmp_path),
+            sources=[SourceConfig(path="content")],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+    assert report.routes == {"/": "index.html"}
+
+
+def test_config_instances_do_not_share_mutable_defaults() -> None:
+    """Each KPressConfig gets its own nested config objects: a shared default
+    instance would leak one caller's widget map into every other config."""
+
+    from kpress.publish import KPressConfig
+
+    first = KPressConfig()
+    second = KPressConfig()
+    assert first.format is not second.format
+    assert first.publish is not second.publish
+    assert first.pdf is not second.pdf
+    assert first.optimizer is not second.optimizer
+    first.format.widgets["minimap"] = "on"
+    assert second.format.widgets == {}
+
+
+def test_failing_pipeline_stage_error_names_the_stage(tmp_path: Path) -> None:
+    """A stage crash surfaces as KPressPublishError naming the stage: prior
+    outputs were already purged, so a bare traceback with no stage context
+    leaves the operator with nothing to act on."""
+
+    from kpress.errors import KPressPublishError
+    from kpress.publish import (
+        BuildExtensions,
+        KPressConfig,
+        PublishConfig,
+        SourceConfig,
+    )
+    from kpress.publish.optimize import ContentKind, OptimizerResult
+
+    class BoomStage:
+        name = "host:boom"
+
+        def optimize(self, content: str, *, kind: ContentKind) -> OptimizerResult:
+            raise RuntimeError("minifier exploded")
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Doc\n", encoding="utf-8")
+
+    with pytest.raises(KPressPublishError, match="host:boom"):
+        build_site(
+            KPressConfig(
+                base_dir=tmp_path,
+                sources=[SourceConfig(path=content)],
+                publish=PublishConfig(output_dir=tmp_path / "public"),
+            ),
+            extensions=BuildExtensions(pipeline=[BoomStage()]),
+        )
 
 
 def test_programmatic_title_staging_survives_astral_plane_characters(tmp_path: Path) -> None:

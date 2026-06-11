@@ -510,3 +510,17 @@ def test_doc_header_rendered_when_multiple_h1s() -> None:
     rendered = render_fragment(doc, RenderOptions())
 
     assert "kpress-doc-header" in rendered.html
+
+
+def test_resolve_widgets_removes_only_explicit_off_values() -> None:
+    """Only `False` and `"off"` mean off. Integer 0 (`0 == False`) is not a
+    presence marker and must not silently remove a widget; the normalizing
+    parsers reject it upstream."""
+
+    from kpress.format.model import resolve_widgets
+
+    resolved = resolve_widgets({"minimap": 0, "gone": "off", "also-gone": False})
+    assert "gone" not in resolved
+    assert "also-gone" not in resolved
+    assert resolved["minimap"] == 0
+    assert resolved["settings"] == "on"
