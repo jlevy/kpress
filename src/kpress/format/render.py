@@ -29,13 +29,9 @@ from kpress.format.model import (
 from kpress.models import PrintProfile
 
 SOURCE_PREVIEW_MAX_BYTES = 512 * 1024
-# Theme choices for the settings menu: (mode, accessible label, icon name). Glyphs are
-# referenced from the SVG sprite (static/icons/icons.svg); no SVG markup lives here.
-_THEME_CHOICES = (
-    ("system", "System theme", "monitor"),
-    ("light", "Light theme", "sun"),
-    ("dark", "Dark theme", "moon"),
-)
+# Widget ids that get a mount element: plain kebab-case slugs only, since the id
+# lands in class/id/data attributes (a config key is host data, not trusted markup).
+_WIDGET_ID_RE = re.compile(r"[a-z][a-z0-9-]*")
 
 
 @lru_cache(maxsize=1)
@@ -423,32 +419,26 @@ def _standalone_page_reset() -> str:
     return f"<style>{read_package_text('css/page-reset.css')}</style>"
 
 
-def _render_settings_menu(theme_mode: str) -> str:
-    """Render the gear settings menu: a popover with an icon theme chooser.
+def _widget_mounts(enabled_widgets: dict[str, Any]) -> str:
+    """Emit the positioned mount element for each enabled chrome widget.
 
-    Mirrors the host app's settings control (gear button → menu of segmented
-    icon choosers) so standalone KPress and the embedded host share one design.
-    The segments keep the `data-kpress-theme-choice` contract that theme.js binds;
-    the wrapper's `aria-expanded` drives menu visibility via CSS.
+    Chrome widgets are client-rendered (no-JS rule): the server ships only an
+    empty, CSS-positionable mount — `data-kpress-widget` is the registry id the
+    client runtime resolves; the `kpress-<id>` class/id keep per-widget CSS
+    hooks (e.g. the settings gear's `--kpress-settings-inset-*` position
+    tokens) working unchanged. Widget ids come from config keys; only safe
+    slug ids get a mount.
     """
 
-    selected = theme_mode if theme_mode in {mode for mode, _l, _i in _THEME_CHOICES} else "system"
-    segments = "".join(
-        '<button type="button" class="kpress-menu-seg" role="menuitemradio" '
-        f'data-kpress-theme-choice="{escape(mode)}" '
-        f'aria-checked="{"true" if mode == selected else "false"}" '
-        f'title="{escape(label)}" aria-label="{escape(label)}">{_icon(icon_name)}</button>'
-        for mode, label, icon_name in _THEME_CHOICES
-    )
-    return (
-        '<div class="kpress-settings kpress-no-print" id="kpress-settings" aria-expanded="false">'
-        '<button type="button" class="kpress-settings-btn" id="kpress-settings-btn" '
-        f'aria-haspopup="true" title="Settings" aria-label="Settings">{_icon("settings")}</button>'
-        '<div class="kpress-settings-menu kpress-menu" role="menu" aria-label="Settings">'
-        '<div class="kpress-menu-chooser" role="group" aria-label="Theme">'
-        f"{segments}"
-        "</div></div></div>"
-    )
+    mounts = []
+    for widget_id in enabled_widgets:
+        if not _WIDGET_ID_RE.fullmatch(widget_id):
+            continue
+        mounts.append(
+            f'<div class="kpress-widget kpress-{widget_id} kpress-no-print" '
+            f'id="kpress-{widget_id}" data-kpress-widget="{widget_id}"></div>'
+        )
+    return "".join(mounts)
 
 
 def _json_script_payload(value: Any) -> str:
@@ -545,9 +535,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         if options.footer_html
         else ""
     )
-    settings_menu = (
-        _render_settings_menu(options.theme_mode) if "settings" in enabled_widgets else ""
-    )
+    widget_mounts = _widget_mounts(enabled_widgets)
     html = f"""<!doctype html>
 <html lang="en" data-kpress-theme="{escape(options.theme_mode)}" data-kpress-resolved-theme="{escape(options.resolved_theme)}">
 <head>
@@ -563,7 +551,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
 </head>
 <body class="kpress-frame" data-kpress-frame>
   <main class="kpress-page-main kpress-viewport" data-kpress-viewport>{site_header}
-    {settings_menu}
+    {widget_mounts}
     {fragment.html}{site_footer}
   </main>
   <div class="kpress-video-backdrop" aria-hidden="true"></div>

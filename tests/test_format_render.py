@@ -181,13 +181,33 @@ def test_render_page_includes_assets_theme_and_toc() -> None:
     assert 'data-kpress-theme="system"' in page.html
     assert "kpress.theme" in page.html
     assert "<script>" in page.html.partition("/assets/js/theme.js")[0]
-    assert '<div class="kpress-settings kpress-no-print" id="kpress-settings"' in page.html
-    assert 'data-kpress-theme-choice="system" aria-checked="true"' in page.html
-    assert 'data-kpress-theme-choice="light" aria-checked="false"' in page.html
-    assert 'data-kpress-theme-choice="dark" aria-checked="false"' in page.html
+    # The settings widget is client-rendered (no-JS rule): the server emits only
+    # its positioned mount, never the menu markup or chooser segments.
+    assert (
+        '<div class="kpress-widget kpress-settings kpress-no-print" '
+        'id="kpress-settings" data-kpress-widget="settings"></div>'
+    ) in page.html
+    assert "kpress-settings-menu" not in page.html
+    assert "data-kpress-theme-choice" not in page.html
     assert 'class="kpress-toc kpress-no-print"' in page.html
     assert "/assets/css/document.css" in page.html
     assert "/assets/js/theme.js" in page.html
+
+
+def test_enabled_widgets_each_get_a_mount_element() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc", source_text="# Body", source_path="doc.md", body_markdown="# Body"
+        ),
+        RenderOptions(include_toc="off", widgets={"minimap": {"depth": 2}}),
+    )
+
+    assert (
+        '<div class="kpress-widget kpress-minimap kpress-no-print" '
+        'id="kpress-minimap" data-kpress-widget="minimap"></div>'
+    ) in page.html
+    # The default settings mount is still present alongside.
+    assert 'data-kpress-widget="settings"' in page.html
 
 
 def test_render_page_ports_standalone_social_metadata() -> None:

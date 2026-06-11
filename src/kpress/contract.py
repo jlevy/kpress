@@ -157,6 +157,7 @@ PUBLIC_CSS_CLASSES = (
     "kpress-tooltip",
     "kpress-video-backdrop",
     "kpress-video-popover",
+    "kpress-widget",
     "para",
     "para-caption",
     "shaded-text",
