@@ -2,14 +2,14 @@
   margin: var(--kpress-print-page-margin);
 
   @bottom-left {
-    color: #555555;
+    color: oklch(44.95% 0 0);
     content: var(--kpress-print-footer);
     font-family: var(--kpress-font-sans);
     font-size: var(--kpress-font-size-small);
   }
 
   @bottom-right {
-    color: #111111;
+    color: oklch(17.76% 0 0);
     content: counter(page);
     font-family: var(--kpress-font-prose);
     font-size: var(--kpress-font-size-small);
@@ -20,15 +20,15 @@
   :root,
   .kpress {
     color-scheme: light;
-    --kpress-doc-bg: #ffffff;
-    --kpress-doc-text: #111111;
-    --kpress-doc-muted: #444444;
-    --kpress-doc-border: #b8b8b8;
-    --kpress-doc-link: #000000;
+    --kpress-doc-bg: oklch(100.00% 0 0);
+    --kpress-doc-text: oklch(17.76% 0 0);
+    --kpress-doc-muted: oklch(38.67% 0 0);
+    --kpress-doc-border: oklch(78.26% 0 0);
+    --kpress-doc-link: oklch(0.00% 0 0);
   }
 
   body {
-    background: #ffffff;
+    background: oklch(100.00% 0 0);
   }
 
   /* The document viewport is a 100dvh scroll container on screen; for print it
@@ -48,8 +48,8 @@
   }
 
   .kpress {
-    background: #ffffff;
-    color: #111111;
+    background: oklch(100.00% 0 0);
+    color: oklch(17.76% 0 0);
     font-size: var(--kpress-print-font-size);
     line-height: 1.4;
   }
@@ -153,7 +153,7 @@
   }
 
   .kpress-tab-panel::before {
-    color: #111111;
+    color: oklch(17.76% 0 0);
     content: attr(data-kpress-tab-title);
     display: block;
     font-family: var(--kpress-font-sans);
@@ -181,7 +181,7 @@
 
   .kpress-math,
   .kpress-math math {
-    color: #111111;
+    color: oklch(17.76% 0 0);
   }
 
   .kpress-math-display {
@@ -192,8 +192,8 @@
 
   .kpress-math[data-kpress-math-error="true"] {
     background: transparent;
-    border-color: #111111;
-    color: #111111;
+    border-color: oklch(17.76% 0 0);
+    color: oklch(17.76% 0 0);
   }
 
   .kpress-diagram,
@@ -203,7 +203,7 @@
   }
 
   .kpress-diagram {
-    border-color: #111111;
+    border-color: oklch(17.76% 0 0);
   }
 
   .kpress-diagram-source {
@@ -302,7 +302,7 @@
   .footnote-ref a,
   .footnote {
     background-color: transparent;
-    color: #111111;
+    color: oklch(17.76% 0 0);
     font-family: var(--kpress-font-prose);
     font-feature-settings: normal;
     font-variant-caps: all-small-caps;
@@ -327,8 +327,8 @@
   .kpress .kpress-video-placeholder {
     aspect-ratio: auto;
     background: transparent;
-    border: 1px solid #999999;
-    color: #111111;
+    border: 1px solid oklch(68.30% 0 0);
+    color: oklch(17.76% 0 0);
     min-height: 0;
     padding: 0.75rem;
   }

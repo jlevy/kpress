@@ -94,6 +94,11 @@ class RenderOptions:
     host: str | None = None
     theme_mode: ThemeMode = "system"
     font_mode: FontMode = "custom"
+    # Named palette preset: a built-in bundle of the host-var contract, stamped as
+    # data-kpress-palette on the .kpress wrapper. "neutral" is the default (no
+    # overrides); "warm" applies the tan-paper ramp. Hosts may still override any
+    # individual --kpress-host-* var on top.
+    palette: str = "neutral"
     resolved_theme: Literal["light", "dark"] = "light"
     asset_url_prefix: str = "/kpress-static/"
     asset_mode: AssetMode = "hosted"

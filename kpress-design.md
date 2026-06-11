@@ -20,6 +20,45 @@ KPress owns document presentation.
 Host applications own browser chrome, navigation, workspace state, tabs, file trees,
 authentication, deployment, and service-specific publishing.
 
+## Core Principles
+
+These govern what belongs in KPress and how it is built.
+
+1. **Simple should be simple; complex should be possible.** Common customizations —
+   changing a few colors, swapping a font — are trivial; arbitrary customization stays
+   reachable. Convenience layers are optional and sit *on top of* the primitives, never
+   in place of them.
+
+2. **Adhere to and expose native browser abstractions.** Prefer the web platform — CSS
+   custom properties, plain HTML/CSS/JS — over framework machinery, so output stays
+   maintainable and customizable without bloat.
+   The themeable design system *is* a documented set of CSS variables (the `--kpress-*`
+   / `--kpress-host-*` contract); a host themes by setting those vars and, for anything
+   beyond them, by injecting its own HTML/CSS/JS.
+
+3. **Batteries included as optional building blocks.** The core knowledge-presentation
+   features ship first-class and polished by default — tooltips and footnote previews,
+   the mobile-friendly table of contents, tables, math and diagrams, code highlighting,
+   the settings menu with light/dark mode, and responsive support — but each is a
+   **component that can be turned off or customized**, down to its sub-settings (e.g.
+   when the TOC appears or collapses).
+   Complete by default; nothing forced.
+   Built-in **palette themes** (named bundles of the CSS-var contract, e.g. `neutral`
+   and `warm`) are convenience presets in this same spirit — selectable, overridable,
+   never special-cased.
+   Every setting maps to a **specific component or aspect**; KPress does not accumulate
+   an arbitrary grab-bag of flags or named layouts.
+
+4. **Own the document layer, not the app.** KPress focuses on the document model,
+   rendering, and efficient packaging of web assets.
+   It does **not** own app or publishing workflows — static-site building, navigation,
+   deployment, and other service-specific concerns belong to the host.
+   Site headers, nav pages, back-links, and similar chrome are authored by the client’s
+   own workflow and injected through the chrome slots (`header_html` / `footer_html` /
+   `head_extra_html`): KPress provides the slots, not the content or the workflow.
+   Composing a site out of different feature sets is likewise a host concern, not a
+   KPress setting.
+
 ## Current Implementation Status
 
 The current package slice is the first end-to-end implementation of the package
@@ -465,7 +504,7 @@ Current public variables (from `contract.py::PUBLIC_CSS_VARIABLES`):
   --kpress-doc-accent: #0f766e;
   --kpress-doc-bg: white;
   --kpress-doc-border: #ddd;
-  --kpress-doc-code-bg: #f6f8fb;
+  --kpress-doc-code-bg: oklch(97.93% 0.0029 84.6);
   --kpress-doc-link: #0645ad;
   --kpress-doc-muted: #666;
   --kpress-doc-text: black;
@@ -520,6 +559,21 @@ enforce “always use CSS vars”).
   opacity/visibility. The `prefers-reduced-motion` block suppresses them.
 - **Surface fill** — `--kpress-doc-surface-bg` is the single subtle fill shared by code
   blocks, table headers, and (where applicable) metadata/shaded surfaces.
+  `--kpress-doc-surface-hover` and `--kpress-doc-surface-selected` extend the family for
+  interaction highlights (TOC hover/active, hovered controls), deepening with interaction
+  strength. All three are **host-overridable** — they read
+  `var(--kpress-host-surface-*, <neutral default>)`, so a host (or a palette preset) can
+  retarget the highlights, not just the code background. The neutral default is a subtle
+  link tint, re-derived per light/dark theme.
+  All first-party color literals are written as `oklch()` (exact, round-trip-verified
+  conversions; see `devtools/css_to_oklch.py`).
+- **Palette presets** — reasonable default sets for common cases, each a *named bundle of
+  the `--kpress-host-*` contract* (not special-cased code), keyed on
+  `.kpress[data-kpress-palette="<name>"]` and selected via `RenderOptions.palette` /
+  `format.palette`. `neutral` is the default (no overrides); `warm` applies the original
+  tan-paper ramp (`--kpress-host-code-bg` + `--kpress-host-surface-hover/-selected`). A
+  host can select a preset and still override any single var on top — *simple stays
+  simple, complex stays possible.*
 
 Two shared interaction primitives are documented so every component reuses them rather
 than re-styling:
@@ -830,9 +884,12 @@ kash; they are the recorded exceptions:
 9. **Footnotes-section container styling** (border-top, muted, 0.9em) — kash has none.
 10. **Dual active-state signal** on TOC links (`data-active` attribute + `.active`
     class) so embedding hosts get an attribute hook.
-11. **Cool-blue palette**, not kash’s warm teal — `#0756a5`-based primary, fully-opaque
-    tokens. This is the KPress brand palette; the kash `--color-*` token *names* are
-    provided but mapped to blue values.
+11. **Cool-blue primary over warm paper surfaces** — the link/primary stays the KPress
+    blue (`oklch(45.76% 0.1445 254.7)`, was `#0756a5`), not kash’s teal, with
+    fully-opaque tokens; the kash `--color-*` token *names* are provided but mapped to
+    KPress values. Interaction/surface fills (code bg, TOC hover/active) use the warm
+    paper ramp from the original KPress palette (see Surface fill above) rather than
+    blue tints.
 12. **Blue-based dark palette** (same hue choice in dark mode).
 13. **Sans on the `.kpress` wrapper, serif only inside `.kpress-prose`** — UI chrome is
     sans, body prose is serif.

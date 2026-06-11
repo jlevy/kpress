@@ -30,6 +30,7 @@ class FormatConfig:
     """Default document rendering configuration."""
 
     theme: str = "default"
+    palette: str = "neutral"
     color_mode: str = "system"
     toc: TocMode = "auto"
     toc_min_headings: int = 4
@@ -184,7 +185,16 @@ def _bool_value(value: object, default: bool) -> bool:
 _KNOWN_TOP_LEVEL_KEYS = frozenset({"site", "publish", "format", "pdf", "optimizer", "sources"})
 _KNOWN_PUBLISH_KEYS = frozenset({"output_dir", "asset_mode"})
 _KNOWN_FORMAT_KEYS = frozenset(
-    {"theme", "color_mode", "toc", "toc_min_headings", "math", "diagrams", "show_frontmatter"}
+    {
+        "theme",
+        "palette",
+        "color_mode",
+        "toc",
+        "toc_min_headings",
+        "math",
+        "diagrams",
+        "show_frontmatter",
+    }
 )
 _KNOWN_OPTIMIZER_KEYS = frozenset({"mode", "precompress"})
 _KNOWN_PDF_KEYS = frozenset({"enabled", "page_size"})
@@ -338,6 +348,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         sources=sources or [SourceConfig()],
         format=FormatConfig(
             theme=str(fmt.get("theme", "default")),
+            palette=str(fmt.get("palette", "neutral")),
             color_mode=str(fmt.get("color_mode", "system")),
             toc=cast(TocMode, toc),
             toc_min_headings=_int_value(fmt.get("toc_min_headings"), 4),
