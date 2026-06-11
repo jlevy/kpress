@@ -422,7 +422,7 @@ changing one aspect without owning the whole thing.
 
 Config travels on **two channels**: declarative JSON through YAML/Python
 (transportable), and JS-level config, a superset that may include callbacks / policy
-functions (`kpress.widgets.configure("toc", { visible: () => true })`). Common aspects
+functions (`kpress.behaviors.configure("toc", { visible: () => true })`). Common aspects
 may earn declarative spellings; the callback seam means KPress never has to
 pre-enumerate every aspect as a binary setting.
 Each widget/behavior defines and validates its config in its own JS

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -17,7 +17,7 @@ YamlDict = dict[str, object]
 class SourceConfig:
     """Source tree discovery configuration."""
 
-    path: str = "."
+    path: str | Path = "."
     include: list[str] = field(default_factory=lambda: ["**/*.md"])
     exclude: list[str] = field(default_factory=lambda: ["public/**", ".kpress/**"])
     # Verbatim-copy glob patterns (logos, favicons, images). Matched files are
@@ -49,7 +49,7 @@ class FormatConfig:
 class PublishConfig:
     """Static output settings."""
 
-    output_dir: str = "public"
+    output_dir: str | Path = "public"
     asset_mode: AssetMode = "linked"
 
     def resolved_asset_mode(self) -> AssetMode:
@@ -107,6 +107,7 @@ class KPressConfig:
     # File-based configs anchor on the config file's directory; programmatic
     # configs (no file) set this explicitly — otherwise the current directory
     # is the anchor, and staged content outside it would lose its media.
+    # Mutually exclusive with config_path: the build rejects a config with both.
     base_dir: Path | None = None
 
 
@@ -281,6 +282,34 @@ def _parse_yaml_text(text: str) -> YamlDict:
     return cast(YamlDict, parsed)
 
 
+_INLINE_ASSET_MODE_ERROR = (
+    "publish.asset_mode 'inline' is not yet supported for site builds: the "
+    "output would not be self-contained (ES-module imports and fonts stay "
+    "external). Use 'sealed' for a fully offline site."
+)
+
+
+def validate_config(config: KPressConfig) -> KPressConfig:
+    """Semantic invariants for every KPressConfig, however constructed.
+
+    ``load_config`` enforces these for the YAML dialect at parse time; the
+    typed (programmatic) dialect must fail just as loudly — a type-legal value
+    like ``asset_mode="inline"`` silently ships a feature-broken site
+    (orig-7ehk), and a widget-presence typo must not silently ship different
+    chrome (orig-1tkb). Returns the config with widget presence scalars
+    normalized, so both dialects publish identical page-model data. The
+    ``BuildOptions.asset_mode`` override remains the deliberate escape hatch
+    (it is applied from options, after this check).
+    """
+
+    if config.publish.asset_mode == "inline":
+        raise KPressPublishError(_INLINE_ASSET_MODE_ERROR)
+    widgets = _parse_widgets(config.format.widgets)
+    if widgets != config.format.widgets:
+        config = replace(config, format=replace(config.format, widgets=widgets))
+    return config
+
+
 def _parse_widgets(value: object) -> dict[str, Any]:
     """Normalize ``format.widgets``: presence scalars + opaque config dicts.
 
@@ -383,12 +412,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         # features. The programmatic BuildOptions override keeps accepting it
         # for the equivalence harness and future single-file work.
         if asset_mode == "inline":
-            msg = (
-                "publish.asset_mode 'inline' is not yet supported for site builds: the "
-                "output would not be self-contained (ES-module imports and fonts stay "
-                "external). Use 'sealed' for a fully offline site."
-            )
-            raise KPressPublishError(msg)
+            raise KPressPublishError(_INLINE_ASSET_MODE_ERROR)
         if asset_mode not in {"hosted", "linked", "hashed", "sealed"}:
             msg = (
                 f"Invalid publish.asset_mode {asset_mode!r}; "

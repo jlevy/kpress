@@ -16,8 +16,14 @@ from kpress.format.assets import content_hash, package_asset_output_path
 from kpress.format.model import AssetMode, OptimizerMode
 from kpress.models import KPressExportRequest
 from kpress.output import write_bytes_atomic, write_text_atomic
-from kpress.publish.config import BuildExtensions, BuildOptions, KPressConfig, load_config
-from kpress.publish.discover import discover_sources, discover_static_files
+from kpress.publish.config import (
+    BuildExtensions,
+    BuildOptions,
+    KPressConfig,
+    load_config,
+    validate_config,
+)
+from kpress.publish.discover import config_base_dir, discover_sources, discover_static_files
 from kpress.publish.frontmatter import DocumentSource, read_document_source, route_override
 from kpress.publish.manifest import BuildReport, ManifestAsset, OutputFile
 from kpress.publish.optimize import (
@@ -40,9 +46,9 @@ from kpress.publish.site_files import write_site_files
 
 
 def _base_dir(config: KPressConfig) -> Path:
-    if config.base_dir is not None:
-        return config.base_dir.resolve()
-    return (config.config_path.parent if config.config_path else Path.cwd()).resolve()
+    # One resolver for all three anchors (sources, output, asset boundary):
+    # discovery and the build must never disagree on where the project tree is.
+    return config_base_dir(config)
 
 
 def package_asset_prefix(base_url: str) -> str:
@@ -424,6 +430,10 @@ def build_site(
 
     if not isinstance(config, KPressConfig):
         config = load_config(config)
+    # Semantic invariants hold for BOTH dialects: a typed config must fail as
+    # loudly as a YAML one (inline asset mode, widget-value typos) and publish
+    # identical page-model data (presence scalars normalized).
+    config = validate_config(config)
     base = _base_dir(config)
     output_dir = _output_dir(config, options)
     optimizer = _optimizer(config, options)

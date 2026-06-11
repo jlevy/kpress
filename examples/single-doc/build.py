@@ -54,7 +54,7 @@ def build(output_dir: Path | None = None) -> BuildReport:
         content = Path(tmp) / "content"
         content.mkdir()
         (content / "index.md").write_text(
-            f"---\ntitle: {json.dumps(TITLE)}\n---\n\n{DOC.read_text(encoding='utf-8')}",
+            f"---\ntitle: {json.dumps(TITLE, ensure_ascii=False)}\n---\n\n{DOC.read_text(encoding='utf-8')}",
             encoding="utf-8",
         )
         return build_site(
@@ -65,7 +65,7 @@ def build(output_dir: Path | None = None) -> BuildReport:
                 # Chrome slots are plain strings — no YAML, no *_file dance.
                 header_html='<a href="/">&larr; back home</a>',
                 head_extra_html="<style>:root { --kpress-host-settings-inset-block: 1rem; }</style>",
-                sources=[SourceConfig(path=str(content))],
+                sources=[SourceConfig(path=content)],
                 format=FormatConfig(
                     toc="on",
                     show_frontmatter=False,
@@ -73,7 +73,7 @@ def build(output_dir: Path | None = None) -> BuildReport:
                     # Widget selection: the settings gear with two choosers.
                     widgets={"settings": {"choosers": ["theme", "reading-font"]}},
                 ),
-                publish=PublishConfig(output_dir=str(out)),
+                publish=PublishConfig(output_dir=out),
             )
         )
 
@@ -85,11 +85,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--port", type=int, default=8000, help="Port for --serve (default 8000)")
     args = parser.parse_args(argv)
 
-    out = Path(args.output_dir).resolve() if args.output_dir else HERE / "public"
+    out = Path(args.output_dir).resolve() if args.output_dir else None
     report = build(out)
-    print(f"built {len(report.files)} files -> {out}")
+    print(f"built {len(report.files)} files -> {report.output_dir}")
     if args.serve:
-        serve(out, args.port)
+        serve(report.output_dir, args.port)
     return 0
 
 

@@ -743,14 +743,14 @@ def test_build_site_accepts_a_programmatic_config(tmp_path: Path) -> None:
             title="Programmatic Site",
             header_html='<a href="/">home</a>',
             head_extra_html="<style>:root { --demo-marker: 1; }</style>",
-            sources=[SourceConfig(path=str(content))],
+            sources=[SourceConfig(path=content)],
             format=FormatConfig(
                 toc="off",
                 show_frontmatter=False,
                 palette="warm",
                 widgets={"settings": {"choosers": ["theme", "reading-font"]}},
             ),
-            publish=PublishConfig(output_dir=str(tmp_path / "public")),
+            publish=PublishConfig(output_dir=tmp_path / "public"),
         )
     )
 
@@ -762,8 +762,6 @@ def test_build_site_accepts_a_programmatic_config(tmp_path: Path) -> None:
     # The widgets dict rides through to the page model verbatim.
     assert '"choosers": ["theme", "reading-font"]' in html
     assert 'data-kpress-palette="warm"' in html
-    # No config file was ever written or read.
-    assert not (tmp_path / "kpress.yml").exists()
 
 
 def test_programmatic_config_base_dir_anchors_document_assets(tmp_path: Path) -> None:
@@ -781,9 +779,121 @@ def test_programmatic_config_base_dir_anchors_document_assets(tmp_path: Path) ->
         KPressConfig(
             title="Anchored",
             base_dir=tmp_path,
-            sources=[SourceConfig(path=str(content))],
-            publish=PublishConfig(output_dir=str(tmp_path / "public")),
+            sources=[SourceConfig(path=content)],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
         )
     )
 
     assert (tmp_path / "public" / "images" / "pic.png").is_file()
+
+
+def test_programmatic_config_anchors_relative_sources_on_base_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Relative source paths resolve against base_dir — discovery and the
+    build must share one anchor (a split anchor silently built an empty site)."""
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Anchored\n", encoding="utf-8")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    report = build_site(
+        KPressConfig(
+            base_dir=tmp_path,
+            sources=[SourceConfig(path="content")],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+
+    assert report.routes == {"/": "index.html"}
+    assert (tmp_path / "public" / "index.html").is_file()
+
+
+def test_config_path_and_base_dir_are_mutually_exclusive(tmp_path: Path) -> None:
+    import dataclasses
+
+    from kpress.errors import KPressPublishError
+    from kpress.publish import build_site, load_config
+
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "index.md").write_text("# Home\n", encoding="utf-8")
+    config_file = tmp_path / "kpress.yml"
+    config_file.write_text(
+        "sources:\n  - path: docs\npublish:\n  output_dir: public\n", encoding="utf-8"
+    )
+
+    both = dataclasses.replace(load_config(config_file), base_dir=tmp_path)
+    with pytest.raises(KPressPublishError, match="mutually exclusive"):
+        build_site(both)
+
+
+def test_programmatic_config_fails_as_loudly_as_yaml(tmp_path: Path) -> None:
+    """Typed configs hit the same semantic invariants as the YAML dialect."""
+
+    from kpress.errors import KPressPublishError
+    from kpress.publish import FormatConfig, KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Doc\n", encoding="utf-8")
+
+    def config(**overrides: object) -> KPressConfig:
+        import dataclasses
+
+        base = KPressConfig(
+            base_dir=tmp_path,
+            sources=[SourceConfig(path=content)],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+        return dataclasses.replace(base, **overrides)  # type: ignore[arg-type]
+
+    # inline asset mode: type-legal, semantically rejected (orig-7ehk).
+    with pytest.raises(KPressPublishError, match="not yet supported"):
+        build_site(
+            config(publish=PublishConfig(output_dir=tmp_path / "public", asset_mode="inline"))
+        )
+
+    # widget-value typo: fails loudly (orig-1tkb)...
+    with pytest.raises(KPressPublishError, match="format.widgets"):
+        build_site(config(format=FormatConfig(widgets={"settings": "Off"})))
+
+    # ...and presence booleans normalize so both dialects publish identical data.
+    build_site(config(format=FormatConfig(widgets={"minimap": True})))
+    html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
+    assert '"minimap": "on"' in html
+
+
+def test_programmatic_title_staging_survives_astral_plane_characters(tmp_path: Path) -> None:
+    """The exemplar's frontmatter-title staging (json.dumps with
+    ensure_ascii=False) must round-trip emoji: the default ensure_ascii=True
+    emits JSON surrogate pairs that YAML reads as lone surrogates, crashing
+    the build far from the cause."""
+
+    import json as json_mod
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    title = "Launch notes \U0001f680"
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text(
+        f"---\ntitle: {json_mod.dumps(title, ensure_ascii=False)}\n---\n\n# Body\n",
+        encoding="utf-8",
+    )
+
+    build_site(
+        KPressConfig(
+            title=title,
+            base_dir=tmp_path,
+            sources=[SourceConfig(path=content)],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+
+    html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
+    assert f"<title>{title}</title>" in html
