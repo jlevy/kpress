@@ -21,7 +21,9 @@ sources:
   # (see content/reference/api.md, which publishes to /reference/api/).
   - path: content
     # Demo extension JS ships verbatim at its source-relative path.
-    static: ["demo/**"]
+    # `demo/**/*` (not `demo/**`): a trailing `**` only matches directories
+    # before Python 3.13, silently copying nothing.
+    static: ["demo/**/*"]
 
 format:
   math: auto
