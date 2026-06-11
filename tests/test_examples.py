@@ -213,3 +213,22 @@ def test_built_site_is_navigable_over_http(
         for ref in refs:
             ref_status, _ = _get(base_url, ref.decode())
             assert ref_status == 200, f"{ref!r} did not serve (status {ref_status})"
+
+
+def test_single_doc_example_publishes_programmatically(tmp_path: Path) -> None:
+    """The library-call exemplar: one doc, a typed KPressConfig, no YAML file."""
+
+    build_mod = _load("example_single_doc_build", EXAMPLES / "single-doc" / "build.py")
+    report = build_mod.build(tmp_path)
+
+    assert report.routes == {"/": "index.html"}
+    html = (tmp_path / "index.html").read_text(encoding="utf-8")
+    # The injected title (frontmatter staged by the host) drives <title>.
+    assert "<title>A Single Published Document</title>" in html
+    # Chrome slots arrived as plain strings.
+    assert "&larr; back home" in html
+    assert "--kpress-host-settings-inset-block: 1rem" in html
+    # Widget selection rode through to the page model.
+    assert '"choosers": ["theme", "reading-font"]' in html
+    # No kpress.yml anywhere in the example (the point of the exemplar).
+    assert not (EXAMPLES / "single-doc" / "kpress.yml").exists()

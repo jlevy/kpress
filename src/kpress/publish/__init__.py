@@ -7,10 +7,12 @@ from kpress.publish.capability import ProbeResult, probe_capability
 from kpress.publish.config import (
     BuildExtensions,
     BuildOptions,
+    FormatConfig,
     KPressConfig,
     OptimizerOptions,
     PdfPublishConfig,
     PublishConfig,
+    SourceConfig,
     load_config,
 )
 from kpress.publish.manifest import BuildReport, OutputFile
@@ -20,12 +22,14 @@ __all__ = [
     "BuildExtensions",
     "BuildOptions",
     "BuildReport",
+    "FormatConfig",
     "KPressConfig",
     "OptimizerOptions",
     "OutputFile",
     "PdfPublishConfig",
     "ProbeResult",
     "PublishConfig",
+    "SourceConfig",
     "build_html",
     "build_site",
     "export_document",

@@ -301,7 +301,7 @@ from kpress.workflow import convert_document, export_document, format_document
 render_fragment(input: DocumentInput, options: RenderOptions) -> RenderedDocument
 render_page(input: DocumentInput, options: RenderOptions) -> RenderedPage
 render_pdf(page: RenderedPage | Path, options: PdfOptions) -> PdfReport
-build_site(config_path: Path | str = "kpress.yml") -> BuildReport
+build_site(config: KPressConfig | Path | str = "kpress.yml") -> BuildReport
 build_html(src_html: str, dest_html: Path, options: BuildOptions) -> BuildReport
 ```
 

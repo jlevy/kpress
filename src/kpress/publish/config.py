@@ -103,6 +103,11 @@ class KPressConfig:
     pdf: PdfPublishConfig = PdfPublishConfig()
     optimizer: OptimizerOptions = OptimizerOptions()
     config_path: Path | None = None
+    # Path anchor for relative sources/output and the document-asset boundary.
+    # File-based configs anchor on the config file's directory; programmatic
+    # configs (no file) set this explicitly — otherwise the current directory
+    # is the anchor, and staged content outside it would lose its media.
+    base_dir: Path | None = None
 
 
 @dataclass(frozen=True)

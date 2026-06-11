@@ -718,3 +718,72 @@ def test_static_passthrough_allows_symlink_within_source_root(tmp_path: Path) ->
     build_site(config)
 
     assert (tmp_path / "public" / "alias.txt").read_text(encoding="utf-8") == "fine\n"
+
+
+def test_build_site_accepts_a_programmatic_config(tmp_path: Path) -> None:
+    """The Python-client path: construct KPressConfig directly — no YAML file,
+    no slot temp files. This is the exemplary library-call integration."""
+
+    from kpress.publish import (
+        FormatConfig,
+        KPressConfig,
+        PublishConfig,
+        SourceConfig,
+        build_site,
+    )
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text(
+        '---\ntitle: "Programmatic Doc"\n---\n\n# Alpha\n\nBody.\n', encoding="utf-8"
+    )
+
+    report = build_site(
+        KPressConfig(
+            title="Programmatic Site",
+            header_html='<a href="/">home</a>',
+            head_extra_html="<style>:root { --demo-marker: 1; }</style>",
+            sources=[SourceConfig(path=str(content))],
+            format=FormatConfig(
+                toc="off",
+                show_frontmatter=False,
+                palette="warm",
+                widgets={"settings": {"choosers": ["theme", "reading-font"]}},
+            ),
+            publish=PublishConfig(output_dir=str(tmp_path / "public")),
+        )
+    )
+
+    assert "/" in report.routes
+    html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
+    # Chrome slots are plain Python strings — no YAML escaping, no *_file dance.
+    assert '<a href="/">home</a>' in html
+    assert "--demo-marker: 1" in html
+    # The widgets dict rides through to the page model verbatim.
+    assert '"choosers": ["theme", "reading-font"]' in html
+    assert 'data-kpress-palette="warm"' in html
+    # No config file was ever written or read.
+    assert not (tmp_path / "kpress.yml").exists()
+
+
+def test_programmatic_config_base_dir_anchors_document_assets(tmp_path: Path) -> None:
+    """Without a config file there is no path anchor: KPressConfig.base_dir
+    supplies it, so document-relative media still gets collected."""
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    (content / "images").mkdir(parents=True)
+    (content / "images" / "pic.png").write_bytes(b"\x89PNG fake")
+    (content / "index.md").write_text("# Doc\n\n![Pic](images/pic.png)\n", encoding="utf-8")
+
+    build_site(
+        KPressConfig(
+            title="Anchored",
+            base_dir=tmp_path,
+            sources=[SourceConfig(path=str(content))],
+            publish=PublishConfig(output_dir=str(tmp_path / "public")),
+        )
+    )
+
+    assert (tmp_path / "public" / "images" / "pic.png").is_file()

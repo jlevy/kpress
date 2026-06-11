@@ -105,6 +105,15 @@ object storage or a host, then invalidate the CDN). None of that changes how KPr
 called. It wraps the same `render_fragment` and `get_static_asset` core shown here; only
 the final “copy `public/` somewhere” step becomes a real upload.
 
+## The library-call path (single-doc)
+
+`single-doc/` is the exemplary *programmatic* integration: one Markdown document
+published by constructing a typed `KPressConfig` in Python and calling
+`build_site(config)` — no `kpress.yml`, no YAML strings, chrome slots as plain
+strings, widget selection as a dict. A Python host calling a Python library
+writes Python; the YAML file is the veneer for file-based setups, not the API.
+(ojoshe.com's production builder is this same pattern.)
+
 ## Extension-model tour (static-site)
 
 `static-site/content/extensions.md` + `static-site/content/demo/extensions.js` are the

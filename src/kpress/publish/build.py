@@ -40,6 +40,8 @@ from kpress.publish.site_files import write_site_files
 
 
 def _base_dir(config: KPressConfig) -> Path:
+    if config.base_dir is not None:
+        return config.base_dir.resolve()
     return (config.config_path.parent if config.config_path else Path.cwd()).resolve()
 
 
@@ -402,18 +404,26 @@ def _copy_static_passthrough(
 
 
 def build_site(
-    config_path: Path | str = "kpress.yml",
+    config: KPressConfig | Path | str = "kpress.yml",
     options: BuildOptions | None = None,
     extensions: BuildExtensions | None = None,
 ) -> BuildReport:
     """Build a static KPress site.
+
+    ``config`` is either a path to a ``kpress.yml`` file or a ``KPressConfig``
+    constructed in Python — the library-call path: typed fields instead of
+    YAML, chrome slots as plain strings (no ``*_file`` indirection, no
+    escaping). Programmatic configs should use absolute source/output paths and
+    set ``base_dir`` (the anchor for relative paths and the document-asset
+    boundary that a config file's directory would otherwise provide).
 
     ``extensions`` is the host's build-pipeline seam (ordered stage plugins +
     tree/page-HTML transforms); omitted, the build derives its single stage
     from ``optimizer.mode`` exactly as before.
     """
 
-    config = load_config(config_path)
+    if not isinstance(config, KPressConfig):
+        config = load_config(config)
     base = _base_dir(config)
     output_dir = _output_dir(config, options)
     optimizer = _optimizer(config, options)
