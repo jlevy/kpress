@@ -1,7 +1,27 @@
 import { toggleBackdrop } from "./overlay.js";
+import { behaviors } from "./runtime.js";
 import { resolveKpressViewport, viewportScrollContext } from "./viewport.js";
 
-const TOC_TOGGLE_SCROLL_THRESHOLD_PX = 100;
+/**
+ * Scroll distance after which the narrow-mode floating toggle appears.
+ * Exported as a part (see kpress-design.md "Component Authoring Contract"):
+ * hosts wrap or replace the visibility policy rather than asking for a flag.
+ */
+export const TOC_TOGGLE_SCROLL_THRESHOLD_PX = 100;
+
+/**
+ * Default toggle-visibility policy: reveal the floating button once the reader
+ * has scrolled past the threshold. Replaceable per page via
+ * `kpress.behaviors.configure("toc", { visible: (ctx) => ... })` (e.g.
+ * `() => true` for an always-visible toggle), or wrappable by importing this
+ * default and delegating to it.
+ *
+ * @param {{ scrollTop(): number }} ctx viewport scroll context
+ * @returns {boolean}
+ */
+export function defaultTocToggleVisible(ctx) {
+  return ctx.scrollTop() > TOC_TOGGLE_SCROLL_THRESHOLD_PX;
+}
 
 /**
  * @param {Element} link
@@ -29,7 +49,7 @@ function tocContentLinks(toc) {
  * @param {Element} toc
  * @returns {() => void} disposer that removes all listeners/observers
  */
-function wireToc(toc) {
+function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
   // Already wired: return the existing disposer so a host that re-runs
   // initKpressToc() (e.g. after the module's own load-time self-init wired this
   // node) still gets a handle it can tear down, rather than a no-op.
@@ -53,6 +73,16 @@ function wireToc(toc) {
   const ctx = viewportScrollContext(resolveKpressViewport(toc));
   const links = tocContentLinks(toc);
 
+  // Config-tunable aspects (JS-channel config may carry callbacks): a custom
+  // toggle icon and the toggle-visibility policy.
+  if (typeof config.icon === "string") {
+    button.innerHTML = config.icon;
+  }
+  const visiblePolicy =
+    typeof config.visible === "function"
+      ? /** @type {(ctx: { scrollTop(): number }) => boolean} */ (config.visible)
+      : defaultTocToggleVisible;
+
   /** @type {Array<() => void>} */
   const cleanups = [];
   /**
@@ -68,12 +98,11 @@ function wireToc(toc) {
 
   const updateToggleVisibility = () => {
     // In narrow mode the floating toggle is the *only* way to reach the TOC (the
-    // sidebar is hidden by the container query), so reveal it once the reader has
-    // scrolled past the threshold — matching the TextPress behavior of a TOC
-    // indicator that hovers in after a short scroll. Wide mode hides the toggle
-    // entirely via CSS, so toggling this class has no visible effect there.
-    const showToggle = ctx.scrollTop() > TOC_TOGGLE_SCROLL_THRESHOLD_PX;
-    button.classList.toggle("show-toggle", showToggle);
+    // sidebar is hidden by the container query); the policy decides when it
+    // shows (default: after scrolling past the threshold, matching the
+    // TextPress hover-in behavior). Wide mode hides the toggle entirely via
+    // CSS, so toggling this class has no visible effect there.
+    button.classList.toggle("show-toggle", visiblePolicy(ctx));
   };
 
   /**
@@ -227,11 +256,20 @@ function wireToc(toc) {
  * @param {ParentNode} [root]
  * @returns {() => void}
  */
-export function initKpressToc(root = document) {
+export function initKpressToc(
+  root = document,
+  config = /** @type {Record<string, unknown>} */ ({}),
+) {
   /** @type {Array<() => void>} */
   const disposers = [];
+  const reconfigure = Object.keys(config).length > 0;
   for (const toc of root.querySelectorAll("[data-kpress-toc]")) {
-    disposers.push(wireToc(toc));
+    // A config change must re-wire: dispose the existing binding first so the
+    // new policy/icon take effect (plain rebinds reuse the existing wiring).
+    if (reconfigure) {
+      /** @type {{ __kpressTocDispose?: () => void }} */ (toc).__kpressTocDispose?.();
+    }
+    disposers.push(wireToc(toc, config));
   }
   return () => {
     for (const dispose of disposers) {
@@ -240,4 +278,8 @@ export function initKpressToc(root = document) {
   };
 }
 
-initKpressToc();
+behaviors.register("toc", {
+  bind: (root, config) => {
+    initKpressToc(root, config);
+  },
+});

@@ -1,3 +1,5 @@
+import { behaviors } from "./runtime.js";
+
 const NUMERIC_CELL_PATTERN = /^[-+]?((\d{1,3}(,\d{3})+)|\d+)(\.\d+)?%?$/;
 
 /**
@@ -12,6 +14,7 @@ function markNumericCells(table) {
   }
 }
 
+/** @param {ParentNode} [root] */
 export function initKpressTables(root = document) {
   for (const table of root.querySelectorAll(".kpress-prose table:not(.kpress-table)")) {
     const wrapper = document.createElement("div");
@@ -31,4 +34,8 @@ document.addEventListener("kpress:tabchange", () => {
   initKpressTables();
 });
 
-initKpressTables();
+behaviors.register("tables", {
+  bind: (root) => {
+    initKpressTables(/** @type {ParentNode} */ (root));
+  },
+});

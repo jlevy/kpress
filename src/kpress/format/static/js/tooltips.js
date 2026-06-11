@@ -4,11 +4,12 @@ import {
   OVERLAY_DEFAULT_GAP_PX,
   OVERLAY_VIEWPORT_MARGIN_PX,
 } from "./overlay.js";
+import { behaviors } from "./runtime.js";
 import { rectRelativeToViewport, resolveKpressViewport, viewportBounds } from "./viewport.js";
 
 const TOOLTIP_VIEWPORT_MARGIN_PX = OVERLAY_VIEWPORT_MARGIN_PX;
 const TOOLTIP_GAP_PX = OVERLAY_DEFAULT_GAP_PX;
-const TOOLTIP_SHOW_DELAY_MS = 500;
+export const TOOLTIP_SHOW_DELAY_MS = 500;
 const TOOLTIP_HIDE_DELAY_MS = 2500;
 const TOOLTIP_WIDE_RIGHT_HIDE_DELAY_MS = 4000;
 const TOOLTIP_MOVING_TOWARD_HIDE_DELAY_MS = 500;
@@ -276,7 +277,7 @@ function tooltipContentForAnchor(anchor, target) {
  * @param {Element} trigger
  * @returns {string}
  */
-function chooseTooltipPosition(trigger) {
+export function chooseTooltipPosition(trigger) {
   const viewport = resolveKpressViewport(trigger);
   const bounds = viewportBounds(viewport);
   if (bounds.width <= MOBILE_TOOLTIP_BREAKPOINT_PX) {
@@ -314,7 +315,7 @@ function setPositionClass(tooltip, position) {
  * @param {HTMLAnchorElement} anchor
  * @param {HTMLElement} tooltip
  */
-function positionTooltip(anchor, tooltip) {
+export function positionTooltip(anchor, tooltip) {
   const viewport = resolveKpressViewport(anchor);
   const bounds = viewportBounds(viewport);
   tooltip.style.insetInlineStart = "";
@@ -578,6 +579,25 @@ function wireTooltipAnchor(anchor) {
   anchor.addEventListener("blur", removeKpressTooltips);
 }
 
+/**
+ * @param {Element} anchor
+ * @returns {boolean}
+ */
+function isFootnoteAnchor(anchor) {
+  const href = anchor.getAttribute("href") || "";
+  return href.startsWith("#fn-") || Boolean(anchor.closest(".kpress-footnote-ref"));
+}
+
+/**
+ * Anchor kinds the built-in binds have wired at least once. The
+ * MutationObserver only auto-wires those kinds: if a host overrides
+ * `footnote-preview` (so the built-in bind never runs for footnotes), late
+ * footnote anchors are left to the host's binding too.
+ *
+ * @type {Set<string>}
+ */
+const activeTooltipKinds = new Set();
+
 let tooltipGlobalsBound = false;
 
 /**
@@ -587,22 +607,58 @@ let tooltipGlobalsBound = false;
  *
  * @param {ParentNode} [root]
  */
-export function initKpressTooltips(root = document) {
+export function initKpressTooltips(
+  root = document,
+  config = /** @type {Record<string, unknown>} */ ({}),
+) {
   if (!tooltipGlobalsBound) {
     tooltipGlobalsBound = true;
     dismissOnEscape(removeKpressTooltips);
     dismissOnResize(removeKpressTooltips);
   }
+  const only = typeof config.only === "string" ? config.only : null;
+  if (only) {
+    activeTooltipKinds.add(only);
+  } else {
+    activeTooltipKinds.add("link");
+    activeTooltipKinds.add("footnote");
+  }
   for (const anchor of root.querySelectorAll('a[href^="#"]')) {
+    const kind = isFootnoteAnchor(anchor) ? "footnote" : "link";
+    if (only && kind !== only) {
+      continue;
+    }
     wireTooltipAnchor(anchor);
   }
 }
 
-initKpressTooltips();
+// Two registered behaviors over disjoint anchor kinds: hover previews for
+// internal links, and footnote previews. Overriding one id leaves the other's
+// markup handling untouched (see kpress-design.md, behaviors).
+behaviors.register("tooltip", {
+  bind: (root, config) => {
+    initKpressTooltips(root, { ...config, only: "link" });
+  },
+});
+behaviors.register("footnote-preview", {
+  bind: (root, config) => {
+    initKpressTooltips(root, { ...config, only: "footnote" });
+  },
+});
 
 // Embedding host apps inject the document fragment after this
 // module loads, so footnote and internal-link anchors appear later. A
 // MutationObserver wires them as they arrive (wiring is idempotent).
+/**
+ * @param {Element} anchor
+ */
+function wireObservedAnchor(anchor) {
+  const kind = isFootnoteAnchor(anchor) ? "footnote" : "link";
+  if (activeTooltipKinds.has(kind)) {
+    wireTooltipAnchor(anchor);
+  }
+}
+
 if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.body) {
   const observer = new MutationObserver((records) => {
     for (const record of records) {
@@ -611,10 +667,10 @@ if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" &
           continue;
         }
         if (node.matches('a[href^="#"]')) {
-          wireTooltipAnchor(node);
+          wireObservedAnchor(node);
         }
         for (const nested of node.querySelectorAll('a[href^="#"]')) {
-          wireTooltipAnchor(nested);
+          wireObservedAnchor(nested);
         }
       }
     }

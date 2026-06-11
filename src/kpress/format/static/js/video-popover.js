@@ -1,3 +1,5 @@
+import { behaviors } from "./runtime.js";
+
 /**
  * KPress inline video embed.
  *
@@ -72,7 +74,7 @@ function embedVideo(placeholder) {
 /**
  * Embed every video placeholder under `root` (idempotent — embedded
  * placeholders are removed from the DOM, so they are not matched again).
- * @param {Document | Element} root
+ * @param {ParentNode} [root]
  */
 export function initKpressVideoEmbeds(root = document) {
   for (const placeholder of root.querySelectorAll("[data-kpress-video-id]")) {
@@ -80,7 +82,11 @@ export function initKpressVideoEmbeds(root = document) {
   }
 }
 
-initKpressVideoEmbeds();
+behaviors.register("video", {
+  bind: (root) => {
+    initKpressVideoEmbeds(/** @type {ParentNode} */ (root));
+  },
+});
 
 if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.body) {
   const observer = new MutationObserver((records) => {
