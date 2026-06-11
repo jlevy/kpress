@@ -146,8 +146,9 @@ class BuildExtensions:
     # objects with the optimizer-backend shape. None derives the list from
     # optimizer.mode — full back-compat.
     pipeline: Sequence[str | OptimizerBackend] | None = None
-    # Document-tree transform, applied after parsing and before the TOC/page
-    # model are derived (so injected headings show up in both).
+    # Document-tree transform, applied right after parsing. The tree's `toc`
+    # is already derived by then: a transform that adds or changes headings
+    # must rebuild `tree.toc` itself for the TOC/page model to reflect it.
     transform_tree: Callable[[DocumentTree], DocumentTree] | None = None
     # Whole-page transform `(html, route) -> html`, applied to each rendered
     # page before the pipeline stages.

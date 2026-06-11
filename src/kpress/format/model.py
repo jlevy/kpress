@@ -125,9 +125,11 @@ class RenderOptions:
     # Defaults merge under this map (settings is on unless turned off here).
     widgets: dict[str, Any] = field(default_factory=dict)
     # Optional document-tree transform (a callable, never serialized): applied
-    # right after parsing, before the TOC/page model derive from the tree, so a
-    # build-time transform (e.g. injected section anchors) is reflected in
-    # both. Threaded from BuildExtensions.transform_tree by the publisher.
+    # right after parsing. The parsed tree's `toc` (and the page-model headings
+    # derived from it) is ALREADY computed at that point — a transform that
+    # adds or changes headings must rebuild `tree.toc` itself (see the
+    # transform-tree test for the pattern). Threaded from
+    # BuildExtensions.transform_tree by the publisher.
     transform_tree: Callable[[DocumentTree], DocumentTree] | None = None
     # Page chrome slots: opaque site-owned HTML emitted verbatim by render_page
     # (head extra inside <head>; header/footer wrapped in .kpress-site-header /
