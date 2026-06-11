@@ -125,6 +125,7 @@ PUBLIC_CSS_CLASSES = (
     "kpress-menu",
     "kpress-menu-chooser",
     "kpress-menu-seg",
+    "kpress-menu-select",
     "kpress-mermaid",
     "kpress-metadata",
     "kpress-no-print",

@@ -51,4 +51,13 @@
     <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
     <path d="M12 9v4"/><path d="M12 17h.01"/>
   </symbol>
+  <symbol id="kpress-icon-serif" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 20 12 5l5 15"/>
+    <path d="M8.7 15h6.6"/>
+    <path d="M5 20h4"/><path d="M15 20h4"/><path d="M10.5 5h3"/>
+  </symbol>
+  <symbol id="kpress-icon-sans" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 20 12 4l6 16"/>
+    <path d="M8.2 14h7.6"/>
+  </symbol>
 </svg>

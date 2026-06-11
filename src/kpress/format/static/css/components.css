@@ -206,6 +206,25 @@
   gap: 2px;
 }
 
+/* Stacked chooser groups read as one menu; give successive groups a little
+   separation. The native select (font-set chooser) inherits document tokens. */
+.kpress-menu-chooser + .kpress-menu-chooser,
+.kpress-menu-chooser + .kpress-menu-select,
+.kpress-menu-select + .kpress-menu-chooser {
+  margin-top: 4px;
+}
+
+.kpress-menu-select {
+  background: var(--kpress-doc-bg);
+  border: 1px solid var(--kpress-doc-border);
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-text);
+  font-family: var(--kpress-font-sans);
+  font-size: var(--kpress-font-size-tiny);
+  padding: 4px 6px;
+  width: 100%;
+}
+
 .kpress-menu-seg {
   align-items: center;
   background: transparent;

@@ -75,6 +75,7 @@ DEFAULT_JS_ASSETS = [
     # events, page model) that every other module registers through.
     "js/runtime.js",
     "js/theme.js",
+    "js/settings-widget.js",
     "js/toc.js",
     "js/tooltips.js",
     "js/tables.js",

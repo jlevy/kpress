@@ -22,6 +22,8 @@ _REQUIRED_ICONS = (
     "external-link",
     "list",
     "triangle-alert",
+    "serif",
+    "sans",
 )
 
 

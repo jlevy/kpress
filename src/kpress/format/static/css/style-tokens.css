@@ -188,12 +188,29 @@
    wrapper) uses the vendored PT Serif / Source Sans reader faces below.
    "system" opts out of the vendored faces and uses the platform system
    font stack, so no reader fonts are downloaded. Switchable via
-   RenderOptions.font_mode. */
-.kpress[data-kpress-fonts="system"] {
+   RenderOptions.font_mode at render time, and per reader via the settings
+   widget's font-set chooser, which stamps data-kpress-font-set on <html>
+   (persisted as `kpress.fontSet`; the pre-paint bootstrap re-applies it). */
+.kpress[data-kpress-fonts="system"],
+[data-kpress-font-set="system"] .kpress,
+[data-kpress-font-set="system"] .kpress-page-main,
+[data-kpress-font-set="system"] .kpress-tooltip {
   --kpress-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --kpress-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --kpress-font-prose: Georgia, "Times New Roman", Times, serif;
   --kpress-font-punctuation: Georgia, "Times New Roman", Times, serif;
+}
+
+/* Reading-font chooser (settings widget): "sans" flips the prose body from the
+   serif reading face to the sans stack, leaving headings/UI/code untouched.
+   Stamped as data-kpress-prose-font on <html> (persisted as `kpress.proseFont`;
+   pre-paint applies it before first paint). Hosts may point the sans prose
+   stack anywhere via --kpress-host-font-prose-sans. */
+[data-kpress-prose-font="sans"] .kpress,
+[data-kpress-prose-font="sans"] .kpress-page-main,
+[data-kpress-prose-font="sans"] .kpress-tooltip,
+.kpress[data-kpress-prose-font="sans"] {
+  --kpress-font-prose: var(--kpress-host-font-prose-sans, var(--kpress-font-sans));
 }
 
 /* Built-in palette presets: reasonable default sets for common cases, each a
