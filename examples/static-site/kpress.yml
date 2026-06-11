@@ -7,6 +7,11 @@
 
 site:
   title: KPress Static Site Example
+  # The extension-model demo (content/extensions.md): site-owned JS injected
+  # through the head slot. It registers a minimap widget, a bare theme toggle,
+  # a TOC aspect tweak, a footnote-handling override, and a glossary behavior —
+  # all host code, zero KPress edits.
+  head_extra_html: '<script type="module" src="/demo/extensions.js"></script>'
 
 sources:
   # Every *.md under content/ becomes a page. Directory layout maps to URLs:
@@ -15,11 +20,20 @@ sources:
   # A page can also override its own URL via `public_path:` frontmatter
   # (see content/reference/api.md, which publishes to /reference/api/).
   - path: content
+    # Demo extension JS ships verbatim at its source-relative path.
+    static: ["demo/**"]
 
 format:
   math: auto
   diagrams: auto
   toc: auto
+  # Widget presence + opaque config (the extension model's simple tier): the
+  # settings gear with all three built-in choosers, plus the two demo widgets
+  # registered by demo/extensions.js.
+  widgets:
+    settings: { choosers: [theme, reading-font, font-set] }
+    minimap: "on"
+    theme-toggle: "on"
 
 publish:
   output_dir: public

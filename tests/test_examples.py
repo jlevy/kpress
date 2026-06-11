@@ -46,6 +46,7 @@ def test_static_site_example_builds_multiple_urls(tmp_path: Path) -> None:
     # `public_path` override (/reference/api/).
     assert report.routes == {
         "/": "index.html",
+        "/extensions.html": "extensions.html",
         "/guides/getting-started.html": "guides/getting-started.html",
         "/guides/markdown-features.html": "guides/markdown-features.html",
         "/reference/api/": "reference/api/index.html",
@@ -60,6 +61,18 @@ def test_static_site_example_builds_multiple_urls(tmp_path: Path) -> None:
     assert (tmp_path / "_kpress" / "kpress-manifest.json").is_file()
     assert any((tmp_path / "_kpress").rglob("*.css"))
     assert any((tmp_path / "_kpress").rglob("*.woff2"))
+
+    # Extension-model demo (content/extensions.md + demo/extensions.js): the
+    # site's widgets get mounts, the demo JS ships verbatim, the page model
+    # carries the opaque widget config, and the head slot injects the module.
+    assert (tmp_path / "demo" / "extensions.js").is_file()
+    for widget_id in ("settings", "minimap", "theme-toggle"):
+        assert f'data-kpress-widget="{widget_id}"' in home, widget_id
+    assert '"choosers": ["theme", "reading-font", "font-set"]' in home
+    assert '<script type="module" src="/demo/extensions.js"></script>' in home
+    # The demo page itself carries the injected-HTML glossary markup.
+    extensions = (tmp_path / "extensions.html").read_text(encoding="utf-8")
+    assert "data-gloss=" in extensions
 
 
 def test_wrapped_site_example_embeds_fragments(tmp_path: Path) -> None:
