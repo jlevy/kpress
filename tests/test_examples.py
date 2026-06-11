@@ -62,14 +62,16 @@ def test_static_site_example_builds_multiple_urls(tmp_path: Path) -> None:
     assert any((tmp_path / "_kpress").rglob("*.css"))
     assert any((tmp_path / "_kpress").rglob("*.woff2"))
 
-    # Extension-model demo (content/extensions.md + demo/extensions.js): the
-    # site's widgets get mounts, the demo JS ships verbatim, the page model
-    # carries the opaque widget config, and the head slot injects the module.
+    # Extension-model demo (content/extensions.md + demo/extensions.{js,css}):
+    # the site's widgets get mounts, the demo JS/CSS ship verbatim, the page
+    # model carries the opaque widget config, and the head slot injects both.
     assert (tmp_path / "demo" / "extensions.js").is_file()
+    assert (tmp_path / "demo" / "extensions.css").is_file()
     for widget_id in ("settings", "minimap", "theme-toggle"):
         assert f'data-kpress-widget="{widget_id}"' in home, widget_id
     assert '"choosers": ["theme", "reading-font", "font-set"]' in home
     assert '<script type="module" src="/demo/extensions.js"></script>' in home
+    assert '<link rel="stylesheet" href="/demo/extensions.css">' in home
     # The demo page itself carries the injected-HTML glossary markup.
     extensions = (tmp_path / "extensions.html").read_text(encoding="utf-8")
     assert "data-gloss=" in extensions

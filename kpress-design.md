@@ -400,7 +400,8 @@ A+B, no framework:
   (`<div data-kpress-widget="<id>">`); the widget renders into it (no-JS rule).
   Position stays CSS (the inset tokens).
 - **Behaviors** — JS bindings over *server-rendered document markup*: `toc`, `tooltip`,
-  `footnote-preview`, `code-copy`, `video`, `tables`, `tabs`, `diagrams`. The HTML
+  `footnote-preview`, `code-copy`, `video`, `tables`, `tabs`, `diagrams` (plus `theme`,
+  which binds the theme engine’s init to the root element). The HTML
   contract is the binding surface; KPress’s defaults bind to it, a host can rebind the
   same markup, and HTML injected by the host (slots, markdown, build transforms) becomes
   interactive the same way.
@@ -411,7 +412,7 @@ kpress.widgets.configure("settings", { choosers: ["theme", "reading-font"] });
 kpress.widgets.mount("settings", hostElement); // embeds: mount anywhere
 
 kpress.behaviors.override("footnote-preview", myHoverBinding);
-kpress.behaviors.register("glossary", { selector: "[data-gloss]", bind: bindGloss });
+kpress.behaviors.register("glossary", { bind: bindGloss });
 ```
 
 Built-ins go through the same registries (dogfood rule) and are **assembled from
@@ -432,15 +433,18 @@ Each widget/behavior defines and validates its config in its own JS
 
 ```yaml
 format:
-  widgets:            # uniform presence + opaque config, any widget id
+  widgets:            # chrome-widget presence + opaque config
     settings: { choosers: [theme, reading-font] }
-    toc: auto
-    minimap: off      # unknown ids are allowed: hosts register their own
+    minimap: on       # unknown ids are allowed: hosts register their own
 ```
 
 `RenderOptions(widgets={...})` mirrors the YAML. Python serializes this verbatim into
 the page model and emits mount elements for enabled widgets — that is its entire
-involvement with chrome.
+involvement with chrome. The map governs **chrome widgets only**: behaviors bind
+wherever their markup exists (disable or replace one in JS via
+`behaviors.override(id, …)` before apply), and server-rendered document components keep
+their own format switches (`format.toc`, `format.math`, …), which control the markup
+itself.
 
 ### Layer E — build pipeline plugins (Python; the build-step exception)
 
@@ -460,10 +464,12 @@ order. See [Optimizer and Precompression](#optimizer-and-precompression).
 
 | You want to… | Mechanism | Layer |
 | --- | --- | --- |
-| Turn any widget/behavior on/off | `widgets: {<id>: on/off/auto}` | D |
+| Turn a chrome widget on/off | `widgets: {<id>: on/off/auto}` | D |
+| Turn a document component on/off | its format switch (`format.toc`, `format.math`, …) | D |
 | Configure a built-in widget | opaque config JSON | D→C |
 | Restyle, same structure | CSS contract (classes + tokens) | A |
-| Move a floating widget | `--kpress-<widget>-inset-*` tokens | A |
+| Move the settings gear | `--kpress-host-settings-inset-*` tokens | A |
+| Position a custom widget | host CSS on its mount (`#kpress-<id>` / `.kpress-<id>`) | A |
 | Tweak one aspect of a built-in (TOC icon, appear-after-scroll policy) | wrap/replace an exported part, or pass a callback via JS config | C |
 | Change tooltip/footnote hover handling | `behaviors.override("footnote-preview", …)` over the same markup | C |
 | Replace a widget or behavior wholesale | `widgets`/`behaviors.register(<id>, …)` | C |
@@ -652,6 +658,9 @@ Two further pieces of the page HTML are contract (see
   keys sorted). Its keys are pinned by `contract.py::PUBLIC_PAGE_MODEL_KEYS`: `version`,
   `title`, `route`, `profile`, `headings`, `widgets` (the enabled widget map with each
   widget’s opaque config passed through verbatim).
+  `headings` carries the **TOC entries, post-processing included** — a lone leading H1
+  is stripped and levels are renormalized to contiguous ranks — not raw document
+  heading levels.
   This is the published data client widgets compute from — a minimap reads `headings`;
   the settings widget reads its own `widgets.settings` config.
   Keys are added as widgets need them; each addition is a contract change.
@@ -762,18 +771,16 @@ Widget and menu classes are part of this contract for a specific reason: they ar
 **restyle-with-same-structure seam**. A host that wants the settings menu (or any
 widget) to look different but keep its structure overrides `.kpress-widget`,
 `.kpress-settings*`, `.kpress-menu`, `.kpress-menu-chooser`, `.kpress-menu-seg` — no JS
-required. Two related token families:
+required. Positioning:
 
-- **Per-widget position tokens** — each floating widget’s mount is positioned by
-  `--kpress-<widget>-inset-block` / `--kpress-<widget>-inset-inline`, resolving through
-  `--kpress-host-*` hooks (the settings gear’s `--kpress-settings-inset-*` pair is the
-  pattern). Moving a widget is a CSS override, never a markup change.
-- **Presence-control variables** — the CSS-native complement to the Python presence map
-  for hosts that cannot re-render: a documented `--kpress-<component>-display` (or
-  `@container style(--kpress-<component>: off)` style query) can hide a server-rendered
-  component per pane. The Python `format.widgets` map remains the primary switch (it
-  avoids shipping dead markup); the variable form exists for embed-time, per-pane
-  control.
+- The settings gear is positioned through the host-override pair
+  `--kpress-host-settings-inset-block` / `--kpress-host-settings-inset-inline` — moving
+  it is a CSS override, never a markup change. (These consumed-not-declared host hooks
+  are pinned in `contract.py::PUBLIC_HOST_CSS_VARIABLES`.)
+- Custom widgets ship no KPress positioning: the server emits an in-flow mount with
+  stable hooks (`#kpress-<id>`, `.kpress-<id>`, `.kpress-widget`), and the host’s own
+  CSS positions it. Ship that CSS the same way as the widget’s JS (see Host
+  Integration).
 
 ### Design tokens and shared primitives
 
@@ -862,6 +869,10 @@ Standalone pages include a pre-paint bootstrap that resolves `system` using
   `system` via `prefers-color-scheme`, set `data-kpress-theme` /
   `data-kpress-resolved-theme`, persist through `kpress.storage` (key `kpress.theme`),
   notify change listeners, and track OS theme changes.
+  Engine *init* runs as the registered `theme` behavior at apply time — its first
+  storage read goes through whatever adapter the host installed before
+  `DOMContentLoaded`, and a host that owns theme resolution overrides the behavior
+  rather than fighting it.
   The pre-paint bootstrap (`theme-bootstrap.js`, inlined render-blocking in `<head>`)
   applies persisted state attrs before first paint — theme, and the same pattern for the
   other persisted reader preferences (`kpress.proseFont` → `data-kpress-prose-font`,
@@ -986,13 +997,17 @@ keeps each new feature on the right seam:
   These are the components listed below.
 - **Behaviors** — JS bindings over that markup, each a registered, overridable id: `toc`
   (scroll-spy / drawer / toggle), `tooltip`, `footnote-preview`, `code-copy`, `video`,
-  `tables`, `tabs`, `diagrams`. The markup is the binding surface; a host can rebind an
-  id over the same markup, or register a new behavior over its own injected HTML.
+  `tables`, `tabs`, `diagrams`, and `theme` (engine init over the root element). The
+  markup is the binding surface; a host can rebind an id over the same markup, or
+  register a new behavior over its own injected HTML.
 - **Chrome widgets** — client-rendered, JS-only chrome (`settings`; host-defined ids
   like a minimap), rendering into server-emitted mounts.
 
-Presence is controlled uniformly — `format.widgets: {<id>: on/off/auto}` — for all three
-kinds (per-feature flags like `format.toc` remain as aliases of the same switch).
+Presence is controlled per kind: `format.widgets: {<id>: on/off/auto}` governs chrome
+widgets (which mounts the server emits); document components keep their own format
+switches (`format.toc`, `format.math`, …), which control the markup itself; behaviors
+have no Python presence map — they bind wherever their markup exists, and a host
+disables or replaces one in JS (`behaviors.override(id, …)` before apply).
 Built-in behaviors and widgets are **assembled from exported ES-module parts** (the TOC
 behavior’s visibility policy and threshold, the tooltip placement and delay logic), so a
 host can wrap or replace one aspect without owning the whole — and they are registered
@@ -1079,6 +1094,10 @@ library yet).
    registered binds once on `DOMContentLoaded`, then emits `kpress:ready`. Host
    overrides registered before apply replace the built-in; after apply, `rebind(id)`
    re-runs one binding.
+   Long-lived side effects — MutationObservers, document-level listeners, OS media
+   listeners — are installed inside `bind`, never at import, and `bind` returns a
+   disposer that tears them down; the runtime disposes the old binding before
+   `override`/`rebind` applies a new one, so replacing a behavior really retires it.
    (This registration step is what makes every built-in overridable; the older pattern
    of calling `initKpress<Name>()` directly at module bottom is retired by the runtime
    migration.)
@@ -1852,24 +1871,39 @@ It assembles the `kpress` global from per-module namespaces:
   explicit in embeds (host picks the element), automatic in the standalone page
   (server-emitted mounts).
 - `kpress.behaviors` —
-  `{register(id, {selector?, bind}), override(id, binding), rebind(id)}` over the
-  server-rendered markup.
+  `{register(id, {bind}), override(id, binding), configure(id, config), rebind(id)}`
+  over the server-rendered markup. A `bind(root)` may return a **disposer**; the runtime
+  calls it before re-binding on `override`/`rebind`, so replacement is real — the old
+  binding’s observers and listeners are gone, not shadowed.
 
-Lifecycle: modules register at import (no DOM work); the runtime applies all
-registrations on `DOMContentLoaded` and emits `kpress:ready`. Host scripts injected via
-`head_extra_html` run before apply, so a host `register`/`override`/`configure` replaces
-a built-in cleanly; later scripts use `rebind`/`mount`. The exported ES-module parts of
-built-ins (TOC visibility policy, tooltip placement, …) are importable through the same
-import map the assets already publish, and the stability-pinned subset is
+Lifecycle: modules register at import (no DOM work, no storage I/O); the runtime applies
+all registrations on `DOMContentLoaded` and emits `kpress:ready`. Application is
+fault-isolated: a throwing mount, bind, or event listener is logged (`console.error`)
+and skipped — it never blocks other registrations or `kpress:ready`. Host scripts
+injected via `head_extra_html` run before apply, so a host
+`register`/`override`/`configure` (and `storage.use`) replaces a built-in cleanly;
+later scripts use `rebind`/`mount`. The exported ES-module parts of built-ins (TOC
+visibility policy, tooltip placement, …) are importable through the same import map the
+assets already publish, and the stability-pinned subset is
 `contract.py::PUBLIC_JS_EXPORTS`.
+
+Asset shipping is deliberately simple: the default JS/CSS set is a **fixed reader
+bundle** — `widgets: {settings: off}` removes the mount (so nothing renders or runs),
+not the asset; there is no per-widget asset selection. A host widget’s own JS and CSS
+ship through host channels: a `head_extra_html` `<script type="module">`/`<link>` plus
+`sources[].static` passthrough for the files. That is the supported delivery contract
+(the static-site example’s `demo/extensions.js` is the reference).
 
 Standalone-vs-embedded for the settings control: an embedding host that previously
 forked the gear menu instead mounts the same built-in —
 `kpress.widgets.mount("settings", el, {choosers: [...]})` plus
 `kpress.storage.use(cookieAdapter)` — and keeps only its font-stack choices via the
 `--kpress-host-font-*` vars.
-`theme.js` auto-init remains skipped in embedded hosts that own theme resolution; the
-engine API is still callable.
+Theme init itself is the registered `theme` behavior (it reads persisted state through
+the current storage adapter at apply time and binds the OS listener): an embedding host
+that owns theme resolution disables it before apply —
+`kpress.behaviors.override("theme", () => {})` — and the engine API
+(`kpress.theme.set`, …) stays callable.
 
 ### Dynamic render contract
 
@@ -1904,9 +1938,17 @@ Render response shape:
   "printable": true,
   "assets": { "css": ["<asset_url_prefix>v0.0.1/css/document.css", ...],
                "js":  ["<asset_url_prefix>v0.0.1/js/theme.js", ...] },
+  "widgets": { "settings": { "choosers": ["theme"] } },  // normalized presence + opaque config
+  "model": { "version": 1, "title": "...", "route": "", "profile": "document",
+             "headings": [...], "widgets": { ... } },    // same keys as #kpress-page-model
   "diagnostics": []
 }
 ```
+
+The `model` field carries exactly the static page model
+(`contract.py::PUBLIC_PAGE_MODEL_KEYS`; `route` is empty — fragments have no site
+route), so a widget reading `kpress.model()`-shaped data works identically when the
+host feeds it the payload’s `model`.
 
 The response is JSON-round-trippable.
 The host injects `html` into a container, links the listed CSS, and loads the listed JS

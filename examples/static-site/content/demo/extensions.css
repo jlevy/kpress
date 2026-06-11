@@ -1,0 +1,22 @@
+/* Host-owned widget styling, shipped exactly like the widget JS: a
+ * `sources[].static` passthrough plus a <link> in `head_extra_html`.
+ * KPress emits the mounts (#kpress-<id>, .kpress-<id>, .kpress-widget) and
+ * stays out of positioning custom widgets — the host's CSS owns that
+ * (kpress-design.md, Host Integration).
+ */
+
+#kpress-minimap nav {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+#kpress-minimap a {
+  display: block;
+}
+
+/* The glossary behavior only wires the tooltip; the affordance is pure CSS
+ * over the same injected markup. */
+[data-gloss] {
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}

@@ -21,13 +21,21 @@ const kpress = /** @type {any} */ (globalThis).kpress;
 // 1. A new widget: a minimap built from the page model's headings.
 //    Enabled per page via `format.widgets: {minimap: on}` (the mount comes
 //    from the server; this code only ever sees its own mount element).
+//    Model strings are data, not markup — build DOM nodes, never interpolate
+//    them into innerHTML. Static styling lives in demo/extensions.css.
 kpress.widgets.register("minimap", {
   mount(el, _config, model) {
     const headings = Array.isArray(model.headings) ? model.headings : [];
-    const items = headings
-      .map((h) => `<a href="${h.href}" style="display:block;padding-left:${(h.level - 1) * 8}px">${h.title}</a>`)
-      .join("");
-    el.innerHTML = `<nav aria-label="Minimap" style="font-size:11px;opacity:.75">${items}</nav>`;
+    const nav = document.createElement("nav");
+    nav.setAttribute("aria-label", "Minimap");
+    for (const h of headings) {
+      const link = document.createElement("a");
+      link.href = h.href;
+      link.textContent = h.title;
+      link.style.paddingInlineStart = `${(h.level - 1) * 8}px`;
+      nav.append(link);
+    }
+    el.replaceChildren(nav);
   },
 });
 
@@ -70,7 +78,6 @@ kpress.behaviors.override("footnote-preview", (root) => {
 kpress.behaviors.register("glossary", {
   bind(root) {
     for (const term of root.querySelectorAll("[data-gloss]")) {
-      term.style.borderBottom = "1px dotted currentColor";
       term.setAttribute("title", term.getAttribute("data-gloss") || "");
     }
   },

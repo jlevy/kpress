@@ -5,8 +5,8 @@ title: Extension Model Demo
 # Extension Model Demo
 
 This page demonstrates the KPress extension model — every customization here is
-**site code** (`demo/extensions.js`, injected via `head_extra_html`), with zero
-KPress edits:
+**site code** (`demo/extensions.js` + `demo/extensions.css`, injected via
+`head_extra_html`), with zero KPress edits:
 
 1. **Minimap widget** — the panel listing this page's headings is a *new* widget
    registered by the site, computed from the published page model
@@ -32,7 +32,9 @@ KPress edits:
 ```yaml
 # kpress.yml
 site:
-  head_extra_html: '<script type="module" src="/demo/extensions.js"></script>'
+  head_extra_html: >-
+    <link rel="stylesheet" href="/demo/extensions.css">
+    <script type="module" src="/demo/extensions.js"></script>
 format:
   widgets:
     settings: { choosers: [theme, reading-font, font-set] }
@@ -40,7 +42,7 @@ format:
     theme-toggle: on
 sources:
   - path: content
-    static: ["demo/**"]
+    static: ["demo/**/*"]
 ```
 
 ## A second section
