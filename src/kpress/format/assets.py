@@ -91,6 +91,7 @@ DEFAULT_JS_ASSETS = [
 # tags — the entry-point modules pull them in.
 TRANSITIVE_JS_ASSETS = [
     "js/icons.js",
+    "js/menu.js",
     "js/overlay.js",
     "js/viewport.js",
 ]

@@ -1,3 +1,14 @@
+/**
+ * Theme engine (`kpress.theme`): the headless light/dark machinery — resolve
+ * the `system` preference, set the `data-kpress-theme` /
+ * `data-kpress-resolved-theme` state attrs, persist the choice, notify
+ * listeners, and track OS theme changes. Presentation lives elsewhere (the
+ * settings widget is the default face; a host can put its own toggle on this
+ * engine). See kpress-design.md "Theme and Fonts".
+ */
+
+import { emit, on, storage } from "./runtime.js";
+
 const STORAGE_KEY = "kpress.theme";
 const THEME_MODES = new Set(["system", "light", "dark"]);
 /** @type {MediaQueryList | null} */
@@ -40,14 +51,11 @@ export function setKpressTheme(mode = "system") {
   document.documentElement.dataset.kpressTheme = normalized;
   document.documentElement.dataset.kpressResolvedTheme = resolved;
   syncThemeControls(normalized);
-  try {
-    localStorage.setItem(STORAGE_KEY, normalized);
-  } catch {
-    // Storage may be unavailable in embedded views.
-  }
+  storage.set(STORAGE_KEY, normalized);
+  emit("theme:change", { mode: normalized, resolved });
 }
 
-function bindThemeToggleControls() {
+export function bindThemeToggleControls() {
   for (const button of document.querySelectorAll("[data-kpress-theme-choice]")) {
     if (button.getAttribute("data-kpress-bound") === "true") {
       continue;
@@ -57,36 +65,6 @@ function bindThemeToggleControls() {
       setKpressTheme(button.getAttribute("data-kpress-theme-choice") || "system");
     });
   }
-}
-
-/**
- * Wire the gear settings popover: toggle on the button, dismiss on outside
- * click or Escape. Visibility is driven by `aria-expanded` on the wrapper.
- */
-function bindSettingsMenu() {
-  const wrap = document.querySelector(".kpress-settings");
-  const button = wrap?.querySelector(".kpress-settings-btn");
-  if (!wrap || !button || wrap.getAttribute("data-kpress-bound") === "true") {
-    return;
-  }
-  wrap.setAttribute("data-kpress-bound", "true");
-  const isOpen = () => wrap.getAttribute("aria-expanded") === "true";
-  /** @param {boolean} open */
-  const setOpen = (open) => wrap.setAttribute("aria-expanded", open ? "true" : "false");
-  button.addEventListener("click", (event) => {
-    event.stopPropagation();
-    setOpen(!isOpen());
-  });
-  document.addEventListener("click", (event) => {
-    if (isOpen() && !wrap.contains(/** @type {Node} */ (event.target))) {
-      setOpen(false);
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isOpen()) {
-      setOpen(false);
-    }
-  });
 }
 
 function bindSystemThemeListener() {
@@ -109,15 +87,26 @@ function bindSystemThemeListener() {
 
 export function initKpressTheme() {
   let mode = document.documentElement.dataset.kpressTheme || "system";
-  try {
-    mode = localStorage.getItem(STORAGE_KEY) || mode;
-  } catch {
-    // Keep the document-provided mode.
-  }
+  mode = storage.get(STORAGE_KEY) || mode;
   bindThemeToggleControls();
-  bindSettingsMenu();
   bindSystemThemeListener();
   setKpressTheme(mode);
 }
+
+const kpressGlobal = /** @type {Record<string, unknown>} */ (
+  /** @type {Record<string, unknown>} */ (globalThis).kpress ?? {}
+);
+/** @type {Record<string, unknown>} */ (globalThis).kpress = kpressGlobal;
+kpressGlobal.theme = {
+  set: setKpressTheme,
+  /** @returns {string} */
+  mode: () => document.documentElement.dataset.kpressTheme || "system",
+  /** @returns {string} */
+  resolved: () =>
+    document.documentElement.dataset.kpressResolvedTheme ||
+    resolveTheme(document.documentElement.dataset.kpressTheme || "system"),
+  /** @param {(detail: unknown) => void} listener */
+  onChange: (listener) => on("theme:change", listener),
+};
 
 initKpressTheme();
