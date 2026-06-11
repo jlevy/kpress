@@ -18,13 +18,26 @@
  * built-ins are applied; anything registered after ready is applied
  * immediately. Other KPress modules attach their own namespaces (e.g.
  * `kpress.theme`, `kpress.menu`) — assembled, not monolithic.
+ *
+ * Fault isolation: one registration (widget mount, behavior bind, event
+ * listener, storage adapter) failing must not take down the rest of the page
+ * or suppress `kpress:ready` — failures are reported via `console.error` and
+ * the pass continues.
  */
 
 /** @typedef {{ get(key: string): string | null, set(key: string, value: string): void }} KpressStorageAdapter */
 /** @typedef {(detail?: unknown) => void} KpressListener */
 /** @typedef {Record<string, unknown>} KpressConfig */
 /** @typedef {{ mount(el: HTMLElement, config: KpressConfig, model: KpressConfig): void }} KpressWidget */
-/** @typedef {{ selector?: string, bind(root: Document | HTMLElement, config: KpressConfig): void }} KpressBehavior */
+/**
+ * A behavior binds handling over server-rendered markup. `bind` MAY return a
+ * disposer that tears the binding down (listeners, observers); the runtime
+ * stores it per behavior id and calls it before re-binding the id
+ * (`override`, `rebind`, or a re-`register`), so replacement is real — no
+ * built-in wiring lingers behind a host override.
+ *
+ * @typedef {{ bind(root: Document | HTMLElement, config: KpressConfig): (() => void) | void }} KpressBehavior
+ */
 
 /** @type {KpressConfig | null} */
 let cachedModel = null;
@@ -85,7 +98,11 @@ export function off(type, listener) {
  */
 export function emit(type, detail) {
   for (const listener of [...(listeners.get(type) ?? [])]) {
-    listener(detail);
+    try {
+      listener(detail);
+    } catch (error) {
+      console.error(`kpress: "${type}" listener failed`, error);
+    }
   }
 }
 
@@ -111,16 +128,32 @@ const localStorageAdapter = {
 let activeAdapter = localStorageAdapter;
 
 export const storage = {
-  /** @param {string} key */
+  /**
+   * A throwing custom adapter degrades to "nothing persisted" (null) rather
+   * than breaking the caller (theme engine, widgets).
+   *
+   * @param {string} key
+   */
   get(key) {
-    return activeAdapter.get(key);
+    try {
+      return activeAdapter.get(key);
+    } catch (error) {
+      console.error("kpress: storage adapter get failed", error);
+      return null;
+    }
   },
   /**
+   * A throwing custom adapter degrades to a no-op set.
+   *
    * @param {string} key
    * @param {string} value
    */
   set(key, value) {
-    activeAdapter.set(key, value);
+    try {
+      activeAdapter.set(key, value);
+    } catch (error) {
+      console.error("kpress: storage adapter set failed", error);
+    }
   },
   /**
    * Swap the persistence adapter (e.g. cookies for cross-port sharing).
@@ -161,7 +194,6 @@ function mountAllFor(id) {
     if (el.getAttribute("data-kpress-widget-bound") === "true") {
       continue;
     }
-    el.setAttribute("data-kpress-widget-bound", "true");
     widgets.mount(id, /** @type {HTMLElement} */ (el));
   }
 }
@@ -178,16 +210,26 @@ export const widgets = {
     }
   },
   /**
-   * Merge host config over the page model's for this widget id.
+   * Merge host config over the page model's for this widget id. Unknown ids
+   * (typos) warn and store nothing.
    *
    * @param {string} id
    * @param {KpressConfig} config
    */
   configure(id, config) {
+    if (!widgetRegistry.has(id)) {
+      console.warn(
+        `kpress: widgets.configure("${id}") ignored — no widget registered with that id`,
+      );
+      return;
+    }
     widgetConfigs.set(id, { ...(widgetConfigs.get(id) ?? {}), ...config });
   },
   /**
-   * Mount a registered widget into an element (embeds mount anywhere).
+   * Mount a registered widget into an element (embeds mount anywhere). The
+   * element is marked bound so the ready pass never mounts a server mount a
+   * second time after an explicit pre-ready mount. A throwing widget is
+   * isolated (console.error) so one bad mount cannot abort the ready pass.
    *
    * @param {string} id
    * @param {HTMLElement} el
@@ -195,10 +237,19 @@ export const widgets = {
    */
   mount(id, el, config) {
     const widget = widgetRegistry.get(id);
-    if (!widget || !el) {
+    if (!widget) {
+      console.warn(`kpress: widgets.mount("${id}") ignored — no widget registered with that id`);
       return;
     }
-    widget.mount(el, config ?? resolveWidgetConfig(id), getModel());
+    if (!el) {
+      return;
+    }
+    el.setAttribute("data-kpress-widget-bound", "true");
+    try {
+      widget.mount(el, config ?? resolveWidgetConfig(id), getModel());
+    } catch (error) {
+      console.error(`kpress: widget "${id}" mount failed`, error);
+    }
   },
 };
 
@@ -206,14 +257,49 @@ export const widgets = {
 const behaviorRegistry = new Map();
 /** @type {Map<string, KpressConfig>} */
 const behaviorConfigs = new Map();
+/** Disposers returned by behavior binds, keyed by behavior id. @type {Map<string, () => void>} */
+const behaviorDisposers = new Map();
 
-/** @param {string} id */
+/**
+ * Run a behavior id's stored disposer (if any). Disposal failures are
+ * isolated: re-binding proceeds regardless.
+ *
+ * @param {string} id
+ */
+function disposeBehavior(id) {
+  const dispose = behaviorDisposers.get(id);
+  if (!dispose) {
+    return;
+  }
+  behaviorDisposers.delete(id);
+  try {
+    dispose();
+  } catch (error) {
+    console.error(`kpress: behavior "${id}" disposer failed`, error);
+  }
+}
+
+/**
+ * Dispose the id's previous binding, then bind. A throwing bind is isolated
+ * (console.error) so one bad behavior cannot leave later behaviors unbound or
+ * suppress `kpress:ready`.
+ *
+ * @param {string} id
+ */
 function runBehavior(id) {
   const behavior = behaviorRegistry.get(id);
   if (!behavior?.bind) {
     return;
   }
-  behavior.bind(document, behaviorConfigs.get(id) ?? {});
+  disposeBehavior(id);
+  try {
+    const dispose = behavior.bind(document, behaviorConfigs.get(id) ?? {});
+    if (typeof dispose === "function") {
+      behaviorDisposers.set(id, dispose);
+    }
+  } catch (error) {
+    console.error(`kpress: behavior "${id}" bind failed`, error);
+  }
 }
 
 export const behaviors = {
@@ -229,17 +315,24 @@ export const behaviors = {
   },
   /**
    * Replace a behavior's binding (a function) or merge registration fields
-   * (an object) — the same markup, different handling.
+   * (an object) — the same markup, different handling. Replacement is real:
+   * the previous binding's disposer runs before the override binds. Unknown
+   * ids warn and no-op — `register` is the path that creates behaviors.
    *
    * @param {string} id
    * @param {KpressBehavior["bind"] | Partial<KpressBehavior>} binding
    */
   override(id, binding) {
     const current = behaviorRegistry.get(id);
+    if (!current) {
+      console.warn(
+        `kpress: behaviors.override("${id}") ignored — no behavior registered with that id ` +
+          `(behaviors.register is the path that creates new behaviors)`,
+      );
+      return;
+    }
     const next =
-      typeof binding === "function"
-        ? { ...(current ?? {}), bind: binding }
-        : { ...(current ?? {}), ...binding };
+      typeof binding === "function" ? { ...current, bind: binding } : { ...current, ...binding };
     behaviorRegistry.set(id, /** @type {KpressBehavior} */ (next));
     if (applied) {
       runBehavior(id);
@@ -247,21 +340,35 @@ export const behaviors = {
   },
   /**
    * Merge config passed to this behavior's bind. JS config may carry
-   * callbacks/policies — the channel YAML cannot express.
+   * callbacks/policies — the channel YAML cannot express. Unknown ids
+   * (typos) warn and store nothing.
    *
    * @param {string} id
    * @param {KpressConfig} config
    */
   configure(id, config) {
+    if (!behaviorRegistry.has(id)) {
+      console.warn(
+        `kpress: behaviors.configure("${id}") ignored — no behavior registered with that id`,
+      );
+      return;
+    }
     behaviorConfigs.set(id, { ...(behaviorConfigs.get(id) ?? {}), ...config });
   },
   /**
    * Re-run one behavior's binding (after an override post-ready, or after
-   * injecting markup it should pick up).
+   * injecting markup it should pick up). The previous binding's disposer runs
+   * first. Unknown ids warn and no-op.
    *
    * @param {string} id
    */
   rebind(id) {
+    if (!behaviorRegistry.has(id)) {
+      console.warn(
+        `kpress: behaviors.rebind("${id}") ignored — no behavior registered with that id`,
+      );
+      return;
+    }
     runBehavior(id);
   },
 };

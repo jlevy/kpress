@@ -30,12 +30,16 @@ export function initKpressTables(root = document) {
   }
 }
 
-document.addEventListener("kpress:tabchange", () => {
-  initKpressTables();
-});
-
 behaviors.register("tables", {
   bind: (root) => {
     initKpressTables(/** @type {ParentNode} */ (root));
+    // Tab panels reveal their tables lazily; re-wrap on every tab change. The
+    // listener lives in bind (not at import) so an override really replaces
+    // the built-in handling, and the disposer removes it.
+    const onTabChange = () => {
+      initKpressTables();
+    };
+    document.addEventListener("kpress:tabchange", onTabChange);
+    return () => document.removeEventListener("kpress:tabchange", onTabChange);
   },
 });

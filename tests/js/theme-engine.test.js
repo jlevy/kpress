@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 // theme.js imports "./runtime.js" WITHOUT a cache-busting query, so the engine
 // binds to this exact module instance: import it statically to share it, and
 // reset its adapter between tests.
-import { storage as sharedStorage } from "../../src/kpress/format/static/js/runtime.js";
+import {
+  behaviors as sharedBehaviors,
+  storage as sharedStorage,
+} from "../../src/kpress/format/static/js/runtime.js";
 
 let importCounter = 0;
 
@@ -84,6 +87,50 @@ describe("theme engine (kpress.theme)", () => {
     setKpressTheme("dark");
 
     expect(seen.at(-1)).toEqual({ mode: "dark", resolved: "dark" });
+  });
+
+  it("binds the OS theme listener once per bind and unbinds it on override", async () => {
+    /** @type {Array<(event?: unknown) => void>} */
+    const osListeners = [];
+    globalThis.matchMedia = (query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener(_type, listener) {
+        osListeners.push(listener);
+      },
+      removeEventListener(_type, listener) {
+        const index = osListeners.indexOf(listener);
+        if (index >= 0) {
+          osListeners.splice(index, 1);
+        }
+      },
+      addListener(listener) {
+        osListeners.push(listener);
+      },
+      removeListener(listener) {
+        const index = osListeners.indexOf(listener);
+        if (index >= 0) {
+          osListeners.splice(index, 1);
+        }
+      },
+      dispatchEvent() {
+        return true;
+      },
+    });
+
+    // Importing registers the "theme" behavior; the post-ready registry binds
+    // it immediately (initKpressTheme runs as the behavior's bind).
+    await importFresh("theme.js");
+    expect(osListeners).toHaveLength(1);
+
+    // rebind runs the stored disposer first: still exactly one OS listener.
+    sharedBehaviors.rebind("theme");
+    expect(osListeners).toHaveLength(1);
+
+    // An override detaches the engine's OS tracking entirely.
+    sharedBehaviors.override("theme", () => {});
+    expect(osListeners).toHaveLength(0);
   });
 });
 

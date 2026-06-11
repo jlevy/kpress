@@ -589,66 +589,20 @@ function isFootnoteAnchor(anchor) {
 }
 
 /**
- * Anchor kinds the built-in binds have wired at least once. The
- * MutationObserver only auto-wires those kinds: if a host overrides
- * `footnote-preview` (so the built-in bind never runs for footnotes), late
- * footnote anchors are left to the host's binding too.
+ * Anchor kinds with built-in wiring currently active. The shared
+ * MutationObserver (started by the first active bind) auto-wires only these
+ * kinds; a bind's disposer removes its kinds again, so after an override the
+ * built-in leaves late anchors of that kind entirely to the host's binding.
  *
  * @type {Set<string>}
  */
 const activeTooltipKinds = new Set();
 
+/** @type {MutationObserver | null} */
+let anchorObserver = null;
+
 let tooltipGlobalsBound = false;
 
-/**
- * Wire every hash anchor under `root` for tooltips and register the global
- * dismiss handlers once. Anchor wiring is idempotent, so a host that re-mounts
- * a document can call this repeatedly without leaking listeners.
- *
- * @param {ParentNode} [root]
- */
-export function initKpressTooltips(
-  root = document,
-  config = /** @type {Record<string, unknown>} */ ({}),
-) {
-  if (!tooltipGlobalsBound) {
-    tooltipGlobalsBound = true;
-    dismissOnEscape(removeKpressTooltips);
-    dismissOnResize(removeKpressTooltips);
-  }
-  const only = typeof config.only === "string" ? config.only : null;
-  if (only) {
-    activeTooltipKinds.add(only);
-  } else {
-    activeTooltipKinds.add("link");
-    activeTooltipKinds.add("footnote");
-  }
-  for (const anchor of root.querySelectorAll('a[href^="#"]')) {
-    const kind = isFootnoteAnchor(anchor) ? "footnote" : "link";
-    if (only && kind !== only) {
-      continue;
-    }
-    wireTooltipAnchor(anchor);
-  }
-}
-
-// Two registered behaviors over disjoint anchor kinds: hover previews for
-// internal links, and footnote previews. Overriding one id leaves the other's
-// markup handling untouched (see kpress-design.md, behaviors).
-behaviors.register("tooltip", {
-  bind: (root, config) => {
-    initKpressTooltips(root, { ...config, only: "link" });
-  },
-});
-behaviors.register("footnote-preview", {
-  bind: (root, config) => {
-    initKpressTooltips(root, { ...config, only: "footnote" });
-  },
-});
-
-// Embedding host apps inject the document fragment after this
-// module loads, so footnote and internal-link anchors appear later. A
-// MutationObserver wires them as they arrive (wiring is idempotent).
 /**
  * @param {Element} anchor
  */
@@ -659,8 +613,21 @@ function wireObservedAnchor(anchor) {
   }
 }
 
-if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.body) {
-  const observer = new MutationObserver((records) => {
+/**
+ * Start the shared late-anchor observer (embedding host apps inject the
+ * document fragment after load, so anchors appear later). Started lazily by
+ * the first active kind; disconnected again when no kind is active.
+ */
+function ensureAnchorObserver() {
+  if (
+    anchorObserver ||
+    typeof MutationObserver === "undefined" ||
+    typeof document === "undefined" ||
+    !document.body
+  ) {
+    return;
+  }
+  anchorObserver = new MutationObserver((records) => {
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (!(node instanceof Element)) {
@@ -675,5 +642,68 @@ if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" &
       }
     }
   });
-  observer.observe(document.body, { childList: true, subtree: true });
+  anchorObserver.observe(document.body, { childList: true, subtree: true });
 }
+
+/**
+ * Deactivate built-in auto-wiring for the given kinds (already-wired anchors
+ * keep their listeners; late anchors of these kinds are left to whatever
+ * binding replaced the built-in).
+ *
+ * @param {string[]} kinds
+ */
+function releaseTooltipKinds(kinds) {
+  for (const kind of kinds) {
+    activeTooltipKinds.delete(kind);
+  }
+  if (activeTooltipKinds.size === 0 && anchorObserver) {
+    anchorObserver.disconnect();
+    anchorObserver = null;
+  }
+}
+
+/**
+ * Wire every hash anchor under `root` for tooltips and register the global
+ * dismiss handlers once. Anchor wiring is idempotent, so a host that re-mounts
+ * a document can call this repeatedly without leaking listeners.
+ *
+ * @param {ParentNode} [root]
+ * @returns {() => void} disposer that deactivates late-anchor wiring for the
+ *   kinds this call activated
+ */
+export function initKpressTooltips(
+  root = document,
+  config = /** @type {Record<string, unknown>} */ ({}),
+) {
+  if (!tooltipGlobalsBound) {
+    tooltipGlobalsBound = true;
+    dismissOnEscape(removeKpressTooltips);
+    dismissOnResize(removeKpressTooltips);
+  }
+  const only = typeof config.only === "string" ? config.only : null;
+  const kinds = only ? [only] : ["link", "footnote"];
+  for (const kind of kinds) {
+    activeTooltipKinds.add(kind);
+  }
+  ensureAnchorObserver();
+  for (const anchor of root.querySelectorAll('a[href^="#"]')) {
+    const kind = isFootnoteAnchor(anchor) ? "footnote" : "link";
+    if (only && kind !== only) {
+      continue;
+    }
+    wireTooltipAnchor(anchor);
+  }
+  return () => releaseTooltipKinds(kinds);
+}
+
+// Two registered behaviors over disjoint anchor kinds: hover previews for
+// internal links, and footnote previews. Overriding one id leaves the other's
+// markup handling untouched (see kpress-design.md, behaviors); each bind
+// returns a disposer, so an override (pre- or post-ready) detaches built-in
+// handling for that kind's late anchors too.
+behaviors.register("tooltip", {
+  bind: (root, config) => initKpressTooltips(root, { ...config, only: "link" }),
+});
+behaviors.register("footnote-preview", {
+  bind: (root, config) => initKpressTooltips(root, { ...config, only: "footnote" }),
+});

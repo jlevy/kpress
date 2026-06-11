@@ -135,6 +135,62 @@ describe("settings widget", () => {
     expect(localStorage.getItem("kpress.fontSet")).toBe("system");
   });
 
+  it("changing the reading font leaves the active theme segment checked", async () => {
+    await importFresh("settings-widget.js");
+    const el = settingsMount();
+    sharedWidgets.mount("settings", el, { choosers: ["theme", "reading-font"] });
+
+    // The active theme segment is marked at mount (default mode: system) and
+    // must survive the sibling chooser's own marking.
+    const system = el.querySelector('[data-kpress-theme-choice="system"]');
+    expect(system?.getAttribute("aria-checked")).toBe("true");
+
+    const serif = /** @type {HTMLElement} */ (
+      el.querySelector('[data-kpress-prose-choice="serif"]')
+    );
+    serif.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(serif.getAttribute("aria-checked")).toBe("true");
+    expect(system?.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("changing the theme leaves the active reading-font segment checked", async () => {
+    await importFresh("settings-widget.js");
+    const el = settingsMount();
+    sharedWidgets.mount("settings", el, { choosers: ["theme", "reading-font"] });
+
+    const sans = /** @type {HTMLElement} */ (el.querySelector('[data-kpress-prose-choice="sans"]'));
+    sans.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(sans.getAttribute("aria-checked")).toBe("true");
+
+    const light = /** @type {HTMLElement} */ (
+      el.querySelector('[data-kpress-theme-choice="light"]')
+    );
+    light.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(light.getAttribute("aria-checked")).toBe("true");
+    expect(sans.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("mounts twice (embeds) without duplicate element ids", async () => {
+    await importFresh("settings-widget.js");
+    const first = settingsMount();
+    const second = document.createElement("div");
+    document.body.appendChild(second);
+
+    sharedWidgets.mount("settings", first, { choosers: ["theme"] });
+    sharedWidgets.mount("settings", second, { choosers: ["theme"] });
+
+    const ids = Array.from(document.querySelectorAll("[id]"), (node) => node.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    // Both gears stay independently operable.
+    const secondButton = /** @type {HTMLElement} */ (second.querySelector(".kpress-settings-btn"));
+    secondButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(second.getAttribute("aria-expanded")).toBe("true");
+    expect(first.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("warns and skips unknown chooser ids", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     await importFresh("settings-widget.js");

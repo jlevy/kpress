@@ -275,7 +275,10 @@ PUBLIC_PIPELINE_STAGES = ("kpress:none", "kpress:full")
 PUBLIC_WIDGETS = ("settings",)
 
 # Built-in behavior ids registered through kpress.behaviors (bindings over
-# server-rendered markup; each is overridable by id).
+# server-rendered markup; each is overridable by id). "theme" is the engine's
+# initialization (read persisted mode through the live storage adapter, stamp
+# root attrs, track OS changes): an embed host that owns theme resolution
+# overrides it so kpress never touches the root theme attrs.
 PUBLIC_BEHAVIORS = (
     "toc",
     "tooltip",
@@ -285,6 +288,7 @@ PUBLIC_BEHAVIORS = (
     "tables",
     "tabs",
     "diagrams",
+    "theme",
 )
 
 # Keys of the #kpress-page-model JSON block (layer A published data).

@@ -58,11 +58,14 @@ function segment(choice, value, label, glyph) {
 }
 
 /**
- * The built-in chooser catalog. Each chooser renders one `.kpress-menu-chooser`
- * group and binds its own handling — adding a chooser is adding an entry here
- * (or registering a custom widget that composes the same primitives).
+ * The built-in chooser catalog. Each chooser renders one group element (a
+ * `.kpress-menu-chooser` or a select) and binds its own handling — adding a
+ * chooser is adding an entry here (or registering a custom widget that
+ * composes the same primitives). `bind` receives the chooser's OWN rendered
+ * group element, never the widget root: group-scoped marking
+ * (`aria-checked`) must not leak into sibling choosers.
  *
- * @type {Record<string, { render(): string, bind(el: HTMLElement): void }>}
+ * @type {Record<string, { render(): string, bind(group: HTMLElement): void }>}
  */
 const CHOOSERS = {
   theme: {
@@ -72,10 +75,10 @@ const CHOOSERS = {
       segment("theme-choice", "light", "Light theme", "sun") +
       segment("theme-choice", "dark", "Dark theme", "moon") +
       `</div>`,
-    bind(el) {
+    bind(group) {
       bindThemeToggleControls();
       markChecked(
-        el,
+        group,
         "kpressThemeChoice",
         document.documentElement.dataset.kpressTheme || "system",
       );
@@ -87,16 +90,16 @@ const CHOOSERS = {
       segment("prose-choice", "serif", "Serif reading font", "serif") +
       segment("prose-choice", "sans", "Sans-serif reading font", "sans") +
       `</div>`,
-    bind(el) {
-      for (const button of el.querySelectorAll("[data-kpress-prose-choice]")) {
+    bind(group) {
+      for (const button of group.querySelectorAll("[data-kpress-prose-choice]")) {
         button.addEventListener("click", () => {
           const value = button.getAttribute("data-kpress-prose-choice") || "serif";
           applyProseFont(value);
-          markChecked(el, "kpressProseChoice", value);
+          markChecked(group, "kpressProseChoice", value);
         });
       }
       markChecked(
-        el,
+        group,
         "kpressProseChoice",
         document.documentElement.dataset.kpressProseFont || "serif",
       );
@@ -108,10 +111,13 @@ const CHOOSERS = {
       `<option value="custom">Clean fonts</option>` +
       `<option value="system">System fonts</option>` +
       `</select>`,
-    bind(el) {
-      const select = /** @type {HTMLSelectElement | null} */ (
-        el.querySelector("select.kpress-menu-select")
-      );
+    bind(group) {
+      const select =
+        group instanceof HTMLSelectElement
+          ? group
+          : /** @type {HTMLSelectElement | null} */ (
+              group.querySelector("select.kpress-menu-select")
+            );
       if (!select) {
         return;
       }
@@ -145,8 +151,11 @@ export function mountSettings(el, config) {
     groups.push(chooser.render());
     active.push(chooserId);
   }
+  // No hardcoded element id: the widget mounts more than once per page (an
+  // embed host can place several), and duplicate DOM ids would break the
+  // document. Styling and lookups go through the class.
   el.innerHTML =
-    `<button type="button" class="kpress-settings-btn" id="kpress-settings-btn" ` +
+    `<button type="button" class="kpress-settings-btn" ` +
     `aria-haspopup="true" title="Settings" aria-label="Settings">${icon("settings")}</button>` +
     `<div class="kpress-settings-menu kpress-menu" role="menu" aria-label="Settings">` +
     groups.join("") +
@@ -160,9 +169,16 @@ export function mountSettings(el, config) {
   if (button) {
     holder.__kpressMenuDispose = bindMenu(el, button) ?? undefined;
   }
-  for (const chooserId of active) {
-    CHOOSERS[chooserId]?.bind(el);
-  }
+  // Bind each chooser to its own rendered group element (the menu's children,
+  // in chooser order) — never the widget root (see CHOOSERS).
+  const menu = el.querySelector(".kpress-settings-menu");
+  const groupEls = menu ? Array.from(menu.children) : [];
+  active.forEach((chooserId, index) => {
+    const group = groupEls[index];
+    if (group instanceof HTMLElement) {
+      CHOOSERS[chooserId]?.bind(group);
+    }
+  });
 }
 
 widgets.register("settings", { mount: mountSettings });

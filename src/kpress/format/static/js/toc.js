@@ -262,13 +262,7 @@ export function initKpressToc(
 ) {
   /** @type {Array<() => void>} */
   const disposers = [];
-  const reconfigure = Object.keys(config).length > 0;
   for (const toc of root.querySelectorAll("[data-kpress-toc]")) {
-    // A config change must re-wire: dispose the existing binding first so the
-    // new policy/icon take effect (plain rebinds reuse the existing wiring).
-    if (reconfigure) {
-      /** @type {{ __kpressTocDispose?: () => void }} */ (toc).__kpressTocDispose?.();
-    }
     disposers.push(wireToc(toc, config));
   }
   return () => {
@@ -278,8 +272,9 @@ export function initKpressToc(
   };
 }
 
+// The bind returns initKpressToc's disposer, so the runtime owns disposal:
+// `configure("toc", ...)` + `rebind("toc")` (or an override) tears down the
+// previous wiring before re-binding — the new policy/icon take effect.
 behaviors.register("toc", {
-  bind: (root, config) => {
-    initKpressToc(root, config);
-  },
+  bind: (root, config) => initKpressToc(root, config),
 });

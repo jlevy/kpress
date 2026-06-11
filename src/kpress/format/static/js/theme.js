@@ -5,14 +5,21 @@
  * listeners, and track OS theme changes. Presentation lives elsewhere (the
  * settings widget is the default face; a host can put its own toggle on this
  * engine). See kpress-design.md "Theme and Fonts".
+ *
+ * Import attaches ONLY the headless namespace — no storage I/O, no DOM
+ * mutation, no matchMedia binding. Initialization is the registered `theme`
+ * BEHAVIOR's bind, which the runtime applies at ready: a host head script can
+ * therefore swap the storage adapter before the engine's first read, and an
+ * embed host that owns theme resolution can `override("theme", ...)` so
+ * KPress never touches the root theme attrs.
  */
 
-import { emit, on, storage } from "./runtime.js";
+import { behaviors, emit, on, storage } from "./runtime.js";
 
 const STORAGE_KEY = "kpress.theme";
 const THEME_MODES = new Set(["system", "light", "dark"]);
-/** @type {MediaQueryList | null} */
-let systemThemeQuery = null;
+/** @type {{ query: MediaQueryList, handler: () => void } | null} */
+let systemThemeBinding = null;
 
 /**
  * @param {string} mode
@@ -69,10 +76,10 @@ export function bindThemeToggleControls() {
 
 function bindSystemThemeListener() {
   const query = globalThis.matchMedia?.("(prefers-color-scheme: dark)") || null;
-  if (!query || query === systemThemeQuery) {
+  if (!query || systemThemeBinding?.query === query) {
     return;
   }
-  systemThemeQuery = query;
+  unbindSystemThemeListener();
   const updateSystemTheme = () => {
     if (document.documentElement.dataset.kpressTheme === "system") {
       setKpressTheme("system");
@@ -83,8 +90,27 @@ function bindSystemThemeListener() {
   } else if (query.addListener) {
     query.addListener(updateSystemTheme);
   }
+  systemThemeBinding = { query, handler: updateSystemTheme };
 }
 
+function unbindSystemThemeListener() {
+  if (!systemThemeBinding) {
+    return;
+  }
+  const { query, handler } = systemThemeBinding;
+  systemThemeBinding = null;
+  if (query.removeEventListener) {
+    query.removeEventListener("change", handler);
+  } else if (query.removeListener) {
+    query.removeListener(handler);
+  }
+}
+
+/**
+ * Initialize the engine: read the persisted mode through the CURRENT storage
+ * adapter, stamp the root theme attrs, wire toggle controls, and track OS
+ * theme changes. Runs as the `theme` behavior's bind (not at import).
+ */
 export function initKpressTheme() {
   let mode = document.documentElement.dataset.kpressTheme || "system";
   mode = storage.get(STORAGE_KEY) || mode;
@@ -109,4 +135,14 @@ kpressGlobal.theme = {
   onChange: (listener) => on("theme:change", listener),
 };
 
-initKpressTheme();
+// Initialization is a behavior like any other built-in (dogfood rule): the
+// pre-paint bootstrap stamps attrs from raw localStorage before first paint;
+// this bind re-reads through the live storage adapter at ready and re-applies,
+// so an adapter swapped in by a host head script owns persistence from the
+// first read. The disposer unbinds the OS theme listener.
+behaviors.register("theme", {
+  bind: () => {
+    initKpressTheme();
+    return unbindSystemThemeListener;
+  },
+});
