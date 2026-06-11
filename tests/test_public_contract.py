@@ -15,13 +15,17 @@ from kpress.contract import (
     ASSET_MANIFEST_SCHEMA_VERSION,
     BUILD_MANIFEST_REQUIRED_KEYS,
     BUILD_MANIFEST_SCHEMA_VERSION,
+    PUBLIC_BEHAVIORS,
     PUBLIC_CSS_CLASSES,
     PUBLIC_CSS_VARIABLES,
     PUBLIC_DATA_ATTRIBUTES,
     PUBLIC_FORMAT_API,
+    PUBLIC_JS_EXPORTS,
     PUBLIC_PACKAGE_API,
+    PUBLIC_PAGE_MODEL_KEYS,
     PUBLIC_PUBLISH_API,
     PUBLIC_TEMPLATE_VARIABLES,
+    PUBLIC_WIDGETS,
 )
 from kpress.format.assets import package_asset_manifest
 from kpress.publish.manifest import BuildReport
@@ -178,3 +182,61 @@ def test_render_view_returns_jsonable_contract_payload_with_opaque_host() -> Non
         "widgets",
     }
     assert set(payload["assets"]) == {"css", "js"}
+
+
+def test_widget_behavior_and_js_export_contracts_match_the_js() -> None:
+    """The extension-model name contracts are real: every pinned widget id,
+    behavior id, and module export exists in the shipped JS."""
+
+    js_dir = _KPRESS_ROOT / "src/kpress/format/static/js"
+    all_js = "\n".join(path.read_text(encoding="utf-8") for path in sorted(js_dir.glob("*.js")))
+
+    for widget_id in PUBLIC_WIDGETS:
+        assert f'widgets.register("{widget_id}"' in all_js, widget_id
+    for behavior_id in PUBLIC_BEHAVIORS:
+        assert f'behaviors.register("{behavior_id}"' in all_js, behavior_id
+
+    for module, names in PUBLIC_JS_EXPORTS.items():
+        text = (_KPRESS_ROOT / "src/kpress/format/static" / module).read_text(encoding="utf-8")
+        for name in names:
+            pattern = rf"export (?:async )?(?:function|const) {re.escape(name)}\b"
+            assert re.search(pattern, text), f"{module}: {name} not exported"
+
+
+def test_page_model_block_keys_match_the_contract() -> None:
+    from kpress.format import DocumentInput, RenderOptions, render_page
+
+    page = render_page(
+        DocumentInput(
+            title="Doc", source_text="# Body", source_path="doc.md", body_markdown="# Body"
+        ),
+        RenderOptions(include_toc="off"),
+    )
+    match = re.search(
+        r'<script type="application/json" id="kpress-page-model">(.*?)</script>',
+        page.html,
+        re.DOTALL,
+    )
+    assert match
+    model = json.loads(match.group(1))
+    assert set(model) == set(PUBLIC_PAGE_MODEL_KEYS)
+
+
+def test_builtin_widgets_and_behaviors_import_only_public_layers() -> None:
+    """The dogfood rule: built-ins are assembled from the public primitives the
+    way a third-party widget would be — no private cross-module imports."""
+
+    allowed = {
+        "./runtime.js",
+        "./theme.js",
+        "./menu.js",
+        "./icons.js",
+        "./overlay.js",
+        "./viewport.js",
+    }
+    js_dir = _KPRESS_ROOT / "src/kpress/format/static/js"
+    for path in sorted(js_dir.glob("*.js")):
+        imports = set(re.findall(r'from "(\./[^"]+)"', path.read_text(encoding="utf-8")))
+        assert imports <= allowed, (
+            f"{path.name} imports outside the public layers: {imports - allowed}"
+        )

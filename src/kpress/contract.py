@@ -235,6 +235,52 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
     "components/toc.html.jinja": ("toc_items",),
 }
 
+# Extension-model name contracts (kpress-design.md "Extension and Injection
+# Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
+
+# Built-in chrome widget ids registered through kpress.widgets.
+PUBLIC_WIDGETS = ("settings",)
+
+# Built-in behavior ids registered through kpress.behaviors (bindings over
+# server-rendered markup; each is overridable by id).
+PUBLIC_BEHAVIORS = (
+    "toc",
+    "tooltip",
+    "footnote-preview",
+    "code-copy",
+    "video",
+    "tables",
+    "tabs",
+    "diagrams",
+)
+
+# Keys of the #kpress-page-model JSON block (layer A published data).
+PUBLIC_PAGE_MODEL_KEYS = (
+    "version",
+    "title",
+    "route",
+    "profile",
+    "headings",
+    "widgets",
+)
+
+# Stability-pinned ES-module exports (the wrap-one-aspect seam). Start narrow:
+# only what the documented demos exercise; an export is a contract, so names
+# are added deliberately, not by reflex.
+PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
+    "js/runtime.js": ("getModel", "on", "off", "emit", "storage", "widgets", "behaviors"),
+    "js/theme.js": ("setKpressTheme", "initKpressTheme", "bindThemeToggleControls"),
+    "js/menu.js": ("bindMenu", "markChecked"),
+    "js/toc.js": ("initKpressToc", "TOC_TOGGLE_SCROLL_THRESHOLD_PX", "defaultTocToggleVisible"),
+    "js/tooltips.js": (
+        "initKpressTooltips",
+        "chooseTooltipPosition",
+        "positionTooltip",
+        "TOOLTIP_SHOW_DELAY_MS",
+    ),
+    "js/settings-widget.js": ("mountSettings",),
+}
+
 BUILD_MANIFEST_REQUIRED_KEYS = (
     "schema_version",
     "output_dir",
@@ -252,11 +298,15 @@ __all__ = [
     "BUILD_MANIFEST_REQUIRED_KEYS",
     "BUILD_MANIFEST_SCHEMA_VERSION",
     "CONTRACT_VERSION",
+    "PUBLIC_BEHAVIORS",
     "PUBLIC_CSS_CLASSES",
     "PUBLIC_CSS_VARIABLES",
     "PUBLIC_DATA_ATTRIBUTES",
     "PUBLIC_FORMAT_API",
+    "PUBLIC_JS_EXPORTS",
     "PUBLIC_PACKAGE_API",
+    "PUBLIC_PAGE_MODEL_KEYS",
     "PUBLIC_PUBLISH_API",
     "PUBLIC_TEMPLATE_VARIABLES",
+    "PUBLIC_WIDGETS",
 ]

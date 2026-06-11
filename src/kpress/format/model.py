@@ -122,7 +122,7 @@ class RenderOptions:
     # KPress never interprets the config — it is serialized verbatim into the
     # #kpress-page-model block for the widget's own JS (schema-with-the-code).
     # Defaults merge under this map (settings is on unless turned off here).
-    widgets: Mapping[str, Any] = field(default_factory=dict)
+    widgets: dict[str, Any] = field(default_factory=dict)
     # Page chrome slots: opaque site-owned HTML emitted verbatim by render_page
     # (head extra inside <head>; header/footer wrapped in .kpress-site-header /
     # .kpress-site-footer). KPress styles the wrappers but never interprets the

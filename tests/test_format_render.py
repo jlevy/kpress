@@ -336,7 +336,7 @@ def test_widgets_map_toggles_the_settings_chrome() -> None:
     assert "kpress-settings" not in hidden
 
 
-def _page_model(html: str) -> dict[str, object]:
+def _page_model(html: str):  # -> dict[str, Any]: keep Any so tests index freely
     import json
     import re
 
@@ -372,7 +372,9 @@ def test_page_model_block_carries_contract_keys() -> None:
     assert model["title"] == "Doc"
     assert model["route"] == "/notes/doc"
     assert model["profile"] == "document"
-    headings = model["headings"]
+    from typing import Any, cast
+
+    headings = cast("list[dict[str, Any]]", model["headings"])
     assert isinstance(headings, list) and headings
     assert {"level", "title", "href"} <= set(headings[0])
     # Widget config is opaque: passed through verbatim.

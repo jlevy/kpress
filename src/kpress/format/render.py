@@ -430,7 +430,7 @@ def _widget_mounts(enabled_widgets: dict[str, Any]) -> str:
     slug ids get a mount.
     """
 
-    mounts = []
+    mounts: list[str] = []
     for widget_id in enabled_widgets:
         if not _WIDGET_ID_RE.fullmatch(widget_id):
             continue
