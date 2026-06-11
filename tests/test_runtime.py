@@ -218,3 +218,24 @@ def test_normalize_print_profile_maps_view_and_profile_aliases(
 def test_normalize_print_profile_raises_on_unsupported_profile(profile: str) -> None:
     with pytest.raises(KPressInvalidRequestError, match="Unsupported KPress print profile"):
         runtime.normalize_print_profile("rendered", profile)
+
+
+def test_runtime_threads_widgets_map_into_payload() -> None:
+    runtime.clear_render_cache()
+    request = runtime.KPressRenderRequest(
+        source_text="# One\n\nBody\n",
+        source_path="docs/one.md",
+        kind="markdown",
+        view="rendered",
+        ext=".md",
+        mtime_hash="widgets-a",
+        size=12,
+        widgets={"settings": {"choosers": ["theme"]}, "minimap": "off"},
+    )
+
+    payload = runtime.render_view(request)
+
+    # Echoed for host-mounted widgets: defaults merged, "off" removed,
+    # config passed through verbatim.
+    assert payload["widgets"] == {"settings": {"choosers": ["theme"]}}
+    assert "minimap" not in payload["widgets"]

@@ -113,11 +113,6 @@ class RenderOptions:
     # Render frontmatter as a collapsible "Metadata" disclosure. Sites that treat
     # frontmatter as build-only metadata (not reader-facing) pass False to omit it.
     show_frontmatter: bool = True
-    # Render the standalone gear-icon settings popover (theme chooser) in the page
-    # shell. On by default; hosts that drive theme through their own chrome, or want
-    # no settings UI at all, pass False to omit it. Position is host-overridable via
-    # the --kpress-host-settings-inset-* CSS vars; this is the on/off switch.
-    show_settings: bool = True
     math: MathMode = "auto"
     diagrams: DiagramMode = "auto"
     printable: bool = True
@@ -136,6 +131,24 @@ class RenderOptions:
     header_html: str = ""
     footer_html: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+# Built-in widget defaults, merged UNDER a host's widgets map: the settings
+# gear ships on unless the host turns it off (widgets={"settings": "off"}).
+DEFAULT_WIDGETS: dict[str, Any] = {"settings": "on"}
+
+
+def resolve_widgets(widgets: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve a widget presence map: defaults under host values, "off" removed.
+
+    Values pass through verbatim (a dict is the widget's opaque config and
+    implies on; "on"/"auto"/True are presence markers). KPress never interprets
+    configs — they ride the #kpress-page-model block (or the dynamic render
+    payload) to the widget's own JS.
+    """
+
+    merged: dict[str, Any] = {**DEFAULT_WIDGETS, **dict(widgets)}
+    return {widget_id: value for widget_id, value in merged.items() if value not in ("off", False)}
 
 
 @dataclass(frozen=True)

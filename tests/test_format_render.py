@@ -300,7 +300,7 @@ def test_show_frontmatter_toggles_the_frontmatter_disclosure() -> None:
     assert "<summary>Frontmatter</summary>" not in hidden
 
 
-def test_show_settings_toggles_the_settings_menu() -> None:
+def test_widgets_map_toggles_the_settings_chrome() -> None:
     doc = DocumentInput(
         title="Doc",
         source_text="# Body",
@@ -311,9 +311,8 @@ def test_show_settings_toggles_the_settings_menu() -> None:
 
     shown = render_page(doc, RenderOptions(include_toc="off")).html
     assert 'id="kpress-settings"' in shown
-    assert 'id="kpress-settings-btn"' in shown
 
-    hidden = render_page(doc, RenderOptions(include_toc="off", show_settings=False)).html
+    hidden = render_page(doc, RenderOptions(include_toc="off", widgets={"settings": "off"})).html
     assert "kpress-settings" not in hidden
 
 
@@ -386,9 +385,7 @@ def test_page_model_block_is_script_safe() -> None:
     # The raw payload must not contain an unescaped closing tag.
     import re
 
-    block = re.search(
-        r'id="kpress-page-model">(.*?)</script>', html, re.DOTALL
-    )
+    block = re.search(r'id="kpress-page-model">(.*?)</script>', html, re.DOTALL)
     assert block and "</script" not in block.group(1)
 
 

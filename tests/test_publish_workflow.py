@@ -356,18 +356,41 @@ def test_invalid_optimizer_mode_raises(tmp_path: Path) -> None:
         load_config(config)
 
 
-def test_format_show_settings_parses_and_defaults_on(tmp_path: Path) -> None:
+def test_format_widgets_parses_normalizes_and_defaults_empty(tmp_path: Path) -> None:
     from kpress.publish.config import load_config
 
     default = load_config(tmp_path / "missing.yml")
-    assert default.format.show_settings is True
+    assert default.format.widgets == {}
 
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "sources:\n  - path: .\nformat:\n  show_settings: false\n",
+        "sources:\n  - path: .\n"
+        "format:\n  widgets:\n"
+        "    settings:\n      choosers: [theme, reading-font]\n"
+        "    toc: auto\n"
+        "    minimap: off\n"
+        "    extra: true\n",
         encoding="utf-8",
     )
-    assert load_config(config).format.show_settings is False
+    widgets = load_config(config).format.widgets
+    # Dict config passes through verbatim; presence scalars normalize to strings.
+    assert widgets["settings"] == {"choosers": ["theme", "reading-font"]}
+    assert widgets["toc"] == "auto"
+    assert widgets["minimap"] == "off"
+    assert widgets["extra"] == "on"
+
+
+def test_format_widgets_invalid_value_raises(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  widgets:\n    settings: 42\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(KPressPublishError, match="format.widgets"):
+        load_config(config)
 
 
 def test_invalid_format_math_raises(tmp_path: Path) -> None:

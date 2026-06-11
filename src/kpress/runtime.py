@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import mimetypes
 import re
 from collections import OrderedDict
@@ -21,6 +22,7 @@ from kpress.errors import (
     KPressRenderError,
 )
 from kpress.format import DocumentInput, RenderOptions, RenderResult, render_fragment
+from kpress.format.model import resolve_widgets
 from kpress.models import (
     KPressAsset,
     KPressExportRequest,
@@ -253,6 +255,10 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         request.theme_mode,
         request.resolved_theme,
         source_digest,
+        # Widgets affect the echoed payload (and any widget-dependent render),
+        # so they are part of the identity. Stable-stringified: dicts are not
+        # hashable and key order must not matter.
+        json.dumps(request.widgets, sort_keys=True, default=str),
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -307,6 +313,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         asset_url_prefix=request.asset_url_prefix,
         include_assets=True,
         show_doc_header=request.show_doc_header,
+        widgets=request.widgets,
         printable=True,
         metadata=metadata,
     )
@@ -322,6 +329,10 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         profile=profile,
         asset_url_prefix=request.asset_url_prefix,
     )
+    # Echo the resolved widget map (defaults merged, "off" removed, config
+    # verbatim) so host-mounted widgets read the same data the standalone
+    # page model carries. The fragment itself has no #kpress-page-model block.
+    normalized["widgets"] = resolve_widgets(request.widgets)
     _cache_put(cache_key, normalized)
     return normalized
 

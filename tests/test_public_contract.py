@@ -175,5 +175,6 @@ def test_render_view_returns_jsonable_contract_payload_with_opaque_host() -> Non
         "printable",
         "assets",
         "diagnostics",
+        "widgets",
     }
     assert set(payload["assets"]) == {"css", "js"}

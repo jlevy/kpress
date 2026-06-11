@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from kpress.errors import KPressPublishError
 from kpress.format.model import AssetMode, MathMode, OptimizerMode, TocMode
@@ -37,7 +37,11 @@ class FormatConfig:
     math: MathMode = "auto"
     diagrams: str = "auto"
     show_frontmatter: bool = True
-    show_settings: bool = True
+    # Widget presence + opaque config map (extension model layer D). Keys are
+    # widget ids; values normalize to "on" | "off" | "auto" or pass through as
+    # the widget's config dict (which implies on). KPress never interprets the
+    # config (schema-with-the-code rule).
+    widgets: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -195,7 +199,7 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "math",
         "diagrams",
         "show_frontmatter",
-        "show_settings",
+        "widgets",
     }
 )
 _KNOWN_OPTIMIZER_KEYS = frozenset({"mode", "precompress"})
@@ -246,6 +250,33 @@ def _parse_yaml_text(text: str) -> YamlDict:
         msg = f"KPress config must be a YAML mapping at the top level, got {type(parsed).__name__}"
         raise KPressPublishError(msg)
     return cast(YamlDict, parsed)
+
+
+def _parse_widgets(value: object) -> dict[str, Any]:
+    """Normalize ``format.widgets``: presence scalars + opaque config dicts.
+
+    Each value becomes "on" | "off" | "auto" (bools normalize to on/off) or
+    passes through verbatim as the widget's config dict (which implies on).
+    Anything else fails loudly — consistent with the strict format.math /
+    asset_mode stance (orig-1tkb): a typo must not silently ship different
+    chrome than the operator intended.
+    """
+
+    widgets: dict[str, Any] = {}
+    for widget_id, raw in _as_dict(value).items():
+        if isinstance(raw, bool):
+            widgets[str(widget_id)] = "on" if raw else "off"
+        elif isinstance(raw, str) and raw in {"on", "off", "auto"}:
+            widgets[str(widget_id)] = raw
+        elif isinstance(raw, dict):
+            widgets[str(widget_id)] = raw
+        else:
+            msg = (
+                f"Invalid format.widgets value for {widget_id!r}: {raw!r}; "
+                f"expected 'on', 'off', 'auto', a boolean, or a config mapping"
+            )
+            raise KPressPublishError(msg)
+    return widgets
 
 
 def _resolve_chrome_slot(site: YamlDict, name: str, config_dir: Path) -> str:
@@ -357,7 +388,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             math=cast(MathMode, math),
             diagrams=str(fmt.get("diagrams", "auto")),
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),
-            show_settings=_bool_value(fmt.get("show_settings"), True),
+            widgets=_parse_widgets(fmt.get("widgets")),
         ),
         publish=PublishConfig(
             output_dir=str(publish.get("output_dir", "public")),

@@ -24,6 +24,7 @@ from kpress.format.model import (
     RenderedDocument,
     RenderedPage,
     RenderOptions,
+    resolve_widgets,
 )
 from kpress.models import PrintProfile
 
@@ -450,27 +451,6 @@ def _render_settings_menu(theme_mode: str) -> str:
     )
 
 
-# Built-in widget defaults, merged UNDER RenderOptions.widgets: the settings
-# gear ships on unless the host turns it off (widgets={"settings": "off"}).
-_DEFAULT_WIDGETS: dict[str, Any] = {"settings": "on"}
-
-
-def _enabled_widgets(options: RenderOptions) -> dict[str, Any]:
-    """Resolve the widget presence map: defaults under host values, "off" removed.
-
-    Values pass through verbatim (a dict is the widget's opaque config and implies
-    on; "on"/"auto"/True are presence markers). KPress never interprets configs —
-    they ride the #kpress-page-model block to the widget's own JS.
-    """
-
-    merged: dict[str, Any] = {**_DEFAULT_WIDGETS, **dict(options.widgets)}
-    return {
-        widget_id: value
-        for widget_id, value in merged.items()
-        if value not in ("off", False)
-    }
-
-
 def _json_script_payload(value: Any) -> str:
     """JSON for an application/json script block, unable to break out of it.
 
@@ -532,6 +512,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         fragment.assets, options.asset_url_prefix, asset_mode=options.asset_mode
     )
     theme_bootstrap = _theme_bootstrap_script()
+    enabled_widgets = resolve_widgets(options.widgets)
     diagnostics_json = _json_script_payload(fragment.diagnostics)
     # The page model: published data client widgets compute from (layer A of the
     # extension model; keys pinned by contract.PUBLIC_PAGE_MODEL_KEYS). Widget
@@ -546,7 +527,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
                 {"level": entry.level, "title": entry.title, "href": entry.href}
                 for entry in fragment.toc
             ],
-            "widgets": _enabled_widgets(options),
+            "widgets": enabled_widgets,
         }
     )
     social_meta = _social_meta_tags(document, title)
@@ -564,7 +545,9 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         if options.footer_html
         else ""
     )
-    settings_menu = _render_settings_menu(options.theme_mode) if options.show_settings else ""
+    settings_menu = (
+        _render_settings_menu(options.theme_mode) if "settings" in enabled_widgets else ""
+    )
     html = f"""<!doctype html>
 <html lang="en" data-kpress-theme="{escape(options.theme_mode)}" data-kpress-resolved-theme="{escape(options.resolved_theme)}">
 <head>
