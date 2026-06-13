@@ -153,6 +153,29 @@ def test_template_variable_contract_matches_packaged_templates() -> None:
             assert re.search(r"{{\s*" + re.escape(variable) + r"\b", text)
 
 
+def test_page_template_is_actually_rendered() -> None:
+    """The page shell is rendered THROUGH templates/page.html.jinja (not an
+    orphaned f-string), so the templates and the renderer can never silently
+    diverge again. ``StrictUndefined`` (format/templating.py) means a missing slot
+    would raise right here instead of shipping broken HTML."""
+    from kpress.format.model import DocumentInput
+    from kpress.format.render import render_page
+
+    page = render_page(
+        DocumentInput(
+            title="Contract probe",
+            source_text="# Heading\n\nBody.",
+            source_path="probe.md",
+            body_markdown="# Heading\n\nBody.",
+        )
+    )
+    assert page.html.startswith("<!doctype html>")
+    # Attributes only the page template emits — proof the template path ran.
+    assert 'data-kpress-resolved-theme="' in page.html
+    assert 'data-kpress-palette="' in page.html
+    assert "Contract probe" in page.html
+
+
 def test_manifest_schema_versions_are_explicit() -> None:
     asset_manifest = package_asset_manifest().as_dict()
     assert tuple(asset_manifest.keys()) == ASSET_MANIFEST_REQUIRED_KEYS

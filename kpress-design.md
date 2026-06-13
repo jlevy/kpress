@@ -616,10 +616,14 @@ video-gallery
 video-item
 ```
 
-Current template variables are public where they are listed in
-`kpress.contract.PUBLIC_TEMPLATE_VARIABLES`. They cover the packaged Jinja files under
-`src/kpress/format/templates`. The tests assert that each declared variable exists in
-the corresponding packaged template.
+All KPress HTML is authored in the packaged Jinja templates under
+`src/kpress/format/templates` and rendered through the single strict environment in
+`format/templating.py` (`StrictUndefined` + autoescape — a missing variable is an
+immediate hard failure, markup rides `| safe`). HTML is never assembled with Python
+f-strings or string concatenation (see AGENTS.md → Conventions). Each template's public
+variables are listed in `kpress.contract.PUBLIC_TEMPLATE_VARIABLES`; the tests assert
+both that each declared variable exists in the template **and** that the template is
+actually rendered by the code, so the templates and the renderer cannot diverge.
 
 The contract module also declares:
 
@@ -810,10 +814,29 @@ enforce “always use CSS vars”).
 - **Palette presets** — reasonable default sets for common cases, each a *named bundle
   of the `--kpress-host-*` contract* (not special-cased code), keyed on
   `.kpress[data-kpress-palette="<name>"]` and selected via `RenderOptions.palette` /
-  `format.palette`. `neutral` is the default (no overrides); `warm` applies the original
-  tan-paper ramp (`--kpress-host-code-bg` + `--kpress-host-surface-hover/-selected`). A
-  host can select a preset and still override any single var on top — *simple stays
-  simple, complex stays possible.*
+  `format.palette`. `neutral` is the default (no overrides); `warm` is
+  *systematic with neutral*: every token keeps neutral's lightness and
+  near-identical chroma, and only a few are tastefully warm instead of
+  neutral gray — ink/muted/border and the surface fills rotate to a warm
+  greige/tan hue, the link is textpress's teal (kash primary, exact
+  conversion), and the hover/selected interaction tints are deliberately a
+  step lighter than the plain rotation: gentle, quiet tan highlights, tuned
+  against textpress's near-white treatment. Everything else (page bg,
+  success, selection strength) inherits neutral unchanged. A host can select
+  a preset and still override any single var on top — *simple stays simple,
+  complex stays possible.*
+- **Content card** — the reading column rendered as a bordered sheet floating
+  over the page: textpress's long-text card, on `.kpress-long-text` (whose
+  48rem cap and `md` 4rem inline padding already are the card's geometry — the
+  card adds chrome only, no layout properties, so the coupled TOC/table width
+  system is untouched). Chrome is `--kpress-card-border` +
+  `--kpress-card-shadow` (dark themes deepen the shadow), appears only at md+
+  widths (narrow screens read full-bleed, as in textpress), and never prints.
+  Shown or flat is a render-time setting — `RenderOptions.content_card` /
+  `format.content_card`, stamped as `data-kpress-card="on|off"` on the
+  document article — and **either default is supported**: the shipped default
+  is **on** (for now; flip the option for the flat full-bleed page).
+  Embedding hosts stamp the same attribute on the fragment wrapper themselves.
 
 Two shared interaction primitives are documented so every component reuses them rather
 than re-styling:
@@ -1216,13 +1239,14 @@ kash; they are the recorded exceptions:
 9. **Footnotes-section container styling** (border-top, muted, 0.9em) — kash has none.
 10. **Dual active-state signal** on TOC links (`data-active` attribute + `.active`
     class) so embedding hosts get an attribute hook.
-11. **Cool-blue primary over warm paper surfaces** — the link/primary stays the KPress
+11. **Cool-blue primary in the default palette** — the link/primary stays the KPress
     blue (`oklch(45.76% 0.1445 254.7)`, was `#0756a5`), not kash’s teal, with
     fully-opaque tokens; the kash `--color-*` token *names* are provided but mapped to
-    KPress values. Interaction/surface fills (code bg, TOC hover/active) use the warm
-    paper ramp from the original KPress palette (see Surface fill above) rather than
-    blue tints.
-12. **Blue-based dark palette** (same hue choice in dark mode).
+    KPress values. This departure applies to the default `neutral` palette only: the
+    `warm` preset keeps kash/textpress’s teal link (exact conversion) atop a
+    warm-rotated neutral structure (see Palette presets above).
+12. **Blue-based dark palette** (same hue choice in dark mode; `neutral` only, as
+    with #11).
 13. **Sans on the `.kpress` wrapper, serif only inside `.kpress-prose`** — UI chrome is
     sans, body prose is serif.
 14. **No global scrollbar styling** (KPress is an embeddable fragment, not a page).

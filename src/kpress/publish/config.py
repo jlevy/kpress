@@ -13,6 +13,7 @@ from kpress.format.model import (
     DocumentTree,
     MathMode,
     OptimizerMode,
+    ProseFont,
     TocMode,
     parse_widgets,
 )
@@ -41,6 +42,15 @@ class FormatConfig:
     theme: str = "default"
     palette: str = "neutral"
     color_mode: str = "system"
+    # Site default for the reading-font chooser (see RenderOptions.prose_font):
+    # readers' persisted choices still win.
+    prose_font: ProseFont = "serif"
+    # Content card on the reading column (see RenderOptions.content_card).
+    content_card: bool = True
+    # Render the doc-title <h1> header (see RenderOptions.show_doc_header).
+    # Sites whose pages open with their own heading structure (or whose chrome
+    # already shows the title) pass False.
+    show_doc_header: bool = True
     toc: TocMode = "auto"
     toc_min_headings: int = 4
     math: MathMode = "auto"
@@ -182,6 +192,7 @@ _TOC_MODES = ("off", "auto", "on")
 _MATH_MODES = ("off", "auto")
 _DIAGRAM_MODES = ("off", "auto", "mermaid")
 _COLOR_MODES = ("system", "light", "dark")
+_PROSE_FONTS = ("serif", "sans")
 _ASSET_MODES = ("hosted", "linked", "hashed", "sealed")
 _OPTIMIZER_MODES = ("none", "full")
 _PRECOMPRESS_METHODS = ("gzip", "br")
@@ -256,6 +267,9 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "theme",
         "palette",
         "color_mode",
+        "prose_font",
+        "content_card",
+        "show_doc_header",
         "toc",
         "toc_min_headings",
         "math",
@@ -346,6 +360,7 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     _ = _checked_choice("format.math", config.format.math, _MATH_MODES)
     _ = _checked_choice("format.diagrams", config.format.diagrams, _DIAGRAM_MODES)
     _ = _checked_choice("format.color_mode", config.format.color_mode, _COLOR_MODES)
+    _ = _checked_choice("format.prose_font", config.format.prose_font, _PROSE_FONTS)
     widgets = parse_widgets(config.format.widgets)
     if widgets != config.format.widgets:
         config = replace(config, format=replace(config.format, widgets=widgets))
@@ -421,6 +436,11 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         if "color_mode" in fmt
         else "system"
     )
+    prose_font = (
+        _checked_choice("format.prose_font", fmt.get("prose_font"), _PROSE_FONTS)
+        if "prose_font" in fmt
+        else "serif"
+    )
     if "asset_mode" in publish:
         asset_mode = publish.get("asset_mode")
         # `inline` is rejected at the config surface until it is truly
@@ -453,6 +473,9 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             theme=str(fmt.get("theme", "default")),
             palette=str(fmt.get("palette", "neutral")),
             color_mode=color_mode,
+            prose_font=cast(ProseFont, prose_font),
+            content_card=_bool_value(fmt.get("content_card"), True),
+            show_doc_header=_bool_value(fmt.get("show_doc_header"), True),
             toc=cast(TocMode, toc),
             toc_min_headings=_int_value(fmt.get("toc_min_headings"), 4),
             math=cast(MathMode, math),

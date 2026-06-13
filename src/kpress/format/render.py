@@ -27,6 +27,7 @@ from kpress.format.model import (
     TocEntry,
     resolve_widgets,
 )
+from kpress.format.templating import render_template
 from kpress.models import PrintProfile
 
 SOURCE_PREVIEW_MAX_BYTES = 512 * 1024
@@ -215,6 +216,7 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
         f'data-kpress-resolved-theme="{escape(options.resolved_theme)}" '
         f'data-kpress-fonts="{escape(options.font_mode)}" '
         f'data-kpress-palette="{escape(options.palette)}" '
+        f'data-kpress-card="{"on" if options.content_card else "off"}" '
         f"{label_attr}>"
         f"{doc_header}"
         f"{frontmatter_error}"
@@ -560,52 +562,31 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         )
     )
     social_meta = _social_meta_tags(document, title)
-    # Chrome slots are site-owned raw HTML, emitted verbatim. The header/footer
-    # wrappers carry the public .kpress-site-* classes so slot content inherits
-    # the document typography; empty slots emit no element at all.
-    head_extra = f"\n  {options.head_extra_html}" if options.head_extra_html else ""
-    site_header = (
-        f'\n    <header class="kpress-site-header">{options.header_html}</header>'
-        if options.header_html
-        else ""
+    # The page shell is authored in templates/page.html.jinja and rendered through
+    # the strict environment (see format/templating.py): markup lives in the
+    # template, this function just supplies the slots. Plain values (title, the
+    # theme/palette/font state) autoescape; kpress-generated and site-owned markup
+    # (chrome slots, asset tags, scripts, the document fragment) ride `| safe`.
+    html = render_template(
+        "page.html.jinja",
+        theme_mode=options.theme_mode,
+        resolved_theme=options.resolved_theme,
+        palette=options.palette,
+        prose_font=options.prose_font,
+        title=title,
+        page_reset=_standalone_page_reset(),
+        social_meta=social_meta,
+        theme_bootstrap=theme_bootstrap,
+        asset_tags=asset_tags,
+        head_extra_html=options.head_extra_html,
+        header_html=options.header_html,
+        widget_mounts=_widget_mounts(enabled_widgets),
+        fragment_html=fragment.html,
+        footer_html=options.footer_html,
+        video_close_icon=_icon("x"),
+        page_model_json=page_model_json,
+        diagnostics_json=diagnostics_json,
     )
-    site_footer = (
-        f'\n    <footer class="kpress-site-footer">{options.footer_html}</footer>'
-        if options.footer_html
-        else ""
-    )
-    widget_mounts = _widget_mounts(enabled_widgets)
-    html = f"""<!doctype html>
-<html lang="en" data-kpress-theme="{escape(options.theme_mode)}" data-kpress-resolved-theme="{escape(options.resolved_theme)}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <meta name="generator" content="kpress">
-  {_standalone_page_reset()}
-  {social_meta}
-  <title>{escape(title)}</title>
-  {theme_bootstrap}
-  {asset_tags}{head_extra}
-</head>
-<body class="kpress-frame" data-kpress-frame>
-  <main class="kpress-page-main kpress-viewport" data-kpress-viewport>{site_header}
-    {widget_mounts}
-    {fragment.html}{site_footer}
-  </main>
-  <div class="kpress-video-backdrop" aria-hidden="true"></div>
-  <section id="kpress-video-popover" class="kpress-video-popover kpress-no-print" hidden aria-hidden="true">
-    <header class="kpress-video-header">
-      <strong id="kpress-video-title">Video</strong>
-      <button type="button" data-kpress-video-close aria-label="Close video">{_icon("x")}</button>
-    </header>
-    <iframe id="kpress-video-frame" title="Embedded video" allowfullscreen></iframe>
-  </section>
-  <script type="application/json" id="kpress-page-model">{page_model_json}</script>
-  <script type="application/json" id="kpress-diagnostics">{diagnostics_json}</script>
-</body>
-</html>
-"""
     return RenderedPage(
         html=html,
         profile=fragment.profile,

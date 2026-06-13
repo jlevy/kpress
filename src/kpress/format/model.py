@@ -16,6 +16,7 @@ TocMode = Literal["off", "auto", "on"]
 MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
+ProseFont = Literal["serif", "sans"]
 AssetMode = Literal["hosted", "linked", "hashed", "inline", "sealed"]
 OptimizerMode = Literal["none", "full"]
 
@@ -96,6 +97,20 @@ class RenderOptions:
     host: str | None = None
     theme_mode: ThemeMode = "system"
     font_mode: FontMode = "custom"
+    # Site default for the reading-font chooser: the serif reading face or the
+    # sans stack. Stamped as data-kpress-prose-font on <html> by the standalone
+    # page, where the pre-paint bootstrap and the settings widget read it as
+    # the unstored default; a reader's persisted choice (kpress.proseFont)
+    # still wins. Deliberately NOT stamped on the .kpress wrapper: the wrapper
+    # selector would tie with the root one and the reader could never switch
+    # back. Embedding hosts stamp their own root attribute instead.
+    prose_font: ProseFont = "serif"
+    # Content card: render the reading column as a bordered sheet floating over
+    # the page (textpress's long-text card; chrome only appears at md+ widths).
+    # Stamped as data-kpress-card on the document article; the CSS lives in
+    # components.css "Content card". On by default; pass False (or
+    # `format.content_card: false`) for the flat full-bleed page.
+    content_card: bool = True
     # Named palette preset: a built-in bundle of the host-var contract, stamped as
     # data-kpress-palette on the .kpress wrapper. "neutral" is the default (no
     # overrides); "warm" applies the tan-paper ramp. Hosts may still override any

@@ -216,10 +216,12 @@ PUBLIC_CSS_VARIABLES = (
 # documents from outside. Consumed-only means the declared-variable scan that
 # covers PUBLIC_CSS_VARIABLES cannot pin these; the contract test scans the
 # shipped CSS for var() consumption sites instead.
+# Host-override seam: tokens consumed via var(--kpress-host-X, <default>). The COLOR
+# tokens were retired when the palette moved to the direct, per-theme×palette model
+# (see style-tokens.css "Palette options"): an embedding host now re-themes by setting
+# the resolved --kpress-doc-* / --color-* tokens directly, not through a --kpress-host-*
+# color fallback. The font and settings-inset seams remain.
 PUBLIC_HOST_CSS_VARIABLES = (
-    "--kpress-host-bg",
-    "--kpress-host-border",
-    "--kpress-host-code-bg",
     "--kpress-host-font-body",
     "--kpress-host-font-footnote",
     "--kpress-host-font-mono",
@@ -227,13 +229,8 @@ PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-prose-sans",
     "--kpress-host-font-sans",
     "--kpress-host-font-table",
-    "--kpress-host-link",
-    "--kpress-host-muted",
     "--kpress-host-settings-inset-block",
     "--kpress-host-settings-inset-inline",
-    "--kpress-host-surface-hover",
-    "--kpress-host-surface-selected",
-    "--kpress-host-text",
 )
 
 # Stable per-cell table data-* hooks kpress emits for downstream enrichment. These are
@@ -253,6 +250,9 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
         "fragment_html",
         "head_extra_html",
         "header_html",
+        "palette",
+        "prose_font",
+        "resolved_theme",
         "theme_mode",
         "title",
     ),

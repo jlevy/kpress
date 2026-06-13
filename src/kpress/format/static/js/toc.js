@@ -10,6 +10,13 @@ import { resolveKpressViewport, viewportScrollContext } from "./viewport.js";
 export const TOC_TOGGLE_SCROLL_THRESHOLD_PX = 100;
 
 /**
+ * Within this distance of the viewport's scroll top, the document counts as
+ * "at the top" and the first TOC entry is highlighted unconditionally — the
+ * scroll-spy band can't see a first heading that sits above it.
+ */
+export const TOC_AT_TOP_EPSILON_PX = 8;
+
+/**
  * Default toggle-visibility policy: reveal the floating button once the reader
  * has scrolled past the threshold. Replaceable per page via
  * `kpress.behaviors.configure("toc", { visible: (ctx) => ... })` (e.g.
@@ -180,15 +187,22 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
     });
   }
 
+  /**
+   * @param {Element | undefined} link
+   */
+  const setActiveLink = (link) => {
+    for (const other of links) {
+      other.removeAttribute("data-active");
+      other.classList.remove("active");
+    }
+    link?.setAttribute("data-active", "true");
+    link?.classList.add("active");
+  };
+
   for (const link of links) {
     on(link, "click", (event) => {
       event.preventDefault();
-      for (const other of links) {
-        other.removeAttribute("data-active");
-        other.classList.remove("active");
-      }
-      link.setAttribute("data-active", "true");
-      link.classList.add("active");
+      setActiveLink(link);
       setExpanded(false);
       const id = tocLinkId(link);
       const heading = id ? document.getElementById(id) : null;
@@ -206,20 +220,27 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) {
-            continue;
-          }
-          for (const link of linksById.values()) {
-            link.removeAttribute("data-active");
-            link.classList.remove("active");
-          }
-          linksById.get(entry.target.id)?.setAttribute("data-active", "true");
-          linksById.get(entry.target.id)?.classList.add("active");
+        // At the top of the document the first heading may sit above the band
+        // (or share it with several small sections); the first entry is the
+        // only correct highlight there, so it overrides whatever intersects.
+        if (ctx.scrollTop() <= TOC_AT_TOP_EPSILON_PX) {
+          setActiveLink(links[0]);
           updateToggleVisibility();
+          return;
         }
+        // A batch can report several headings entering the band at once (small
+        // sections, fast scrolls, the initial observation pass). The topmost
+        // one is the section the reading position is actually in.
+        const topmost = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (!topmost) {
+          return;
+        }
+        setActiveLink(linksById.get(topmost.target.id));
+        updateToggleVisibility();
       },
-      { root: ctx.observerRoot(), rootMargin: "-20% 0px -65% 0px", threshold: 0 },
+      { root: ctx.observerRoot(), rootMargin: "0px 0px -75% 0px", threshold: 0 },
     );
     for (const id of linksById.keys()) {
       const heading = document.getElementById(id);
@@ -228,6 +249,15 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
       }
     }
     cleanups.push(() => observer.disconnect());
+
+    const highlightFirstAtTop = () => {
+      if (ctx.scrollTop() <= TOC_AT_TOP_EPSILON_PX) {
+        setActiveLink(links[0]);
+      }
+    };
+    ctx.onScroll(highlightFirstAtTop);
+    cleanups.push(() => ctx.offScroll(highlightFirstAtTop));
+    highlightFirstAtTop();
   }
 
   ctx.onScroll(updateToggleVisibility);

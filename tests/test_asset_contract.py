@@ -425,7 +425,9 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
         # clamp(.., 15cqw, ..) TOC under a fixed group cap) made the content shrink
         # as the pane widened.
         "@container kpress-doc (min-width: 75rem)",
-        "grid-template-columns: 15rem 51rem;",
+        # 53rem = 48rem reading measure + 2×2.5rem inset (content-card inner
+        # breathing room; was 51rem at 1.5rem inset).
+        "grid-template-columns: 15rem 53rem;",
         "justify-content: start",
         # The grid wrapper carries its own reading-measure cap + margin:auto
         # (`.kpress-doc-layout`), so it must be uncapped alongside the article
@@ -436,8 +438,11 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
         "@container kpress-doc (max-width: 74.99rem)",
         "overscroll-behavior",
         "show-toggle",
-        # §5.1 host bridge tokens consumed via fallback (not shadowed)
-        "var(--kpress-host-bg",
+        # §5.1 the warm (kash/textpress) palette is selectable and warms the cream
+        # code surface. (The --kpress-host-* COLOR fallback seam was retired when the
+        # palette moved to the direct, per-theme×palette model; hosts now override the
+        # resolved --kpress-doc-* tokens directly. See style-tokens.css "Palette options".)
+        'data-kpress-palette="warm"',
         # serif prose face (kash reading look) is the prose default
         "PT Serif",
     ]:
