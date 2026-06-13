@@ -167,7 +167,8 @@ def in_spans(pos: int, spans: list[tuple[int, int]]) -> bool:
 
 
 def convert_file(path: str) -> list[tuple[str, str]]:
-    text = open(path, encoding="utf-8").read()
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
     spans = protected_spans(text)
     report: list[tuple[str, str]] = []
     out: list[str] = []
@@ -193,7 +194,8 @@ def convert_file(path: str) -> list[tuple[str, str]]:
         out.append(repl)
         last = end
     out.append(text[last:])
-    open(path, "w", encoding="utf-8").write("".join(out))
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("".join(out))
     return report
 
 

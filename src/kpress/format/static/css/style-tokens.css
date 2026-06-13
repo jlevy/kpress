@@ -286,10 +286,10 @@
    override the SAME token set as warm-light so warm-light never leaks into dark. */
 :root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"],
 .kpress[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] {
-  --kpress-doc-text: oklch(94.40% 0.010 208);
-  --kpress-doc-muted: oklch(76.58% 0.020 208);
+  --kpress-doc-text: oklch(94.40% 0.01 208);
+  --kpress-doc-muted: oklch(76.58% 0.02 208);
   --kpress-doc-border: oklch(33.73% 0.016 208);
-  --kpress-doc-link: oklch(74.90% 0.070 208);
+  --kpress-doc-link: oklch(74.90% 0.07 208);
   --kpress-doc-code-bg: oklch(24.16% 0.012 83);
 }
 

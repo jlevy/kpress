@@ -1,9 +1,9 @@
 {
   "compressed": [
-    "_kpress/assets/css/components.245b05c643711fa7.css.gz",
+    "_kpress/assets/css/components.ca536d1688affc9f.css.gz",
     "_kpress/assets/css/document.d313bf3c3a57eb93.css.gz",
     "_kpress/assets/css/print.f2878606767521d9.css.gz",
-    "_kpress/assets/css/style-tokens.bcd0f93013861b32.css.gz",
+    "_kpress/assets/css/style-tokens.eb9a23cdc84c26c6.css.gz",
     "_kpress/assets/css/syntax.6e42f409bc9e2990.css.gz",
     "_kpress/assets/css/theme-dark.9c9cc21fdef2353e.css.gz",
     "_kpress/assets/css/theme-light.fd014259d052d8fd.css.gz",
@@ -27,10 +27,10 @@
     "index.html.gz"
   ],
   "hashed": [
-    "_kpress/assets/css/components.245b05c643711fa7.css",
+    "_kpress/assets/css/components.ca536d1688affc9f.css",
     "_kpress/assets/css/document.d313bf3c3a57eb93.css",
     "_kpress/assets/css/print.f2878606767521d9.css",
-    "_kpress/assets/css/style-tokens.bcd0f93013861b32.css",
+    "_kpress/assets/css/style-tokens.eb9a23cdc84c26c6.css",
     "_kpress/assets/css/syntax.6e42f409bc9e2990.css",
     "_kpress/assets/css/theme-dark.9c9cc21fdef2353e.css",
     "_kpress/assets/css/theme-light.fd014259d052d8fd.css",
@@ -53,10 +53,10 @@
   ],
   "readable_only": [],
   "sealed_only": [
-    "_kpress/assets/css/components.245b05c643711fa7.css.gz",
+    "_kpress/assets/css/components.ca536d1688affc9f.css.gz",
     "_kpress/assets/css/document.d313bf3c3a57eb93.css.gz",
     "_kpress/assets/css/print.f2878606767521d9.css.gz",
-    "_kpress/assets/css/style-tokens.bcd0f93013861b32.css.gz",
+    "_kpress/assets/css/style-tokens.eb9a23cdc84c26c6.css.gz",
     "_kpress/assets/css/syntax.6e42f409bc9e2990.css.gz",
     "_kpress/assets/css/theme-dark.9c9cc21fdef2353e.css.gz",
     "_kpress/assets/css/theme-light.fd014259d052d8fd.css.gz",

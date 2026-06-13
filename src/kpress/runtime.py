@@ -326,7 +326,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         result = render_fragment(document, options)
     except KPressRenderError:
         raise
-    except Exception as exc:  # noqa: BLE001 - preserve host diagnostics boundary
+    except Exception as exc:
         raise KPressRenderError(f"{type(exc).__name__}: {exc}") from exc
 
     normalized = _normalize_render_result(

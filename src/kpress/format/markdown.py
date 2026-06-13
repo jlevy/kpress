@@ -222,7 +222,7 @@ def _render_math(
     open_delim, close_delim = (r"\[", r"\]") if display == "display" else (r"\(", r"\)")
     try:
         mathml = convert_latex_math(source, display=display_mode)
-    except Exception as exc:  # noqa: BLE001 - keep invalid TeX readable in documents.
+    except Exception as exc:
         _record_math_render_error(env, source, exc)
         return (
             f'<{tag} class="{class_name}" data-kpress-math="{display}" '

@@ -180,9 +180,7 @@ def parse_widgets(value: object) -> dict[str, Any]:
     for widget_id, raw in raw_map.items():
         if isinstance(raw, bool):
             widgets[str(widget_id)] = "on" if raw else "off"
-        elif isinstance(raw, str) and raw in {"on", "off", "auto"}:
-            widgets[str(widget_id)] = raw
-        elif isinstance(raw, dict):
+        elif (isinstance(raw, str) and raw in {"on", "off", "auto"}) or isinstance(raw, dict):
             widgets[str(widget_id)] = raw
         else:
             msg = (

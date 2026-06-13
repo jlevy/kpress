@@ -19,7 +19,7 @@ needs_full = pytest.mark.skipif(
 
 def _stub_which(name: str) -> None:
     _ = name
-    return None
+    return
 
 
 # --- Capability probe function ---

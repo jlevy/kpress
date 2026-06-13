@@ -184,7 +184,7 @@ def _serve(directory: Path) -> Generator[str, None, None]:
 
 
 def _get(base_url: str, path: str) -> tuple[int, bytes]:
-    with urllib.request.urlopen(base_url + path, timeout=5) as response:  # noqa: S310 (localhost)
+    with urllib.request.urlopen(base_url + path, timeout=5) as response:
         return response.status, response.read()
 
 

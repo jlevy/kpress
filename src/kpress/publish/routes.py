@@ -101,10 +101,7 @@ def route_for_source(path: Path, *, root: Path) -> str:
     """Return a stable, case-normalized public route for a source path."""
 
     rel = path.relative_to(root)
-    if rel.name == "index.md":
-        out = rel.with_suffix("")
-    else:
-        out = rel.with_suffix(".html")
+    out = rel.with_suffix("") if rel.name == "index.md" else rel.with_suffix(".html")
     route = "/" + out.as_posix()
     if route.endswith("/index"):
         route = route[: -len("index")]
