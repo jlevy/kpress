@@ -27,9 +27,8 @@ def test_atomic_output_path_preserves_existing_file_on_error(tmp_path: Path) -> 
     target = tmp_path / "out.txt"
     target.write_text("old\n", encoding="utf-8")
 
-    with pytest.raises(RuntimeError, match="boom"):
-        with atomic_output_path(target) as tmp_path:
-            tmp_path.write_text("new\n", encoding="utf-8")
-            raise RuntimeError("boom")
+    with pytest.raises(RuntimeError, match="boom"), atomic_output_path(target) as tmp_path:
+        tmp_path.write_text("new\n", encoding="utf-8")
+        raise RuntimeError("boom")
 
     assert target.read_text(encoding="utf-8") == "old\n"

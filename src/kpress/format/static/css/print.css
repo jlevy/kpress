@@ -108,6 +108,8 @@
   }
 
   .kpress-long-text {
+    /* Card chrome (data-kpress-card) never prints: paper is the sheet. */
+    border: none;
     box-shadow: none;
     padding: 0;
   }

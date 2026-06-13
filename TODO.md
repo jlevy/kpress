@@ -4,12 +4,16 @@ This file is the package-local implementation status ledger for KPress.
 The plan specs remain the detailed source of truth; this file keeps the current package
 state readable without scanning every design document.
 
-KPress was extracted from a private monorepo (see [EXTRACTION.md](EXTRACTION.md)). Bead
-IDs of the form `orig-xxxx` refer to the pre-extraction issue tracker there and are kept
-as stable historical references; plan specs that lived outside the package are
-referenced by name only and are not included in this repo.
-“The host app” below refers to the document-browsing application KPress was originally
-embedded in.
+Bead IDs of the form `orig-xxxx` refer to the pre-extraction issue tracker in the
+private monorepo KPress originated from and are kept as stable historical references;
+plan specs that lived outside the package are referenced by name only and are not
+included in this repo.
+
+Release blockers before public distribution: remove the `Private :: Do Not Upload`
+classifier from `pyproject.toml`; replace the placeholder reporting process in
+`SECURITY.md`; prune internal bead references from this file and the runbooks for a
+standalone audience; re-run `uv run python devtools/lint.py --check`. “The host app”
+below refers to the document-browsing application KPress was originally embedded in.
 
 Last reviewed: 2026-06-05 (spec/TODO consolidation tracked as `orig-x1sb`). The
 2026-06-05 pass folded the open-source packaging-readiness assessment + static-publish

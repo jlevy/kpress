@@ -1,7 +1,34 @@
 import { toggleBackdrop } from "./overlay.js";
+import { behaviors } from "./runtime.js";
 import { resolveKpressViewport, viewportScrollContext } from "./viewport.js";
 
-const TOC_TOGGLE_SCROLL_THRESHOLD_PX = 100;
+/**
+ * Scroll distance after which the narrow-mode floating toggle appears.
+ * Exported as a part (see kpress-design.md "Component Authoring Contract"):
+ * hosts wrap or replace the visibility policy rather than asking for a flag.
+ */
+export const TOC_TOGGLE_SCROLL_THRESHOLD_PX = 100;
+
+/**
+ * Within this distance of the viewport's scroll top, the document counts as
+ * "at the top" and the first TOC entry is highlighted unconditionally — the
+ * scroll-spy band can't see a first heading that sits above it.
+ */
+export const TOC_AT_TOP_EPSILON_PX = 8;
+
+/**
+ * Default toggle-visibility policy: reveal the floating button once the reader
+ * has scrolled past the threshold. Replaceable per page via
+ * `kpress.behaviors.configure("toc", { visible: (ctx) => ... })` (e.g.
+ * `() => true` for an always-visible toggle), or wrappable by importing this
+ * default and delegating to it.
+ *
+ * @param {{ scrollTop(): number }} ctx viewport scroll context
+ * @returns {boolean}
+ */
+export function defaultTocToggleVisible(ctx) {
+  return ctx.scrollTop() > TOC_TOGGLE_SCROLL_THRESHOLD_PX;
+}
 
 /**
  * @param {Element} link
@@ -29,7 +56,7 @@ function tocContentLinks(toc) {
  * @param {Element} toc
  * @returns {() => void} disposer that removes all listeners/observers
  */
-function wireToc(toc) {
+function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
   // Already wired: return the existing disposer so a host that re-runs
   // initKpressToc() (e.g. after the module's own load-time self-init wired this
   // node) still gets a handle it can tear down, rather than a no-op.
@@ -53,6 +80,16 @@ function wireToc(toc) {
   const ctx = viewportScrollContext(resolveKpressViewport(toc));
   const links = tocContentLinks(toc);
 
+  // Config-tunable aspects (JS-channel config may carry callbacks): a custom
+  // toggle icon and the toggle-visibility policy.
+  if (typeof config.icon === "string") {
+    button.innerHTML = config.icon;
+  }
+  const visiblePolicy =
+    typeof config.visible === "function"
+      ? /** @type {(ctx: { scrollTop(): number }) => boolean} */ (config.visible)
+      : defaultTocToggleVisible;
+
   /** @type {Array<() => void>} */
   const cleanups = [];
   /**
@@ -68,12 +105,11 @@ function wireToc(toc) {
 
   const updateToggleVisibility = () => {
     // In narrow mode the floating toggle is the *only* way to reach the TOC (the
-    // sidebar is hidden by the container query), so reveal it once the reader has
-    // scrolled past the threshold — matching the TextPress behavior of a TOC
-    // indicator that hovers in after a short scroll. Wide mode hides the toggle
-    // entirely via CSS, so toggling this class has no visible effect there.
-    const showToggle = ctx.scrollTop() > TOC_TOGGLE_SCROLL_THRESHOLD_PX;
-    button.classList.toggle("show-toggle", showToggle);
+    // sidebar is hidden by the container query); the policy decides when it
+    // shows (default: after scrolling past the threshold, matching the
+    // TextPress hover-in behavior). Wide mode hides the toggle entirely via
+    // CSS, so toggling this class has no visible effect there.
+    button.classList.toggle("show-toggle", visiblePolicy(ctx));
   };
 
   /**
@@ -151,15 +187,22 @@ function wireToc(toc) {
     });
   }
 
+  /**
+   * @param {Element | undefined} link
+   */
+  const setActiveLink = (link) => {
+    for (const other of links) {
+      other.removeAttribute("data-active");
+      other.classList.remove("active");
+    }
+    link?.setAttribute("data-active", "true");
+    link?.classList.add("active");
+  };
+
   for (const link of links) {
     on(link, "click", (event) => {
       event.preventDefault();
-      for (const other of links) {
-        other.removeAttribute("data-active");
-        other.classList.remove("active");
-      }
-      link.setAttribute("data-active", "true");
-      link.classList.add("active");
+      setActiveLink(link);
       setExpanded(false);
       const id = tocLinkId(link);
       const heading = id ? document.getElementById(id) : null;
@@ -177,20 +220,27 @@ function wireToc(toc) {
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) {
-            continue;
-          }
-          for (const link of linksById.values()) {
-            link.removeAttribute("data-active");
-            link.classList.remove("active");
-          }
-          linksById.get(entry.target.id)?.setAttribute("data-active", "true");
-          linksById.get(entry.target.id)?.classList.add("active");
+        // At the top of the document the first heading may sit above the band
+        // (or share it with several small sections); the first entry is the
+        // only correct highlight there, so it overrides whatever intersects.
+        if (ctx.scrollTop() <= TOC_AT_TOP_EPSILON_PX) {
+          setActiveLink(links[0]);
           updateToggleVisibility();
+          return;
         }
+        // A batch can report several headings entering the band at once (small
+        // sections, fast scrolls, the initial observation pass). The topmost
+        // one is the section the reading position is actually in.
+        const topmost = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (!topmost) {
+          return;
+        }
+        setActiveLink(linksById.get(topmost.target.id));
+        updateToggleVisibility();
       },
-      { root: ctx.observerRoot(), rootMargin: "-20% 0px -65% 0px", threshold: 0 },
+      { root: ctx.observerRoot(), rootMargin: "0px 0px -75% 0px", threshold: 0 },
     );
     for (const id of linksById.keys()) {
       const heading = document.getElementById(id);
@@ -199,6 +249,15 @@ function wireToc(toc) {
       }
     }
     cleanups.push(() => observer.disconnect());
+
+    const highlightFirstAtTop = () => {
+      if (ctx.scrollTop() <= TOC_AT_TOP_EPSILON_PX) {
+        setActiveLink(links[0]);
+      }
+    };
+    ctx.onScroll(highlightFirstAtTop);
+    cleanups.push(() => ctx.offScroll(highlightFirstAtTop));
+    highlightFirstAtTop();
   }
 
   ctx.onScroll(updateToggleVisibility);
@@ -227,11 +286,14 @@ function wireToc(toc) {
  * @param {ParentNode} [root]
  * @returns {() => void}
  */
-export function initKpressToc(root = document) {
+export function initKpressToc(
+  root = document,
+  config = /** @type {Record<string, unknown>} */ ({}),
+) {
   /** @type {Array<() => void>} */
   const disposers = [];
   for (const toc of root.querySelectorAll("[data-kpress-toc]")) {
-    disposers.push(wireToc(toc));
+    disposers.push(wireToc(toc, config));
   }
   return () => {
     for (const dispose of disposers) {
@@ -240,4 +302,9 @@ export function initKpressToc(root = document) {
   };
 }
 
-initKpressToc();
+// The bind returns initKpressToc's disposer, so the runtime owns disposal:
+// `configure("toc", ...)` + `rebind("toc")` (or an override) tears down the
+// previous wiring before re-binding — the new policy/icon take effect.
+behaviors.register("toc", {
+  bind: (root, config) => initKpressToc(root, config),
+});

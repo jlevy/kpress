@@ -1,4 +1,5 @@
-"""Check that public KPress package files are safe for standalone extraction."""
+"""Hygiene scan over the public package files: no private filesystem paths,
+no secret tokens. Runs in the lint gate and pre-commit."""
 
 from __future__ import annotations
 
@@ -24,7 +25,6 @@ TEXT_SUFFIXES: Final = {
 
 PUBLIC_ROOT_FILES: Final = (
     "CONTRIBUTING.md",
-    "EXTRACTION.md",
     "NOTICE.md",
     "README.md",
     "SECURITY.md",

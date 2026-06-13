@@ -1,3 +1,5 @@
+import { behaviors } from "./runtime.js";
+
 let generatedMermaidCounter = 0;
 
 /**
@@ -85,6 +87,7 @@ async function renderMermaidFigure(figure, mermaid) {
   }
 }
 
+/** @param {ParentNode} [root] */
 export async function initKpressDiagrams(root = document) {
   const mermaid = hostMermaid();
   if (!mermaid) {
@@ -99,6 +102,8 @@ export async function initKpressDiagrams(root = document) {
   }
 }
 
-globalThis.setTimeout(() => {
-  void initKpressDiagrams();
-}, 0);
+behaviors.register("diagrams", {
+  bind: (root) => {
+    void initKpressDiagrams(/** @type {ParentNode} */ (root));
+  },
+});

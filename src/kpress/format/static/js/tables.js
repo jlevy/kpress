@@ -1,3 +1,5 @@
+import { behaviors } from "./runtime.js";
+
 const NUMERIC_CELL_PATTERN = /^[-+]?((\d{1,3}(,\d{3})+)|\d+)(\.\d+)?%?$/;
 
 /**
@@ -12,6 +14,7 @@ function markNumericCells(table) {
   }
 }
 
+/** @param {ParentNode} [root] */
 export function initKpressTables(root = document) {
   for (const table of root.querySelectorAll(".kpress-prose table:not(.kpress-table)")) {
     const wrapper = document.createElement("div");
@@ -27,8 +30,16 @@ export function initKpressTables(root = document) {
   }
 }
 
-document.addEventListener("kpress:tabchange", () => {
-  initKpressTables();
+behaviors.register("tables", {
+  bind: (root) => {
+    initKpressTables(/** @type {ParentNode} */ (root));
+    // Tab panels reveal their tables lazily; re-wrap on every tab change. The
+    // listener lives in bind (not at import) so an override really replaces
+    // the built-in handling, and the disposer removes it.
+    const onTabChange = () => {
+      initKpressTables();
+    };
+    document.addEventListener("kpress:tabchange", onTabChange);
+    return () => document.removeEventListener("kpress:tabchange", onTabChange);
+  },
 });
-
-initKpressTables();

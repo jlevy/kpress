@@ -46,6 +46,7 @@ def test_static_site_example_builds_multiple_urls(tmp_path: Path) -> None:
     # `public_path` override (/reference/api/).
     assert report.routes == {
         "/": "index.html",
+        "/extensions.html": "extensions.html",
         "/guides/getting-started.html": "guides/getting-started.html",
         "/guides/markdown-features.html": "guides/markdown-features.html",
         "/reference/api/": "reference/api/index.html",
@@ -60,6 +61,28 @@ def test_static_site_example_builds_multiple_urls(tmp_path: Path) -> None:
     assert (tmp_path / "_kpress" / "kpress-manifest.json").is_file()
     assert any((tmp_path / "_kpress").rglob("*.css"))
     assert any((tmp_path / "_kpress").rglob("*.woff2"))
+
+    # Extension-model demo (content/extensions.md + demo/extensions.{js,css}):
+    # the site's widgets get mounts, the demo JS/CSS ship verbatim, the page
+    # model carries the opaque widget config, and the head slot injects both.
+    assert (tmp_path / "demo" / "extensions.js").is_file()
+    assert (tmp_path / "demo" / "extensions.css").is_file()
+    for widget_id in ("settings", "minimap", "theme-toggle"):
+        assert f'data-kpress-widget="{widget_id}"' in home, widget_id
+    assert '"choosers": ["theme", "reading-font", "font-set"]' in home
+    assert '<script type="module" src="/demo/extensions.js"></script>' in home
+    assert '<link rel="stylesheet" href="/demo/extensions.css">' in home
+    # The demo page itself carries the injected-HTML glossary markup.
+    extensions = (tmp_path / "extensions.html").read_text(encoding="utf-8")
+    assert "data-gloss=" in extensions
+
+    # Build-pipeline demo stage: every published JS asset carries the banner
+    # the host stage stamped, and the manifest records the stage name.
+    js_assets = list((tmp_path / "_kpress" / "assets" / "js").glob("*.js"))
+    assert js_assets
+    for asset in js_assets:
+        assert asset.read_text(encoding="utf-8").startswith("/*!"), asset.name
+    assert report.optimizer_backend == "license-banner"
 
 
 def test_wrapped_site_example_embeds_fragments(tmp_path: Path) -> None:
@@ -161,7 +184,7 @@ def _serve(directory: Path) -> Generator[str, None, None]:
 
 
 def _get(base_url: str, path: str) -> tuple[int, bytes]:
-    with urllib.request.urlopen(base_url + path, timeout=5) as response:  # noqa: S310 (localhost)
+    with urllib.request.urlopen(base_url + path, timeout=5) as response:
         return response.status, response.read()
 
 
@@ -192,3 +215,22 @@ def test_built_site_is_navigable_over_http(
         for ref in refs:
             ref_status, _ = _get(base_url, ref.decode())
             assert ref_status == 200, f"{ref!r} did not serve (status {ref_status})"
+
+
+def test_single_doc_example_publishes_programmatically(tmp_path: Path) -> None:
+    """The library-call exemplar: one doc, a typed KPressConfig, no YAML file."""
+
+    build_mod = _load("example_single_doc_build", EXAMPLES / "single-doc" / "build.py")
+    report = build_mod.build(tmp_path)
+
+    assert report.routes == {"/": "index.html"}
+    html = (tmp_path / "index.html").read_text(encoding="utf-8")
+    # The injected title (frontmatter staged by the host) drives <title>.
+    assert "<title>A Single Published Document</title>" in html
+    # Chrome slots arrived as plain strings.
+    assert "&larr; back home" in html
+    assert "--kpress-host-settings-inset-block: 1rem" in html
+    # Widget selection rode through to the page model.
+    assert '"choosers": ["theme", "reading-font"]' in html
+    # No kpress.yml anywhere in the example (the point of the exemplar).
+    assert not (EXAMPLES / "single-doc" / "kpress.yml").exists()

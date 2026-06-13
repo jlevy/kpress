@@ -1,4 +1,4 @@
-"""Quality gate for KPress: Python lint/format/typecheck, codespell, extraction
+"""Quality gate for KPress: Python lint/format/typecheck, codespell, public-hygiene
 safety check, and the JS gates (Biome, tsc, vitest DOM tests) for the browser
 assets shipped in the wheel."""
 
@@ -16,7 +16,6 @@ SRC_PATHS = ["src", "tests", "devtools"]
 DOC_PATHS = [
     "README.md",
     "CONTRIBUTING.md",
-    "EXTRACTION.md",
     "NOTICE.md",
     "SECURITY.md",
     "TODO.md",
@@ -57,7 +56,7 @@ def main() -> int:
         errcount += run(["ruff", "check", "--fix", *SRC_PATHS])
         errcount += run(["ruff", "format", *SRC_PATHS])
     errcount += run(["basedpyright", "--stats", *SRC_PATHS])
-    errcount += run([sys.executable, "devtools/extraction_check.py"])
+    errcount += run([sys.executable, "devtools/public_hygiene.py"])
 
     if shutil.which("npx"):
         for cmd in JS_GATES:

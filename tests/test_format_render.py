@@ -181,13 +181,33 @@ def test_render_page_includes_assets_theme_and_toc() -> None:
     assert 'data-kpress-theme="system"' in page.html
     assert "kpress.theme" in page.html
     assert "<script>" in page.html.partition("/assets/js/theme.js")[0]
-    assert '<div class="kpress-settings kpress-no-print" id="kpress-settings"' in page.html
-    assert 'data-kpress-theme-choice="system" aria-checked="true"' in page.html
-    assert 'data-kpress-theme-choice="light" aria-checked="false"' in page.html
-    assert 'data-kpress-theme-choice="dark" aria-checked="false"' in page.html
+    # The settings widget is client-rendered (no-JS rule): the server emits only
+    # its positioned mount, never the menu markup or chooser segments.
+    assert (
+        '<div class="kpress-widget kpress-settings kpress-no-print" '
+        'id="kpress-settings" data-kpress-widget="settings"></div>'
+    ) in page.html
+    assert "kpress-settings-menu" not in page.html
+    assert "data-kpress-theme-choice" not in page.html
     assert 'class="kpress-toc kpress-no-print"' in page.html
     assert "/assets/css/document.css" in page.html
     assert "/assets/js/theme.js" in page.html
+
+
+def test_enabled_widgets_each_get_a_mount_element() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc", source_text="# Body", source_path="doc.md", body_markdown="# Body"
+        ),
+        RenderOptions(include_toc="off", widgets={"minimap": {"depth": 2}}),
+    )
+
+    assert (
+        '<div class="kpress-widget kpress-minimap kpress-no-print" '
+        'id="kpress-minimap" data-kpress-widget="minimap"></div>'
+    ) in page.html
+    # The default settings mount is still present alongside.
+    assert 'data-kpress-widget="settings"' in page.html
 
 
 def test_render_page_ports_standalone_social_metadata() -> None:
@@ -300,6 +320,97 @@ def test_show_frontmatter_toggles_the_frontmatter_disclosure() -> None:
     assert "<summary>Frontmatter</summary>" not in hidden
 
 
+def test_widgets_map_toggles_the_settings_chrome() -> None:
+    doc = DocumentInput(
+        title="Doc",
+        source_text="# Body",
+        source_path="doc.md",
+        body_markdown="# Body",
+        frontmatter={"title": "Doc"},
+    )
+
+    shown = render_page(doc, RenderOptions(include_toc="off")).html
+    assert 'id="kpress-settings"' in shown
+
+    hidden = render_page(doc, RenderOptions(include_toc="off", widgets={"settings": "off"})).html
+    assert "kpress-settings" not in hidden
+
+
+def _page_model(html: str):  # -> dict[str, Any]: keep Any so tests index freely
+    import json
+    import re
+
+    match = re.search(
+        r'<script type="application/json" id="kpress-page-model">(.*?)</script>',
+        html,
+        re.DOTALL,
+    )
+    assert match, "page-model block missing"
+    return json.loads(match.group(1))
+
+
+def test_page_model_block_carries_contract_keys() -> None:
+    doc = DocumentInput(
+        title="Doc",
+        source_text="# Alpha\n\nText.\n\n## Beta\n\nMore.",
+        source_path="doc.md",
+        body_markdown="# Alpha\n\nText.\n\n## Beta\n\nMore.",
+        logical_path="/notes/doc",
+        frontmatter={"title": "Doc"},
+    )
+    model = _page_model(
+        render_page(
+            doc,
+            RenderOptions(
+                include_toc="on",
+                toc_min_headings=1,
+                widgets={"settings": {"choosers": ["theme", "reading-font"]}},
+            ),
+        ).html
+    )
+    assert model["version"] == 1
+    assert model["title"] == "Doc"
+    assert model["route"] == "/notes/doc"
+    assert model["profile"] == "document"
+    from typing import Any, cast
+
+    headings = cast("list[dict[str, Any]]", model["headings"])
+    assert isinstance(headings, list) and headings
+    assert {"level", "title", "href"} <= set(headings[0])
+    # Widget config is opaque: passed through verbatim.
+    assert model["widgets"] == {"settings": {"choosers": ["theme", "reading-font"]}}
+
+
+def test_page_model_defaults_settings_on_and_off_removes_it() -> None:
+    doc = DocumentInput(
+        title="Doc", source_text="# Body", source_path="doc.md", body_markdown="# Body"
+    )
+    default_model = _page_model(render_page(doc, RenderOptions(include_toc="off")).html)
+    assert "settings" in default_model["widgets"]
+
+    off_model = _page_model(
+        render_page(doc, RenderOptions(include_toc="off", widgets={"settings": "off"})).html
+    )
+    assert "settings" not in off_model["widgets"]
+
+
+def test_page_model_block_is_script_safe() -> None:
+    doc = DocumentInput(
+        title='</script><script>alert("x")&',
+        source_text="# Body",
+        source_path="doc.md",
+        body_markdown="# Body",
+    )
+    html = render_page(doc, RenderOptions(include_toc="off")).html
+    model = _page_model(html)
+    assert model["title"] == '</script><script>alert("x")&'
+    # The raw payload must not contain an unescaped closing tag.
+    import re
+
+    block = re.search(r'id="kpress-page-model">(.*?)</script>', html, re.DOTALL)
+    assert block and "</script" not in block.group(1)
+
+
 def test_diagnostics_script_block_is_valid_json_and_script_safe() -> None:
     import json
     import re
@@ -399,3 +510,17 @@ def test_doc_header_rendered_when_multiple_h1s() -> None:
     rendered = render_fragment(doc, RenderOptions())
 
     assert "kpress-doc-header" in rendered.html
+
+
+def test_resolve_widgets_removes_only_explicit_off_values() -> None:
+    """Only `False` and `"off"` mean off. Integer 0 (`0 == False`) is not a
+    presence marker and must not silently remove a widget; the normalizing
+    parsers reject it upstream."""
+
+    from kpress.format.model import resolve_widgets
+
+    resolved = resolve_widgets({"minimap": 0, "gone": "off", "also-gone": False})
+    assert "gone" not in resolved
+    assert "also-gone" not in resolved
+    assert resolved["minimap"] == 0
+    assert resolved["settings"] == "on"

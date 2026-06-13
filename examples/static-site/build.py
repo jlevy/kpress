@@ -20,7 +20,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from kpress.publish import BuildOptions, BuildReport, build_site
+from kpress.publish import BuildExtensions, BuildOptions, BuildReport, build_site
+from kpress.publish.optimize import OptimizerResult
 
 HERE = Path(__file__).resolve().parent
 CONFIG = HERE / "kpress.yml"
@@ -40,7 +41,26 @@ def build(output_dir: Path | None = None) -> BuildReport:
     """
 
     options = BuildOptions(output_dir=output_dir) if output_dir is not None else None
-    return build_site(CONFIG, options)
+    return build_site(CONFIG, options, extensions=EXTENSIONS)
+
+
+class LicenseBannerStage:
+    """Demo pipeline stage (extension model, layer E): a host build step run
+    BEFORE any built-in compressor — here, stamping a license banner onto each
+    published JS asset. Same shape as KPress's own optimizer backends."""
+
+    name = "license-banner"
+
+    def optimize(self, content: str, *, kind: str) -> OptimizerResult:
+        if kind != "js" or content.startswith("/*!"):
+            return OptimizerResult(content=content, backend=self.name, changed=False)
+        banner = "/*! KPress static-site example - demo pipeline stage */\n"
+        return OptimizerResult(content=banner + content, backend=self.name, changed=True)
+
+
+# The ordered pipeline: the demo stage, then the built-in no-op (swap in
+# "kpress:full" to minify after the banner is applied — order is the point).
+EXTENSIONS = BuildExtensions(pipeline=[LicenseBannerStage(), "kpress:none"])
 
 
 def main(argv: list[str]) -> int:

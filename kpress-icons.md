@@ -76,6 +76,8 @@ the obvious word.
 | Sprite name | Lucide id | Used for |
 | --- | --- | --- |
 | `settings` | `settings` | Settings-menu trigger (gear) |
+| `serif` | *(KPress original)* | Reading-font chooser: serif “A” (stroked, with serif feet) |
+| `sans` | *(KPress original)* | Reading-font chooser: sans “A” (stroked, no serifs) |
 | `monitor` | `monitor` | “System theme” choice |
 | `sun` | `sun` | “Light theme” choice |
 | `moon` | `moon` | “Dark theme” choice |

@@ -71,7 +71,11 @@ DEFAULT_CSS_ASSETS = [
     "css/print.css",
 ]
 DEFAULT_JS_ASSETS = [
+    # runtime.js loads first: it owns the kpress global (registries, storage,
+    # events, page model) that every other module registers through.
+    "js/runtime.js",
     "js/theme.js",
+    "js/settings-widget.js",
     "js/toc.js",
     "js/tooltips.js",
     "js/tables.js",
@@ -88,6 +92,7 @@ DEFAULT_JS_ASSETS = [
 # tags — the entry-point modules pull them in.
 TRANSITIVE_JS_ASSETS = [
     "js/icons.js",
+    "js/menu.js",
     "js/overlay.js",
     "js/viewport.js",
 ]

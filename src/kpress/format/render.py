@@ -7,6 +7,7 @@ import re
 from functools import lru_cache
 from html import escape
 from pathlib import Path
+from typing import Any
 
 from kpress.format.assets import (
     katex_asset_refs,
@@ -23,17 +24,16 @@ from kpress.format.model import (
     RenderedDocument,
     RenderedPage,
     RenderOptions,
+    TocEntry,
+    resolve_widgets,
 )
+from kpress.format.templating import render_template
 from kpress.models import PrintProfile
 
 SOURCE_PREVIEW_MAX_BYTES = 512 * 1024
-# Theme choices for the settings menu: (mode, accessible label, icon name). Glyphs are
-# referenced from the SVG sprite (static/icons/icons.svg); no SVG markup lives here.
-_THEME_CHOICES = (
-    ("system", "System theme", "monitor"),
-    ("light", "Light theme", "sun"),
-    ("dark", "Dark theme", "moon"),
-)
+# Widget ids that get a mount element: plain kebab-case slugs only, since the id
+# lands in class/id/data attributes (a config key is host data, not trusted markup).
+_WIDGET_ID_RE = re.compile(r"[a-z][a-z0-9-]*")
 
 
 @lru_cache(maxsize=1)
@@ -174,6 +174,10 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
             math=options.math,
             diagrams=options.diagrams,
         )
+    # Build-time tree transform (BuildExtensions.transform_tree): applied
+    # before the TOC and page model derive from the tree.
+    if options.transform_tree is not None:
+        tree = options.transform_tree(tree)
     toc = _render_toc(tree, options)
     frontmatter_error = _render_frontmatter_error(document)
     frontmatter = _render_frontmatter(document) if options.show_frontmatter else ""
@@ -212,6 +216,7 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
         f'data-kpress-resolved-theme="{escape(options.resolved_theme)}" '
         f'data-kpress-fonts="{escape(options.font_mode)}" '
         f'data-kpress-palette="{escape(options.palette)}" '
+        f'data-kpress-card="{"on" if options.content_card else "off"}" '
         f"{label_attr}>"
         f"{doc_header}"
         f"{frontmatter_error}"
@@ -421,31 +426,40 @@ def _standalone_page_reset() -> str:
     return f"<style>{read_package_text('css/page-reset.css')}</style>"
 
 
-def _render_settings_menu(theme_mode: str) -> str:
-    """Render the gear settings menu: a popover with an icon theme chooser.
+def _widget_mounts(enabled_widgets: dict[str, Any]) -> str:
+    """Emit the positioned mount element for each enabled chrome widget.
 
-    Mirrors the host app's settings control (gear button → menu of segmented
-    icon choosers) so standalone KPress and the embedded host share one design.
-    The segments keep the `data-kpress-theme-choice` contract that theme.js binds;
-    the wrapper's `aria-expanded` drives menu visibility via CSS.
+    Chrome widgets are client-rendered (no-JS rule): the server ships only an
+    empty, CSS-positionable mount — `data-kpress-widget` is the registry id the
+    client runtime resolves; the `kpress-<id>` class/id keep per-widget CSS
+    hooks (e.g. the settings gear's `--kpress-settings-inset-*` position
+    tokens) working unchanged. Widget ids come from config keys; only safe
+    slug ids get a mount.
     """
 
-    selected = theme_mode if theme_mode in {mode for mode, _l, _i in _THEME_CHOICES} else "system"
-    segments = "".join(
-        '<button type="button" class="kpress-menu-seg" role="menuitemradio" '
-        f'data-kpress-theme-choice="{escape(mode)}" '
-        f'aria-checked="{"true" if mode == selected else "false"}" '
-        f'title="{escape(label)}" aria-label="{escape(label)}">{_icon(icon_name)}</button>'
-        for mode, label, icon_name in _THEME_CHOICES
-    )
+    mounts: list[str] = []
+    for widget_id in enabled_widgets:
+        if not _WIDGET_ID_RE.fullmatch(widget_id):
+            continue
+        mounts.append(
+            f'<div class="kpress-widget kpress-{widget_id} kpress-no-print" '
+            f'id="kpress-{widget_id}" data-kpress-widget="{widget_id}"></div>'
+        )
+    return "".join(mounts)
+
+
+def _json_script_payload(value: Any) -> str:
+    """JSON for an application/json script block, unable to break out of it.
+
+    The three HTML-significant characters are unicode-escaped (same discipline as
+    the diagnostics block); keys sorted for deterministic output.
+    """
+
     return (
-        '<div class="kpress-settings kpress-no-print" id="kpress-settings" aria-expanded="false">'
-        '<button type="button" class="kpress-settings-btn" id="kpress-settings-btn" '
-        f'aria-haspopup="true" title="Settings" aria-label="Settings">{_icon("settings")}</button>'
-        '<div class="kpress-settings-menu kpress-menu" role="menu" aria-label="Settings">'
-        '<div class="kpress-menu-chooser" role="group" aria-label="Theme">'
-        f"{segments}"
-        "</div></div></div>"
+        json.dumps(value, ensure_ascii=False, sort_keys=True)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
     )
 
 
@@ -485,70 +499,94 @@ def _social_meta_tags(document: DocumentInput, title: str) -> str:
     return "\n  ".join(parts)
 
 
+def page_title(document: DocumentInput) -> str:
+    """The page-level title: a frontmatter ``title`` wins over the host-supplied one."""
+
+    return str(document.frontmatter.get("title") or document.title)
+
+
+def build_page_model(
+    *,
+    title: str,
+    route: str,
+    profile: str,
+    toc: list[TocEntry],
+    widgets: dict[str, Any],
+) -> dict[str, Any]:
+    """The page-model payload (keys pinned by contract.PUBLIC_PAGE_MODEL_KEYS).
+
+    One builder serves both surfaces: ``render_page`` serializes it into the
+    ``#kpress-page-model`` block; ``runtime.render_view`` echoes it in the
+    dynamic payload so embeds read the same data (kpress-design.md "Page model
+    block and widget mounts").
+
+    ``headings`` carries the post-processed TOC entries — a lone leading H1 is
+    stripped and levels renormalized to contiguous ranks — not raw document
+    heading levels.
+    """
+
+    return {
+        "version": 1,
+        "title": title,
+        "route": route,
+        "profile": profile,
+        "headings": [
+            {"level": entry.level, "title": entry.title, "href": entry.href} for entry in toc
+        ],
+        "widgets": widgets,
+    }
+
+
 def render_page(document: DocumentInput, options: RenderOptions | None = None) -> RenderedPage:
     """Render a complete HTML page from a KPress document."""
 
     options = options or RenderOptions(asset_mode="linked")
     fragment = render_fragment(document, options)
-    title = str(document.frontmatter.get("title") or document.title)
+    title = page_title(document)
     asset_tags = _asset_tags(
         fragment.assets, options.asset_url_prefix, asset_mode=options.asset_mode
     )
     theme_bootstrap = _theme_bootstrap_script()
-    # Valid JSON for the application/json block, with the three HTML-significant
-    # characters unicode-escaped so the payload cannot break out of the
-    # <script> element. Keys sorted for deterministic output.
-    diagnostics_json = (
-        json.dumps(fragment.diagnostics, ensure_ascii=False, sort_keys=True)
-        .replace("<", "\\u003c")
-        .replace(">", "\\u003e")
-        .replace("&", "\\u0026")
+    enabled_widgets = resolve_widgets(options.widgets)
+    diagnostics_json = _json_script_payload(fragment.diagnostics)
+    # The page model: published data client widgets compute from (layer A of the
+    # extension model; keys pinned by contract.PUBLIC_PAGE_MODEL_KEYS). Widget
+    # configs ride through verbatim; "off" widgets are absent entirely.
+    page_model_json = _json_script_payload(
+        build_page_model(
+            title=title,
+            route=document.logical_path or "",
+            profile=fragment.profile,
+            toc=fragment.toc,
+            widgets=enabled_widgets,
+        )
     )
     social_meta = _social_meta_tags(document, title)
-    # Chrome slots are site-owned raw HTML, emitted verbatim. The header/footer
-    # wrappers carry the public .kpress-site-* classes so slot content inherits
-    # the document typography; empty slots emit no element at all.
-    head_extra = f"\n  {options.head_extra_html}" if options.head_extra_html else ""
-    site_header = (
-        f'\n    <header class="kpress-site-header">{options.header_html}</header>'
-        if options.header_html
-        else ""
+    # The page shell is authored in templates/page.html.jinja and rendered through
+    # the strict environment (see format/templating.py): markup lives in the
+    # template, this function just supplies the slots. Plain values (title, the
+    # theme/palette/font state) autoescape; kpress-generated and site-owned markup
+    # (chrome slots, asset tags, scripts, the document fragment) ride `| safe`.
+    html = render_template(
+        "page.html.jinja",
+        theme_mode=options.theme_mode,
+        resolved_theme=options.resolved_theme,
+        palette=options.palette,
+        prose_font=options.prose_font,
+        title=title,
+        page_reset=_standalone_page_reset(),
+        social_meta=social_meta,
+        theme_bootstrap=theme_bootstrap,
+        asset_tags=asset_tags,
+        head_extra_html=options.head_extra_html,
+        header_html=options.header_html,
+        widget_mounts=_widget_mounts(enabled_widgets),
+        fragment_html=fragment.html,
+        footer_html=options.footer_html,
+        video_close_icon=_icon("x"),
+        page_model_json=page_model_json,
+        diagnostics_json=diagnostics_json,
     )
-    site_footer = (
-        f'\n    <footer class="kpress-site-footer">{options.footer_html}</footer>'
-        if options.footer_html
-        else ""
-    )
-    html = f"""<!doctype html>
-<html lang="en" data-kpress-theme="{escape(options.theme_mode)}" data-kpress-resolved-theme="{escape(options.resolved_theme)}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <meta name="generator" content="kpress">
-  {_standalone_page_reset()}
-  {social_meta}
-  <title>{escape(title)}</title>
-  {theme_bootstrap}
-  {asset_tags}{head_extra}
-</head>
-<body class="kpress-frame" data-kpress-frame>
-  <main class="kpress-page-main kpress-viewport" data-kpress-viewport>{site_header}
-    {_render_settings_menu(options.theme_mode)}
-    {fragment.html}{site_footer}
-  </main>
-  <div class="kpress-video-backdrop" aria-hidden="true"></div>
-  <section id="kpress-video-popover" class="kpress-video-popover kpress-no-print" hidden aria-hidden="true">
-    <header class="kpress-video-header">
-      <strong id="kpress-video-title">Video</strong>
-      <button type="button" data-kpress-video-close aria-label="Close video">{_icon("x")}</button>
-    </header>
-    <iframe id="kpress-video-frame" title="Embedded video" allowfullscreen></iframe>
-  </section>
-  <script type="application/json" id="kpress-diagnostics">{diagnostics_json}</script>
-</body>
-</html>
-"""
     return RenderedPage(
         html=html,
         profile=fragment.profile,

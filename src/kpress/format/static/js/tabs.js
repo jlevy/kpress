@@ -1,3 +1,5 @@
+import { behaviors } from "./runtime.js";
+
 let generatedTabGroupCounter = 0;
 
 /**
@@ -134,6 +136,7 @@ function hydrateAuthoredTabs(group) {
   return [...tabList.querySelectorAll("[role='tab']")].filter(isHTMLElement);
 }
 
+/** @param {ParentNode} [root] */
 export function initKpressTabs(root = document) {
   for (const group of root.querySelectorAll("[data-kpress-tabs]")) {
     if (!(group instanceof HTMLElement)) {
@@ -165,4 +168,8 @@ export function initKpressTabs(root = document) {
   }
 }
 
-initKpressTabs();
+behaviors.register("tabs", {
+  bind: (root) => {
+    initKpressTabs(/** @type {ParentNode} */ (root));
+  },
+});

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import mimetypes
 import re
 from collections import OrderedDict
@@ -21,6 +22,8 @@ from kpress.errors import (
     KPressRenderError,
 )
 from kpress.format import DocumentInput, RenderOptions, RenderResult, render_fragment
+from kpress.format.model import parse_widgets, resolve_widgets
+from kpress.format.render import build_page_model, page_title
 from kpress.models import (
     KPressAsset,
     KPressExportRequest,
@@ -241,6 +244,10 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
     """Render a document through KPress and return a JSON-ready host payload."""
 
     profile = normalize_print_profile(request.view, request.profile)
+    # Same normalization as the static dialects (presence scalars to
+    # "on"/"off"/"auto", typos raise): static and dynamic hosts must publish
+    # identical widget data, and an invalid value must not be kept truthy.
+    widgets = parse_widgets(request.widgets)
     source_digest = _source_hash(request.source_text)
     cache_key = (
         request.source_path,
@@ -253,6 +260,10 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         request.theme_mode,
         request.resolved_theme,
         source_digest,
+        # Widgets affect the echoed payload (and any widget-dependent render),
+        # so they are part of the identity. Stable-stringified: dicts are not
+        # hashable and key order must not matter.
+        json.dumps(widgets, sort_keys=True, default=str),
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -307,6 +318,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         asset_url_prefix=request.asset_url_prefix,
         include_assets=True,
         show_doc_header=request.show_doc_header,
+        widgets=widgets,
         printable=True,
         metadata=metadata,
     )
@@ -314,13 +326,30 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         result = render_fragment(document, options)
     except KPressRenderError:
         raise
-    except Exception as exc:  # noqa: BLE001 - preserve host diagnostics boundary
+    except Exception as exc:
         raise KPressRenderError(f"{type(exc).__name__}: {exc}") from exc
 
     normalized = _normalize_render_result(
         result,
         profile=profile,
         asset_url_prefix=request.asset_url_prefix,
+    )
+    # Echo the resolved widget map (defaults merged, "off" removed, config
+    # verbatim) so host-mounted widgets read the same data the standalone
+    # page model carries. The fragment itself has no #kpress-page-model block.
+    resolved_widgets = resolve_widgets(widgets)
+    normalized["widgets"] = resolved_widgets
+    # Embeds get the full page model in the payload (same keys and builder as
+    # the static #kpress-page-model block), so e.g. a minimap widget reading
+    # kpress.model().headings works in an embed. `route` is empty: the request
+    # carries no site route — source_path is a worktree file path, and the
+    # model does not pretend otherwise.
+    normalized["model"] = build_page_model(
+        title=page_title(document),
+        route="",
+        profile=result.profile or profile,
+        toc=result.toc,
+        widgets=resolved_widgets,
     )
     _cache_put(cache_key, normalized)
     return normalized

@@ -41,6 +41,10 @@ class KPressRenderRequest:
     # Hosts that show the document title in their own chrome suppress the
     # rendered <h1> doc header (default keeps it, as standalone pages want it).
     show_doc_header: bool = True
+    # Widget presence + opaque config map (same shape as format.widgets);
+    # echoed in the render payload so host-mounted widgets read the same
+    # config the standalone page model carries.
+    widgets: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

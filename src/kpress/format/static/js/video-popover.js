@@ -1,3 +1,5 @@
+import { behaviors } from "./runtime.js";
+
 /**
  * KPress inline video embed.
  *
@@ -8,7 +10,9 @@
  * request) loads when this script runs, and lazily once it scrolls into view.
  *
  * Embedding host apps inject the document fragment after this
- * module loads, so a MutationObserver also embeds placeholders added later.
+ * module loads, so the behavior's bind also starts a MutationObserver that
+ * embeds placeholders added later (and its disposer disconnects it, so an
+ * override really turns the built-in off — late placeholders included).
  *
  * NOTE: the filename is historical (this used to be a click-to-open popover);
  * it is now an inline embedder. A rename is tracked as follow-up cleanup.
@@ -72,7 +76,7 @@ function embedVideo(placeholder) {
 /**
  * Embed every video placeholder under `root` (idempotent — embedded
  * placeholders are removed from the DOM, so they are not matched again).
- * @param {Document | Element} root
+ * @param {ParentNode} [root]
  */
 export function initKpressVideoEmbeds(root = document) {
   for (const placeholder of root.querySelectorAll("[data-kpress-video-id]")) {
@@ -80,23 +84,32 @@ export function initKpressVideoEmbeds(root = document) {
   }
 }
 
-initKpressVideoEmbeds();
-
-if (typeof MutationObserver !== "undefined" && typeof document !== "undefined" && document.body) {
-  const observer = new MutationObserver((records) => {
-    for (const record of records) {
-      for (const node of record.addedNodes) {
-        if (!(node instanceof Element)) {
-          continue;
-        }
-        if (node.matches("[data-kpress-video-id]")) {
-          embedVideo(node);
-        }
-        for (const nested of node.querySelectorAll("[data-kpress-video-id]")) {
-          embedVideo(nested);
+behaviors.register("video", {
+  bind: (root) => {
+    initKpressVideoEmbeds(/** @type {ParentNode} */ (root));
+    if (
+      typeof MutationObserver === "undefined" ||
+      typeof document === "undefined" ||
+      !document.body
+    ) {
+      return;
+    }
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) {
+            continue;
+          }
+          if (node.matches("[data-kpress-video-id]")) {
+            embedVideo(node);
+          }
+          for (const nested of node.querySelectorAll("[data-kpress-video-id]")) {
+            embedVideo(nested);
+          }
         }
       }
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-}
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  },
+});

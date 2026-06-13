@@ -163,7 +163,7 @@ def _probe_pdf_browser() -> ProbeResult:
         with sync_api.sync_playwright() as player:
             _ = player.chromium.executable_path
             return ProbeResult(status="ok")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # Do not eat the failure: surface why Chromium could not load so
         # `kpress doctor` says exactly what is wrong (missing browser binary,
         # launch error, sandbox issue, etc.).

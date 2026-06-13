@@ -1,4 +1,5 @@
 import { icon } from "./icons.js";
+import { behaviors } from "./runtime.js";
 
 const COPY_STATE_RESET_DELAY_MS = 1200;
 
@@ -25,6 +26,7 @@ function resetCopyButton(button) {
   setCopyState(button, "idle", icon("copy"), "Copy code");
 }
 
+/** @param {ParentNode} [root] */
 export function initKpressCodeCopy(root = document) {
   for (const pre of root.querySelectorAll("pre.kpress-code")) {
     if (pre.querySelector(".kpress-code-copy")) {
@@ -51,4 +53,8 @@ export function initKpressCodeCopy(root = document) {
   }
 }
 
-initKpressCodeCopy();
+behaviors.register("code-copy", {
+  bind: (root) => {
+    initKpressCodeCopy(root);
+  },
+});

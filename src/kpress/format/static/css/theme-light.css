@@ -1,3 +1,9 @@
+/* Light theme — color-scheme only.
+
+   All color VALUES live in the Palette options section of style-tokens.css (the
+   design-token source of truth); this file just tells the UA to render light-mode
+   form controls, scrollbars, etc. The matching --kp-pal-* light values are
+   selected there by these same selectors. */
 .kpress,
 .kpress-page-main,
 .kpress-tooltip,
@@ -5,38 +11,4 @@
 :root[data-kpress-resolved-theme="light"] .kpress-page-main,
 :root[data-kpress-resolved-theme="light"] .kpress-tooltip {
   color-scheme: light;
-  --kpress-doc-bg: var(--kpress-host-bg, oklch(100.00% 0 0));
-  --kpress-doc-text: var(--kpress-host-text, oklch(21.01% 0.0318 264.7));
-  --kpress-doc-muted: var(--kpress-host-muted, oklch(50.06% 0.025 259.2));
-  --kpress-doc-border: var(--kpress-host-border, oklch(89.90% 0.0151 260.7));
-  --kpress-doc-link: var(--kpress-host-link, oklch(45.76% 0.1445 254.7));
-  --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(97.85% 0.0045 258.3));
-  --kpress-doc-surface-hover: var(
-    --kpress-host-surface-hover,
-    color-mix(in srgb, var(--kpress-doc-link) 8%, transparent)
-  );
-  --kpress-doc-surface-selected: var(
-    --kpress-host-surface-selected,
-    color-mix(in srgb, var(--kpress-doc-link) 10%, transparent)
-  );
-  --color-bg: var(--kpress-doc-bg);
-  --color-bg-solid: var(--kpress-doc-bg);
-  --color-bg-alt: var(--kpress-doc-code-bg);
-  --color-bg-alt-solid: var(--kpress-doc-code-bg);
-  --color-bg-meta-solid: var(--kpress-doc-code-bg);
-  --color-bg-selected: var(--kpress-doc-surface-selected);
-  --color-text: var(--kpress-doc-text);
-  --color-primary: var(--kpress-doc-link);
-  --color-primary-light: color-mix(in srgb, var(--kpress-doc-link) 72%, white);
-  --color-secondary: var(--kpress-doc-muted);
-  --color-hint: var(--kpress-doc-muted);
-  --color-hint-strong: var(--kpress-doc-muted);
-  --color-hint-gentle: var(--kpress-doc-border);
-  --color-border-hint: var(--kpress-doc-border);
-  --color-hover-bg: var(--kpress-doc-surface-hover);
-  --color-hover: var(--kpress-doc-border);
-  --color-selection: color-mix(in srgb, var(--kpress-doc-link) 18%, transparent);
-  --color-scrollbar: color-mix(in srgb, var(--kpress-doc-muted) 45%, transparent);
-  --color-scrollbar-hover: color-mix(in srgb, var(--kpress-doc-muted) 70%, transparent);
-  --color-success: oklch(52.73% 0.1371 150.1);
 }

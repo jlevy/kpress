@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light">
+<html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -23,19 +23,29 @@ body {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Semantic Components">
   <title>Semantic Components</title>
-  <script>// KPress theme bootstrap. Inlined render-blocking into <head> by render_page so the
-// resolved theme is set before first paint (no flash of the wrong theme). It is a classic
-// IIFE (not an ES module) and reads the server-set `data-kpress-theme` attribute, so the
-// renderer never interpolates anything into this source -- it lives here, in a real JS file.
+  <script>// KPress pre-paint bootstrap. Inlined render-blocking into <head> by render_page so
+// persisted reader preferences are applied before first paint (no flash of the wrong
+// theme or fonts). It is a classic IIFE (not an ES module) and reads the server-set
+// `data-kpress-theme` attribute, so the renderer never interpolates anything into this
+// source -- it lives here, in a real JS file.
+//
+// It runs before the module runtime exists, so it reads raw localStorage: hosts that
+// swap the kpress.storage adapter (e.g. cookies) re-sync at runtime init; embedded
+// hosts never load this bootstrap at all (fragment path).
 (() => {
-  const key = "kpress.theme";
   const root = document.documentElement;
-  let mode = root.dataset.kpressTheme || "system";
-  try {
-    mode = localStorage.getItem(key) || mode;
-  } catch {
-    // localStorage can throw in private/sandboxed contexts; keep the attribute default.
-  }
+  /** @param {string} key */
+  const stored = (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      // localStorage can throw in private/sandboxed contexts; keep defaults.
+      return null;
+    }
+  };
+
+  // Theme: resolve `system` via the OS preference; always stamped.
+  const mode = stored("kpress.theme") || root.dataset.kpressTheme || "system";
   const resolved =
     mode === "light" || mode === "dark"
       ? mode
@@ -44,6 +54,17 @@ body {
         : "light";
   root.dataset.kpressTheme = mode;
   root.dataset.kpressResolvedTheme = resolved;
+
+  // Other persisted reader preferences: stamped only when a choice exists
+  // (CSS defaults apply otherwise).
+  const proseFont = stored("kpress.proseFont");
+  if (proseFont) {
+    root.dataset.kpressProseFont = proseFont;
+  }
+  const fontSet = stored("kpress.fontSet");
+  if (fontSet) {
+    root.dataset.kpressFontSet = fontSet;
+  }
 })();
 </script>
   <link rel="stylesheet" href="/kpress-static/css/style-tokens.css">
@@ -53,7 +74,9 @@ body {
 <link rel="stylesheet" href="/kpress-static/css/document.css">
 <link rel="stylesheet" href="/kpress-static/css/components.css">
 <link rel="stylesheet" href="/kpress-static/css/print.css">
+<script type="module" src="/kpress-static/js/runtime.js"></script>
 <script type="module" src="/kpress-static/js/theme.js"></script>
+<script type="module" src="/kpress-static/js/settings-widget.js"></script>
 <script type="module" src="/kpress-static/js/toc.js"></script>
 <script type="module" src="/kpress-static/js/tooltips.js"></script>
 <script type="module" src="/kpress-static/js/tables.js"></script>
@@ -66,7 +89,7 @@ body {
 </head>
 <body class="kpress-frame" data-kpress-frame>
   <main class="kpress-page-main kpress-viewport" data-kpress-viewport>
-    <div class="kpress-settings kpress-no-print" id="kpress-settings" aria-expanded="false"><button type="button" class="kpress-settings-btn" id="kpress-settings-btn" aria-haspopup="true" title="Settings" aria-label="Settings"><svg aria-hidden="true"><use href="#kpress-icon-settings"></use></svg></button><div class="kpress-settings-menu kpress-menu" role="menu" aria-label="Settings"><div class="kpress-menu-chooser" role="group" aria-label="Theme"><button type="button" class="kpress-menu-seg" role="menuitemradio" data-kpress-theme-choice="system" aria-checked="true" title="System theme" aria-label="System theme"><svg aria-hidden="true"><use href="#kpress-icon-monitor"></use></svg></button><button type="button" class="kpress-menu-seg" role="menuitemradio" data-kpress-theme-choice="light" aria-checked="false" title="Light theme" aria-label="Light theme"><svg aria-hidden="true"><use href="#kpress-icon-sun"></use></svg></button><button type="button" class="kpress-menu-seg" role="menuitemradio" data-kpress-theme-choice="dark" aria-checked="false" title="Dark theme" aria-label="Dark theme"><svg aria-hidden="true"><use href="#kpress-icon-moon"></use></svg></button></div></div></div>
+    <div class="kpress-widget kpress-settings kpress-no-print" id="kpress-settings" data-kpress-widget="settings"></div>
     <svg xmlns="http://www.w3.org/2000/svg" style="display: none">
   <!-- KPress icon set. Lucide Icons v1.17.0 (ISC, https://lucide.dev): stroke icons on a
        24x24 grid. This sprite is the single source of truth for KPress chrome glyphs. The
@@ -120,8 +143,17 @@ body {
     <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
     <path d="M12 9v4"/><path d="M12 17h.01"/>
   </symbol>
+  <symbol id="kpress-icon-serif" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 20 12 5l5 15"/>
+    <path d="M8.7 15h6.6"/>
+    <path d="M5 20h4"/><path d="M15 20h4"/><path d="M10.5 5h3"/>
+  </symbol>
+  <symbol id="kpress-icon-sans" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 20 12 4l6 16"/>
+    <path d="M8.2 14h7.6"/>
+  </symbol>
 </svg>
-<article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" aria-labelledby="kpress-title-semantic-components"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-semantic-components">Semantic Components</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle aria-expanded="false" aria-label="Table of contents"><svg class="kpress-toc-toggle-icon" width="20" height="20" aria-hidden="true"><use href="#kpress-icon-list"></use></svg></button><div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div><nav class="kpress-toc kpress-no-print" aria-label="Table of contents" data-kpress-toc><a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a><ol class="toc-list"><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#semantic-components">Semantic Components</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#hero-signal">Hero Signal</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#centered-section">Centered Section</a></li></ol></nav><div class="kpress-prose kpress-long-text"><h1 id="semantic-components">Semantic Components</h1>
+<article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" aria-labelledby="kpress-title-semantic-components"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-semantic-components">Semantic Components</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle aria-expanded="false" aria-label="Table of contents"><svg class="kpress-toc-toggle-icon" width="20" height="20" aria-hidden="true"><use href="#kpress-icon-list"></use></svg></button><div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div><nav class="kpress-toc kpress-no-print" aria-label="Table of contents" data-kpress-toc><a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a><ol class="toc-list"><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#semantic-components">Semantic Components</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#hero-signal">Hero Signal</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#centered-section">Centered Section</a></li></ol></nav><div class="kpress-prose kpress-long-text"><h1 id="semantic-components">Semantic Components</h1>
 <p><span class="highlight">Important</span> <span class="citation">Reference</span></p>
 <p class="subtitle">A compact subtitle styled like the TextPress reader.</p>
 <p class="debug">Parser hint visible only as small muted metadata.</p>
@@ -194,6 +226,7 @@ left.</p>
     </header>
     <iframe id="kpress-video-frame" title="Embedded video" allowfullscreen></iframe>
   </section>
+  <script type="application/json" id="kpress-page-model">{"headings": [{"href": "#semantic-components", "level": 1, "title": "Semantic Components"}, {"href": "#hero-signal", "level": 1, "title": "Hero Signal"}, {"href": "#centered-section", "level": 2, "title": "Centered Section"}], "profile": "document", "route": "", "title": "Semantic Components", "version": 1, "widgets": {"settings": "on"}}</script>
   <script type="application/json" id="kpress-diagnostics">[]</script>
 </body>
 </html>

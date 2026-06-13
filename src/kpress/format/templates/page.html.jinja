@@ -1,15 +1,33 @@
 <!doctype html>
-<html lang="en" data-kpress-theme="{{ theme_mode }}">
+<html lang="en" data-kpress-theme="{{ theme_mode }}" data-kpress-resolved-theme="{{ resolved_theme }}" data-kpress-palette="{{ palette }}" data-kpress-prose-font="{{ prose_font }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="generator" content="kpress">
+  {{ page_reset | safe }}
+  {{ social_meta | safe }}
   <title>{{ title }}</title>
-  {{ asset_tags }}
-  {{ head_extra_html }}
+  {{ theme_bootstrap | safe }}
+  {{ asset_tags | safe }}
+  {% if head_extra_html %}{{ head_extra_html | safe }}{% endif %}
 </head>
 <body class="kpress-frame" data-kpress-frame>
-  {% if header_html %}<header class="kpress-site-header">{{ header_html }}</header>{% endif %}
-  {{ fragment_html }}
-  {% if footer_html %}<footer class="kpress-site-footer">{{ footer_html }}</footer>{% endif %}
+  <main class="kpress-page-main kpress-viewport" data-kpress-viewport>
+    {% if header_html %}<header class="kpress-site-header">{{ header_html | safe }}</header>{% endif %}
+    {{ widget_mounts | safe }}
+    {{ fragment_html | safe }}
+    {% if footer_html %}<footer class="kpress-site-footer">{{ footer_html | safe }}</footer>{% endif %}
+  </main>
+  <div class="kpress-video-backdrop" aria-hidden="true"></div>
+  <section id="kpress-video-popover" class="kpress-video-popover kpress-no-print" hidden aria-hidden="true">
+    <header class="kpress-video-header">
+      <strong id="kpress-video-title">Video</strong>
+      <button type="button" data-kpress-video-close aria-label="Close video">{{ video_close_icon | safe }}</button>
+    </header>
+    <iframe id="kpress-video-frame" title="Embedded video" allowfullscreen></iframe>
+  </section>
+  <script type="application/json" id="kpress-page-model">{{ page_model_json | safe }}</script>
+  <script type="application/json" id="kpress-diagnostics">{{ diagnostics_json | safe }}</script>
 </body>
 </html>

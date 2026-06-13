@@ -11,9 +11,10 @@
 .kpress-page-main,
 .kpress-tooltip {
   /* Adapted from Kash base_styles.css.jinja and base_webpage.html.jinja.
-     Core doc tokens use var(--kpress-host-*, <default>) so an embedding host
-     app can set --kpress-host-bg etc. on :root and have them flow through
-     instead of being shadowed by this scope. */
+     This block holds the theme-independent tokens (type, spacing, radii, motion)
+     and the --color-* ⇒ --kpress-doc-* alias map. The actual COLOR VALUES are set
+     per theme×palette in the Palette options section below; an embedding host
+     re-themes by overriding those --kpress-doc-* tokens directly. */
   --kpress-font-body: var(
     --kpress-host-font-body,
     "Source Sans 3 Variable",
@@ -85,13 +86,30 @@
   /* Prose reading measure. 48rem (~768px) matches kash's --content-width; the
      earlier 76ch (~640px in serif) read narrower than the reference. */
   --kpress-measure: 48rem;
-  --kpress-doc-bg: var(--kpress-host-bg, oklch(100.00% 0 0));
-  --kpress-doc-text: var(--kpress-host-text, oklch(21.01% 0.0318 264.7));
-  --kpress-doc-muted: var(--kpress-host-muted, oklch(50.06% 0.025 259.2));
-  --kpress-doc-border: var(--kpress-host-border, oklch(89.90% 0.0151 260.7));
-  --kpress-doc-link: var(--kpress-host-link, oklch(45.76% 0.1445 254.7));
-  --kpress-doc-code-bg: var(--kpress-host-code-bg, oklch(97.85% 0.0045 258.3));
+  /* Settings gear position (standalone page shell only). The gear is `position:
+     fixed`, pinned to the top-right of the document frame; these two tokens are
+     its block/inline insets. Host-overridable through the `--kpress-host-*`
+     hooks so a site can move it without touching kpress — e.g. align it to the
+     content column's right edge instead of flush to the window, by setting on :root
+       --kpress-host-settings-inset-inline: max(3rem, calc(50vw - 24rem));
+     (24rem = half the 48rem --kpress-measure; use the literal on :root, where
+     --kpress-measure is not in scope. See kpress-design.md → Settings menu.) */
+  --kpress-settings-inset-block: var(--kpress-host-settings-inset-block, 0.75rem);
+  --kpress-settings-inset-inline: var(--kpress-host-settings-inset-inline, 0.75rem);
+  /* Core doc colors (--kpress-doc-bg/text/muted/border/link/code-bg) and the
+     surface tints are set DIRECTLY per theme×palette in the Palette options
+     section below — on :root (standalone) and .kpress (embedded) so they cascade
+     to the whole shell (gear, tooltips, TOC), with no host-var / literal-fallback
+     indirection that could silently theme-swap on a typo. An embedding host
+     overrides these --kpress-doc-* tokens directly. */
   --kpress-doc-accent: oklch(51.09% 0.0861 186.4);
+  /* Content card chrome: the reading column rendered as a bordered sheet
+     floating over the page (see components.css "Content card" and
+     kpress-design.md). Border + shadow are textpress's values verbatim; the
+     dark themes deepen the shadow (overridden in the dark palette block). */
+  --kpress-card-border: 1px solid var(--kpress-doc-border);
+  --kpress-card-shadow:
+    0 10px 15px -3px oklch(0.00% 0 0 / 0.1), 0 -2px 6px -1px oklch(0.00% 0 0 / 0.07);
   --kpress-print-page-margin: 0.7in;
   --kpress-print-font-size: 11pt;
   --kpress-print-footer: "Formatted by KPress";
@@ -132,25 +150,17 @@
   --color-border-hint: var(--kpress-doc-border);
   --color-hover-bg: var(--kpress-doc-surface-hover);
   --color-hover: var(--kpress-doc-border);
-  --color-selection: color-mix(in srgb, var(--kpress-doc-link) 18%, transparent);
+  --color-selection: color-mix(in srgb, var(--kpress-doc-link) 20%, transparent);
   --color-scrollbar: color-mix(in srgb, var(--kpress-doc-muted) 45%, transparent);
   --color-scrollbar-hover: color-mix(in srgb, var(--kpress-doc-muted) 70%, transparent);
-  --color-success: oklch(52.73% 0.1371 150.1);
+  --color-success: var(--kpress-doc-success);
+  --color-danger: var(--kpress-doc-danger);
   /* Subtle surface fill shared by code blocks, table headers, and the metadata
-     block, so they read as one family. Points at the host-overridable code bg.
-     The hover/selected steps extend the same family for interaction highlights
-     (TOC hover/active, hovered controls) and are host-overridable via
-     --kpress-host-surface-*; the neutral default is a subtle link tint, which the
-     light/dark theme files re-derive per theme. */
+     block, so they read as one family — an alias of the code bg. The hover/selected
+     interaction steps (TOC hover/active, hovered controls) are set per theme×palette
+     in the Palette options section below, derived from each palette's link/muted. */
   --kpress-doc-surface-bg: var(--kpress-doc-code-bg);
-  --kpress-doc-surface-hover: var(
-    --kpress-host-surface-hover,
-    color-mix(in srgb, var(--kpress-doc-link) 8%, transparent)
-  );
-  --kpress-doc-surface-selected: var(
-    --kpress-host-surface-selected,
-    color-mix(in srgb, var(--kpress-doc-link) 10%, transparent)
-  );
+  /* surface-hover / surface-selected are set per theme×palette in Palette options. */
   /* Task-list checkbox size: slightly larger than body text so the check glyph
      is clearly legible at a glance and not confused with a bullet. */
   --kpress-checkbox-size: 1.15em;
@@ -178,24 +188,109 @@
    wrapper) uses the vendored PT Serif / Source Sans reader faces below.
    "system" opts out of the vendored faces and uses the platform system
    font stack, so no reader fonts are downloaded. Switchable via
-   RenderOptions.font_mode. */
-.kpress[data-kpress-fonts="system"] {
+   RenderOptions.font_mode at render time, and per reader via the settings
+   widget's font-set chooser, which stamps data-kpress-font-set on <html>
+   (persisted as `kpress.fontSet`; the pre-paint bootstrap re-applies it). */
+.kpress[data-kpress-fonts="system"],
+[data-kpress-font-set="system"] .kpress,
+[data-kpress-font-set="system"] .kpress-page-main,
+[data-kpress-font-set="system"] .kpress-tooltip {
   --kpress-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --kpress-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --kpress-font-prose: Georgia, "Times New Roman", Times, serif;
   --kpress-font-punctuation: Georgia, "Times New Roman", Times, serif;
 }
 
-/* Built-in palette presets: reasonable default sets for common cases, each a
-   named bundle of the host-var contract (not special-cased code). Selected with
-   RenderOptions.palette / `format.palette` (which stamps data-kpress-palette on
-   the .kpress wrapper); `neutral` is the default and needs no overrides. Any of
-   these vars can still be overridden individually by a host. The `warm`
-   tan-paper ramp is from the original KPress site. */
+/* Reading-font chooser (settings widget): "sans" flips the prose body from the
+   serif reading face to the sans stack, leaving headings/UI/code untouched.
+   Stamped as data-kpress-prose-font on <html> (persisted as `kpress.proseFont`;
+   pre-paint applies it before first paint). Hosts may point the sans prose
+   stack anywhere via --kpress-host-font-prose-sans. */
+[data-kpress-prose-font="sans"] .kpress,
+[data-kpress-prose-font="sans"] .kpress-page-main,
+[data-kpress-prose-font="sans"] .kpress-tooltip,
+.kpress[data-kpress-prose-font="sans"] {
+  --kpress-font-prose: var(--kpress-host-font-prose-sans, var(--kpress-font-sans));
+}
+
+/* ============================================================================
+   PALETTE OPTIONS — the single source of truth for every theme color.
+
+   Each theme×palette block sets the document color tokens (--kpress-doc-*)
+   DIRECTLY to literal values — no host-var / fallback indirection, so a typo
+   renders obviously broken instead of silently swapping themes. Blocks target
+   BOTH :root (standalone: render.py stamps data-kpress-resolved-theme +
+   data-kpress-palette on <html>, so the tokens cascade to the WHOLE shell — gear,
+   tooltips, TOC, not just the article) AND .kpress (embedded: the host stamps the
+   attrs on the wrapper). Selectors are FLAT — all attributes on one element, no
+   descendant combinator. `neutral` is the default (bare, no [data-kpress-palette]);
+   each other palette overrides ONLY the tokens that differ. An embedding host
+   overrides any --kpress-doc-* directly. Add a palette = add its two blocks.
+
+   Design: `warm` is modeled on textpress/kash and is GENTLE. The warmth is ONLY
+   the cream code/surface background (hue ~83). Text, muted, border and link stay
+   COOL (teal, hue ~208) at neutral's exact lightness — so text is plain near-black
+   (never tan) and borders are a quiet hairline (never warm). Warm reads as
+   "neutral with a teal accent over warm paper," not a tan wash.
+   ============================================================================ */
+
+/* neutral — light (default; also the pre-JS state). :root drives the standalone
+   shell; .kpress drives the embedded fragment. */
+:root,
+.kpress {
+  --kpress-doc-bg: oklch(100.00% 0 0);
+  --kpress-doc-text: oklch(21.01% 0.0318 264.7);
+  --kpress-doc-muted: oklch(50.06% 0.025 259.2);
+  --kpress-doc-border: oklch(89.90% 0.0151 260.7);
+  --kpress-doc-link: oklch(45.76% 0.1445 254.7);
+  --kpress-doc-code-bg: oklch(97.85% 0.0045 258.3);
+  --kpress-doc-surface-hover: color-mix(in srgb, var(--kpress-doc-link) 8%, transparent);
+  --kpress-doc-surface-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
+  --kpress-doc-success: oklch(52.73% 0.1371 150.1);
+  --kpress-doc-danger: oklch(50.03% 0.1821 29.5);
+}
+
+/* neutral — dark */
+:root[data-kpress-resolved-theme="dark"],
+.kpress[data-kpress-resolved-theme="dark"],
+.kpress[data-kpress-theme="dark"] {
+  --kpress-doc-bg: oklch(18.98% 0.0094 255.6);
+  --kpress-doc-text: oklch(94.40% 0.0097 252.8);
+  --kpress-doc-muted: oklch(76.58% 0.0205 252.9);
+  --kpress-doc-border: oklch(33.73% 0.0207 254.1);
+  --kpress-doc-link: oklch(76.68% 0.1208 255.4);
+  --kpress-doc-code-bg: oklch(24.16% 0.0153 256.8);
+  --kpress-doc-surface-hover: color-mix(in srgb, var(--kpress-doc-muted) 85%, var(--kpress-doc-bg));
+  --kpress-doc-surface-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
+  --kpress-doc-success: oklch(72.27% 0.192 149.6);
+  --kpress-doc-danger: oklch(59.30% 0.128 29);
+  /* Deeper card shadow so the sheet still reads against the dark page. */
+  --kpress-card-shadow:
+    0 10px 15px -3px oklch(0.00% 0 0 / 0.3), 0 -2px 6px -1px oklch(0.00% 0 0 / 0.2);
+}
+
+/* warm — light: teal accent + cream surface (textpress/kash). Overrides only the
+   cool-identity tokens — to teal (hue ~208) at neutral's exact lightness, so text
+   stays near-black and the border stays a quiet hairline — plus the code surface
+   to cream (hue ~83). bg, surfaces, success, danger inherit neutral. */
+:root[data-kpress-palette="warm"],
 .kpress[data-kpress-palette="warm"] {
-  --kpress-host-code-bg: oklch(97.93% 0.0029 84.6);
-  --kpress-host-surface-hover: oklch(95.83% 0.007 88.6);
-  --kpress-host-surface-selected: oklch(92.56% 0.0046 78.3);
+  --kpress-doc-text: oklch(21.01% 0.022 208);
+  --kpress-doc-muted: oklch(50.06% 0.022 208);
+  --kpress-doc-border: oklch(89.90% 0.012 208);
+  --kpress-doc-link: oklch(56.60% 0.061 208);
+  --kpress-doc-code-bg: oklch(97.50% 0.006 83);
+}
+
+/* warm — dark: same teal accent (lighter) over neutral's dark surfaces. Must
+   override the SAME token set as warm-light so warm-light never leaks into dark. */
+:root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"],
+.kpress[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] {
+  --kpress-doc-text: oklch(94.40% 0.01 208);
+  --kpress-doc-muted: oklch(76.58% 0.02 208);
+  --kpress-doc-border: oklch(33.73% 0.016 208);
+  --kpress-doc-link: oklch(74.90% 0.07 208);
+  --kpress-doc-code-bg: oklch(24.16% 0.012 83);
 }
 
 @font-face {

@@ -105,9 +105,13 @@ describe("KPress browser modules", () => {
     expect(document.documentElement.dataset.kpressResolvedTheme).toBe("dark");
     expect(system?.getAttribute("aria-checked")).toBe("true");
 
-    // Gear popover: opens on button click, closes on outside click.
-    const settings = document.querySelector(".kpress-settings");
-    const gear = document.querySelector(".kpress-settings-btn");
+    // Gear popover behavior now lives in the menu primitive (menu.js); the
+    // settings widget binds it. Bind explicitly here to prove the same markup
+    // still opens on click and closes on outside click.
+    const { bindMenu } = await importFresh("menu.js");
+    const settings = /** @type {HTMLElement} */ (document.querySelector(".kpress-settings"));
+    const gear = /** @type {HTMLElement} */ (document.querySelector(".kpress-settings-btn"));
+    bindMenu(settings, gear);
     expect(settings?.getAttribute("aria-expanded")).toBe("false");
     gear?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(settings?.getAttribute("aria-expanded")).toBe("true");

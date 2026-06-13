@@ -356,6 +356,43 @@ def test_invalid_optimizer_mode_raises(tmp_path: Path) -> None:
         load_config(config)
 
 
+def test_format_widgets_parses_normalizes_and_defaults_empty(tmp_path: Path) -> None:
+    from kpress.publish.config import load_config
+
+    default = load_config(tmp_path / "missing.yml")
+    assert default.format.widgets == {}
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\n"
+        "format:\n  widgets:\n"
+        "    settings:\n      choosers: [theme, reading-font]\n"
+        "    toc: auto\n"
+        "    minimap: off\n"
+        "    extra: true\n",
+        encoding="utf-8",
+    )
+    widgets = load_config(config).format.widgets
+    # Dict config passes through verbatim; presence scalars normalize to strings.
+    assert widgets["settings"] == {"choosers": ["theme", "reading-font"]}
+    assert widgets["toc"] == "auto"
+    assert widgets["minimap"] == "off"
+    assert widgets["extra"] == "on"
+
+
+def test_format_widgets_invalid_value_raises(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  widgets:\n    settings: 42\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(KPressPublishError, match="format.widgets"):
+        load_config(config)
+
+
 def test_invalid_format_math_raises(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config
@@ -394,6 +431,49 @@ def test_omitted_enum_values_still_use_defaults(tmp_path: Path) -> None:
     assert cfg.optimizer.mode == "none"
     assert cfg.format.math == "auto"
     assert cfg.optimizer.precompress == []
+    assert cfg.format.toc == "auto"
+    assert cfg.format.diagrams == "auto"
+    assert cfg.format.color_mode == "system"
+
+
+def test_invalid_format_toc_raises(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text("sources:\n  - path: .\nformat:\n  toc: sideways\n", encoding="utf-8")
+    with pytest.raises(KPressPublishError, match="format.toc"):
+        load_config(config)
+
+
+def test_invalid_format_diagrams_and_color_mode_raise(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text("sources:\n  - path: .\nformat:\n  diagrams: graphviz\n", encoding="utf-8")
+    with pytest.raises(KPressPublishError, match="format.diagrams"):
+        load_config(config)
+
+    config.write_text("sources:\n  - path: .\nformat:\n  color_mode: sepia\n", encoding="utf-8")
+    with pytest.raises(KPressPublishError, match="format.color_mode"):
+        load_config(config)
+
+
+def test_format_palette_and_theme_stay_open_strings(tmp_path: Path) -> None:
+    """Palette and theme are open sets: a host can ship its own preset CSS
+    (`.kpress[data-kpress-palette="..."]`), so arbitrary names must load."""
+
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  palette: my-brand\n  theme: custom\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(config)
+    assert cfg.format.palette == "my-brand"
+    assert cfg.format.theme == "custom"
 
 
 def test_external_and_local_refs_pass_through_verbatim(tmp_path: Path) -> None:
@@ -681,3 +761,342 @@ def test_static_passthrough_allows_symlink_within_source_root(tmp_path: Path) ->
     build_site(config)
 
     assert (tmp_path / "public" / "alias.txt").read_text(encoding="utf-8") == "fine\n"
+
+
+def test_build_site_accepts_a_programmatic_config(tmp_path: Path) -> None:
+    """The Python-client path: construct KPressConfig directly — no YAML file,
+    no slot temp files. This is the exemplary library-call integration."""
+
+    from kpress.publish import (
+        FormatConfig,
+        KPressConfig,
+        PublishConfig,
+        SourceConfig,
+        build_site,
+    )
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text(
+        '---\ntitle: "Programmatic Doc"\n---\n\n# Alpha\n\nBody.\n', encoding="utf-8"
+    )
+
+    report = build_site(
+        KPressConfig(
+            title="Programmatic Site",
+            header_html='<a href="/">home</a>',
+            head_extra_html="<style>:root { --demo-marker: 1; }</style>",
+            sources=[SourceConfig(path=content)],
+            format=FormatConfig(
+                toc="off",
+                show_frontmatter=False,
+                palette="warm",
+                widgets={"settings": {"choosers": ["theme", "reading-font"]}},
+            ),
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+
+    assert "/" in report.routes
+    html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
+    # Chrome slots are plain Python strings — no YAML escaping, no *_file dance.
+    assert '<a href="/">home</a>' in html
+    assert "--demo-marker: 1" in html
+    # The widgets dict rides through to the page model verbatim.
+    assert '"choosers": ["theme", "reading-font"]' in html
+    assert 'data-kpress-palette="warm"' in html
+
+
+def test_programmatic_config_base_dir_anchors_document_assets(tmp_path: Path) -> None:
+    """Without a config file there is no path anchor: KPressConfig.base_dir
+    supplies it, so document-relative media still gets collected."""
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    (content / "images").mkdir(parents=True)
+    (content / "images" / "pic.png").write_bytes(b"\x89PNG fake")
+    (content / "index.md").write_text("# Doc\n\n![Pic](images/pic.png)\n", encoding="utf-8")
+
+    build_site(
+        KPressConfig(
+            title="Anchored",
+            base_dir=tmp_path,
+            sources=[SourceConfig(path=content)],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+
+    assert (tmp_path / "public" / "images" / "pic.png").is_file()
+
+
+def test_programmatic_config_anchors_relative_sources_on_base_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Relative source paths resolve against base_dir — discovery and the
+    build must share one anchor (a split anchor silently built an empty site)."""
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Anchored\n", encoding="utf-8")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    report = build_site(
+        KPressConfig(
+            base_dir=tmp_path,
+            sources=[SourceConfig(path="content")],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+
+    assert report.routes == {"/": "index.html"}
+    assert (tmp_path / "public" / "index.html").is_file()
+
+
+def test_config_path_and_base_dir_are_mutually_exclusive(tmp_path: Path) -> None:
+    import dataclasses
+
+    from kpress.errors import KPressPublishError
+    from kpress.publish import build_site, load_config
+
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "index.md").write_text("# Home\n", encoding="utf-8")
+    config_file = tmp_path / "kpress.yml"
+    config_file.write_text(
+        "sources:\n  - path: docs\npublish:\n  output_dir: public\n", encoding="utf-8"
+    )
+
+    both = dataclasses.replace(load_config(config_file), base_dir=tmp_path)
+    with pytest.raises(KPressPublishError, match="mutually exclusive"):
+        build_site(both)
+
+
+def test_programmatic_config_fails_as_loudly_as_yaml(tmp_path: Path) -> None:
+    """Typed configs hit the same semantic invariants as the YAML dialect."""
+
+    from kpress.errors import KPressPublishError
+    from kpress.publish import FormatConfig, KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Doc\n", encoding="utf-8")
+
+    def config(**overrides: object) -> KPressConfig:
+        import dataclasses
+
+        base = KPressConfig(
+            base_dir=tmp_path,
+            sources=[SourceConfig(path=content)],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+        return dataclasses.replace(base, **overrides)  # type: ignore[arg-type]
+
+    # inline asset mode: type-legal, semantically rejected (orig-7ehk).
+    with pytest.raises(KPressPublishError, match="not yet supported"):
+        build_site(
+            config(publish=PublishConfig(output_dir=tmp_path / "public", asset_mode="inline"))
+        )
+
+    # widget-value typo: fails loudly (orig-1tkb)...
+    with pytest.raises(KPressPublishError, match="format.widgets"):
+        build_site(config(format=FormatConfig(widgets={"settings": "Off"})))
+
+    # ...and presence booleans normalize so both dialects publish identical data.
+    build_site(config(format=FormatConfig(widgets={"minimap": True})))
+    html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
+    assert '"minimap": "on"' in html
+
+
+def test_programmatic_enum_typos_fail_as_loudly_as_yaml() -> None:
+    """validate_config membership-checks every closed value set the YAML
+    loader checks — a type-cast typo in the typed dialect must not silently
+    ship a different publish policy (validation parity)."""
+
+    from typing import cast
+
+    from kpress.errors import KPressPublishError
+    from kpress.format.model import AssetMode, MathMode, OptimizerMode, TocMode
+    from kpress.publish import (
+        FormatConfig,
+        KPressConfig,
+        OptimizerOptions,
+        PublishConfig,
+        validate_config,
+    )
+
+    cases: list[tuple[str, KPressConfig]] = [
+        (
+            "optimizer.mode",
+            KPressConfig(optimizer=OptimizerOptions(mode=cast("OptimizerMode", "bogus"))),
+        ),
+        ("precompress", KPressConfig(optimizer=OptimizerOptions(precompress=["snappy"]))),
+        (
+            "publish.asset_mode",
+            KPressConfig(publish=PublishConfig(asset_mode=cast("AssetMode", "typo"))),
+        ),
+        ("format.math", KPressConfig(format=FormatConfig(math=cast("MathMode", "katex")))),
+        ("format.toc", KPressConfig(format=FormatConfig(toc=cast("TocMode", "sideways")))),
+        ("format.diagrams", KPressConfig(format=FormatConfig(diagrams="graphviz"))),
+        ("format.color_mode", KPressConfig(format=FormatConfig(color_mode="sepia"))),
+    ]
+    for expected_match, config in cases:
+        with pytest.raises(KPressPublishError, match=expected_match):
+            _ = validate_config(config)
+
+
+def test_unknown_programmatic_optimizer_mode_fails_the_build(tmp_path: Path) -> None:
+    """A typo'd optimizer mode must never silently run the FULL optimizer
+    (any unknown mode used to fall through to the `kpress:full` stage)."""
+
+    from typing import cast
+
+    from kpress.errors import KPressPublishError
+    from kpress.format.model import OptimizerMode
+    from kpress.publish import (
+        KPressConfig,
+        OptimizerOptions,
+        PublishConfig,
+        SourceConfig,
+        build_site,
+    )
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Doc\n", encoding="utf-8")
+
+    with pytest.raises(KPressPublishError, match="optimizer.mode"):
+        build_site(
+            KPressConfig(
+                base_dir=tmp_path,
+                sources=[SourceConfig(path=content)],
+                publish=PublishConfig(output_dir=tmp_path / "public"),
+                optimizer=OptimizerOptions(mode=cast("OptimizerMode", "bogus")),
+            )
+        )
+
+
+def test_build_options_unknown_optimizer_mode_fails_the_build(tmp_path: Path) -> None:
+    """The BuildOptions override is applied after validate_config; the
+    pipeline resolver itself must reject unknown modes rather than
+    defaulting to the full optimizer."""
+
+    from typing import cast
+
+    from kpress.errors import KPressPublishError
+    from kpress.format.model import OptimizerMode
+
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "index.md").write_text("# Home\n", encoding="utf-8")
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: docs\npublish:\n  output_dir: public\n", encoding="utf-8"
+    )
+
+    with pytest.raises(KPressPublishError, match="optimizer"):
+        build_site(config, BuildOptions(optimizer=cast("OptimizerMode", "bogus")))
+
+
+def test_programmatic_base_dir_accepts_a_plain_string(tmp_path: Path) -> None:
+    """base_dir is str | Path like the sibling path fields; a plain string
+    must anchor discovery instead of crashing with a raw AttributeError."""
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Anchored\n", encoding="utf-8")
+
+    report = build_site(
+        KPressConfig(
+            base_dir=str(tmp_path),
+            sources=[SourceConfig(path="content")],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+    assert report.routes == {"/": "index.html"}
+
+
+def test_config_instances_do_not_share_mutable_defaults() -> None:
+    """Each KPressConfig gets its own nested config objects: a shared default
+    instance would leak one caller's widget map into every other config."""
+
+    from kpress.publish import KPressConfig
+
+    first = KPressConfig()
+    second = KPressConfig()
+    assert first.format is not second.format
+    assert first.publish is not second.publish
+    assert first.pdf is not second.pdf
+    assert first.optimizer is not second.optimizer
+    first.format.widgets["minimap"] = "on"
+    assert second.format.widgets == {}
+
+
+def test_failing_pipeline_stage_error_names_the_stage(tmp_path: Path) -> None:
+    """A stage crash surfaces as KPressPublishError naming the stage: prior
+    outputs were already purged, so a bare traceback with no stage context
+    leaves the operator with nothing to act on."""
+
+    from kpress.errors import KPressPublishError
+    from kpress.publish import (
+        BuildExtensions,
+        KPressConfig,
+        PublishConfig,
+        SourceConfig,
+    )
+    from kpress.publish.optimize import ContentKind, OptimizerResult
+
+    class BoomStage:
+        name = "host:boom"
+
+        def optimize(self, content: str, *, kind: ContentKind) -> OptimizerResult:
+            raise RuntimeError("minifier exploded")
+
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Doc\n", encoding="utf-8")
+
+    with pytest.raises(KPressPublishError, match="host:boom"):
+        build_site(
+            KPressConfig(
+                base_dir=tmp_path,
+                sources=[SourceConfig(path=content)],
+                publish=PublishConfig(output_dir=tmp_path / "public"),
+            ),
+            extensions=BuildExtensions(pipeline=[BoomStage()]),
+        )
+
+
+def test_programmatic_title_staging_survives_astral_plane_characters(tmp_path: Path) -> None:
+    """The exemplar's frontmatter-title staging (json.dumps with
+    ensure_ascii=False) must round-trip emoji: the default ensure_ascii=True
+    emits JSON surrogate pairs that YAML reads as lone surrogates, crashing
+    the build far from the cause."""
+
+    import json as json_mod
+
+    from kpress.publish import KPressConfig, PublishConfig, SourceConfig, build_site
+
+    title = "Launch notes \U0001f680"
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "index.md").write_text(
+        f"---\ntitle: {json_mod.dumps(title, ensure_ascii=False)}\n---\n\n# Body\n",
+        encoding="utf-8",
+    )
+
+    build_site(
+        KPressConfig(
+            title=title,
+            base_dir=tmp_path,
+            sources=[SourceConfig(path=content)],
+            publish=PublishConfig(output_dir=tmp_path / "public"),
+        )
+    )
+
+    html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
+    assert f"<title>{title}</title>" in html

@@ -45,6 +45,7 @@ classifiers = [
 
 dependencies = [
     "frontmatter-format>=0.3.0",
+    "jinja2>=3.1.0",
     "latex2mathml>=3.81.0",
     "markdown-it-py>=4.0.0",
     "mdit-py-plugins>=0.5.0",
@@ -121,13 +122,25 @@ line-length = 100
 
 [tool.ruff.lint]
 select = [
-    # See: https://docs.astral.sh/ruff/rules/
-    # Basic list from: https://docs.astral.sh/ruff/linter/#rule-selection
-    "E", # https://docs.astral.sh/ruff/rules/#error-e
-    "F", # https://docs.astral.sh/ruff/rules/#pyflakes-f
-    "UP", # https://docs.astral.sh/ruff/rules/#pyupgrade-up
-    "B", # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
-    "I", # https://docs.astral.sh/ruff/rules/#isort-i
+    # A strict floor focused on REAL problems — bugs, likely mistakes, correctness.
+    # Ordering/whitespace/quote concerns are left to ruff's own formatter + autofixer,
+    # not re-enforced as narrow lint errors. See https://docs.astral.sh/ruff/rules/
+    "E", # pycodestyle errors
+    "F", # pyflakes — undefined names, unused imports
+    "B", # flake8-bugbear — likely bugs
+    "UP", # pyupgrade — modern syntax (autofixed)
+    "I", # isort — import order (autofixed)
+    "C4", # flake8-comprehensions — comprehension correctness/clarity
+    "SIM", # flake8-simplify — incl. SIM115 (un-closed file handles)
+    "RUF", # ruff-specific real bugs + unused-noqa hygiene
+    "ASYNC", # flake8-async — async correctness
+    "TID", # flake8-tidy-imports — banned/relative imports
+    "LOG", # flake8-logging — logging correctness
+    "G", # flake8-logging-format
+    # Deliberately NOT enabled: narrow/stylistic rules that are subsumed by ruff's
+    # formatter/autofixer or are preference, not correctness — PERF, RET, PTH, A
+    # (builtin-arg names), PIE, FLY, ICN, RSE — plus the churny/API-breaking families
+    # TC* (type-only import shuffling), FBT (boolean-trap), ARG (interface args).
 ]
 ignore = [
     # Disable some rules that are overly pedantic. Add/remove as desired:
@@ -135,6 +148,15 @@ ignore = [
     "E402", # https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file/
     "E731", # https://docs.astral.sh/ruff/rules/lambda-assignment/
     "B008", # https://docs.astral.sh/ruff/rules/function-call-in-default-argument/
+    # Ambiguous-unicode: our comments/strings use real typographic chars on purpose
+    # (×, →, ▪︎, ⇒), which these rules would flag.
+    "RUF001", # ambiguous-unicode-character-string
+    "RUF002", # ambiguous-unicode-character-docstring
+    "RUF003", # ambiguous-unicode-character-comment
+    "RUF043", # pytest-raises-ambiguous-pattern — `.` in a match= substring is fine
+    "RUF022", # unsorted __all__ — order is intentional + pinned by PUBLIC_*_API; a
+    # case-sensitive re-sort just fights the contract. Ruff's own autofix owns ordering
+    # elsewhere; we don't enforce it here.
     # We use both ruff formatter and linter so some rules should always be disabled.
     # See: https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
     "W191", # https://docs.astral.sh/ruff/rules/tab-indentation/
