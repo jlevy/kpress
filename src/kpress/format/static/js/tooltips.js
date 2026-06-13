@@ -16,8 +16,29 @@ const TOOLTIP_MOVING_TOWARD_HIDE_DELAY_MS = 500;
 const TOOLTIP_MOUSE_TRACK_MARGIN_PX = 20;
 const MOBILE_TOOLTIP_BREAKPOINT_PX = 640;
 const WIDE_TOOLTIP_BREAKPOINT_PX = 1200;
+// Minimum free space to the right of the reading column before a margin
+// (wide-right) tooltip is used instead of an adjacent popover.
+const MARGIN_TOOLTIP_MIN_WIDTH_PX = 320;
 const FOOTNOTE_MAX_CHARS = 400;
 const INTERNAL_LINK_MAX_CHARS = 1000;
+
+// Placement modes (behavior flags). "auto" is the responsive ladder: a margin
+// tooltip beside the reading column on wide screens with room, else an adjacent
+// popover, and a bottom bar on narrow screens. "margin"/"inline"/"mobile" force
+// or bias a mode. Settings are per-kind, taken from each behavior's config —
+// e.g. kpress.behaviors.configure("tooltip", { placement: "margin" }).
+const DEFAULT_PLACEMENT = "auto";
+
+/** @type {Map<string, { placement?: string; showDelayMs?: number }>} */
+const kindSettings = new Map();
+
+/**
+ * @param {string} kind
+ * @returns {{ placement?: string; showDelayMs?: number }}
+ */
+function settingsForKind(kind) {
+  return kindSettings.get(kind) || {};
+}
 
 const POSITION_CLASSES = [
   "bottom-right",
@@ -274,23 +295,50 @@ function tooltipContentForAnchor(anchor, target) {
 }
 
 /**
+ * Resolve the reading column used to place margin (wide-right) tooltips. kpress
+ * assembles the document body as `<div class="kpress-prose">`; a margin tooltip
+ * floats just to the right of that column. Falls back to the first prose column
+ * in the document, then to the legacy `#main-content` id some embedding hosts
+ * still use. (The legacy id is why this mode was dead in kpress: kpress emits no
+ * `#main-content`, so the old lookup always returned null and every tooltip fell
+ * back to an adjacent popover.)
+ *
+ * @param {Element} trigger
+ * @returns {Element | null}
+ */
+function resolveReadingColumn(trigger) {
+  return (
+    trigger.closest?.(".kpress-prose") ||
+    document.querySelector(".kpress-prose") ||
+    document.getElementById("main-content")
+  );
+}
+
+/**
  * @param {Element} trigger
  * @returns {string}
  */
 export function chooseTooltipPosition(trigger) {
+  const kind = isFootnoteAnchor(trigger) ? "footnote" : "link";
+  const placement = settingsForKind(kind).placement || DEFAULT_PLACEMENT;
   const viewport = resolveKpressViewport(trigger);
   const bounds = viewportBounds(viewport);
-  if (bounds.width <= MOBILE_TOOLTIP_BREAKPOINT_PX) {
+  // A narrow viewport always uses the bottom bar; "mobile" forces it everywhere.
+  if (placement === "mobile" || bounds.width <= MOBILE_TOOLTIP_BREAKPOINT_PX) {
     return "mobile-bottom";
   }
   if (trigger.closest("table")) {
     return "bottom-right";
   }
-  const mainContent = document.getElementById("main-content");
-  if (mainContent && bounds.width >= WIDE_TOOLTIP_BREAKPOINT_PX) {
-    const contentRect = rectRelativeToViewport(mainContent.getBoundingClientRect(), viewport);
-    if (bounds.width - contentRect.right >= 320) {
-      return "wide-right";
+  // Margin (wide-right) tooltip beside the reading column: used by the default
+  // ("auto") and "margin" modes when there is room; "inline" skips it.
+  if (placement === "auto" || placement === "margin") {
+    const readingColumn = resolveReadingColumn(trigger);
+    if (readingColumn && bounds.width >= WIDE_TOOLTIP_BREAKPOINT_PX) {
+      const contentRect = rectRelativeToViewport(readingColumn.getBoundingClientRect(), viewport);
+      if (bounds.width - contentRect.right >= MARGIN_TOOLTIP_MIN_WIDTH_PX) {
+        return "wide-right";
+      }
     }
   }
   const rect = rectRelativeToViewport(trigger.getBoundingClientRect(), viewport);
@@ -342,9 +390,9 @@ export function positionTooltip(anchor, tooltip) {
   const rect = rectRelativeToViewport(anchor.getBoundingClientRect(), viewport);
   const tooltipRect = tooltip.getBoundingClientRect();
   if (position === "wide-right") {
-    const mainContent = document.getElementById("main-content");
-    const contentRect = mainContent
-      ? rectRelativeToViewport(mainContent.getBoundingClientRect(), viewport)
+    const readingColumn = resolveReadingColumn(anchor);
+    const contentRect = readingColumn
+      ? rectRelativeToViewport(readingColumn.getBoundingClientRect(), viewport)
       : null;
     const left = (contentRect?.right || rect.right) + 16;
     const clampedLeft = Math.min(left, Math.max(TOOLTIP_VIEWPORT_MARGIN_PX, bounds.width - 336));
@@ -510,6 +558,23 @@ function showKpressTooltip(anchor) {
   });
 }
 
+// Tooltips are suppressed inside the table of contents (the TOC already shows
+// each heading's text, so a preview just repeats it and is distracting), inside
+// site chrome (the document header and any host header/footer), and on anything
+// an author opts out with `data-kpress-no-tooltip` (on the link or any
+// ancestor). Everything else in the document keeps tooltips — those point at
+// content the reader can't already see.
+const TOOLTIP_SUPPRESS_SELECTOR =
+  ".kpress-toc, .kpress-doc-header, .kpress-site-header, .kpress-site-footer, [data-kpress-no-tooltip]";
+
+/**
+ * @param {Element} anchor
+ * @returns {boolean}
+ */
+function isTooltipSuppressed(anchor) {
+  return Boolean(anchor.closest(TOOLTIP_SUPPRESS_SELECTOR));
+}
+
 /**
  * @param {Element} anchor
  * @returns {anchor is HTMLAnchorElement}
@@ -518,10 +583,7 @@ function isHashAnchor(anchor) {
   return (
     anchor instanceof HTMLAnchorElement &&
     Boolean(anchor.getAttribute("href")?.startsWith("#")) &&
-    // Skip table-of-contents links: the TOC already shows each heading's text,
-    // so a hover tooltip there just repeats it. Internal-link tooltips elsewhere
-    // in the document stay — those point at content the reader can't already see.
-    !anchor.closest(".kpress-toc")
+    !isTooltipSuppressed(anchor)
   );
 }
 
@@ -556,10 +618,14 @@ function wireTooltipAnchor(anchor) {
   }
   anchor.addEventListener("mouseenter", () => {
     clearTooltipShowTimer();
-    tooltipShowTimer = window.setTimeout(() => {
-      tooltipShowTimer = 0;
-      showKpressTooltip(anchor);
-    }, TOOLTIP_SHOW_DELAY_MS);
+    const showDelay = settingsForKind(isFootnote ? "footnote" : "link").showDelayMs;
+    tooltipShowTimer = window.setTimeout(
+      () => {
+        tooltipShowTimer = 0;
+        showKpressTooltip(anchor);
+      },
+      typeof showDelay === "number" ? showDelay : TOOLTIP_SHOW_DELAY_MS,
+    );
   });
   anchor.addEventListener("focus", () => showKpressTooltip(anchor));
   anchor.addEventListener(
@@ -682,8 +748,17 @@ export function initKpressTooltips(
   }
   const only = typeof config.only === "string" ? config.only : null;
   const kinds = only ? [only] : ["link", "footnote"];
+  /** @type {{ placement?: string; showDelayMs?: number }} */
+  const settings = {};
+  if (typeof config.placement === "string") {
+    settings.placement = config.placement;
+  }
+  if (typeof config.showDelayMs === "number") {
+    settings.showDelayMs = config.showDelayMs;
+  }
   for (const kind of kinds) {
     activeTooltipKinds.add(kind);
+    kindSettings.set(kind, { ...kindSettings.get(kind), ...settings });
   }
   ensureAnchorObserver();
   for (const anchor of root.querySelectorAll('a[href^="#"]')) {
