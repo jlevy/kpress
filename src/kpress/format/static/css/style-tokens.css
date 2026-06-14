@@ -146,7 +146,11 @@
   --color-secondary: var(--kpress-doc-muted);
   --color-hint: var(--kpress-doc-muted);
   --color-hint-strong: var(--kpress-doc-muted);
-  --color-hint-gentle: var(--kpress-doc-border);
+  /* Faint, neutral-reading hairline for inline code, code blocks, tooltips and
+     the key-claims/concepts boxes — modeled on textpress's `hint_gentle`
+     (~rgba(155,172,175,0.2)). Derived from the muted gray (not the lighter
+     blue-tinted doc-border) at low opacity so it reads gray, not blue. */
+  --color-hint-gentle: color-mix(in srgb, var(--kpress-doc-muted) 18%, transparent);
   --color-border-hint: var(--kpress-doc-border);
   --color-hover-bg: var(--kpress-doc-surface-hover);
   --color-hover: var(--kpress-doc-border);
@@ -279,7 +283,9 @@
   --kpress-doc-muted: oklch(50.06% 0.022 208);
   --kpress-doc-border: oklch(89.90% 0.012 208);
   --kpress-doc-link: oklch(56.60% 0.061 208);
-  --kpress-doc-code-bg: oklch(97.50% 0.006 83);
+  /* A mild cream — kept very light (matches textpress's near-white code surface)
+     so monospace spans and tooltips read as a gentle tan, not a heavy one. */
+  --kpress-doc-code-bg: oklch(98.40% 0.005 83);
 }
 
 /* warm — dark: same teal accent (lighter) over neutral's dark surfaces. Must

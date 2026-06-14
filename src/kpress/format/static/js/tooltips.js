@@ -19,6 +19,14 @@ const WIDE_TOOLTIP_BREAKPOINT_PX = 1200;
 // Minimum free space to the right of the reading column before a margin
 // (wide-right) tooltip is used instead of an adjacent popover.
 const MARGIN_TOOLTIP_MIN_WIDTH_PX = 320;
+// Per-kind max widths in px, matching the CSS caps (.kpress-tooltip 20rem,
+// .kpress-tooltip-footnote 25rem, .kpress-tooltip-wide-right 24rem, at a 16px
+// root). The JS must not exceed these — otherwise the tooltip grows to its
+// max-content width and runs off the viewport.
+const TOOLTIP_MAX_WIDTH_PX = 320;
+const FOOTNOTE_TOOLTIP_MAX_WIDTH_PX = 400;
+const WIDE_RIGHT_TOOLTIP_MAX_WIDTH_PX = 384;
+const WIDE_RIGHT_TOOLTIP_GAP_PX = 16;
 const FOOTNOTE_MAX_CHARS = 400;
 const INTERNAL_LINK_MAX_CHARS = 1000;
 
@@ -366,65 +374,68 @@ function setPositionClass(tooltip, position) {
 export function positionTooltip(anchor, tooltip) {
   const viewport = resolveKpressViewport(anchor);
   const bounds = viewportBounds(viewport);
+  const margin = TOOLTIP_VIEWPORT_MARGIN_PX;
   tooltip.style.insetInlineStart = "";
   tooltip.style.insetInlineEnd = "";
   tooltip.style.top = "";
   tooltip.style.bottom = "";
-  tooltip.style.maxWidth = `${Math.max(0, bounds.width - TOOLTIP_VIEWPORT_MARGIN_PX * 2)}px`;
+  // Width is set per kind below. Do NOT widen it to the full viewport here — that
+  // would override the component's CSS max-width and let the tooltip grow to its
+  // max-content width, running off the right edge on medium and small screens.
+  tooltip.style.maxWidth = "";
 
   const position = chooseTooltipPosition(anchor);
   setPositionClass(tooltip, position);
   if (position === "mobile-bottom") {
-    tooltip.style.insetInlineStart = `${bounds.left + TOOLTIP_VIEWPORT_MARGIN_PX}px`;
-    tooltip.style.insetInlineEnd = `${Math.max(
-      0,
-      window.innerWidth - bounds.right + TOOLTIP_VIEWPORT_MARGIN_PX,
-    )}px`;
-    tooltip.style.bottom = `${Math.max(
-      0,
-      window.innerHeight - bounds.bottom + TOOLTIP_VIEWPORT_MARGIN_PX,
-    )}px`;
+    // The bottom bar spans the viewport (minus margins); width comes from the two
+    // insets, and the bar legitimately fills the width.
+    tooltip.style.maxWidth = `${Math.max(0, bounds.width - margin * 2)}px`;
+    tooltip.style.insetInlineStart = `${bounds.left + margin}px`;
+    tooltip.style.insetInlineEnd = `${Math.max(0, window.innerWidth - bounds.right + margin)}px`;
+    tooltip.style.bottom = `${Math.max(0, window.innerHeight - bounds.bottom + margin)}px`;
     return;
   }
 
   const rect = rectRelativeToViewport(anchor.getBoundingClientRect(), viewport);
-  const tooltipRect = tooltip.getBoundingClientRect();
+
   if (position === "wide-right") {
     const readingColumn = resolveReadingColumn(anchor);
     const contentRect = readingColumn
       ? rectRelativeToViewport(readingColumn.getBoundingClientRect(), viewport)
       : null;
-    const left = (contentRect?.right || rect.right) + 16;
-    const clampedLeft = Math.min(left, Math.max(TOOLTIP_VIEWPORT_MARGIN_PX, bounds.width - 336));
-    tooltip.style.insetInlineStart = `${bounds.left + clampedLeft}px`;
+    // Reserve the margin tooltip's own width so its right edge never crosses the
+    // viewport, then cap the width to the room actually left beside the column.
+    const maxLeft = Math.max(margin, bounds.width - WIDE_RIGHT_TOOLTIP_MAX_WIDTH_PX - margin);
+    const left = Math.min((contentRect?.right || rect.right) + WIDE_RIGHT_TOOLTIP_GAP_PX, maxLeft);
+    tooltip.style.maxWidth = `${Math.min(
+      WIDE_RIGHT_TOOLTIP_MAX_WIDTH_PX,
+      Math.max(0, bounds.width - left - margin),
+    )}px`;
+    const tooltipRect = tooltip.getBoundingClientRect();
+    tooltip.style.insetInlineStart = `${bounds.left + left}px`;
     tooltip.style.top = `${
-      bounds.top +
-      Math.max(
-        TOOLTIP_VIEWPORT_MARGIN_PX,
-        rect.top + rect.height / 2 - (tooltipRect.height || 160) / 2,
-      )
+      bounds.top + Math.max(margin, rect.top + rect.height / 2 - (tooltipRect.height || 160) / 2)
     }px`;
     return;
   }
 
+  // Adjacent popover (bottom-right / top-right): cap to the component's max width
+  // (shrinking only when the viewport is narrower than that), then clamp the box
+  // fully on-screen so neither edge overflows.
+  const componentMaxPx = tooltip.classList.contains("kpress-tooltip-footnote")
+    ? FOOTNOTE_TOOLTIP_MAX_WIDTH_PX
+    : TOOLTIP_MAX_WIDTH_PX;
+  tooltip.style.maxWidth = `${Math.min(componentMaxPx, Math.max(0, bounds.width - margin * 2))}px`;
+  const tooltipRect = tooltip.getBoundingClientRect();
   const left = Math.min(
-    Math.max(TOOLTIP_VIEWPORT_MARGIN_PX, rect.left),
-    Math.max(
-      TOOLTIP_VIEWPORT_MARGIN_PX,
-      bounds.width - (tooltipRect.width || 320) - TOOLTIP_VIEWPORT_MARGIN_PX,
-    ),
+    Math.max(margin, rect.left),
+    Math.max(margin, bounds.width - (tooltipRect.width || componentMaxPx) - margin),
   );
   tooltip.style.insetInlineStart = `${bounds.left + left}px`;
   tooltip.style.top =
     position === "top-right"
-      ? `${
-          bounds.top +
-          Math.max(
-            TOOLTIP_VIEWPORT_MARGIN_PX,
-            rect.top - (tooltipRect.height || 160) - TOOLTIP_GAP_PX,
-          )
-        }px`
-      : `${bounds.top + Math.max(TOOLTIP_VIEWPORT_MARGIN_PX, rect.bottom + TOOLTIP_GAP_PX)}px`;
+      ? `${bounds.top + Math.max(margin, rect.top - (tooltipRect.height || 160) - TOOLTIP_GAP_PX)}px`
+      : `${bounds.top + Math.max(margin, rect.bottom + TOOLTIP_GAP_PX)}px`;
 }
 
 /**

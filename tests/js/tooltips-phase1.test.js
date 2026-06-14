@@ -177,4 +177,33 @@ describe("KPress tooltips — Phase 1 (placement, suppression, flags)", () => {
     expect(inline).not.toBe("wide-right");
     expect(["bottom-right", "top-right"]).toContain(inline);
   });
+
+  it("caps tooltip width to the component max instead of the full viewport", async () => {
+    // Regression guard for the overflow bug: positionTooltip used to set
+    // maxWidth = viewportWidth - margins, overriding the CSS 20rem cap and letting
+    // the tooltip grow to its max-content width, running off the right edge.
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 800 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 700 });
+    document.body.innerHTML = `
+      <div class="kpress-prose">
+        <p><a href="#target">Target</a></p>
+        <h2 id="target">Target Heading</h2>
+        <p>A long preview paragraph so the tooltip would grow wide if uncapped.</p>
+      </div>
+    `;
+    await importFresh("tooltips.js");
+    const trigger = document.querySelector('a[href="#target"]');
+    trigger.getBoundingClientRect = mockRect({
+      left: 100,
+      right: 160,
+      top: 100,
+      bottom: 120,
+      width: 60,
+      height: 20,
+    });
+    trigger.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    const tooltip = document.querySelector(".kpress-tooltip");
+    // 20rem cap (320px), not the ~780px the old full-viewport override allowed.
+    expect(tooltip?.style.maxWidth).toBe("320px");
+  });
 });

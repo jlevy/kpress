@@ -351,12 +351,16 @@
   text-indent: -1em;
 }
 
-.kpress-toc-level-1 > a,
-.kpress-toc-level-2 > a {
+/* Two-level weight hierarchy, matching textpress (toc-h2=550 medium, toc-h3=370
+   light). kpress normalizes TOC levels to contiguous ranks, so the top content
+   level is level-1 (the document's h2): it gets medium; everything deeper gets
+   light. (textpress keys the same two weights off raw h2/h3.) */
+.kpress-toc-level-1 > a {
   font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: 0.007em;
 }
 
+.kpress-toc-level-2 > a,
 .kpress-toc-level-3 > a,
 .kpress-toc-level-4 > a,
 .kpress-toc-level-5 > a,
@@ -388,33 +392,37 @@
   padding-left: 4.8rem;
 }
 
+/* Subtle floating control, matching the settings gear (transparent until hover;
+   28px button, 16px icon). Chrome appears only on hover. */
 .kpress-toc-toggle {
   align-items: center;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--kpress-doc-border);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--kpress-radius-sm);
   color: var(--kpress-doc-muted);
   cursor: pointer;
   display: inline-flex;
   font: inherit;
-  height: 2.2rem;
+  height: 28px;
   justify-content: center;
-  padding: 0;
+  padding: 4px;
   transition:
     color var(--kpress-transition-fast),
     border-color var(--kpress-transition-fast),
     background-color var(--kpress-transition-fast);
-  width: 2.2rem;
+  width: 28px;
 }
 
 .kpress-toc-toggle:hover {
   background-color: var(--color-hover-bg);
-  border-color: var(--kpress-doc-link);
-  color: var(--kpress-doc-link);
+  border-color: var(--kpress-doc-border);
+  color: var(--kpress-doc-text);
 }
 
 .kpress-toc-toggle-icon {
   display: block;
+  height: 16px;
+  width: 16px;
 }
 
 .kpress-toc-title {
@@ -476,8 +484,11 @@
   transition: all var(--kpress-transition-fast);
 }
 
+/* `a.…backref` qualifier: the generic `.kpress a:hover` underline is specificity
+   (0,2,1); a bare `.kpress-footnote-backref:hover` is only (0,2,0) and loses, so the
+   ↑ back-link would underline on hover. Adding the `a` type wins it back. */
 .kpress-footnote-ref a:hover,
-.kpress-footnote-backref:hover {
+.kpress a.kpress-footnote-backref:hover {
   background-color: var(--color-hover-bg);
   color: var(--color-primary-light);
   text-decoration: none;
@@ -485,7 +496,7 @@
 
 .kpress-tooltip {
   background: var(--color-bg-meta-solid);
-  border: 1px solid var(--kpress-doc-border);
+  border: 1px solid var(--color-hint-gentle);
   border-left: 2px solid var(--kpress-doc-link);
   border-radius: var(--kpress-radius-none);
   box-shadow:
@@ -512,7 +523,7 @@
   white-space: normal;
   width: max-content;
   word-break: normal;
-  z-index: 300;
+  z-index: 1000;
 }
 
 .kpress-tooltip.kpress-tooltip-visible {
@@ -521,10 +532,10 @@
   visibility: visible;
 }
 
+/* No edge arrow on tooltips (textpress has none; the bare popover reads cleaner).
+   The per-position `::after` border-color rules below are inert while this is hidden. */
 .kpress-tooltip::after {
-  border: 5px solid transparent;
-  content: "";
-  position: absolute;
+  display: none;
 }
 
 .kpress-tooltip a {
@@ -617,6 +628,9 @@
 }
 
 .kpress-tooltip-wide-right {
+  box-shadow:
+    0 8px 25px -3px oklch(0.00% 0 0 / 0.15),
+    0 4px 6px -2px oklch(0.00% 0 0 / 0.05);
   max-width: 24rem;
 }
 
@@ -631,7 +645,7 @@
   box-shadow: 0 -4px 16px oklch(0.00% 0 0 / 0.18);
   box-sizing: border-box;
   max-width: none;
-  padding: 0.9rem 1rem;
+  padding: 0.75rem 1rem;
   text-align: left;
 }
 
