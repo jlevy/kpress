@@ -1,8 +1,24 @@
 /* KPress design tokens -- the source of truth for the KPress design system.
  *
- * Defines the --kpress-* token tree: typography, color + the shared surface family, the
- * corner-radius scale, spacing/measure, motion (one easing + transition speeds), and
- * scrollbars. Design RULES are kept here as comments next to each group, close to the code
+ * STRUCTURE (one comment-headed section per group; see
+ * docs/project/specs/active/plan-2026-06-12-ui-ux-refinement.md -> "Structured token
+ * organization" for the map this mirrors, the playground that exposes it, and the
+ * contract that pins the public subset):
+ *
+ *   Foundations (.kpress, .kpress-page-main, .kpress-tooltip) -- theme-INDEPENDENT:
+ *     1. Typography: families / weights / sizes / line-heights / section-label caps
+ *     2. Spacing & layout    3. Shape (radii)    4. Motion    5. Chrome (card)
+ *     6. Print    7. Color (theme-independent roles)    8. Compatibility aliases
+ *   Display/Page switches  -- font mode (custom/system), reading font (serif/sans)
+ *   Color -- palette x theme -- the single source of truth for every theme color
+ *   Webfonts (@font-face)
+ *
+ * NAMING: foundation tokens are --kpress-<group>-<role>[-<variant>]
+ * (--kpress-font-*, --kpress-font-size-*, --kpress-radius-*, --kpress-transition-*);
+ * color roles are --kpress-doc-<role>; host override hooks are --kpress-host-*;
+ * bare --color-* / --font-* are textpress-compat ALIASES (section 8), not new tokens.
+ *
+ * Design RULES are kept here as comments next to each group, close to the code
  * (kpress-design.md is the map, not a duplicate ledger). The public subset is pinned by
  * contract.py::PUBLIC_CSS_VARIABLES. Core doc tokens read var(--kpress-host-*, <default>)
  * so an embedding host app can theme them; static pages and static-site builds override
@@ -11,10 +27,16 @@
 .kpress-page-main,
 .kpress-tooltip {
   /* Adapted from Kash base_styles.css.jinja and base_webpage.html.jinja.
-     This block holds the theme-independent tokens (type, spacing, radii, motion)
-     and the --color-* ⇒ --kpress-doc-* alias map. The actual COLOR VALUES are set
-     per theme×palette in the Palette options section below; an embedding host
-     re-themes by overriding those --kpress-doc-* tokens directly. */
+     This block holds the theme-independent tokens (type, spacing, radii, motion,
+     chrome, print, the theme-independent color roles) and the --color-* / --font-*
+     compatibility alias map (section 8). The actual theme COLOR VALUES are set per
+     theme x palette in the "Color -- palette x theme" section below; an embedding
+     host re-themes by overriding those --kpress-doc-* tokens directly. */
+
+  /* ============================ 1. TYPOGRAPHY ============================ */
+  /* Families. body = UI/chrome sans; prose = serif reading face; sans = the sans
+     stack; mono = code; footnote/table default to sans; punctuation borrows a
+     serif's quote glyphs. Each reads a --kpress-host-* hook so a host can swap it. */
   --kpress-font-body: var(
     --kpress-host-font-body,
     "Source Sans 3 Variable",
@@ -53,9 +75,14 @@
   --kpress-font-table: var(--kpress-host-font-table, var(--kpress-font-sans));
   --kpress-font-punctuation: "LocalPunct";
   --kpress-font-features-sans: normal;
+
+  /* Weights (Source Sans variable axis): light 370, medium 550, bold 650. */
   --kpress-font-weight-sans-light: 370;
   --kpress-font-weight-sans-medium: 550;
   --kpress-font-weight-sans-bold: 650;
+
+  /* Sizes. One ramp for prose + UI; the mono sizes are a touch smaller so code
+     aligns visually with surrounding text. */
   --kpress-font-size-large: 1.2rem;
   --kpress-font-size-normal: 1rem;
   --kpress-font-size-small: 0.95rem;
@@ -64,14 +91,18 @@
   --kpress-font-size-mono: 0.82rem;
   --kpress-font-size-mono-small: 0.75rem;
   --kpress-font-size-mono-tiny: 0.7rem;
+
+  /* Line heights. */
   --kpress-line-height-normal: 1.5;
   --kpress-line-height-tight: 1.2;
-  /* Section labels use real uppercase, not small-caps. Our subset Source Sans may
-     not ship true `smcp` glyphs, so `font-variant: small-caps` synthesized thin,
-     mis-sized caps that the 1.42 multiplier then propped up. Uppercase renders the
-     font's real capital glyphs at exactly the size we ask for, so no compensation
-     is needed and the multiplier is 1 (kept as a tunable dial, not removed, so the
-     `calc(base * multiplier)` consumers don't all have to change). */
+
+  /* Section-label caps. Section labels use real uppercase, not small-caps. Our
+     subset Source Sans may not ship true `smcp` glyphs, so `font-variant:
+     small-caps` synthesized thin, mis-sized caps that the 1.42 multiplier then
+     propped up. Uppercase renders the font's real capital glyphs at exactly the
+     size we ask for, so no compensation is needed and the multiplier is 1 (kept as
+     a tunable dial, not removed, so the `calc(base * multiplier)` consumers don't
+     all have to change). */
   --kpress-caps-transform: uppercase;
   --kpress-caps-variant: normal;
   --kpress-caps-spacing: 0.021em;
@@ -83,26 +114,48 @@
     var(--kpress-font-size-smaller) *
     var(--kpress-caps-heading-size-multiplier)
   );
+
+  /* ========================= 2. SPACING & LAYOUT ========================= */
   /* Prose reading measure. 48rem (~768px) matches kash's --content-width; the
      earlier 76ch (~640px in serif) read narrower than the reference. */
   --kpress-measure: 48rem;
   /* Settings gear position (standalone page shell only). The gear is `position:
      fixed`, pinned to the top-right of the document frame; these two tokens are
      its block/inline insets. Host-overridable through the `--kpress-host-*`
-     hooks so a site can move it without touching kpress — e.g. align it to the
+     hooks so a site can move it without touching kpress -- e.g. align it to the
      content column's right edge instead of flush to the window, by setting on :root
        --kpress-host-settings-inset-inline: max(3rem, calc(50vw - 24rem));
      (24rem = half the 48rem --kpress-measure; use the literal on :root, where
-     --kpress-measure is not in scope. See kpress-design.md → Settings menu.) */
+     --kpress-measure is not in scope. See kpress-design.md -> Settings menu.) */
   --kpress-settings-inset-block: var(--kpress-host-settings-inset-block, 0.75rem);
   --kpress-settings-inset-inline: var(--kpress-host-settings-inset-inline, 0.75rem);
-  /* Core doc colors (--kpress-doc-bg/text/muted/border/link/code-bg) and the
-     surface tints are set DIRECTLY per theme×palette in the Palette options
-     section below — on :root (standalone) and .kpress (embedded) so they cascade
-     to the whole shell (gear, tooltips, TOC), with no host-var / literal-fallback
-     indirection that could silently theme-swap on a typo. An embedding host
-     overrides these --kpress-doc-* tokens directly. */
-  --kpress-doc-accent: oklch(51.09% 0.0861 186.4);
+  /* Task-list checkbox size: slightly larger than body text so the check glyph
+     is clearly legible at a glance and not confused with a bullet. */
+  --kpress-checkbox-size: 1.15em;
+  /* Square list bullet -- one size for prose lists, claim markers, and concept
+     items, so every bulleted list matches. */
+  --kpress-bullet-size: 0.8rem;
+
+  /* ============================== 3. SHAPE ============================== */
+  /* Corner radii -- one scale used everywhere. Rounded-vs-square is a deliberate
+     per-surface choice (use --kpress-radius-none for square). */
+  --kpress-radius-none: 0;
+  --kpress-radius-sm: 3px;
+  --kpress-radius-md: 6px;
+  --kpress-radius-lg: 0.5rem;
+  --kpress-radius-pill: 999px;
+
+  /* ============================== 4. MOTION ============================= */
+  /* Shared motion. One easing; a fast transition for hovers and size/shape
+     changes, a slower fade for overlays. Suppressed under prefers-reduced-motion
+     (see the reduce block in components.css). */
+  --kpress-ease: ease-in-out;
+  --kpress-transition-fast: 0.15s var(--kpress-ease);
+  --kpress-transition-med: 0.2s var(--kpress-ease);
+  --kpress-transition-slow: 0.4s var(--kpress-ease);
+  --kpress-transition-fade: 0.3s var(--kpress-ease);
+
+  /* ========================= 5. CHROME (card) ========================== */
   /* Content card chrome: the reading column rendered as a bordered sheet
      floating over the page (see components.css "Content card" and
      kpress-design.md). Border + shadow are textpress's values verbatim; the
@@ -110,9 +163,31 @@
   --kpress-card-border: 1px solid var(--kpress-doc-border);
   --kpress-card-shadow:
     0 10px 15px -3px oklch(0.00% 0 0 / 0.1), 0 -2px 6px -1px oklch(0.00% 0 0 / 0.07);
+
+  /* ============================== 6. PRINT ============================= */
   --kpress-print-page-margin: 0.7in;
   --kpress-print-font-size: 11pt;
   --kpress-print-footer: "Formatted by KPress";
+
+  /* =============== 7. COLOR -- theme-independent roles ================= */
+  /* Most color roles (--kpress-doc-bg/text/muted/border/link/code-bg + the
+     surface hover/selected steps, success, danger) are set per theme x palette in
+     the "Color -- palette x theme" section below, on :root (standalone) and
+     .kpress (embedded), so they cascade to the whole shell (gear, tooltips, TOC)
+     with no host-var / literal-fallback indirection that could silently theme-swap
+     on a typo. The two roles below do NOT vary by theme, so they live here:
+       accent     -- a fixed teal used for small accents
+       surface-bg -- the subtle fill shared by code blocks, table headers, and the
+                     metadata block (an alias of the code bg) so they read as one
+                     family; the hover/selected interaction steps that DO vary are
+                     set per palette below. */
+  --kpress-doc-accent: oklch(51.09% 0.0861 186.4);
+  --kpress-doc-surface-bg: var(--kpress-doc-code-bg);
+
+  /* ===================== 8. COMPATIBILITY ALIASES ===================== */
+  /* textpress/kash vocabulary mapped onto the --kpress-* tokens above, so styles
+     ported from kash keep working. These are ALIASES, not new tokens -- add new
+     design values as --kpress-* and alias here only if a ported consumer needs it. */
   --font-sans: var(--kpress-font-sans);
   --font-serif: var(--kpress-font-prose);
   --font-mono: var(--kpress-font-mono);
@@ -146,7 +221,11 @@
   --color-secondary: var(--kpress-doc-muted);
   --color-hint: var(--kpress-doc-muted);
   --color-hint-strong: var(--kpress-doc-muted);
-  --color-hint-gentle: var(--kpress-doc-border);
+  /* Faint, neutral-reading hairline for inline code, code blocks, tooltips and
+     the key-claims/concepts boxes -- modeled on textpress's `hint_gentle`
+     (~rgba(155,172,175,0.2)). Derived from the muted gray (not the lighter
+     blue-tinted doc-border) at low opacity so it reads gray, not blue. */
+  --color-hint-gentle: color-mix(in srgb, var(--kpress-doc-muted) 18%, transparent);
   --color-border-hint: var(--kpress-doc-border);
   --color-hover-bg: var(--kpress-doc-surface-hover);
   --color-hover: var(--kpress-doc-border);
@@ -155,34 +234,9 @@
   --color-scrollbar-hover: color-mix(in srgb, var(--kpress-doc-muted) 70%, transparent);
   --color-success: var(--kpress-doc-success);
   --color-danger: var(--kpress-doc-danger);
-  /* Subtle surface fill shared by code blocks, table headers, and the metadata
-     block, so they read as one family — an alias of the code bg. The hover/selected
-     interaction steps (TOC hover/active, hovered controls) are set per theme×palette
-     in the Palette options section below, derived from each palette's link/muted. */
-  --kpress-doc-surface-bg: var(--kpress-doc-code-bg);
-  /* surface-hover / surface-selected are set per theme×palette in Palette options. */
-  /* Task-list checkbox size: slightly larger than body text so the check glyph
-     is clearly legible at a glance and not confused with a bullet. */
-  --kpress-checkbox-size: 1.15em;
-  /* Square list bullet — one size for prose lists, claim markers, and concept
-     items, so every bulleted list matches. */
-  --kpress-bullet-size: 0.8rem;
-  /* Corner radii — one scale used everywhere. Rounded-vs-square is a deliberate
-     per-surface choice (use --kpress-radius-none for square). */
-  --kpress-radius-none: 0;
-  --kpress-radius-sm: 3px;
-  --kpress-radius-md: 6px;
-  --kpress-radius-lg: 0.5rem;
-  --kpress-radius-pill: 999px;
-  /* Shared motion. One easing; a fast transition for hovers and size/shape
-     changes, a slower fade for overlays. Suppressed under prefers-reduced-motion
-     (see the reduce block in components.css). */
-  --kpress-ease: ease-in-out;
-  --kpress-transition-fast: 0.15s var(--kpress-ease);
-  --kpress-transition-med: 0.2s var(--kpress-ease);
-  --kpress-transition-slow: 0.4s var(--kpress-ease);
-  --kpress-transition-fade: 0.3s var(--kpress-ease);
 }
+
+/* ===================== DISPLAY/PAGE SWITCHES ========================= */
 
 /* Global font switch. Default ("custom", set by render.py on the .kpress
    wrapper) uses the vendored PT Serif / Source Sans reader faces below.
@@ -214,35 +268,40 @@
 }
 
 /* ============================================================================
-   PALETTE OPTIONS — the single source of truth for every theme color.
+   COLOR -- PALETTE x THEME -- the single source of truth for every theme color.
 
-   Each theme×palette block sets the document color tokens (--kpress-doc-*)
-   DIRECTLY to literal values — no host-var / fallback indirection, so a typo
+   Each theme x palette block sets the document color tokens (--kpress-doc-*)
+   DIRECTLY to literal values -- no host-var / fallback indirection, so a typo
    renders obviously broken instead of silently swapping themes. Blocks target
    BOTH :root (standalone: render.py stamps data-kpress-resolved-theme +
-   data-kpress-palette on <html>, so the tokens cascade to the WHOLE shell — gear,
+   data-kpress-palette on <html>, so the tokens cascade to the WHOLE shell -- gear,
    tooltips, TOC, not just the article) AND .kpress (embedded: the host stamps the
-   attrs on the wrapper). Selectors are FLAT — all attributes on one element, no
+   attrs on the wrapper). Selectors are FLAT -- all attributes on one element, no
    descendant combinator. `neutral` is the default (bare, no [data-kpress-palette]);
    each other palette overrides ONLY the tokens that differ. An embedding host
    overrides any --kpress-doc-* directly. Add a palette = add its two blocks.
 
+   ROLE ORDER within each block (a color family taxonomy -- the same grouping the
+   playground palette editor uses): foreground (text, muted) -> hairline (border)
+   -> interactive (link) -> surfaces (bg, code-bg, surface-hover, surface-selected)
+   -> status (success, danger).
+
    Design: `warm` is modeled on textpress/kash and is GENTLE. The warmth is ONLY
    the cream code/surface background (hue ~83). Text, muted, border and link stay
-   COOL (teal, hue ~208) at neutral's exact lightness — so text is plain near-black
+   COOL (teal, hue ~208) at neutral's exact lightness -- so text is plain near-black
    (never tan) and borders are a quiet hairline (never warm). Warm reads as
    "neutral with a teal accent over warm paper," not a tan wash.
    ============================================================================ */
 
-/* neutral — light (default; also the pre-JS state). :root drives the standalone
+/* neutral -- light (default; also the pre-JS state). :root drives the standalone
    shell; .kpress drives the embedded fragment. */
 :root,
 .kpress {
-  --kpress-doc-bg: oklch(100.00% 0 0);
   --kpress-doc-text: oklch(21.01% 0.0318 264.7);
   --kpress-doc-muted: oklch(50.06% 0.025 259.2);
   --kpress-doc-border: oklch(89.90% 0.0151 260.7);
   --kpress-doc-link: oklch(45.76% 0.1445 254.7);
+  --kpress-doc-bg: oklch(100.00% 0 0);
   --kpress-doc-code-bg: oklch(97.85% 0.0045 258.3);
   --kpress-doc-surface-hover: color-mix(in srgb, var(--kpress-doc-link) 8%, transparent);
   --kpress-doc-surface-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
@@ -250,15 +309,24 @@
   --kpress-doc-danger: oklch(50.03% 0.1821 29.5);
 }
 
-/* neutral — dark */
+/* neutral -- dark. The descendant rule (:root[...dark] .kpress) re-colors the
+   embedded .kpress article on STANDALONE pages. The article is stamped with its OWN
+   data-kpress-resolved-theme at render time and binds colors via the flat .kpress[...]
+   selectors, but the runtime theme toggle (theme.js) updates only <html>; without the
+   descendant rule the article keeps its light tokens (set directly on it by the
+   neutral/warm-light blocks) and SHADOWS :root's dark values for the reading column,
+   so the page goes dark but the content panel stays white. The flat .kpress[...]
+   selectors remain for embedded hosts that stamp the attrs on the wrapper itself.
+   (Reading-font already uses this descendant pattern; theme/palette now match it.) */
 :root[data-kpress-resolved-theme="dark"],
+:root[data-kpress-resolved-theme="dark"] .kpress,
 .kpress[data-kpress-resolved-theme="dark"],
 .kpress[data-kpress-theme="dark"] {
-  --kpress-doc-bg: oklch(18.98% 0.0094 255.6);
   --kpress-doc-text: oklch(94.40% 0.0097 252.8);
   --kpress-doc-muted: oklch(76.58% 0.0205 252.9);
   --kpress-doc-border: oklch(33.73% 0.0207 254.1);
   --kpress-doc-link: oklch(76.68% 0.1208 255.4);
+  --kpress-doc-bg: oklch(18.98% 0.0094 255.6);
   --kpress-doc-code-bg: oklch(24.16% 0.0153 256.8);
   --kpress-doc-surface-hover: color-mix(in srgb, var(--kpress-doc-muted) 85%, var(--kpress-doc-bg));
   --kpress-doc-surface-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
@@ -269,9 +337,9 @@
     0 10px 15px -3px oklch(0.00% 0 0 / 0.3), 0 -2px 6px -1px oklch(0.00% 0 0 / 0.2);
 }
 
-/* warm — light: teal accent + cream surface (textpress/kash). Overrides only the
-   cool-identity tokens — to teal (hue ~208) at neutral's exact lightness, so text
-   stays near-black and the border stays a quiet hairline — plus the code surface
+/* warm -- light: teal accent + cream surface (textpress/kash). Overrides only the
+   cool-identity tokens -- to teal (hue ~208) at neutral's exact lightness, so text
+   stays near-black and the border stays a quiet hairline -- plus the code surface
    to cream (hue ~83). bg, surfaces, success, danger inherit neutral. */
 :root[data-kpress-palette="warm"],
 .kpress[data-kpress-palette="warm"] {
@@ -279,12 +347,15 @@
   --kpress-doc-muted: oklch(50.06% 0.022 208);
   --kpress-doc-border: oklch(89.90% 0.012 208);
   --kpress-doc-link: oklch(56.60% 0.061 208);
-  --kpress-doc-code-bg: oklch(97.50% 0.006 83);
+  /* A mild cream -- kept very light (matches textpress's near-white code surface)
+     so monospace spans and tooltips read as a gentle tan, not a heavy one. */
+  --kpress-doc-code-bg: oklch(98.40% 0.005 83);
 }
 
-/* warm — dark: same teal accent (lighter) over neutral's dark surfaces. Must
+/* warm -- dark: same teal accent (lighter) over neutral's dark surfaces. Must
    override the SAME token set as warm-light so warm-light never leaks into dark. */
 :root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"],
+:root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] .kpress,
 .kpress[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] {
   --kpress-doc-text: oklch(94.40% 0.01 208);
   --kpress-doc-muted: oklch(76.58% 0.02 208);
@@ -292,6 +363,8 @@
   --kpress-doc-link: oklch(74.90% 0.07 208);
   --kpress-doc-code-bg: oklch(24.16% 0.012 83);
 }
+
+/* ============================== WEBFONTS ============================== */
 
 @font-face {
   font-family: "PT Serif";
