@@ -309,8 +309,17 @@
   --kpress-doc-danger: oklch(50.03% 0.1821 29.5);
 }
 
-/* neutral -- dark */
+/* neutral -- dark. The descendant rule (:root[...dark] .kpress) re-colors the
+   embedded .kpress article on STANDALONE pages. The article is stamped with its OWN
+   data-kpress-resolved-theme at render time and binds colors via the flat .kpress[...]
+   selectors, but the runtime theme toggle (theme.js) updates only <html>; without the
+   descendant rule the article keeps its light tokens (set directly on it by the
+   neutral/warm-light blocks) and SHADOWS :root's dark values for the reading column,
+   so the page goes dark but the content panel stays white. The flat .kpress[...]
+   selectors remain for embedded hosts that stamp the attrs on the wrapper itself.
+   (Reading-font already uses this descendant pattern; theme/palette now match it.) */
 :root[data-kpress-resolved-theme="dark"],
+:root[data-kpress-resolved-theme="dark"] .kpress,
 .kpress[data-kpress-resolved-theme="dark"],
 .kpress[data-kpress-theme="dark"] {
   --kpress-doc-text: oklch(94.40% 0.0097 252.8);
@@ -346,6 +355,7 @@
 /* warm -- dark: same teal accent (lighter) over neutral's dark surfaces. Must
    override the SAME token set as warm-light so warm-light never leaks into dark. */
 :root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"],
+:root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] .kpress,
 .kpress[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] {
   --kpress-doc-text: oklch(94.40% 0.01 208);
   --kpress-doc-muted: oklch(76.58% 0.02 208);
