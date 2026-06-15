@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -56,6 +57,11 @@ class FormatConfig:
     math: MathMode = "auto"
     diagrams: str = "auto"
     show_frontmatter: bool = True
+    # Whitelist of additional pass-through HTML/XML tag names (YAML:
+    # format.html.extra_tags). Unioned with the always-on <span>/<div> defaults and
+    # admitted across every trust mode, carrying class/data-* but never style/on*/unsafe
+    # URLs. Threaded into RenderOptions.extra_tags. Empty by default (output unchanged).
+    extra_tags: tuple[str, ...] = ()
     # Widget presence + opaque config map (extension model layer D). Keys are
     # widget ids; values normalize to "on" | "off" | "auto" or pass through as
     # the widget's config dict (which implies on). KPress never interprets the
@@ -237,6 +243,30 @@ def _validated_precompress(value: object) -> list[str]:
     return methods
 
 
+# A valid pass-through tag name: a standard HTML inline/flow element or a custom-element
+# name — lowercase, starting with a letter, optionally containing digits/hyphens. The
+# same shape markdown-it / nh3 will accept; an entry that is not a valid tag name fails
+# the build loudly rather than silently admitting nothing (orig-1tkb stance).
+_TAG_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
+
+def _validated_extra_tags(value: object) -> tuple[str, ...]:
+    """Return format.html.extra_tags as a tuple, raising on invalid tag names."""
+
+    if value is None:
+        return ()
+    tags = _string_list(value, [])
+    for tag in tags:
+        if not _TAG_NAME_RE.match(tag):
+            msg = (
+                f"Invalid format.html.extra_tags entry {tag!r}; expected a lowercase "
+                f"HTML or custom-element tag name (letters, digits, hyphens)"
+            )
+            raise KPressPublishError(msg)
+    # De-duplicate while preserving order so the config round-trips deterministically.
+    return tuple(dict.fromkeys(tags))
+
+
 def _int_value(value: object, default: int) -> int:
     if isinstance(value, int) and not isinstance(value, bool):
         return value
@@ -276,8 +306,10 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "diagrams",
         "show_frontmatter",
         "widgets",
+        "html",
     }
 )
+_KNOWN_FORMAT_HTML_KEYS = frozenset({"extra_tags"})
 _KNOWN_OPTIMIZER_KEYS = frozenset({"mode", "precompress"})
 _KNOWN_PDF_KEYS = frozenset({"enabled", "page_size"})
 _CHROME_SLOT_NAMES = ("head_extra_html", "header_html", "footer_html")
@@ -361,9 +393,12 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     _ = _checked_choice("format.diagrams", config.format.diagrams, _DIAGRAM_MODES)
     _ = _checked_choice("format.color_mode", config.format.color_mode, _COLOR_MODES)
     _ = _checked_choice("format.prose_font", config.format.prose_font, _PROSE_FONTS)
+    extra_tags = _validated_extra_tags(list(config.format.extra_tags))
     widgets = parse_widgets(config.format.widgets)
-    if widgets != config.format.widgets:
-        config = replace(config, format=replace(config.format, widgets=widgets))
+    if widgets != config.format.widgets or extra_tags != config.format.extra_tags:
+        config = replace(
+            config, format=replace(config.format, widgets=widgets, extra_tags=extra_tags)
+        )
     return config
 
 
@@ -400,9 +435,11 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     fmt = _as_dict(data.get("format", {}))
     pdf = _as_dict(data.get("pdf", {}))
     optimizer = _as_dict(data.get("optimizer", {}))
+    fmt_html = _as_dict(fmt.get("html", {}))
     _reject_unknown_keys("site", site, _KNOWN_SITE_KEYS)
     _reject_unknown_keys("publish", publish, _KNOWN_PUBLISH_KEYS)
     _reject_unknown_keys("format", fmt, _KNOWN_FORMAT_KEYS)
+    _reject_unknown_keys("format.html", fmt_html, _KNOWN_FORMAT_HTML_KEYS)
     _reject_unknown_keys("pdf", pdf, _KNOWN_PDF_KEYS)
     _reject_unknown_keys("optimizer", optimizer, _KNOWN_OPTIMIZER_KEYS)
     raw_sources = _as_list(data.get("sources", [])) or [{"path": "."}]
@@ -482,6 +519,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             diagrams=diagrams,
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),
             widgets=parse_widgets(fmt.get("widgets")),
+            extra_tags=_validated_extra_tags(fmt_html.get("extra_tags")),
         ),
         publish=PublishConfig(
             output_dir=str(publish.get("output_dir", "public")),

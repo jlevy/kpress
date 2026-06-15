@@ -393,6 +393,57 @@ def test_format_widgets_invalid_value_raises(tmp_path: Path) -> None:
         load_config(config)
 
 
+def test_format_html_extra_tags_parses_and_defaults_empty(tmp_path: Path) -> None:
+    from kpress.publish.config import load_config
+
+    default = load_config(tmp_path / "missing.yml")
+    assert default.format.extra_tags == ()
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\n"
+        "format:\n  html:\n    extra_tags: [st-device, st-caution, st-device]\n",
+        encoding="utf-8",
+    )
+    # De-duplicated, order preserved.
+    assert load_config(config).format.extra_tags == ("st-device", "st-caution")
+
+
+def test_format_html_extra_tags_invalid_name_raises(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  html:\n    extra_tags: ['Bad Tag']\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(KPressPublishError, match="format.html.extra_tags"):
+        load_config(config)
+
+
+def test_format_html_unknown_key_raises(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  html:\n    extra_tagz: [st-device]\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(KPressPublishError, match="format.html"):
+        load_config(config)
+
+
+def test_validate_config_rejects_invalid_extra_tags() -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import FormatConfig, KPressConfig, validate_config
+
+    config = KPressConfig(format=FormatConfig(extra_tags=("Bad Tag",)))
+    with pytest.raises(KPressPublishError, match="format.html.extra_tags"):
+        validate_config(config)
+
+
 def test_invalid_format_math_raises(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config

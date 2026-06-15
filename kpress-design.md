@@ -644,6 +644,17 @@ The contract module also declares:
   name or detect numeric columns.
   kpress emits them and never consumes them; it never imports a decorator and never
   knows any table plugin exists.
+- `PUBLIC_PASS_THROUGH_TAGS` / `PUBLIC_PASS_THROUGH_ATTRIBUTES` /
+  `PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES`: the whitelisted-HTML input contract. The
+  language going into kpress is **Markdown blended with a known set of pass-through HTML
+  tags.** `<span>`/`<div>` are always allowed (matching GitHub / CommonMark renderers); a
+  host activates more through `format.html.extra_tags` (the `RenderOptions.extra_tags`
+  equivalent), which is unioned with the defaults per render. Whitelisted tags reach the
+  output untouched under **every** sanitizing trust mode (`sanitized-local`,
+  `public-static`, `untrusted`) and trivially under `trusted-local`, carrying only
+  `class` and `data-*`. `style`, `on*` handlers, and unsafe-URL attributes stay
+  sanitized even on a whitelisted tag — this is a styleable pass-through, never "turn
+  sanitization off". A document with no whitelisted tags renders exactly as before.
 
 There is no `BuildMode` type.
 The former `publish.mode` / `BuildReport.mode` / manifest `"mode"` key have been
@@ -1308,11 +1319,16 @@ Markdown target capability:
 - sanitizer or rejection diagnostics in public static mode
 - postprocessing for footnote backrefs and component wrappers
 
-Trust modes:
+Trust modes (every sanitizing mode admits the pass-through whitelist — `<span>`/`<div>`
+plus `format.html.extra_tags` — carrying `class`/`data-*`; see the HTML Contract above):
 
-- `trusted-local`: local document viewing, useful raw HTML allowed
-- `public-static`: sanitize or reject unsafe HTML, scripts, iframes, SVG, unsafe links,
-  and unsealed remote URLs according to config
+- `trusted-local`: local document viewing, useful raw HTML allowed (no sanitization)
+- `sanitized-local` / `public-static`: sanitize or reject unsafe HTML, scripts, iframes,
+  unsafe links, and unsealed remote URLs; safe SVG/MathML and the pass-through whitelist
+  survive
+- `untrusted`: a whitelist-only profile — ONLY the pass-through tags survive and every
+  other raw-HTML tag is stripped (its text content is kept), so it is at least as strict
+  as `public-static` while still admitting the styleable whitelist
 
 Source rendering target capability:
 

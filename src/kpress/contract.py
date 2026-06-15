@@ -242,6 +242,24 @@ PUBLIC_DATA_ATTRIBUTES = (
     "data-kpress-numeric",
 )
 
+# Whitelisted pass-through HTML/XML tags: the input contract is "Markdown + a known set
+# of HTML tags". These tags reach the rendered output untouched under EVERY sanitizing
+# trust mode (sanitized-local, public-static, untrusted) and trivially under
+# trusted-local. `<span>`/`<div>` are always allowed, matching GitHub / CommonMark
+# renderer norms; a host activates more through `format.html.extra_tags`
+# (RenderOptions.extra_tags), which is unioned with this default set per render.
+PUBLIC_PASS_THROUGH_TAGS = (
+    "div",
+    "span",
+)
+
+# Attribute policy on whitelisted pass-through tags: only `class` and the `data-*`
+# prefix survive (data-* rides the generic-prefix allowance, so it is not enumerated
+# here). `style`, `on*` handlers, and unsafe-URL attributes stay sanitized even on a
+# whitelisted tag — this is a styleable pass-through, never "turn sanitization off".
+PUBLIC_PASS_THROUGH_ATTRIBUTES = ("class",)
+PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES = ("data-",)
+
 PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
     "fragment.html.jinja": ("body_html",),
     "page.html.jinja": (
@@ -344,6 +362,9 @@ __all__ = [
     "PUBLIC_JS_EXPORTS",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",
+    "PUBLIC_PASS_THROUGH_ATTRIBUTES",
+    "PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES",
+    "PUBLIC_PASS_THROUGH_TAGS",
     "PUBLIC_PIPELINE_STAGES",
     "PUBLIC_PUBLISH_API",
     "PUBLIC_TEMPLATE_VARIABLES",

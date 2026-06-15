@@ -173,6 +173,7 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
             trust_mode=document.trust_mode,
             math=options.math,
             diagrams=options.diagrams,
+            extra_tags=options.extra_tags,
         )
     # Build-time tree transform (BuildExtensions.transform_tree): applied
     # before the TOC and page model derive from the tree.
