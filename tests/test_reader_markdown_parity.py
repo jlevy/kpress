@@ -426,8 +426,91 @@ def test_raw_html_trust_modes_preserve_safe_html_and_strip_unsafe_html() -> None
     assert "onclick" not in public.html
     assert "<script>" not in public.html
     assert public.diagnostics[0].type == "html_sanitized"
-    assert "&lt;section" in untrusted.html
+    # Untrusted now runs the nh3 whitelist-only sanitizer (only the pass-through tags
+    # survive) rather than escaping raw HTML. Non-whitelisted tags (<section>, <em>) are
+    # stripped — their text content is kept — and <script>/event handlers are removed.
     assert "<section" not in untrusted.html
+    assert "<em" not in untrusted.html
+    assert "<script>" not in untrusted.html
+    assert "onclick" not in untrusted.html
+    assert "Safe" in untrusted.html
+    assert untrusted.diagnostics[0].type == "html_sanitized"
+
+
+def test_whitelisted_tag_survives_with_class_and_data_across_postures() -> None:
+    source = '<x-callout class="variant" data-variant="x">D</x-callout>'
+    for mode in ("public-static", "untrusted"):
+        tree = parse_markdown(
+            source,
+            title="Whitelist",
+            trust_mode=mode,  # pyright: ignore[reportArgumentType]
+            extra_tags=("x-callout",),
+        )
+        assert '<x-callout class="variant" data-variant="x">D</x-callout>' in tree.html
+
+
+def test_non_whitelisted_tag_still_stripped_with_active_whitelist() -> None:
+    for mode in ("public-static", "untrusted"):
+        tree = parse_markdown(
+            "<x-unknown>kept</x-unknown>",
+            title="Whitelist",
+            trust_mode=mode,  # pyright: ignore[reportArgumentType]
+            extra_tags=("x-callout",),
+        )
+        assert "<x-unknown" not in tree.html
+        assert "kept" in tree.html
+
+
+def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
+    source = '<x-callout class="ok" data-k="v" style="color:red" onclick="bad()">D</x-callout>'
+    for mode in ("public-static", "untrusted"):
+        tree = parse_markdown(
+            source,
+            title="Whitelist",
+            trust_mode=mode,  # pyright: ignore[reportArgumentType]
+            extra_tags=("x-callout",),
+        )
+        assert 'class="ok"' in tree.html
+        assert 'data-k="v"' in tree.html
+        assert "style" not in tree.html
+        assert "onclick" not in tree.html
+
+
+def test_whitelisted_block_renders_inner_markdown() -> None:
+    # A block-level whitelisted tag with blank lines around it lets the Markdown parser
+    # process the inner content (standard HTML-block behavior): the inner link renders.
+    source = "<x-callout data-variant=note>\n\n[link](https://example.com)\n\n</x-callout>"
+    tree = parse_markdown(
+        source,
+        title="Whitelist",
+        trust_mode="public-static",
+        extra_tags=("x-callout",),
+    )
+    assert "<x-callout" in tree.html
+    assert 'href="https://example.com"' in tree.html
+
+
+def test_no_whitelist_output_unchanged() -> None:
+    # With no extra_tags, a document with no whitelisted custom tags renders identically
+    # whether or not the whitelist machinery is invoked (the byte-identical guarantee).
+    source = '# Title\n\nA paragraph with <span class="hl">inline</span> markup.\n'
+    baseline = parse_markdown(source, title="Doc", trust_mode="public-static")
+    with_empty = parse_markdown(source, title="Doc", trust_mode="public-static", extra_tags=())
+    assert with_empty.html == baseline.html
+
+
+def test_whitelisted_tag_reaches_static_page_output() -> None:
+    # Integration: the static publish path renders public-static; a whitelisted tag with
+    # class/data-* reaches the full page output with its attributes intact.
+    document = DocumentInput(
+        title="Custom tag",
+        source_text='<x-callout class="variant" data-variant="x">Body</x-callout>',
+        body_markdown='<x-callout class="variant" data-variant="x">Body</x-callout>',
+        source_path="custom.md",
+        trust_mode="public-static",
+    )
+    page = render_page(document, RenderOptions(extra_tags=("x-callout",)))
+    assert '<x-callout class="variant" data-variant="x">Body</x-callout>' in page.html
 
 
 def test_public_static_sanitizer_blocks_adversarial_html_bypasses() -> None:

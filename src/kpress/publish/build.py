@@ -539,6 +539,7 @@ def build_site(
                 math=config.format.math,
                 show_frontmatter=config.format.show_frontmatter,
                 widgets=config.format.widgets,
+                extra_tags=config.format.extra_tags,
                 transform_tree=extensions.transform_tree if extensions else None,
                 head_extra_html=config.head_extra_html,
                 header_html=config.header_html,

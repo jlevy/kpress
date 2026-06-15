@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
 import nh3
 
+from kpress.contract import (
+    PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES,
+    PUBLIC_PASS_THROUGH_ATTRIBUTES,
+    PUBLIC_PASS_THROUGH_TAGS,
+)
 from kpress.format.model import Diagnostic, TrustMode
 
 _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
@@ -134,21 +140,60 @@ _ALLOWED_ATTRIBUTES["*"] = _GLOBAL_ATTRIBUTES
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto", "tel"}
 _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
 
+# Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
+# unions any host `extra_tags` on top of this default set. `class`/`data-*` survive on
+# them (class via _GLOBAL_ATTRIBUTES, data-* via _GENERIC_ATTRIBUTE_PREFIXES); `style`,
+# `on*`, and unsafe-URL attributes stay sanitized — see PUBLIC_PASS_THROUGH_ATTRIBUTES.
+_DEFAULT_PASS_THROUGH_TAGS = set(PUBLIC_PASS_THROUGH_TAGS)
+# Attribute policy for the untrusted whitelist-only profile (raw HTML otherwise stripped):
+# only `class` plus the `data-*` prefix ride through on a whitelisted tag.
+_PASS_THROUGH_ATTRIBUTES = {"*": set(PUBLIC_PASS_THROUGH_ATTRIBUTES)}
+_PASS_THROUGH_ATTRIBUTE_PREFIXES = set(PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES)
 
-def sanitize_raw_html(html: str, trust_mode: TrustMode) -> tuple[str, list[Diagnostic]]:
-    """Return raw HTML according to the configured trust mode."""
+
+def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
+    """The whitelist for a render: the always-on defaults unioned with host extras."""
+
+    return _DEFAULT_PASS_THROUGH_TAGS | {tag for tag in (extra_tags or ()) if tag}
+
+
+def sanitize_raw_html(
+    html: str,
+    trust_mode: TrustMode,
+    *,
+    extra_tags: Iterable[str] | None = None,
+) -> tuple[str, list[Diagnostic]]:
+    """Return raw HTML according to the configured trust mode.
+
+    Whitelisted pass-through tags (``<span>``/``<div>`` plus any ``extra_tags`` the host
+    activates) survive in every sanitizing mode, carrying ``class``/``data-*`` but never
+    ``style``/``on*``/unsafe URLs. ``trusted-local`` skips sanitization entirely.
+    ``untrusted`` uses a whitelist-only profile: ONLY the pass-through tags survive and
+    every other tag is stripped (its text content is kept), so untrusted stays at least
+    as strict as ``public-static`` while still admitting the styleable whitelist.
+    """
 
     if trust_mode == "trusted-local":
         return html, []
 
-    sanitized = nh3.clean(
-        html,
-        tags=_ALLOWED_TAGS,
-        attributes=_ALLOWED_ATTRIBUTES,
-        generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
-        url_schemes=_ALLOWED_URL_SCHEMES,
-        link_rel=None,
-    )
+    if trust_mode == "untrusted":
+        sanitized = nh3.clean(
+            html,
+            tags=_pass_through_tags(extra_tags),
+            attributes=_PASS_THROUGH_ATTRIBUTES,
+            generic_attribute_prefixes=_PASS_THROUGH_ATTRIBUTE_PREFIXES,
+            url_schemes=_ALLOWED_URL_SCHEMES,
+            link_rel=None,
+        )
+    else:
+        sanitized = nh3.clean(
+            html,
+            tags=_ALLOWED_TAGS | _pass_through_tags(extra_tags),
+            attributes=_ALLOWED_ATTRIBUTES,
+            generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
+            url_schemes=_ALLOWED_URL_SCHEMES,
+            link_rel=None,
+        )
     diagnostics: list[Diagnostic] = []
     if sanitized != html:
         diagnostics.append(

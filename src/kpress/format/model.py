@@ -131,6 +131,12 @@ class RenderOptions:
     show_frontmatter: bool = True
     math: MathMode = "auto"
     diagrams: DiagramMode = "auto"
+    # Whitelist of additional pass-through HTML/XML tag names the host activates
+    # (config: format.html.extra_tags). Unioned with the always-on <span>/<div> defaults
+    # and admitted across every sanitizing trust mode, carrying class/data-* (never
+    # style/on*/unsafe URLs). See kpress.contract.PUBLIC_PASS_THROUGH_TAGS. Empty by
+    # default: with no extra tags, output is unchanged.
+    extra_tags: tuple[str, ...] = ()
     printable: bool = True
     # Widget presence + opaque config map (the extension model's layer D; see
     # kpress-design.md "Extension and Injection Model"). Keys are widget ids;

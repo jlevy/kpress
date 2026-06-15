@@ -225,3 +225,7 @@ When a check below becomes a deterministic test, delete it from the manual list 
   the **code-copy icon** (icon present, success/error state).
 - A headless-Chromium visual/smoke check (opt-in, never required CI) for theme,
   dark-mode-fills-viewport, and tooltip background — the highest-value [Human] items.
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

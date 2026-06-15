@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from html import escape
 from html.parser import HTMLParser
 from typing import Any, Literal, cast
@@ -34,7 +34,6 @@ from kpress.format.model import (
 )
 from kpress.format.sanitize import sanitize_generated_svg, sanitize_raw_html
 
-_RAW_HTML_LINE_RE = re.compile(r"^(\s*)<([A-Za-z][A-Za-z0-9-]*)(\s|>|/>)")
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 # Optional leading sign and major currency symbol; _is_numeric_cell_text strips
 # whitespace first, so "$ 12.45" is matched as "$12.45".
@@ -381,7 +380,12 @@ def _mark_standalone_image_figures(tokens: list[Token]) -> None:
 
 
 def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode) -> MarkdownIt:
-    md = MarkdownIt("js-default", {"html": trust_mode != "untrusted"})
+    # Raw HTML always reaches the renderer; the sanitizing modes (sanitized-local,
+    # public-static, untrusted) then run nh3 over the output as the single authority on
+    # what survives. `untrusted` uses an nh3 whitelist-only profile (only the pass-through
+    # tags), so it stays at least as strict as `public-static` while still admitting the
+    # styleable whitelist (kpress.contract.PUBLIC_PASS_THROUGH_TAGS).
+    md = MarkdownIt("js-default", {"html": True})
     md.use(tasklists_plugin, enabled=False)
     md.use(footnote_plugin)
     if math != "off":
@@ -416,16 +420,6 @@ def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode
     renderer_rules["paragraph_open"] = _render_paragraph_open
     renderer_rules["paragraph_close"] = _render_paragraph_close
     return md
-
-
-def _escape_untrusted_raw_html(markdown: str) -> str:
-    escaped_lines: list[str] = []
-    for line in markdown.splitlines():
-        if _RAW_HTML_LINE_RE.match(line):
-            escaped_lines.append(escape(line))
-        else:
-            escaped_lines.append(line)
-    return "\n".join(escaped_lines)
 
 
 def _plain_inline_text(token: Token) -> str:
@@ -956,11 +950,14 @@ def parse_markdown(
     trust_mode: TrustMode = "trusted-local",
     math: MathMode = "auto",
     diagrams: DiagramMode = "auto",
+    extra_tags: Iterable[str] | None = None,
 ) -> DocumentTree:
-    """Parse KPress Markdown into stable, KPress-owned HTML."""
+    """Parse KPress Markdown into stable, KPress-owned HTML.
 
-    if trust_mode == "untrusted":
-        markdown = _escape_untrusted_raw_html(markdown)
+    ``extra_tags`` is the host whitelist of additional pass-through HTML tags, unioned
+    with the always-on ``<span>``/``<div>`` defaults and admitted under every sanitizing
+    trust mode (see ``kpress.format.sanitize.sanitize_raw_html``).
+    """
 
     md = _markdown_it(trust_mode=trust_mode, diagrams=diagrams, math=math)
     env: dict[str, Any] = {}
@@ -975,8 +972,8 @@ def parse_markdown(
     diagnostics: list[Diagnostic] = []
     diagnostics.extend(_math_diagnostics(env))
     diagnostics.extend(_footnote_diagnostics(tokens, env))
-    if trust_mode in {"public-static", "sanitized-local"}:
-        html, html_diagnostics = sanitize_raw_html(html, trust_mode)
+    if trust_mode in {"public-static", "sanitized-local", "untrusted"}:
+        html, html_diagnostics = sanitize_raw_html(html, trust_mode, extra_tags=extra_tags)
         diagnostics.extend(html_diagnostics)
     diagnostics.extend(_broken_anchor_diagnostics(html))
 
