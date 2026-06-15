@@ -7,7 +7,7 @@ author: Codex under Levy
 
 **Status:** Draft design contract
 
-**Last Updated:** 2026-05-18
+**Last Updated:** 2026-06-15
 
 ## Purpose
 
@@ -80,6 +80,16 @@ These govern what belongs in KPress and how it is built.
      public layers exactly as a third-party one would be.
      If a host couldn’t build it outside KPress, the built-in may not use a private path
      either. This is the acceptance test that an abstraction is not too narrow.
+
+6. **Plugin contracts are text and files, not an AST.** Content features extend KPress as
+   *plugins* — a files-to-files Markdown→Markdown preprocessing step (syntax sugar that
+   desugars to admitted custom tags) and/or front-end CSS/JS over those tags. The
+   preprocessing boundary is plain Markdown text and file paths, never a KPress parse
+   tree, token stream, or language-bound callback, so a plugin can be written in any
+   language and does not break when KPress internals change. A tree-shaped surface is used
+   only *inside* a preprocessor (for robust block boundaries) and as the in-process
+   `transform_tree` build convenience — never as the cross-process contract. See
+   [Plugins and the Document Dialect](#plugins-and-the-document-dialect).
 
 ## Current Implementation Status
 
@@ -691,6 +701,120 @@ Two further pieces of the page HTML are contract (see
   mount keeps the `kpress-settings` class/id so its existing styles and inset tokens
   apply unchanged.
 
+## Plugins and the Document Dialect
+
+KPress is a configurable tag-admission and styling mechanism (the
+[HTML Contract](#html-contract)) plus a front-end extension model (the
+[Extension and Injection Model](#extension-and-injection-model)). Together these are the
+substrate for **plugins** — how a host adds content features without editing KPress. KPress
+assigns no meaning to a plugin’s tags; it admits, styles, and binds them. It documents
+*conventions*, not a closed HTML dialect.
+
+### What a plugin is
+
+A plugin is one or both of:
+
+- **A preprocessing step** — a files-to-files Markdown→Markdown rewrite that desugars a
+  surface syntax (emoji glyphs, shortcodes, IDs) into custom tags KPress admits. It is
+  *syntax sugar*: readable authoring maps to custom HTML. The host runs it before KPress
+  assembly; KPress then renders the result with every built-in feature (footnotes, math,
+  code highlighting, TOC, postprocess enrichment) intact, including inside the custom-tag
+  blocks.
+- **A front-end plugin** — CSS and/or JS over those tags, delivered through the injection
+  seams (the `head_extra_html` slot, static passthrough, and the behavior/widget
+  registries). CSS targets the admitted tags; JS registers as a behavior or widget exactly
+  as a built-in does (the dogfood rule).
+
+A plugin may be both halves or just one: a pure preprocessor whose tags need only CSS, or a
+pure front-end decorator over markup KPress already emits.
+
+### The document model
+
+A KPress document is a body fragment — Markdown blended with an admitted set of custom
+HTML/XML tags, one mixed vocabulary in which the standard tags Markdown compiles to and a
+plugin’s custom hyphenated tags ride through under the same sanitizer policy. A block-level
+custom tag surrounded by blank lines opens an HTML block whose inner content re-parses as
+Markdown (standard CommonMark behavior), so links, math, and footnotes render inside it; an
+inline custom tag wraps inline content. Title and metadata travel as frontmatter, never
+guessed from the body. A plugin’s two halves meet through sidecar artifacts: the
+preprocessor emits JSON the front-end reads through the page model’s namespaced `data` key.
+
+### The plugin boundary: text and files, not an AST
+
+The preprocessing contract is plain Markdown text and file paths. KPress exposes no parser
+hook, token API, or language-bound callback at the preprocessing layer: a plugin reads
+Markdown files and writes Markdown files, so it can be written in any language and never
+breaks when KPress internals change. This is the consistent lesson of the build-system
+ecosystem — bundlers and Markdown frameworks that kept their native parse tree internal and
+contracted on strings and paths stayed stable, while making a tree the contract (a versioned
+AST schema) forces a host/plugin compatibility matrix and serialization cost. KPress goes
+one step further and has no tree schema to version at all: its dialect is restricted HTML
+plus JSON sidecars, which change only when HTML itself does. The files boundary is practical
+here because KPress documents are coarse-grained — a handful of large documents, not
+thousands of modules — so per-file subprocess cost is negligible. That granularity is a
+caveat to record, not a universal claim.
+
+A tree-shaped surface is appropriate only *inside* a preprocessor — using a document-model
+library to find exact block boundaries, then splicing custom tags back into the source at
+those offsets so the output is byte-identical except at the rewritten blocks — and as the
+in-process `transform_tree` build convenience over the `DocumentTree` dataclass. Both use a
+tree internally; neither is a cross-process or cross-language contract, and
+`transform_tree`’s schema evolves with KPress releases.
+
+### Conventions, not a closed dialect
+
+KPress documents the conventions; the tag vocabularies are the plugins’ business.
+
+- **Prefixes.** A plugin claims a short tag prefix (such as `x-…`) and declares its tags in
+  the admission config; data payloads follow a matching `data-…` convention. The `k-*` tag
+  prefix and the `kpress-*` class/data/id prefix are reserved for KPress’s own use by
+  convention, so plugins do not squat them — a governance signal, not a hard-coded list.
+- **Attributes.** Plugin tags carry clean inert attributes — semantic names (`kind`,
+  `term`), `class`, `data-*`, `id`, ARIA. `data-*` is the posture-portable channel (it
+  survives untrusted sanitization); `on*`, `style`, and unsafe-URL attributes are always
+  stripped.
+- **No pinned vocabulary.** KPress does not freeze a closed dialect. Codifying one is
+  deliberately deferred: pinning today’s tags would lock current shape into a contract
+  before the design has settled. The conventions are the contract.
+
+### Graduated complexity
+
+Content extension follows the same simple-to-complex ladder as the
+[Extension and Injection Model](#extension-and-injection-model), and like it requires no
+KPress edit at any rung:
+
+- **Nothing declared** — KPress is Markdown→HTML; the `div`/`span` floor is the only
+  pass-through.
+- **Declare tags** — one config line (`format.html.extra_tags`) admits custom tags, so an
+  author can hand-write `<x-callout kind="warning">…</x-callout>` and style it with host
+  CSS. No preprocessor needed.
+- **Add a preprocessor** — a files-to-files step desugars a surface syntax into those tags;
+  companion CSS/JS styles or binds them. Adding or renaming a feature is a ruleset and CSS
+  edit.
+- **Add behavior** — register a front-end behavior or widget over the tags through the
+  client registries, exactly as a built-in does.
+
+### Examples
+
+Each illustrates the model — a surface syntax, the tags it desugars to, and the styling or
+behavior over them:
+
+- **Structural devices** (preprocessing + CSS). A leading glyph on a Markdown block gives it
+  a meaning or format; a data ruleset maps glyph→kind. The preprocessor walks base blocks
+  (paragraphs, list items, whole blockquotes), wraps a matched block in
+  `<x-device data-x-kind="…">`, and splices it back at the block’s source span; host CSS
+  styles each kind (callout, definition, alignment, hidden). Adding a device is a config
+  edit — zero KPress changes.
+- **Inline badges** (preprocessing + CSS). A shortcode such as `:new:` rewrites to an inline
+  `<x-badge>` — the degenerate case of the same engine, CSS only.
+- **Definitions and glossaries** (preprocessing + CSS, optional front-end). A glyph marks a
+  definition block; the preprocessor wraps it and emits a term sidecar. Basic CSS styles the
+  block; an optional behavior reads the sidecar through the page-model `data` key to add term
+  tooltips elsewhere.
+- **Table decorators** (front-end only). KPress emits neutral enrichment attributes on table
+  cells; a client decorator consumes them to sort or chart, with no preprocessing and no
+  KPress-specific code. KPress emits the hooks and never consumes them.
+
 ## Design System
 
 KPress is the lower, reusable design layer and the **single source of truth for its own
@@ -960,7 +1084,6 @@ The gear’s two host seams stay orthogonal:
   (Use the literal half-measure rather than `var(--kpress-measure)` when setting this on
   `:root`: `--kpress-measure` lives on the document scope, not `:root`, so a `var()`
   reference there resolves to nothing and voids the inset.)
-  ojoshe.com uses exactly this.
 
 The standalone scroller `.kpress-page-main` carries the document `background`/`color`
 and the document tokens, so the whole window is themed.
