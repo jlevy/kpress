@@ -36,7 +36,10 @@ Architecture and the public contract live in [`kpress-design.md`](kpress-design.
   with plain inline titles; broken-anchor diagnostics; a single leading H1 is excluded
   from the TOC.
 - **Raw HTML trust modes.** Trusted-local, sanitized-local, public-static, and untrusted
-  modes with a defined safe/unsafe policy and diagnostics.
+  modes with a defined safe/unsafe policy and diagnostics. Every sanitizing mode admits a
+  configurable pass-through tag allowlist (`<span>`/`<div>` always, plus
+  `format.html.extra_tags`) carrying `class`/`data-*`; `style`, `on*` handlers, and unsafe
+  URLs are always stripped.
 - **Footnotes.** Definitions, references, backrefs, tooltip-ready anchors, sequential
   superscript numbering (markers show `1, 2, 3 …` matching the footnotes section
   regardless of the authored label), missing-reference and unused-definition

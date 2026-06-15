@@ -97,3 +97,7 @@ Run pprose as `pprose <command>` if on PATH, else `uvx pprose@0.1.0 <command>`
 (zero-install via uv).
 
 <!-- END PPROSE INTEGRATION -->
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->
