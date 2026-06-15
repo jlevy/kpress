@@ -402,11 +402,11 @@ def test_format_html_extra_tags_parses_and_defaults_empty(tmp_path: Path) -> Non
     config = tmp_path / "kpress.yml"
     config.write_text(
         "sources:\n  - path: .\n"
-        "format:\n  html:\n    extra_tags: [st-device, st-caution, st-device]\n",
+        "format:\n  html:\n    extra_tags: [x-callout, x-aside, x-callout]\n",
         encoding="utf-8",
     )
     # De-duplicated, order preserved.
-    assert load_config(config).format.extra_tags == ("st-device", "st-caution")
+    assert load_config(config).format.extra_tags == ("x-callout", "x-aside")
 
 
 def test_format_html_extra_tags_invalid_name_raises(tmp_path: Path) -> None:
@@ -428,7 +428,7 @@ def test_format_html_unknown_key_raises(tmp_path: Path) -> None:
 
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "sources:\n  - path: .\nformat:\n  html:\n    extra_tagz: [st-device]\n",
+        "sources:\n  - path: .\nformat:\n  html:\n    extra_tagz: [x-callout]\n",
         encoding="utf-8",
     )
     with pytest.raises(KPressPublishError, match="format.html"):

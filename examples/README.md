@@ -112,7 +112,7 @@ published by constructing a typed `KPressConfig` in Python and calling
 `build_site(config)` — no `kpress.yml`, no YAML strings, chrome slots as plain
 strings, widget selection as a dict. A Python host calling a Python library
 writes Python; the YAML file is the veneer for file-based setups, not the API.
-(ojoshe.com's production builder is this same pattern.)
+(Production site builders follow this same pattern.)
 
 ## Extension-model tour (static-site)
 

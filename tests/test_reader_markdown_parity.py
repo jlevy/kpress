@@ -438,37 +438,37 @@ def test_raw_html_trust_modes_preserve_safe_html_and_strip_unsafe_html() -> None
 
 
 def test_whitelisted_tag_survives_with_class_and_data_across_postures() -> None:
-    source = '<st-device class="kind-x" data-st-kind="x">D</st-device>'
+    source = '<x-callout class="variant" data-variant="x">D</x-callout>'
     for mode in ("public-static", "untrusted"):
         tree = parse_markdown(
             source,
             title="Whitelist",
             trust_mode=mode,  # pyright: ignore[reportArgumentType]
-            extra_tags=("st-device",),
+            extra_tags=("x-callout",),
         )
-        assert '<st-device class="kind-x" data-st-kind="x">D</st-device>' in tree.html
+        assert '<x-callout class="variant" data-variant="x">D</x-callout>' in tree.html
 
 
 def test_non_whitelisted_tag_still_stripped_with_active_whitelist() -> None:
     for mode in ("public-static", "untrusted"):
         tree = parse_markdown(
-            "<st-unknown>kept</st-unknown>",
+            "<x-unknown>kept</x-unknown>",
             title="Whitelist",
             trust_mode=mode,  # pyright: ignore[reportArgumentType]
-            extra_tags=("st-device",),
+            extra_tags=("x-callout",),
         )
-        assert "<st-unknown" not in tree.html
+        assert "<x-unknown" not in tree.html
         assert "kept" in tree.html
 
 
 def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
-    source = '<st-device class="ok" data-k="v" style="color:red" onclick="bad()">D</st-device>'
+    source = '<x-callout class="ok" data-k="v" style="color:red" onclick="bad()">D</x-callout>'
     for mode in ("public-static", "untrusted"):
         tree = parse_markdown(
             source,
             title="Whitelist",
             trust_mode=mode,  # pyright: ignore[reportArgumentType]
-            extra_tags=("st-device",),
+            extra_tags=("x-callout",),
         )
         assert 'class="ok"' in tree.html
         assert 'data-k="v"' in tree.html
@@ -479,14 +479,14 @@ def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
 def test_whitelisted_block_renders_inner_markdown() -> None:
     # A block-level whitelisted tag with blank lines around it lets the Markdown parser
     # process the inner content (standard HTML-block behavior): the inner link renders.
-    source = "<st-device data-st-kind=note>\n\n[link](https://example.com)\n\n</st-device>"
+    source = "<x-callout data-variant=note>\n\n[link](https://example.com)\n\n</x-callout>"
     tree = parse_markdown(
         source,
         title="Whitelist",
         trust_mode="public-static",
-        extra_tags=("st-device",),
+        extra_tags=("x-callout",),
     )
-    assert "<st-device" in tree.html
+    assert "<x-callout" in tree.html
     assert 'href="https://example.com"' in tree.html
 
 
@@ -503,14 +503,14 @@ def test_whitelisted_tag_reaches_static_page_output() -> None:
     # Integration: the static publish path renders public-static; a whitelisted tag with
     # class/data-* reaches the full page output with its attributes intact.
     document = DocumentInput(
-        title="Devices",
-        source_text='<st-device class="kind-x" data-st-kind="x">Body</st-device>',
-        body_markdown='<st-device class="kind-x" data-st-kind="x">Body</st-device>',
-        source_path="devices.md",
+        title="Custom tag",
+        source_text='<x-callout class="variant" data-variant="x">Body</x-callout>',
+        body_markdown='<x-callout class="variant" data-variant="x">Body</x-callout>',
+        source_path="custom.md",
         trust_mode="public-static",
     )
-    page = render_page(document, RenderOptions(extra_tags=("st-device",)))
-    assert '<st-device class="kind-x" data-st-kind="x">Body</st-device>' in page.html
+    page = render_page(document, RenderOptions(extra_tags=("x-callout",)))
+    assert '<x-callout class="variant" data-variant="x">Body</x-callout>' in page.html
 
 
 def test_public_static_sanitizer_blocks_adversarial_html_bypasses() -> None:

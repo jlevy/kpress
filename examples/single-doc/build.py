@@ -3,8 +3,8 @@
 This is the exemplary *programmatic* KPress integration: no ``kpress.yml``, no
 YAML strings, no slot files. The host constructs a typed :class:`KPressConfig`
 in Python — chrome slots are plain strings, widget selection is a dict — and
-calls :func:`build_site` with it. (ojoshe.com's builder is the same pattern in
-production.)
+calls :func:`build_site` with it. (Production site builders follow the same
+pattern.)
 
 The only host-side packaging step is staging: the source document is copied to
 ``index.md`` (so it publishes at the site root) with a frontmatter title
