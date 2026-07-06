@@ -71,7 +71,7 @@ Project status and process:
 KPress is a young package and evolves by **hard cuts**: API and contract changes land
 directly, with no deprecation shims and no backward-compatibility layers.
 A change is acceptable when an out-of-date caller fails loudly with a clear error
-message — never silently.
+message, never silently.
 The supported surface is pinned in `kpress.contract` (`PUBLIC_*` names) and enforced by
 tests; changing a public name means updating the contract, docs, tests, and goldens in
 the same patch, and release/PR notes are the migration guide.

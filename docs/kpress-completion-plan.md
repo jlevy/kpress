@@ -129,9 +129,9 @@ These beads can be completed by an automated agent right now.
 
 ### Phase 1: Production Publishing Hardening
 
-**`orig-pufr` (production asset graph and CDN sealing)** — CLOSED.
+**`orig-pufr` (production asset graph and CDN sealing):** CLOSED.
 
-**`orig-gsre` (production optimizer and precompressed output)** — CLOSED.
+**`orig-gsre` (production optimizer and precompressed output):** CLOSED.
 
 The optimizer is two explicit modes only: `none` (default, no Node) and `full`
 (`html-minifier-next@6.2.3` via `npx --package`; hard error if absent; no fallback; no
@@ -209,7 +209,7 @@ criterion falls under MANUAL-BROWSER and cannot be completed by an agent.
 
 ### Phase 3: Standalone Cleanup
 
-**`orig-kf28` (genericize host references in KPress docs)** — CLOSED.
+**`orig-kf28` (genericize host references in KPress docs):** CLOSED.
 
 **6. `orig-hoq7` (shrink host markdown CSS)**
 

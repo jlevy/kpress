@@ -24,7 +24,7 @@ the dependency graph and the host↔KPress contract are clean and test-enforced 
 (`orig-0xa1`), and final release metadata (`orig-ljov`). Channel decided 2026-06-05:
 **PyPI** (npm is out of scope).
 
-**2026-06-06 — kpress goes first (epic `orig-iwz6`).** kpress is pulled out first as a
+**2026-06-06: kpress goes first (epic `orig-iwz6`).** kpress is pulled out first as a
 standalone, highly reusable, clean document renderer with **zero table-plugin
 dependency**, consumable by static-site builders, the host app, and any table-plugin
 user. The “pull-out / OSS-ready” sign-off is gate bead `orig-z5lf` (depends on parity
@@ -62,8 +62,8 @@ Trailing tech debt and spec confusion to retire, highest-leverage first.
    The overlay/resize/tooltip/video-popover viewport seam landed under `orig-2gjm`
    (closed): `viewport.js` is packaged as a transitive ESM asset and the floating UI
    shares viewport context.
-   The footnote/internal-link tooltip wiring on host-injected fragments — a concrete
-   instance of the same drift — is fixed under `orig-16rg` (commit `c41c611a2`,
+   The footnote/internal-link tooltip wiring on host-injected fragments—a concrete
+   instance of the same drift—is fixed under `orig-16rg` (commit `c41c611a2`,
    MutationObserver + idempotent wiring; pending final visual confirmation in the host
    app). Confirm `overlay.js`/`tooltips.js`/ `video-popover.js` are fully migrated before
    deleting the host fallback.
@@ -75,10 +75,10 @@ design layer for document visualization.
 The gear settings menu, body-level overlay token-scoping, and footnote/title/font fixes
 landed in `b2cd4ec4d`; icons moved to a documented Lucide set
 ([`kpress-icons.md`](kpress-icons.md)) and now live as one SVG sprite
-(`format/static/icons/icons.svg`) referenced via `<use>` from both server and client —
+(`format/static/icons/icons.svg`) referenced via `<use>` from both server and client:
 no SVG geometry in Python or JS. The code-copy/video-close affordances are icon-ized.
-Remaining design-system work — the standalone single-scroll-context fix, numbered
-footnote superscripts, and host-app icon/button alignment — is tracked in the 2026-06-04
+Remaining design-system work—the standalone single-scroll-context fix, numbered
+footnote superscripts, and host-app icon/button alignment—is tracked in the 2026-06-04
 design-system consolidation plan spec (original monorepo).
 Manual browser e2e validation is codified in
 [docs/kpress-e2e-testing.runbook.md](docs/kpress-e2e-testing.runbook.md).
@@ -113,7 +113,7 @@ Manual browser e2e validation is codified in
 | [`kpress-icons.md`](kpress-icons.md) | Icon set contract + origins (Lucide) | Current |
 | [`docs/kpress-e2e-testing.runbook.md`](docs/kpress-e2e-testing.runbook.md) | Manual browser e2e validation runbook | Current |
 | Design-system consolidation plan spec (2026-06-04, original monorepo) | KPress + host-app design-system consolidation plan | Active |
-| MVP stability + doctor plan spec (2026-05-18, original monorepo) | MVP stability + doctor plan | **Done** (moved to `done/` 2026-06-01); the reader-parity ledger it carried is now historical — see this TODO’s Cleanup item 1 for the single live source |
+| MVP stability + doctor plan spec (2026-05-18, original monorepo) | MVP stability + doctor plan | **Done** (moved to `done/` 2026-06-01); the reader-parity ledger it carried is now historical: see this TODO’s Cleanup item 1 for the single live source |
 | Package-and-publisher plan spec (2026-05-16, original monorepo) | Main package/static publisher plan (active umbrella) | Active; foundation + doctor + sealing-removal + host-neutral TOC shipped; full reader parity (manual visual/PDF acceptance) + the host app’s single-renderer cutover remain open |
 | Static-document-publishing research brief (2026-05-15, original monorepo) | Static publishing and optimizer research | Complete research brief; informs the open optimizer/sealing work |
 | Small-web-app packaging research brief (2026-05-05, original monorepo) | JavaScript/TypeScript/browser-tooling research | Updated for source-first ESM, optional TypeScript emit, and KPress-style static publishing |
@@ -201,7 +201,7 @@ Implemented now:
 
 Not implemented yet:
 
-- **Math rendering — code-side migrated to the simplified `off`/lazy-`auto` contract
+- **Math rendering: code-side migrated to the simplified `off`/lazy-`auto` contract
   with vendored sealed KaTeX 0.16.45 as the only active renderer; MathML is the
   semantic/accessibility output, not a separate public backend.** No reference system
   (TextPress/Kash or the legacy host reader) renders math, so this is net-new work
@@ -221,7 +221,7 @@ Not implemented yet:
   policy, response-metadata cache invalidation, JS/import-map graph discovery, and
   manual no-network browser review
 - truly self-contained single-file output (one HTML, no siblings, opens over `file://`)
-  is **deferred** — the artifact-size dynamics make it a poor default.
+  is **deferred**: the artifact-size dynamics make it a poor default.
   For “share a rendered doc by link”, prefer Static build prod deployed to a CDN.
   Concise revisit notes (effort tiers, recommended lever shape) live in
   `kpress-design.md` under “Self-contained single file: deferred”.
@@ -241,9 +241,9 @@ Not implemented yet:
 | CSS and document JavaScript | Partial | Kash/TextPress reader tokens, semantic CSS, pre-paint theme bootstrap, TOC behavior, YouTube video popovers, tabs, and core package helpers are source-adapted into native CSS/ESM and pass Biome/`tsc --checkJs` plus browserless DOM tests. TOC code-side parity now covers disclosure, scroll lock/restore, scrollbar compensation, iOS overscroll guards, smooth heading scroll, active-link tracking, and progressive toggle visibility. Video code-side parity now covers no-network placeholders for raw YouTube embeds in rendered/static HTML. Actual-browser visual/interaction confirmation remains open. |
 | Tailwind migration | Partial | Tailwind runtime is not in KPress output; active utility inventory and no-runtime tests exist. Visual equivalence and every source-template behavior still need acceptance. |
 | Static publisher | Partial | Config, discovery, routes, output tree, manifests, site files, explicit asset/strict/optimizer/precompression axes, integrated external sealing, package CSS/JS inline mode, optimizer wiring, goldens, full-corpus dynamic-vs-sealed equivalence harness, and readable-vs-sealed output-tree goldens exist. Route/metadata/cache/browser-review maturity remains open. |
-| Package/local asset handling | Partial | Package assets and PT Serif/Source Sans font files are copied/hashed/manifested; package CSS/JS can be linked, hashed, optimized, or inlined. Document-local refs (`./image.png` etc.) are emitted into the rendered HTML verbatim in v1 — the deploy layer places the file. Document-local asset *copying* returns with the v2 sealing roadmap. |
-| External/CDN asset sealing | **Deferred to v2** | Sealing the document-local and external-URL asset graph (fetch + integrity-pin + HTML/CSS/JS URL rewrite + offline-tree verify) is on the v2 roadmap. v1 leaves document-local and external refs in the rendered HTML verbatim; the deploy layer (CDN, S3, static-host platform) owns delivery and caching. Regex-driven Python rewriting over arbitrary HTML/CSS/JS was the wrong abstraction — v2 returns via a real parser or a JS bundler (Vite/Parcel/esbuild/Bun). See `kpress-design.md` § “Asset sealing: deferred for v1” and the v1-removal plan at `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md`. |
-| Inline asset mode | Partial; full single-file deferred | Package CSS/JS inline mode is implemented and manifested; package fonts remain copied with static-safe URLs. Local/external CSS/JS are still sealed to files rather than inlined. Truly self-contained single-file output is deferred — for “share by link” use cases, point at a CDN-hosted asset bundle and publish via Static build prod. Revisit plan and effort tiers in `kpress-design.md` under “Self-contained single file: deferred”; tracked by `orig-547y`. |
+| Package/local asset handling | Partial | Package assets and PT Serif/Source Sans font files are copied/hashed/manifested; package CSS/JS can be linked, hashed, optimized, or inlined. Document-local refs (`./image.png` etc.) are emitted into the rendered HTML verbatim in v1. The deploy layer places the file. Document-local asset *copying* returns with the v2 sealing roadmap. |
+| External/CDN asset sealing | **Deferred to v2** | Sealing the document-local and external-URL asset graph (fetch + integrity-pin + HTML/CSS/JS URL rewrite + offline-tree verify) is on the v2 roadmap. v1 leaves document-local and external refs in the rendered HTML verbatim; the deploy layer (CDN, S3, static-host platform) owns delivery and caching. Regex-driven Python rewriting over arbitrary HTML/CSS/JS was the wrong abstraction. v2 returns via a real parser or a JS bundler (Vite/Parcel/esbuild/Bun). See `kpress-design.md` § “Asset sealing: deferred for v1” and the v1-removal plan at `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md`. |
+| Inline asset mode | Partial; full single-file deferred | Package CSS/JS inline mode is implemented and manifested; package fonts remain copied with static-safe URLs. Local/external CSS/JS are still sealed to files rather than inlined. Truly self-contained single-file output is deferred: for “share by link” use cases, point at a CDN-hosted asset bundle and publish via Static build prod. Revisit plan and effort tiers in `kpress-design.md` under “Self-contained single file: deferred”; tracked by `orig-547y`. |
 | Optimizer and compression | Done for current contract; preflight open | Two explicit modes only: `none` (default, zero-dep, content unchanged, no Node needed) and `full` (`html-minifier-next@6.2.3` installed via locked `npm ci` cache at `~/.cache/kpress/npm/`; file-locked for parallel builds; hard error if absent; no fallback; no built-in pseudo-minifier). Precompression is explicit, off by default, orthogonal: `gzip` (stdlib) and/or `br` (`kpress[optimize]`). Manifests record `optimizer_backend`, `original_size`, `compression`, `source_path` per file plus build-level metadata. Locked dependency layer is done (`orig-zc7g`); remaining hardening is build-start preflight before output writes (`orig-owjr`). |
 | Local workflows | Partial | CLI/API paths exist. TextPress-compatible golden tests for paired outputs, reports, `--show`, `--rerun`, `--refetch`, and missing extras need more coverage. |
 | PDF | Partial | Deterministic minimal PDF output remains available for smoke tests. Optional `backend="browser"` now runs a Playwright print pipeline through the `kpress[pdf]` extra, uses the rendered KPress page/print CSS, and is covered by fake-adapter contract tests. Real Chromium installation, fixture PDFs, cache/report metadata, and manual visual/PDF acceptance review remain open. |
@@ -433,8 +433,8 @@ Execute the finish work in this order:
   cache invalidation, JS/import-map graph discovery, broader diagnostics, and non-HTML
   asset rewrite fixtures.
 - Truly self-contained single-file output (one HTML, no siblings, opens over `file://`)
-  is **deferred**. Artifact-size dynamics — reader fonts alone add ~250 KB after base64;
-  KaTeX adds ~700 KB; document images push into MB quickly — make inline a poor default
+  is **deferred**. Artifact-size dynamics—reader fonts alone add ~250 KB after base64;
+  KaTeX adds ~700 KB; document images push into MB quickly—make inline a poor default
   for most documents. For “share a rendered doc by link”, prefer Static build prod
   deployed to a CDN-hosted asset bundle.
   Revisit plan with effort tiers is in `kpress-design.md` under “Self-contained single
