@@ -36,27 +36,25 @@ def test_svg_camelcase_restore_skips_text_content() -> None:
 
 def test_span_and_div_pass_through_by_default() -> None:
     html = '<div class="wrap" data-x="1"><span class="hl" data-y="2">hi</span></div>'
-    for mode in ("public-static", "sanitized-local", "untrusted"):
+    for mode in ("public-static", "sanitized-local"):
         out, _ = sanitize_raw_html(html, mode)  # pyright: ignore[reportArgumentType]
         assert '<div class="wrap" data-x="1">' in out
         assert '<span class="hl" data-y="2">' in out
 
 
-def test_extra_tags_survive_under_public_static_and_untrusted() -> None:
+def test_extra_tags_survive_under_sanitizing_modes() -> None:
     html = '<x-callout class="variant" data-variant="x">D</x-callout>'
-    for mode in ("public-static", "untrusted"):
+    for mode in ("public-static", "sanitized-local"):
         out, _ = sanitize_raw_html(html, mode, extra_tags=["x-callout"])  # pyright: ignore[reportArgumentType]
         assert out == '<x-callout class="variant" data-variant="x">D</x-callout>'
 
 
 def test_non_whitelisted_tag_is_stripped() -> None:
     html = "<x-callout>kept</x-callout>"
-    public, _ = sanitize_raw_html(html, "public-static")
-    untrusted, _ = sanitize_raw_html(html, "untrusted")
-    assert "<x-callout" not in public
-    assert "<x-callout" not in untrusted
-    assert "kept" in public
-    assert "kept" in untrusted
+    for mode in ("public-static", "sanitized-local"):
+        out, _ = sanitize_raw_html(html, mode)  # pyright: ignore[reportArgumentType]
+        assert "<x-callout" not in out
+        assert "kept" in out
 
 
 def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
@@ -64,7 +62,7 @@ def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
         '<x-callout class="ok" data-k="v" style="color:red" onclick="bad()" '
         'href="javascript:alert(1)">D</x-callout>'
     )
-    for mode in ("public-static", "untrusted"):
+    for mode in ("public-static", "sanitized-local"):
         out, _ = sanitize_raw_html(html, mode, extra_tags=["x-callout"])  # pyright: ignore[reportArgumentType]
         assert 'class="ok"' in out
         assert 'data-k="v"' in out
@@ -102,17 +100,6 @@ def test_media_embedding_tags_are_forbidden_extra_tags() -> None:
     for bad in ("video", "audio", "source", "track", "picture"):
         with pytest.raises(KPressInvalidRequestError):
             sanitize_raw_html("<p>x</p>", "public-static", extra_tags=[bad])
-
-
-def test_untrusted_is_whitelist_only_and_strips_known_html_tags() -> None:
-    # Under untrusted, the broad public-static allow-set does NOT apply: only the
-    # pass-through whitelist survives, so an otherwise-safe <em> is stripped.
-    html = "<em>emph</em><x-callout>dev</x-callout>"
-    public, _ = sanitize_raw_html(html, "public-static", extra_tags=["x-callout"])
-    untrusted, _ = sanitize_raw_html(html, "untrusted", extra_tags=["x-callout"])
-    assert "<em>emph</em>" in public
-    assert "<em" not in untrusted
-    assert "<x-callout>dev</x-callout>" in untrusted
 
 
 def test_trusted_local_skips_sanitization() -> None:

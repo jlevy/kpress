@@ -414,32 +414,17 @@ def test_raw_html_trust_modes_preserve_safe_html_and_strip_unsafe_html() -> None
         title="Public",
         trust_mode="public-static",
     )
-    untrusted = parse_markdown(
-        '<section onclick="bad()"><em>Safe</em><script>alert("x")</script></section>',
-        title="Untrusted",
-        trust_mode="untrusted",
-    )
-
     assert 'onclick="bad()"' in trusted.html
     assert "<script>" in trusted.html
     assert "<em>Safe</em>" in public.html
     assert "onclick" not in public.html
     assert "<script>" not in public.html
     assert public.diagnostics[0].type == "html_sanitized"
-    # Untrusted now runs the nh3 whitelist-only sanitizer (only the pass-through tags
-    # survive) rather than escaping raw HTML. Non-whitelisted tags (<section>, <em>) are
-    # stripped — their text content is kept — and <script>/event handlers are removed.
-    assert "<section" not in untrusted.html
-    assert "<em" not in untrusted.html
-    assert "<script>" not in untrusted.html
-    assert "onclick" not in untrusted.html
-    assert "Safe" in untrusted.html
-    assert untrusted.diagnostics[0].type == "html_sanitized"
 
 
 def test_whitelisted_tag_survives_with_class_and_data_across_postures() -> None:
     source = '<x-callout class="variant" data-variant="x">D</x-callout>'
-    for mode in ("public-static", "untrusted"):
+    for mode in ("public-static", "sanitized-local"):
         tree = parse_markdown(
             source,
             title="Whitelist",
@@ -450,7 +435,7 @@ def test_whitelisted_tag_survives_with_class_and_data_across_postures() -> None:
 
 
 def test_non_whitelisted_tag_still_stripped_with_active_whitelist() -> None:
-    for mode in ("public-static", "untrusted"):
+    for mode in ("public-static", "sanitized-local"):
         tree = parse_markdown(
             "<x-unknown>kept</x-unknown>",
             title="Whitelist",
@@ -463,7 +448,7 @@ def test_non_whitelisted_tag_still_stripped_with_active_whitelist() -> None:
 
 def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
     source = '<x-callout class="ok" data-k="v" style="color:red" onclick="bad()">D</x-callout>'
-    for mode in ("public-static", "untrusted"):
+    for mode in ("public-static", "sanitized-local"):
         tree = parse_markdown(
             source,
             title="Whitelist",

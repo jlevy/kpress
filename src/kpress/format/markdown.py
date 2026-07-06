@@ -381,10 +381,8 @@ def _mark_standalone_image_figures(tokens: list[Token]) -> None:
 
 def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode) -> MarkdownIt:
     # Raw HTML always reaches the renderer; the sanitizing modes (sanitized-local,
-    # public-static, untrusted) then run nh3 over the output as the single authority on
-    # what survives. `untrusted` uses an nh3 whitelist-only profile (only the pass-through
-    # tags), so it stays at least as strict as `public-static` while still admitting the
-    # styleable whitelist (kpress.contract.PUBLIC_PASS_THROUGH_TAGS).
+    # public-static) then run nh3 over the output as the single authority on what
+    # survives (kpress.format.sanitize.sanitize_raw_html).
     md = MarkdownIt("js-default", {"html": True})
     md.use(tasklists_plugin, enabled=False)
     md.use(footnote_plugin)
@@ -972,7 +970,7 @@ def parse_markdown(
     diagnostics: list[Diagnostic] = []
     diagnostics.extend(_math_diagnostics(env))
     diagnostics.extend(_footnote_diagnostics(tokens, env))
-    if trust_mode in {"public-static", "sanitized-local", "untrusted"}:
+    if trust_mode in {"public-static", "sanitized-local"}:
         html, html_diagnostics = sanitize_raw_html(html, trust_mode, extra_tags=extra_tags)
         diagnostics.extend(html_diagnostics)
     diagnostics.extend(_broken_anchor_diagnostics(html))

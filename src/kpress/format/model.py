@@ -11,7 +11,10 @@ from kpress.errors import KPressPublishError
 from kpress.models import PrintProfile, ThemeMode
 
 DocumentProfile = PrintProfile
-TrustMode = Literal["trusted-local", "sanitized-local", "public-static", "untrusted"]
+# Trust modes: who wrote the content and where the output lands. See the
+# "Trust Modes and the Sanitization Threat Model" section of kpress-design.md
+# for the threat model and the entry-point → mode mapping.
+TrustMode = Literal["trusted-local", "sanitized-local", "public-static"]
 TocMode = Literal["off", "auto", "on"]
 MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]

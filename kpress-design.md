@@ -665,9 +665,9 @@ The contract module also declares:
   renderers); a host activates more through `format.html.extra_tags` (the
   `RenderOptions.extra_tags` equivalent), which is unioned with the defaults per render.
   Whitelisted tags reach the output untouched under **every** sanitizing trust mode
-  (`sanitized-local`, `public-static`, `untrusted`) and trivially under `trusted-local`,
-  carrying only `class` and `data-*`. `style`, `on*` handlers, and unsafe-URL attributes
-  stay sanitized even on a whitelisted tag.
+  (`sanitized-local`, `public-static`) and trivially under `trusted-local`, carrying
+  only `class` and `data-*`. `style`, `on*` handlers, and unsafe-URL attributes stay
+  sanitized even on a whitelisted tag.
   This is a styleable pass-through, never “turn sanitization off”.
   A document with no whitelisted tags renders exactly as before.
 
@@ -779,9 +779,11 @@ KPress documents the conventions; the tag vocabularies are the plugins’ busine
   The `k-*` tag prefix and the `kpress-*` class/data/id prefix are reserved for KPress’s
   own use by convention, so plugins do not squat them.
   This is a governance signal, not a hard-coded list.
-- **Attributes.** Plugin tags carry clean inert attributes: semantic names (`kind`,
-  `term`), `class`, `data-*`, `id`, ARIA. `data-*` is the posture-portable channel (it
-  survives untrusted sanitization); `on*`, `style`, and unsafe-URL attributes are always
+- **Attributes.** Plugin tags carry clean inert attributes.
+  `class` and `data-*` are the posture-portable channels — the only attributes that
+  survive the sanitizing trust modes on a whitelisted tag — so plugin payloads belong in
+  `data-*`. Anything else (semantic names such as `kind` or `term`, `id`, ARIA) survives
+  only under `trusted-local`; `on*`, `style`, and unsafe-URL attributes are always
   stripped.
 - **No pinned vocabulary.** KPress does not freeze a closed dialect.
   Codifying one is deliberately deferred: pinning today’s tags would lock current shape
@@ -1450,17 +1452,81 @@ Markdown target capability:
 - sanitizer or rejection diagnostics in public static mode
 - postprocessing for footnote backrefs and component wrappers
 
-Trust modes (every sanitizing mode admits the pass-through whitelist, `<span>`/`<div>`
-plus `format.html.extra_tags`, carrying `class`/`data-*`; see the HTML Contract above):
+### Trust Modes and the Sanitization Threat Model
 
-- `trusted-local`: local document viewing, useful raw HTML allowed (no sanitization)
-- `sanitized-local` / `public-static`: sanitize or reject unsafe HTML, scripts, iframes,
-  unsafe links, and unsealed remote URLs; safe SVG/MathML and the pass-through whitelist
-  survive
-- `untrusted`: a whitelist-only profile.
-  ONLY the pass-through tags survive and every other raw-HTML tag is stripped (its text
-  content is kept), so it is at least as strict as `public-static` while still admitting
-  the styleable whitelist
+Every render carries a **trust mode** (`DocumentInput.trust_mode`), which answers one
+question: **how much do we trust the person who wrote this Markdown?** The mode decides
+what happens to HTML in the rendered output.
+
+**Why sanitization works on the whole document.** Rendering is a two-stage pipe:
+markdown-it renders the Markdown source into one HTML string, then nh3 sanitizes that
+string as the single authority on what survives.
+The rendered string mixes two kinds of HTML — tags *generated from Markdown syntax*
+(`# Title` → `<h1>`, `*em*` → `<em>`) and *raw HTML the author typed* into the document,
+which markdown-it passes through.
+By the time nh3 runs, the two are indistinguishable, so a trust mode is a policy over
+the whole document, not just over the raw-HTML islands.
+This is deliberate: one sanitizer over the final output is far harder to bypass than
+pre-escaping heuristics applied to the source, and it means the sanitizer also covers
+HTML produced by kpress’s own pipeline (math, diagrams, component wrappers).
+
+**Threat model.** A hostile document author, absent sanitization, could use raw HTML to
+attack the *reader* or the *host page* embedding the render: script execution
+(`<script>`, `on*` event handlers, `javascript:` URLs — XSS and session theft), style
+injection (`style` attributes for overlay/clickjacking or data exfiltration via CSS),
+resource loading and navigation (`<iframe>`, `<embed>`, `<form>`, media elements
+pointing at attacker servers), DOM clobbering (content-authored `id`s shadowing elements
+the page’s scripts look up), and parser-context confusion (`<template>`, `<xmp>`,
+`<base>`, `<meta>`). The sanitizing modes strip all of these unconditionally — including
+on whitelisted pass-through tags.
+
+The modes, from most to least trusted:
+
+- **`trusted-local`** — *the author is you.* No sanitization; raw HTML (including
+  `<script>` and `style`) passes through untouched.
+  For rendering your own local files in your own tooling, where HTML in the document is
+  a feature, not a threat.
+  This is the `DocumentInput` default, used by the local format/preview workflows.
+- **`sanitized-local`** — *the author may be anyone; the output is embedded in a live
+  application.* The nh3 sanitizing profile applies (see below).
+  This is what the dynamic render API (`kpress.runtime.render_view`, the entry point
+  hosts call to render a document fragment into their own page at request time) always
+  uses: the host’s shell, scripts, and session live on the same page as the rendered
+  fragment, so the fragment must be inert.
+- **`public-static`** — *the author may be anyone; the output is published as static
+  pages.* The same nh3 sanitizing profile applies.
+  This is what static site builds (`build_site`, the `kpress.yml`-driven publisher) and
+  single-document exports (`export_document`) always use.
+
+The two sanitizing modes share one nh3 profile today: a broad, XSS-inert allow-set
+(standard formatting tags, tables, images, safe SVG/MathML) plus the pass-through
+whitelist (`<span>`/`<div>` plus `format.html.extra_tags`; see the HTML Contract above).
+Tags admitted only via the whitelist carry `class`/`data-*` and nothing else; `style`,
+`on*` handlers, and unsafe-URL schemes are always stripped everywhere; safe URL schemes
+are `http`/`https`/`mailto`/`tel`. The two mode names are kept distinct because they
+encode different *destinations* (embedded fragment vs.
+published page), which may need to diverge later — e.g. a stricter URL policy for public
+pages — without any host changing its code.
+
+Choosing a mode is mechanical:
+
+| Content author | Output destination | Mode |
+| --- | --- | --- |
+| Yourself (local files, own repo) | Your own screen/tooling | `trusted-local` |
+| Anyone else (users, third parties, LLMs) | Embedded in an app page | `sanitized-local` |
+| Anyone else (users, third parties, LLMs) | Published static site or export | `public-static` |
+
+When in doubt, use a sanitizing mode: the profile is already inert, and a false-positive
+strip is a rendering blemish, while a false-negative pass-through is an XSS.
+
+There is deliberately **no plain-text or whitelist-only mode**. An earlier `untrusted`
+mode ran a whitelist-only profile (pass-through tags only) over the whole document;
+because sanitization sees markdown-generated and author-typed tags as the same string,
+that stripped kpress’s own output (`<h1>`, `<em>`, links, lists) and reduced documents
+to bare text — strictly less useful than the sanitizing profile while adding no safety,
+since the sanitizing profile is already script-, style-, and handler-free.
+It was removed; content you do not trust takes `sanitized-local` or `public-static`
+depending on destination.
 
 Source rendering target capability:
 

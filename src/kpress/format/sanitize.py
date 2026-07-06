@@ -146,9 +146,6 @@ _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
 # them (class via _GLOBAL_ATTRIBUTES, data-* via _GENERIC_ATTRIBUTE_PREFIXES); `style`,
 # `on*`, and unsafe-URL attributes stay sanitized — see PUBLIC_PASS_THROUGH_ATTRIBUTES.
 _DEFAULT_PASS_THROUGH_TAGS = set(PUBLIC_PASS_THROUGH_TAGS)
-# Attribute policy for the untrusted whitelist-only profile (raw HTML otherwise stripped):
-# only `class` plus the `data-*` prefix ride through on a whitelisted tag.
-_PASS_THROUGH_ATTRIBUTES = {"*": set(PUBLIC_PASS_THROUGH_ATTRIBUTES)}
 _PASS_THROUGH_ATTRIBUTE_PREFIXES = set(PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES)
 
 
@@ -234,52 +231,41 @@ def sanitize_raw_html(
 ) -> tuple[str, list[Diagnostic]]:
     """Return raw HTML according to the configured trust mode.
 
-    Whitelisted pass-through tags (``<span>``/``<div>`` plus any ``extra_tags`` the host
-    activates) survive in every sanitizing mode, carrying ``class``/``data-*`` but never
-    ``style``/``on*``/unsafe URLs. ``trusted-local`` skips sanitization entirely.
-    ``untrusted`` uses a whitelist-only profile: ONLY the pass-through tags survive and
-    every other tag is stripped (its text content is kept), so untrusted stays at least
-    as strict as ``public-static`` while still admitting the styleable whitelist.
+    ``trusted-local`` skips sanitization entirely. The sanitizing modes
+    (``sanitized-local``, ``public-static``) share one nh3 profile: the XSS-inert
+    allow-set plus the pass-through whitelist (``<span>``/``<div>`` plus any
+    ``extra_tags`` the host activates). Whitelist-only tags carry ``class``/``data-*``
+    but never ``style``/``on*``/unsafe URLs.
     """
 
     if trust_mode == "trusted-local":
         return html, []
 
-    if trust_mode == "untrusted":
-        sanitized = nh3.clean(
-            html,
-            tags=_pass_through_tags(extra_tags),
-            attributes=_PASS_THROUGH_ATTRIBUTES,
-            generic_attribute_prefixes=_PASS_THROUGH_ATTRIBUTE_PREFIXES,
-            url_schemes=_ALLOWED_URL_SCHEMES,
-            link_rel=None,
-        )
-    else:
-        pass_through = _pass_through_tags(extra_tags)
-        # Tags admitted *only* via the pass-through whitelist carry the pass-through
-        # attribute policy (class/data-*) even in the broad sanitizing modes — never
-        # id/href/src from _GLOBAL_ATTRIBUTES, which the standard tags legitimately
-        # keep. This also keeps content-authored ids off whitelisted custom elements
-        # (DOM clobbering).
-        restricted = pass_through - _ALLOWED_TAGS
-        prefix_tuple = tuple(_PASS_THROUGH_ATTRIBUTE_PREFIXES)
+    pass_through = _pass_through_tags(extra_tags)
+    # Tags admitted *only* via the pass-through whitelist carry the pass-through
+    # attribute policy (class/data-*) even in the broad sanitizing modes — never
+    # id/href/src from _GLOBAL_ATTRIBUTES, which the standard tags legitimately
+    # keep. This also keeps content-authored ids off whitelisted custom elements
+    # (DOM clobbering).
+    restricted = pass_through - _ALLOWED_TAGS
+    prefix_tuple = tuple(_PASS_THROUGH_ATTRIBUTE_PREFIXES)
 
-        def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
-            if element not in restricted:
-                return value
-            if attribute in PUBLIC_PASS_THROUGH_ATTRIBUTES or attribute.startswith(prefix_tuple):
-                return value
-            return None
+    def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
+        if element not in restricted:
+            return value
+        if attribute in PUBLIC_PASS_THROUGH_ATTRIBUTES or attribute.startswith(prefix_tuple):
+            return value
+        return None
 
-        sanitized = nh3.clean(
-            html,
-            tags=_ALLOWED_TAGS | pass_through,
-            attributes=_ALLOWED_ATTRIBUTES,
-            attribute_filter=_restrict_pass_through,
-            generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
-            url_schemes=_ALLOWED_URL_SCHEMES,
-            link_rel=None,
-        )
+    sanitized = nh3.clean(
+        html,
+        tags=_ALLOWED_TAGS | pass_through,
+        attributes=_ALLOWED_ATTRIBUTES,
+        attribute_filter=_restrict_pass_through,
+        generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
+        url_schemes=_ALLOWED_URL_SCHEMES,
+        link_rel=None,
+    )
     diagnostics: list[Diagnostic] = []
     if sanitized != html:
         diagnostics.append(

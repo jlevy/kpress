@@ -156,7 +156,7 @@ def test_pass_through_tag_contract_is_honored_by_the_sanitizer() -> None:
     attr = PUBLIC_PASS_THROUGH_ATTRIBUTES[0]
     for tag in PUBLIC_PASS_THROUGH_TAGS:
         source = f'<{tag} {attr}="ok" {prefix}k="v" style="color:red" onclick="bad()">D</{tag}>'
-        for mode in ("public-static", "sanitized-local", "untrusted"):
+        for mode in ("public-static", "sanitized-local"):
             tree = kpress_format.parse_markdown(
                 source,
                 title="Contract",
