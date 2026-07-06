@@ -264,6 +264,9 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         # so they are part of the identity. Stable-stringified: dicts are not
         # hashable and key order must not matter.
         json.dumps(widgets, sort_keys=True, default=str),
+        # extra_tags change what the sanitizer admits, so renders with different
+        # whitelists must not share a cache entry.
+        tuple(request.extra_tags),
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -319,6 +322,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         include_assets=True,
         show_doc_header=request.show_doc_header,
         widgets=widgets,
+        extra_tags=tuple(request.extra_tags),
         printable=True,
         metadata=metadata,
     )
