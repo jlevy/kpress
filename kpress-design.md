@@ -736,8 +736,11 @@ plugin’s custom hyphenated tags ride through under the same sanitizer policy. 
 custom tag surrounded by blank lines opens an HTML block whose inner content re-parses as
 Markdown (standard CommonMark behavior), so links, math, and footnotes render inside it; an
 inline custom tag wraps inline content. Title and metadata travel as frontmatter, never
-guessed from the body. A plugin’s two halves meet through sidecar artifacts: the
-preprocessor emits JSON the front-end reads through the page model’s namespaced `data` key.
+guessed from the body. A plugin’s two halves are intended to meet through sidecar
+artifacts: the preprocessor emits JSON the front-end reads through a namespaced `data` key
+on the page model. That `data` key is **planned, not yet shipped** — `PUBLIC_PAGE_MODEL_KEYS`
+does not include it today, so a front-end plugin that needs sidecar data must carry it
+through its own injected markup or a separate fetch until the key lands.
 
 ### The plugin boundary: text and files, not an AST
 
@@ -809,8 +812,8 @@ behavior over them:
   `<x-badge>` — the degenerate case of the same engine, CSS only.
 - **Definitions and glossaries** (preprocessing + CSS, optional front-end). A glyph marks a
   definition block; the preprocessor wraps it and emits a term sidecar. Basic CSS styles the
-  block; an optional behavior reads the sidecar through the page-model `data` key to add term
-  tooltips elsewhere.
+  block; an optional behavior reads the sidecar (via the planned page-model `data` key, or
+  its own injected markup until then) to add term tooltips elsewhere.
 - **Table decorators** (front-end only). KPress emits neutral enrichment attributes on table
   cells; a client decorator consumes them to sort or chart, with no preprocessing and no
   KPress-specific code. KPress emits the hooks and never consumes them.

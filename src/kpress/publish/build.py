@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 from kpress.errors import KPressPublishError
 from kpress.format import DocumentInput, RenderedPage, RenderOptions, render_page
 from kpress.format.assets import content_hash, package_asset_output_path
-from kpress.format.model import AssetMode, OptimizerMode
+from kpress.format.model import AssetMode, DiagramMode, OptimizerMode, ThemeMode
 from kpress.models import KPressExportRequest
 from kpress.output import write_bytes_atomic, write_text_atomic
 from kpress.publish.config import (
@@ -537,6 +537,11 @@ def build_site(
                 include_toc=config.format.toc,
                 toc_min_headings=config.format.toc_min_headings,
                 math=config.format.math,
+                # diagrams/color_mode are validated against _DIAGRAM_MODES/_COLOR_MODES
+                # in validate_config, so the value is a valid DiagramMode/ThemeMode here;
+                # the FormatConfig fields are typed plainly (str) and named color_mode.
+                diagrams=cast(DiagramMode, config.format.diagrams),
+                theme_mode=cast(ThemeMode, config.format.color_mode),
                 show_frontmatter=config.format.show_frontmatter,
                 widgets=config.format.widgets,
                 extra_tags=config.format.extra_tags,

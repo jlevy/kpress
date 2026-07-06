@@ -175,8 +175,10 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
             diagrams=options.diagrams,
             extra_tags=options.extra_tags,
         )
-    # Build-time tree transform (BuildExtensions.transform_tree): applied
-    # before the TOC and page model derive from the tree.
+    # Build-time tree transform (BuildExtensions.transform_tree): applied after
+    # parse_markdown has already computed tree.toc, but before the TOC and page model
+    # are rendered from the tree. A transform that adds or changes headings must rebuild
+    # tree.toc itself (see RenderOptions.transform_tree).
     if options.transform_tree is not None:
         tree = options.transform_tree(tree)
     toc = _render_toc(tree, options)
