@@ -970,7 +970,10 @@ def parse_markdown(
     diagnostics: list[Diagnostic] = []
     diagnostics.extend(_math_diagnostics(env))
     diagnostics.extend(_footnote_diagnostics(tokens, env))
-    if trust_mode in {"public-static", "sanitized-local"}:
+    # Fail closed: every mode except the explicit trusted-local opt-out sanitizes, so
+    # an out-of-contract trust_mode value (e.g. the removed "untrusted") can never
+    # skip sanitization.
+    if trust_mode != "trusted-local":
         html, html_diagnostics = sanitize_raw_html(html, trust_mode, extra_tags=extra_tags)
         diagnostics.extend(html_diagnostics)
     diagnostics.extend(_broken_anchor_diagnostics(html))
