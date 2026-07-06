@@ -422,6 +422,22 @@ def test_format_html_extra_tags_invalid_name_raises(tmp_path: Path) -> None:
         load_config(config)
 
 
+def test_format_html_extra_tags_mistyped_value_raises(tmp_path: Path) -> None:
+    # A bool/number/mapping must fail the build like other invalid config values,
+    # not silently read as "no extra tags".
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    for bad in ("true", "3", "{tag: x-callout}"):
+        config = tmp_path / "kpress.yml"
+        config.write_text(
+            f"sources:\n  - path: .\nformat:\n  html:\n    extra_tags: {bad}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(KPressPublishError, match="format.html.extra_tags"):
+            load_config(config)
+
+
 def test_format_html_unknown_key_raises(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config
@@ -450,7 +466,7 @@ def test_extra_tags_rejects_forbidden_tag_names(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config
 
-    for forbidden in ("script", "style", "iframe", "form", "object", "frameset", "applet"):
+    for forbidden in ("script", "style", "iframe", "form", "object", "frameset", "applet", "video"):
         config = tmp_path / f"{forbidden}.yml"
         config.write_text(
             f"sources:\n  - path: .\nformat:\n  html:\n    extra_tags: [{forbidden}]\n",
@@ -826,6 +842,30 @@ def test_inline_asset_mode_and_single_file_export_are_gated(tmp_path: Path) -> N
                 export_mode="single-file",
             )
         )
+
+
+def test_export_document_threads_extra_tags(tmp_path: Path) -> None:
+    # Single-document exports admit the same host whitelist as static builds and
+    # embeds, so one document renders identically on every path.
+    from kpress.models import KPressExportRequest
+    from kpress.publish.build import export_document
+
+    source = tmp_path / "doc.md"
+    source.write_text(
+        '# Doc\n\n<x-callout class="tip" data-k="v">Note</x-callout>\n', encoding="utf-8"
+    )
+    dest = tmp_path / "doc.html"
+    export_document(
+        KPressExportRequest(
+            path=str(source),
+            kind="markdown",
+            view="document",
+            destination=str(dest),
+            extra_tags=("x-callout",),
+        )
+    )
+    html = dest.read_text(encoding="utf-8")
+    assert '<x-callout class="tip" data-k="v">' in html
 
 
 def test_static_passthrough_rejects_symlink_escaping_source_root(tmp_path: Path) -> None:

@@ -248,7 +248,15 @@ def _validated_extra_tags(value: object) -> tuple[str, ...]:
 
     if value is None:
         return ()
-    tags = _string_list(value, [])
+    # A mistyped value (bool, number, mapping) must fail the build like other invalid
+    # config values do, not silently read as "no extra tags" via _string_list's default.
+    if not isinstance(value, (list, str)):
+        msg = (
+            f"Invalid format.html.extra_tags value {value!r}; expected a tag name or "
+            f"a list of tag names"
+        )
+        raise KPressPublishError(msg)
+    tags = _string_list(cast("list[object] | str", value), [])
     for tag in tags:
         if not EXTRA_TAG_NAME_RE.match(tag):
             msg = (

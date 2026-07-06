@@ -68,3 +68,7 @@ class KPressExportRequest:
     asset_mode: Literal["linked", "inline", "sealed"] = "linked"
     optimize: bool = False
     destination: str | Path | None = None
+    # Whitelist of additional pass-through HTML/XML tag names — same contract as
+    # KPressRenderRequest.extra_tags, so a single-document export admits the same
+    # tags as the host's static builds and embeds.
+    extra_tags: tuple[str, ...] = ()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from kpress.errors import KPressInvalidRequestError
@@ -69,6 +71,37 @@ def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
         assert "style" not in out
         assert "onclick" not in out
         assert "javascript:" not in out
+
+
+def test_extra_tags_carry_only_class_and_data_attributes_in_broad_modes() -> None:
+    # In public-static/sanitized-local the pass-through attribute policy still applies
+    # to tags admitted only via the whitelist: class/data-* ride through, but the
+    # global attributes standard tags keep (id/href/src) are stripped, so a custom
+    # element cannot carry navigation, resource loads, or a clobbering id.
+    html = (
+        '<x-callout id="steal" href="https://evil.test" src="https://evil.test/x" '
+        'class="ok" data-k="v">D</x-callout>'
+        '<a id="anchor" href="https://example.com">link</a>'
+    )
+    for mode in ("public-static", "sanitized-local"):
+        out, _ = sanitize_raw_html(html, mode, extra_tags=["x-callout"])  # pyright: ignore[reportArgumentType]
+        callout = re.search(r"<x-callout[^>]*>", out)
+        assert callout
+        assert 'class="ok"' in callout.group(0)
+        assert 'data-k="v"' in callout.group(0)
+        for dropped in ("id=", "href=", "src="):
+            assert dropped not in callout.group(0)
+        # Standard tags are unaffected by the pass-through restriction.
+        anchor = re.search(r"<a[^>]*>", out)
+        assert anchor
+        assert 'href="https://example.com"' in anchor.group(0)
+        assert 'id="anchor"' in anchor.group(0)
+
+
+def test_media_embedding_tags_are_forbidden_extra_tags() -> None:
+    for bad in ("video", "audio", "source", "track", "picture"):
+        with pytest.raises(KPressInvalidRequestError):
+            sanitize_raw_html("<p>x</p>", "public-static", extra_tags=[bad])
 
 
 def test_untrusted_is_whitelist_only_and_strips_known_html_tags() -> None:

@@ -737,6 +737,7 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
             print_profile=request.print_profile,
             asset_mode=asset_mode,
             asset_url_prefix=STANDALONE_ASSET_PREFIX,
+            extra_tags=request.extra_tags,
         ),
     )
     report = build_html(

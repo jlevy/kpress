@@ -160,11 +160,11 @@ EXTRA_TAG_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 # Tag names that must NEVER be admitted as pass-through, even though they match the
 # shape regex. `script`/`style` are in nh3's clean-content set: admitting either makes
 # ammonia raise (a hard render-time failure). The rest are active/embedding/metadata
-# elements that carry real risk (script execution, navigation, form capture,
-# parser-context confusion) and have no place in a *styling* whitelist. Custom elements
-# (hyphenated) are inert by the HTML spec, so the escape hatch for genuinely custom
-# markup stays open. Shared with kpress.publish.config, which reports violations as
-# `format.html.extra_tags` errors at config time.
+# elements that carry real risk (script execution, navigation, form capture, media
+# embedding, parser-context confusion) and have no place in a *styling* whitelist.
+# Custom elements (hyphenated) are inert by the HTML spec, so the escape hatch for
+# genuinely custom markup stays open. Shared with kpress.publish.config, which reports
+# violations as `format.html.extra_tags` errors at config time.
 FORBIDDEN_EXTRA_TAGS = frozenset(
     {
         "script",
@@ -189,6 +189,11 @@ FORBIDDEN_EXTRA_TAGS = frozenset(
         "frame",
         "frameset",
         "applet",
+        "video",
+        "audio",
+        "source",
+        "track",
+        "picture",
     }
 )
 
@@ -250,10 +255,27 @@ def sanitize_raw_html(
             link_rel=None,
         )
     else:
+        pass_through = _pass_through_tags(extra_tags)
+        # Tags admitted *only* via the pass-through whitelist carry the pass-through
+        # attribute policy (class/data-*) even in the broad sanitizing modes — never
+        # id/href/src from _GLOBAL_ATTRIBUTES, which the standard tags legitimately
+        # keep. This also keeps content-authored ids off whitelisted custom elements
+        # (DOM clobbering).
+        restricted = pass_through - _ALLOWED_TAGS
+        prefix_tuple = tuple(_PASS_THROUGH_ATTRIBUTE_PREFIXES)
+
+        def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
+            if element not in restricted:
+                return value
+            if attribute in PUBLIC_PASS_THROUGH_ATTRIBUTES or attribute.startswith(prefix_tuple):
+                return value
+            return None
+
         sanitized = nh3.clean(
             html,
-            tags=_ALLOWED_TAGS | _pass_through_tags(extra_tags),
+            tags=_ALLOWED_TAGS | pass_through,
             attributes=_ALLOWED_ATTRIBUTES,
+            attribute_filter=_restrict_pass_through,
             generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
             url_schemes=_ALLOWED_URL_SCHEMES,
             link_rel=None,
