@@ -11,9 +11,9 @@ Security-sensitive changes should preserve these package contracts:
 
 - Public-static rendering sanitizes untrusted HTML with nh3 as the single authority on
   what survives: a configurable pass-through allowlist (`<span>`/`<div>` plus
-  `format.html.extra_tags`) admits known custom tags carrying only `class`/`data-*`, while
-  `style`, `on*` handlers, and unsafe-URL schemes are always stripped. The `untrusted`
-  mode admits nothing beyond that allowlist.
+  `format.html.extra_tags`) admits known custom tags carrying only `class`/`data-*`,
+  while `style`, `on*` handlers, and unsafe-URL schemes are always stripped.
+  The `untrusted` mode admits nothing beyond that allowlist.
 - Dynamic host rendering uses explicit trust modes.
 - Static publishing must not write outside the configured output tree.
 - Extraction checks must fail on local path leaks, private workspace references, and

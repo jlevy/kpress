@@ -75,10 +75,10 @@ design layer for document visualization.
 The gear settings menu, body-level overlay token-scoping, and footnote/title/font fixes
 landed in `b2cd4ec4d`; icons moved to a documented Lucide set
 ([`kpress-icons.md`](kpress-icons.md)) and now live as one SVG sprite
-(`format/static/icons/icons.svg`) referenced via `<use>` from both server and client:
-no SVG geometry in Python or JS. The code-copy/video-close affordances are icon-ized.
-Remaining design-system work—the standalone single-scroll-context fix, numbered
-footnote superscripts, and host-app icon/button alignment—is tracked in the 2026-06-04
+(`format/static/icons/icons.svg`) referenced via `<use>` from both server and client: no
+SVG geometry in Python or JS. The code-copy/video-close affordances are icon-ized.
+Remaining design-system work—the standalone single-scroll-context fix, numbered footnote
+superscripts, and host-app icon/button alignment—is tracked in the 2026-06-04
 design-system consolidation plan spec (original monorepo).
 Manual browser e2e validation is codified in
 [docs/kpress-e2e-testing.runbook.md](docs/kpress-e2e-testing.runbook.md).
@@ -201,8 +201,8 @@ Implemented now:
 
 Not implemented yet:
 
-- **Math rendering: code-side migrated to the simplified `off`/lazy-`auto` contract
-  with vendored sealed KaTeX 0.16.45 as the only active renderer; MathML is the
+- **Math rendering: code-side migrated to the simplified `off`/lazy-`auto` contract with
+  vendored sealed KaTeX 0.16.45 as the only active renderer; MathML is the
   semantic/accessibility output, not a separate public backend.** No reference system
   (TextPress/Kash or the legacy host reader) renders math, so this is net-new work
   rather than source-port parity.
