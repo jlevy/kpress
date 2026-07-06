@@ -444,6 +444,59 @@ def test_validate_config_rejects_invalid_extra_tags() -> None:
         validate_config(config)
 
 
+def test_extra_tags_rejects_forbidden_tag_names(tmp_path: Path) -> None:
+    # `script`/`style` would make nh3 raise at render time; other active/embedding
+    # elements are dangerous in a styling whitelist. All are rejected at config time.
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    for forbidden in ("script", "style", "iframe", "form", "object"):
+        config = tmp_path / f"{forbidden}.yml"
+        config.write_text(
+            f"sources:\n  - path: .\nformat:\n  html:\n    extra_tags: [{forbidden}]\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(KPressPublishError, match="Forbidden"):
+            load_config(config)
+
+
+def test_build_site_threads_color_mode_and_diagrams(tmp_path: Path) -> None:
+    # Regression for FormatConfig fields that were validated but never threaded into
+    # RenderOptions by build_site (so a configured value silently had no effect).
+    from kpress.publish.config import (
+        FormatConfig,
+        KPressConfig,
+        PublishConfig,
+        SourceConfig,
+    )
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "index.md").write_text(
+        "# Home\n\nBody\n\n```mermaid\ngraph TD; A-->B;\n```\n", encoding="utf-8"
+    )
+
+    def _build(out: str, **fmt: object) -> str:
+        build_site(
+            KPressConfig(
+                title="Test",
+                base_dir=tmp_path,
+                sources=[SourceConfig(path=docs)],
+                format=FormatConfig(**fmt),  # pyright: ignore[reportArgumentType]
+                publish=PublishConfig(output_dir=tmp_path / out),
+            )
+        )
+        return (tmp_path / out / "index.html").read_text(encoding="utf-8")
+
+    # color_mode -> the standalone page's theme bootstrap attribute.
+    dark = _build("dark", color_mode="dark")
+    assert 'data-kpress-theme="dark"' in dark
+
+    # diagrams -> "off" must change the mermaid fence handling vs the "auto" default;
+    # before the fix both were rendered identically (the field was dropped).
+    assert _build("d-off", diagrams="off") != _build("d-auto", diagrams="auto")
+
+
 def test_invalid_format_math_raises(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config

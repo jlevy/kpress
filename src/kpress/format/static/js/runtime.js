@@ -52,7 +52,12 @@ export function getModel() {
   if (cachedModel === null) {
     /** @type {KpressConfig} */
     let parsed = {};
-    const block = document.getElementById("kpress-page-model");
+    // Match the <script> element specifically: content-authored HTML can carry an
+    // id (e.g. <div id="kpress-page-model">) under the sanitizing trust modes, and
+    // getElementById would return that clobbering element if it precedes ours. A
+    // <script> tag from content is always stripped by the sanitizer, so this selector
+    // can only match the server-emitted page model.
+    const block = document.querySelector("script#kpress-page-model");
     if (block?.textContent) {
       try {
         parsed = JSON.parse(block.textContent) ?? {};

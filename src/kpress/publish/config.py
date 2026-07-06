@@ -246,12 +246,43 @@ def _validated_precompress(value: object) -> list[str]:
 # A valid pass-through tag name: a standard HTML inline/flow element or a custom-element
 # name — lowercase, starting with a letter, optionally containing digits/hyphens. The
 # same shape markdown-it / nh3 will accept; an entry that is not a valid tag name fails
-# the build loudly rather than silently admitting nothing (orig-1tkb stance).
+# the build loudly rather than silently admitting nothing.
 _TAG_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
+# Tag names that must NEVER be admitted as pass-through, even though they match the shape
+# regex. `script`/`style` are in nh3's clean-content set: admitting either makes ammonia
+# raise (a hard render-time failure), so rejecting them at config time turns a confusing
+# crash into a clear error. The rest are active/embedding/metadata elements that carry
+# real risk (script execution, navigation, form capture, parser-context confusion) and
+# have no place in a *styling* whitelist. Custom elements (hyphenated) are inert by the
+# HTML spec, so the escape hatch for genuinely custom markup stays open.
+_FORBIDDEN_EXTRA_TAGS = frozenset(
+    {
+        "script",
+        "style",
+        "iframe",
+        "object",
+        "embed",
+        "base",
+        "meta",
+        "link",
+        "noscript",
+        "template",
+        "textarea",
+        "select",
+        "option",
+        "form",
+        "title",
+        "xmp",
+        "plaintext",
+        "noembed",
+        "noframes",
+    }
+)
 
 
 def _validated_extra_tags(value: object) -> tuple[str, ...]:
-    """Return format.html.extra_tags as a tuple, raising on invalid tag names."""
+    """Return format.html.extra_tags as a tuple, raising on invalid or forbidden names."""
 
     if value is None:
         return ()
@@ -261,6 +292,13 @@ def _validated_extra_tags(value: object) -> tuple[str, ...]:
             msg = (
                 f"Invalid format.html.extra_tags entry {tag!r}; expected a lowercase "
                 f"HTML or custom-element tag name (letters, digits, hyphens)"
+            )
+            raise KPressPublishError(msg)
+        if tag in _FORBIDDEN_EXTRA_TAGS:
+            msg = (
+                f"Forbidden format.html.extra_tags entry {tag!r}: active, embedding, and "
+                f"metadata elements cannot be admitted as styleable pass-through tags. "
+                f"Use a hyphenated custom-element name (e.g. 'x-callout') for custom markup."
             )
             raise KPressPublishError(msg)
     # De-duplicate while preserving order so the config round-trips deterministically.
