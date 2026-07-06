@@ -12,6 +12,7 @@ from kpress.contract import (
     PUBLIC_PASS_THROUGH_ATTRIBUTES,
     PUBLIC_PASS_THROUGH_TAGS,
 )
+from kpress.errors import KPressInvalidRequestError
 from kpress.format.model import Diagnostic, TrustMode
 
 _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
@@ -151,10 +152,73 @@ _PASS_THROUGH_ATTRIBUTES = {"*": set(PUBLIC_PASS_THROUGH_ATTRIBUTES)}
 _PASS_THROUGH_ATTRIBUTE_PREFIXES = set(PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES)
 
 
-def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
-    """The whitelist for a render: the always-on defaults unioned with host extras."""
+# The shape of an admissible pass-through tag name: a standard HTML element or a
+# custom-element name — lowercase, starting with a letter, optionally containing
+# digits/hyphens. The same shape markdown-it / nh3 accept.
+EXTRA_TAG_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 
-    return _DEFAULT_PASS_THROUGH_TAGS | {tag for tag in (extra_tags or ()) if tag}
+# Tag names that must NEVER be admitted as pass-through, even though they match the
+# shape regex. `script`/`style` are in nh3's clean-content set: admitting either makes
+# ammonia raise (a hard render-time failure). The rest are active/embedding/metadata
+# elements that carry real risk (script execution, navigation, form capture,
+# parser-context confusion) and have no place in a *styling* whitelist. Custom elements
+# (hyphenated) are inert by the HTML spec, so the escape hatch for genuinely custom
+# markup stays open. Shared with kpress.publish.config, which reports violations as
+# `format.html.extra_tags` errors at config time.
+FORBIDDEN_EXTRA_TAGS = frozenset(
+    {
+        "script",
+        "style",
+        "iframe",
+        "object",
+        "embed",
+        "base",
+        "meta",
+        "link",
+        "noscript",
+        "template",
+        "textarea",
+        "select",
+        "option",
+        "form",
+        "title",
+        "xmp",
+        "plaintext",
+        "noembed",
+        "noframes",
+        "frame",
+        "frameset",
+        "applet",
+    }
+)
+
+
+def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
+    """The whitelist for a render: the always-on defaults unioned with host extras.
+
+    Every extra tag is validated here as well as at config time, so the direct
+    ``RenderOptions.extra_tags`` path (which never passes through config loading) fails
+    with a clear ``KPressInvalidRequestError`` instead of an nh3 panic
+    (``script``/``style``) or a silently ineffective entry.
+    """
+
+    tags: set[str] = set(_DEFAULT_PASS_THROUGH_TAGS)
+    for tag in extra_tags or ():
+        if not EXTRA_TAG_NAME_RE.match(tag):
+            msg = (
+                f"Invalid extra_tags entry {tag!r}; expected a lowercase HTML or "
+                f"custom-element tag name (letters, digits, hyphens)"
+            )
+            raise KPressInvalidRequestError(msg)
+        if tag in FORBIDDEN_EXTRA_TAGS:
+            msg = (
+                f"Forbidden extra_tags entry {tag!r}: active, embedding, and metadata "
+                f"elements cannot be admitted as styleable pass-through tags. Use a "
+                f"hyphenated custom-element name (e.g. 'x-callout') for custom markup."
+            )
+            raise KPressInvalidRequestError(msg)
+        tags.add(tag)
+    return tags
 
 
 def sanitize_raw_html(

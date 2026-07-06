@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+
+from kpress.errors import KPressInvalidRequestError
 from kpress.format.sanitize import sanitize_generated_svg, sanitize_raw_html
 
 
@@ -84,3 +87,12 @@ def test_trusted_local_skips_sanitization() -> None:
     out, diagnostics = sanitize_raw_html(html, "trusted-local")
     assert out == html
     assert diagnostics == []
+
+
+def test_extra_tags_validated_on_direct_render_path() -> None:
+    # RenderOptions.extra_tags never passes through config loading, so the sanitizer
+    # itself must reject forbidden or malformed names with a clear error instead of an
+    # nh3 panic (script/style) or a silently ineffective entry.
+    for bad in ("script", "frameset", "Not-Valid", ""):
+        with pytest.raises(KPressInvalidRequestError):
+            sanitize_raw_html("<p>x</p>", "public-static", extra_tags=[bad])
