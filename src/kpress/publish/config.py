@@ -277,6 +277,9 @@ _FORBIDDEN_EXTRA_TAGS = frozenset(
         "plaintext",
         "noembed",
         "noframes",
+        "frame",
+        "frameset",
+        "applet",
     }
 )
 

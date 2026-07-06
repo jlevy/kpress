@@ -450,7 +450,7 @@ def test_extra_tags_rejects_forbidden_tag_names(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config
 
-    for forbidden in ("script", "style", "iframe", "form", "object"):
+    for forbidden in ("script", "style", "iframe", "form", "object", "frameset", "applet"):
         config = tmp_path / f"{forbidden}.yml"
         config.write_text(
             f"sources:\n  - path: .\nformat:\n  html:\n    extra_tags: [{forbidden}]\n",
