@@ -51,6 +51,10 @@ class KPressRenderRequest:
     # renders identically both ways. Same policy (unioned with <span>/<div>, carrying
     # class/data-* only) and validated by the sanitizer (shape + forbidden set).
     extra_tags: tuple[str, ...] = ()
+    # Extra inert attribute names admitted on whitelist-only pass-through tags —
+    # the counterpart of RenderOptions.extra_attributes / format.html.extra_attributes,
+    # so embeds and exports carry the same attribute policy as static publish.
+    extra_attributes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -72,3 +76,7 @@ class KPressExportRequest:
     # KPressRenderRequest.extra_tags, so a single-document export admits the same
     # tags as the host's static builds and embeds.
     extra_tags: tuple[str, ...] = ()
+    # Extra inert attribute names admitted on whitelist-only pass-through tags —
+    # the counterpart of RenderOptions.extra_attributes / format.html.extra_attributes,
+    # so embeds and exports carry the same attribute policy as static publish.
+    extra_attributes: tuple[str, ...] = ()

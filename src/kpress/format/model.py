@@ -140,6 +140,11 @@ class RenderOptions:
     # style/on*/unsafe URLs). See kpress.contract.PUBLIC_PASS_THROUGH_TAGS. Empty by
     # default: with no extra tags, output is unchanged.
     extra_tags: tuple[str, ...] = ()
+    # Extra inert attribute names (config: format.html.extra_attributes) admitted on
+    # whitelist-only pass-through tags alongside class/data-* — semantic names like
+    # `kind` or `term`. Validated against a forbidden set (never on*/style/URL-bearing/
+    # DOM-identity names). Standard HTML tags keep their fixed policy. Empty by default.
+    extra_attributes: tuple[str, ...] = ()
     printable: bool = True
     # Widget presence + opaque config map (the extension model's layer D; see
     # docs/kpress-design.md "Extension and Injection Model"). Keys are widget ids;

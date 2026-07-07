@@ -174,6 +174,7 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
             math=options.math,
             diagrams=options.diagrams,
             extra_tags=options.extra_tags,
+            extra_attributes=options.extra_attributes,
         )
     # Build-time tree transform (BuildExtensions.transform_tree): applied after
     # parse_markdown has already computed tree.toc, but before the TOC and page model

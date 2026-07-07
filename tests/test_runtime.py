@@ -358,3 +358,26 @@ def test_render_view_invalid_extra_tags_raise_invalid_request_error() -> None:
     )
     with pytest.raises(KPressInvalidRequestError, match="extra_tags"):
         runtime.render_view(request)
+
+
+def test_render_view_threads_extra_attributes_and_keys_the_cache_on_them() -> None:
+    # Same source/mtime/size: only the declared attribute names differ, so the two
+    # renders must not share a cache entry and the attribute must survive only when
+    # declared.
+    def request(extra_attributes: tuple[str, ...]) -> runtime.KPressRenderRequest:
+        return runtime.KPressRenderRequest(
+            source_text='<x-callout kind="tip">Note</x-callout>\n',
+            source_path="docs/kind.md",
+            kind="markdown",
+            view="rendered",
+            ext=".md",
+            mtime_hash="a",
+            size=11,
+            extra_tags=("x-callout",),
+            extra_attributes=extra_attributes,
+        )
+
+    kept = runtime.render_view(request(("kind",)))
+    stripped = runtime.render_view(request(()))
+    assert 'kind="tip"' in kept["html"]
+    assert 'kind="tip"' not in stripped["html"]
