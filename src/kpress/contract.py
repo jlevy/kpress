@@ -242,6 +242,26 @@ PUBLIC_DATA_ATTRIBUTES = (
     "data-kpress-numeric",
 )
 
+# Whitelisted pass-through HTML/XML tags: the input contract is "Markdown + a known set
+# of HTML tags". These tags reach the rendered output untouched under the sanitized
+# trust mode and trivially under trusted. `<span>`/`<div>` are always allowed, matching
+# GitHub / CommonMark renderer norms; a host activates more through
+# `format.html.extra_tags` (RenderOptions.extra_tags), which is unioned with this
+# default set per render.
+PUBLIC_PASS_THROUGH_TAGS = (
+    "div",
+    "span",
+)
+
+# Attribute policy on tags admitted only via the whitelist (custom extra_tags): only
+# `class` and the `data-*` prefix survive (data-* rides the generic-prefix allowance,
+# so it is not enumerated here). `<span>`/`<div>` are also part of the sanitizer's
+# standard allow-set and keep its standard global attributes. `style`, `on*` handlers,
+# and unsafe-URL attributes stay sanitized on every tag — this is a styleable
+# pass-through, never "turn sanitization off".
+PUBLIC_PASS_THROUGH_ATTRIBUTES = ("class",)
+PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES = ("data-",)
+
 PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
     "fragment.html.jinja": ("body_html",),
     "page.html.jinja": (
@@ -268,7 +288,7 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
 # Built-in build-pipeline stage names (BuildExtensions.pipeline entries).
 PUBLIC_PIPELINE_STAGES = ("kpress:none", "kpress:full")
 
-# Extension-model name contracts (kpress-design.md "Extension and Injection
+# Extension-model name contracts (docs/kpress-design.md "Extension and Injection
 # Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
 
 # Built-in chrome widget ids registered through kpress.widgets.
@@ -344,6 +364,9 @@ __all__ = [
     "PUBLIC_JS_EXPORTS",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",
+    "PUBLIC_PASS_THROUGH_ATTRIBUTES",
+    "PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES",
+    "PUBLIC_PASS_THROUGH_TAGS",
     "PUBLIC_PIPELINE_STAGES",
     "PUBLIC_PUBLISH_API",
     "PUBLIC_TEMPLATE_VARIABLES",

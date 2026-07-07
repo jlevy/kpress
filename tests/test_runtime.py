@@ -316,3 +316,45 @@ def test_render_view_payload_model_matches_the_static_page_model() -> None:
     static_model = json.loads(match.group(1))
     static_model["route"] = ""
     assert model == static_model
+
+
+def test_render_view_threads_extra_tags_and_keys_the_cache_on_them() -> None:
+    # The dynamic embed path admits the same host whitelist as static publish, so one
+    # document renders identically both ways; renders with different whitelists must
+    # not share a cache entry (same source, mtime, and size below).
+    def request(extra_tags: tuple[str, ...]) -> runtime.KPressRenderRequest:
+        return runtime.KPressRenderRequest(
+            source_text='<x-callout class="tip" data-k="v">Note</x-callout>\n',
+            source_path="docs/callout.md",
+            kind="markdown",
+            view="rendered",
+            ext=".md",
+            mtime_hash="a",
+            size=10,
+            extra_tags=extra_tags,
+        )
+
+    admitted = runtime.render_view(request(("x-callout",)))
+    stripped = runtime.render_view(request(()))
+
+    assert '<x-callout class="tip" data-k="v">' in admitted["html"]
+    assert "<x-callout" not in stripped["html"]
+    assert "Note" in stripped["html"]
+
+
+def test_render_view_invalid_extra_tags_raise_invalid_request_error() -> None:
+    # A forbidden or malformed extra_tags entry is bad request input, so it must
+    # surface as KPressInvalidRequestError (like an unsupported print profile), not
+    # be re-wrapped as a KPressRenderError by render_view's broad error handler.
+    request = runtime.KPressRenderRequest(
+        source_text="# Doc\n",
+        source_path="docs/doc.md",
+        kind="markdown",
+        view="rendered",
+        ext=".md",
+        mtime_hash="b",
+        size=6,
+        extra_tags=("script",),
+    )
+    with pytest.raises(KPressInvalidRequestError, match="extra_tags"):
+        runtime.render_view(request)

@@ -45,6 +45,12 @@ class KPressRenderRequest:
     # echoed in the render payload so host-mounted widgets read the same
     # config the standalone page model carries.
     widgets: dict[str, Any] = field(default_factory=dict)
+    # Whitelist of additional pass-through HTML/XML tag names — the dynamic-path
+    # counterpart of RenderOptions.extra_tags / format.html.extra_tags, so a host
+    # admits the same tags in embeds that its static publish admits and one document
+    # renders identically both ways. Same policy (unioned with <span>/<div>, carrying
+    # class/data-* only) and validated by the sanitizer (shape + forbidden set).
+    extra_tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -62,3 +68,7 @@ class KPressExportRequest:
     asset_mode: Literal["linked", "inline", "sealed"] = "linked"
     optimize: bool = False
     destination: str | Path | None = None
+    # Whitelist of additional pass-through HTML/XML tag names — same contract as
+    # KPressRenderRequest.extra_tags, so a single-document export admits the same
+    # tags as the host's static builds and embeds.
+    extra_tags: tuple[str, ...] = ()

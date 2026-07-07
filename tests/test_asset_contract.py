@@ -459,7 +459,7 @@ def test_footnote_backref_uses_literal_glyph_for_seal_equivalence() -> None:
     tree = parse_markdown(
         "Body.[^a]\n\n[^a]: Note.\n",
         title="t",
-        trust_mode="trusted-local",
+        trust_mode="trusted",
     )
     assert "kpress-footnote-backref" in tree.html
     assert "&uarr;" not in tree.html

@@ -19,7 +19,7 @@ def format_document(
 ) -> WorkflowResult:
     """Render a local Markdown file to paired Markdown and KPress HTML outputs.
 
-    ``asset_mode`` is an explicit independent lever (see kpress-design.md
+    ``asset_mode`` is an explicit independent lever (see docs/kpress-design.md
     "Combinations under evaluation"); it is not a coarse build mode.
     """
 

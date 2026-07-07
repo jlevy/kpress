@@ -1,22 +1,22 @@
 # KPress End-to-End Testing Runbook
 
-Manual, browser-based end-to-end testing for a **standalone KPress document** — the
+Manual, browser-based end-to-end testing for a **standalone KPress document**: the
 interactive and visual behavior that automated tests cannot fully confirm (real
 rendering, layout, theming, animation, focus, print).
 
 This is the single home for KPress manual e2e testing.
 It does **not** repeat the automated gates (lint, pytest, golden, JS-DOM) or the
-CLI/publishing checks — those live in
-[kpress-validation.runbook.md](./kpress-validation.runbook.md).
+CLI/publishing checks.
+Those live in [kpress-validation.runbook.md](./kpress-validation.runbook.md).
 For KPress **embedded in a host**, use the host application’s own e2e runbook
 (maintained in that application’s repo).
 
 Each step is tagged:
 
-- **[Agent]** — an agent can drive and confirm this by serving the page and inspecting
+- **[Agent]:** an agent can drive and confirm this by serving the page and inspecting
   the DOM, console, network, and computed styles (e.g. via a browser tool or DevTools).
-- **[Human]** — needs a person’s eyes: visual appearance, font rendering, animation
-  feel, print preview, real PDF.
+- **[Human]:** needs a person’s eyes: visual appearance, font rendering, animation feel,
+  print preview, real PDF.
 
 ## What automated tests already cover (do not re-check by hand)
 
@@ -37,7 +37,7 @@ real engine.
 
 All commands run from the repo root.
 
-The review surface is the **reader showcase** at `tests/e2e/` — one document that
+The review surface is the **reader showcase** at `tests/e2e/`: one document that
 exercises every reader feature, plus a second page for cross-page navigation.
 It is *not* a golden fixture (so it can stay rich); the golden fixtures under
 `tests/fixtures/documents/` stay minimal for byte-stable comparison.
@@ -64,7 +64,7 @@ uv run kpress build \
   --output-dir /tmp/kpress-e2e/site-sealed --asset-mode sealed --optimizer full
 ```
 
-Serve over **HTTP, not `file://`** — KPress JS uses ES module imports, which browsers
+Serve over **HTTP, not `file://`**: KPress JS uses ES module imports, which browsers
 block on `file://`. A single rendered document uses *relative* asset URLs, so serve its
 directory:
 
@@ -114,7 +114,7 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 
 ## Theme and dark mode
 
-- **[Human]** In **dark** mode the **entire window** is dark — not just the reading
+- **[Human]** In **dark** mode the **entire window** is dark—not just the reading
   column. (`.kpress-page-main` carries the document background.)
   No light gutters beside the article.
 - **[Human]** Body text, headings, links, code blocks, tables, TOC, tooltips, and the
@@ -141,7 +141,7 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 
 - **[Human]/[Agent]** Footnote reference markers render as **sequential superscript
   numbers** (1, 2, 3 …) that **match the numbers** in the footnotes section at the
-  bottom — even when the markdown labels are words (`[^one]`). The anchor still targets
+  bottom, even when the markdown labels are words (`[^one]`). The anchor still targets
   the label (`#fn-one`). (Markers are pill-styled and sans.)
 - **[Agent]/[Human]** Hover or click a footnote ref → a tooltip appears with a **solid**
   background (no bleed-through of text behind it) in **sans**, positioned within the
@@ -199,12 +199,13 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Agent]** Readable and sealed sites load from their **own root**; all assets
   resolve; `/` ↔ `/about.html` navigation works.
 - **[Agent]** The **sealed** build makes **no eager external asset loads**. Check the
-  *asset* references — `src`/`href` on `<script>`, `<link>`, `<img>`, `<iframe>` —
-  resolve locally; the only allowed external URL is the YouTube embed template inside
+  *asset* references—`src`/`href` on `<script>`, `<link>`, `<img>`, `<iframe>`—resolve
+  locally; the only allowed external URL is the YouTube embed template inside
   `video-popover.js` (a deliberate click-time feature, not a load-time call).
   Author hyperlinks (`<a href="https://…">`) and XML namespaces
   (`xmlns="http://www.w3.org/…"`) are content, not network loads, so a blanket grep for
-  `http(s)://` will list them — that is expected, not a violation.
+  `http(s)://` will list them.
+  That is expected, not a violation.
 
 ## Responsive and accessibility
 
@@ -224,4 +225,8 @@ When a check below becomes a deterministic test, delete it from the manual list 
 - JS-DOM coverage for the **gear menu** (open/close, `aria-checked`, persistence) and
   the **code-copy icon** (icon present, success/error state).
 - A headless-Chromium visual/smoke check (opt-in, never required CI) for theme,
-  dark-mode-fills-viewport, and tooltip background — the highest-value [Human] items.
+  dark-mode-fills-viewport, and tooltip background—the highest-value [Human] items.
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

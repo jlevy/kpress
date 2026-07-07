@@ -29,9 +29,8 @@ PUBLIC_ROOT_FILES: Final = (
     "README.md",
     "SECURITY.md",
     "TODO.md",
-    "kpress-design.md",
-    "kpress-icons.md",
-    "kpress-reader-features.md",
+    # docs/*.md files are covered by the "docs" entry in PUBLIC_DIRS; listing
+    # them here too would scan them twice and duplicate findings.
     "pyproject.toml",
     "package.json",
     "lefthook.yml",

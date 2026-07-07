@@ -17,6 +17,7 @@ from kpress.format.model import (
     TocMode,
     parse_widgets,
 )
+from kpress.format.sanitize import EXTRA_TAG_NAME_RE, FORBIDDEN_EXTRA_TAGS
 from kpress.publish.optimize import OptimizerBackend
 
 YamlDict = dict[str, object]
@@ -56,6 +57,12 @@ class FormatConfig:
     math: MathMode = "auto"
     diagrams: str = "auto"
     show_frontmatter: bool = True
+    # Whitelist of additional pass-through HTML/XML tag names (YAML:
+    # format.html.extra_tags). Unioned with the always-on <span>/<div> defaults and
+    # admitted under the sanitized trust mode, carrying class/data-* but never
+    # style/on*/unsafe URLs. Threaded into RenderOptions.extra_tags. Empty by default
+    # (output unchanged).
+    extra_tags: tuple[str, ...] = ()
     # Widget presence + opaque config map (extension model layer D). Keys are
     # widget ids; values normalize to "on" | "off" | "auto" or pass through as
     # the widget's config dict (which implies on). KPress never interprets the
@@ -144,7 +151,7 @@ class BuildOptions:
 @dataclass(frozen=True)
 class BuildExtensions:
     """Host build-pipeline extensions (the extension model's layer E; see
-    kpress-design.md "Extension and Injection Model").
+    docs/kpress-design.md "Extension and Injection Model").
 
     These are callables and stage objects, not config-file values: the pipeline
     is the Python-side extension seam (whole-artifact, build-time work). It
@@ -237,6 +244,38 @@ def _validated_precompress(value: object) -> list[str]:
     return methods
 
 
+def _validated_extra_tags(value: object) -> tuple[str, ...]:
+    """Return format.html.extra_tags as a tuple, raising on invalid or forbidden names."""
+
+    if value is None:
+        return ()
+    # A mistyped value (bool, number, mapping) must fail the build like other invalid
+    # config values do, not silently read as "no extra tags" via _string_list's default.
+    if not isinstance(value, (list, str)):
+        msg = (
+            f"Invalid format.html.extra_tags value {value!r}; expected a tag name or "
+            f"a list of tag names"
+        )
+        raise KPressPublishError(msg)
+    tags = _string_list(cast("list[object] | str", value), [])
+    for tag in tags:
+        if not EXTRA_TAG_NAME_RE.match(tag):
+            msg = (
+                f"Invalid format.html.extra_tags entry {tag!r}; expected a lowercase "
+                f"HTML or custom-element tag name (letters, digits, hyphens)"
+            )
+            raise KPressPublishError(msg)
+        if tag in FORBIDDEN_EXTRA_TAGS:
+            msg = (
+                f"Forbidden format.html.extra_tags entry {tag!r}: active, embedding, and "
+                f"metadata elements cannot be admitted as styleable pass-through tags. "
+                f"Use a hyphenated custom-element name (e.g. 'x-callout') for custom markup."
+            )
+            raise KPressPublishError(msg)
+    # De-duplicate while preserving order so the config round-trips deterministically.
+    return tuple(dict.fromkeys(tags))
+
+
 def _int_value(value: object, default: int) -> int:
     if isinstance(value, int) and not isinstance(value, bool):
         return value
@@ -276,8 +315,10 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "diagrams",
         "show_frontmatter",
         "widgets",
+        "html",
     }
 )
+_KNOWN_FORMAT_HTML_KEYS = frozenset({"extra_tags"})
 _KNOWN_OPTIMIZER_KEYS = frozenset({"mode", "precompress"})
 _KNOWN_PDF_KEYS = frozenset({"enabled", "page_size"})
 _CHROME_SLOT_NAMES = ("head_extra_html", "header_html", "footer_html")
@@ -361,9 +402,12 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     _ = _checked_choice("format.diagrams", config.format.diagrams, _DIAGRAM_MODES)
     _ = _checked_choice("format.color_mode", config.format.color_mode, _COLOR_MODES)
     _ = _checked_choice("format.prose_font", config.format.prose_font, _PROSE_FONTS)
+    extra_tags = _validated_extra_tags(list(config.format.extra_tags))
     widgets = parse_widgets(config.format.widgets)
-    if widgets != config.format.widgets:
-        config = replace(config, format=replace(config.format, widgets=widgets))
+    if widgets != config.format.widgets or extra_tags != config.format.extra_tags:
+        config = replace(
+            config, format=replace(config.format, widgets=widgets, extra_tags=extra_tags)
+        )
     return config
 
 
@@ -400,9 +444,11 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     fmt = _as_dict(data.get("format", {}))
     pdf = _as_dict(data.get("pdf", {}))
     optimizer = _as_dict(data.get("optimizer", {}))
+    fmt_html = _as_dict(fmt.get("html", {}))
     _reject_unknown_keys("site", site, _KNOWN_SITE_KEYS)
     _reject_unknown_keys("publish", publish, _KNOWN_PUBLISH_KEYS)
     _reject_unknown_keys("format", fmt, _KNOWN_FORMAT_KEYS)
+    _reject_unknown_keys("format.html", fmt_html, _KNOWN_FORMAT_HTML_KEYS)
     _reject_unknown_keys("pdf", pdf, _KNOWN_PDF_KEYS)
     _reject_unknown_keys("optimizer", optimizer, _KNOWN_OPTIMIZER_KEYS)
     raw_sources = _as_list(data.get("sources", [])) or [{"path": "."}]
@@ -482,6 +528,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             diagrams=diagrams,
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),
             widgets=parse_widgets(fmt.get("widgets")),
+            extra_tags=_validated_extra_tags(fmt_html.get("extra_tags")),
         ),
         publish=PublishConfig(
             output_dir=str(publish.get("output_dir", "public")),

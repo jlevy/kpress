@@ -9,8 +9,15 @@ process.
 
 Security-sensitive changes should preserve these package contracts:
 
-- Public-static rendering sanitizes untrusted HTML.
-- Dynamic host rendering uses explicit trust modes.
+- The `sanitized` trust mode (used by dynamic embeds, static publishing, and exports)
+  sanitizes author HTML with nh3 as the single authority on what survives: an XSS-inert
+  allow-set plus a configurable pass-through allowlist (`<span>`/`<div>` plus
+  `format.html.extra_tags`) that admits known custom tags carrying only
+  `class`/`data-*`, while `style`, `on*` handlers, and unsafe-URL schemes are always
+  stripped. See “The Document Dialect and Trust Modes” in `docs/kpress-design.md` for the
+  full threat model and mode selection.
+- Rendering uses explicit trust modes; `trusted` (no sanitization) is only for rendering
+  the user’s own local files.
 - Static publishing must not write outside the configured output tree.
 - Extraction checks must fail on local path leaks, private workspace references, and
   secret-like tokens in public package files.

@@ -270,7 +270,7 @@ def test_public_static_sanitizes_unsafe_html() -> None:
             source_text='<script>alert("x")</script>\n# Safe',
             source_path="unsafe.md",
             body_markdown='<script>alert("x")</script>\n# Safe',
-            trust_mode="public-static",
+            trust_mode="sanitized",
         )
     )
 

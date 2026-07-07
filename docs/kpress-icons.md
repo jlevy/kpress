@@ -1,6 +1,6 @@
 ---
 title: KPress Icons
-description: The shared icon set for KPress — one SVG sprite as the source of truth, the SVG contract, how server and client reference glyphs, how to add one, how to swap icon families, and the kpress<->host glyph map.
+description: "The shared icon set for KPress: one SVG sprite as the source of truth, the SVG contract, how server and client reference glyphs, how to add one, how to swap icon families, and the kpress<->host glyph map."
 author: Claude under Levy
 ---
 # KPress Icons
@@ -19,7 +19,7 @@ We copy the few glyphs we use into the sprite and record where each came from.
 
 [`src/kpress/format/static/icons/icons.svg`](src/kpress/format/static/icons/icons.svg)
 is the one place KPress SVG geometry lives.
-It is a hidden sprite — a `<svg style="display: none">` holding one
+It is a hidden sprite: a `<svg style="display: none">` holding one
 `<symbol id="kpress-icon-<name>">` per glyph.
 
 - **Server side**, `render.py` inlines the sprite once per document (in
@@ -31,7 +31,7 @@ It is a hidden sprite — a `<svg style="display: none">` holding one
   `<svg><use href="#kpress-icon-<name>"></svg>` reference.
   `code-copy.js` imports it for the copy/check/error glyphs.
 
-So there is **no SVG geometry authored in Python or JS** — both sides only build a
+So there is **no SVG geometry authored in Python or JS**: both sides only build a
 `<use>` reference into the sprite.
 `tests/test_icons.py` enforces this: it asserts the sprite defines every required symbol
 and that no `<path>`/`<rect>`/`<circle>`/`<line>`/`<polygon>` markup appears in
@@ -51,7 +51,7 @@ own):
 
 - `viewBox="0 0 24 24"`
 - `fill="none"`
-- `stroke="currentColor"` — the icon takes its color from CSS `color`
+- `stroke="currentColor"`: the icon takes its color from CSS `color`
 - `stroke-width="2"`
 - `stroke-linecap="round"` `stroke-linejoin="round"`
 - Size comes from CSS (`width`/`height` or the button box) on the referencing `<svg>`,
@@ -61,7 +61,7 @@ own):
   the visible label text.
 
 Any glyph that satisfies this contract drops in without visual drift.
-That is the whole reason to stay inside one stroke family — mixing in a filled family
+That is the whole reason to stay inside one stroke family: mixing in a filled family
 (e.g. Phosphor, which uses a 256 viewBox and `fill="currentColor"`) breaks the contract
 and looks inconsistent.
 
@@ -94,8 +94,8 @@ its own glyph set today (an `icons.js` in that repo), a superset that also has
 app-chrome glyphs KPress does not need (`folder`, `file`, `file-text`, `layout-grid`,
 `activity`, `printer`, `box`, `chevron-right`, and bespoke reading-font `serif`/`sans`
 shapes). It shares the same Lucide family and attribute signature so overlapping glyphs
-match KPress. The direction (see `kpress-design.md`) is for the host app to lean on the
-KPress sprite for the shared glyphs rather than keep its own copies; that move is
+match KPress. The direction (see `docs/kpress-design.md`) is for the host app to lean on
+the KPress sprite for the shared glyphs rather than keep its own copies; that move is
 tracked separately and not yet done.
 
 ## How to add a glyph
@@ -110,7 +110,7 @@ tracked separately and not yet done.
    the contract wrapper attributes
    (`viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`).
 4. Reference it where needed: `_icon("<name>")` in `render.py`, or `icon("<name>")` in
-   client JS. Nothing else to register — the sprite is the registry.
+   client JS. Nothing else to register: the sprite is the registry.
 5. Update the glyph map above (and add `<name>` to `_REQUIRED_ICONS` in
    `tests/test_icons.py` if it is part of the guaranteed set).
 6. Regenerate goldens and review that the diff is icon-only:
@@ -124,7 +124,7 @@ The version pin and per-symbol provenance make a family swap mechanical rather t
 archaeological. Because every glyph is one `<symbol>` in one file, the swap touches only
 `icons.svg` (plus this doc):
 
-1. Confirm the new family honors [the SVG contract](#the-svg-contract) — same 24×24
+1. Confirm the new family honors [the SVG contract](#the-svg-contract): same 24×24
    stroke grid (or be ready to change `viewBox`, `fill`, and stroke attrs on the
    symbols).
 2. List every glyph in use: the names in [the glyph map](#glyph-map).

@@ -5,8 +5,8 @@ project.
 
 ## Supply-Chain Security (read before installing anything)
 
-Before adding, upgrading, or running any dependency — including zero-install runners
-(`npx`, `uvx`, `pnpm dlx`, `bunx`) — follow
+Before adding, upgrading, or running any dependency—including zero-install runners
+(`npx`, `uvx`, `pnpm dlx`, `bunx`)—follow
 [`SUPPLY-CHAIN-SECURITY.md`](SUPPLY-CHAIN-SECURITY.md).
 
 - **14-day cool-off** on all third-party packages; pin exact versions; never `@latest`.
@@ -19,7 +19,7 @@ Before adding, upgrading, or running any dependency — including zero-install r
 
 This repository uses **tbd** for git-native issue tracking (beads), spec-driven
 planning, and on-demand engineering guidelines.
-As the agent, you operate tbd on the user’s behalf — translate their requests into tbd
+As the agent, you operate tbd on the user’s behalf: translate their requests into tbd
 actions rather than telling them to run commands.
 
 - Run `tbd prime` to load current project state and the full tbd workflow.
@@ -45,25 +45,25 @@ browserless DOM tests for the ESM helpers, and the extraction safety checks
 
 KPress is a Python library and CLI that renders Markdown into readable HTML documents
 and publishes them as static sites.
-[README.md](README.md) is the orientation map; [kpress-design.md](kpress-design.md) is
-the architecture and public-contract reference.
+[README.md](README.md) is the orientation map; [kpress-design.md](docs/kpress-design.md)
+is the architecture and public-contract reference.
 
 ## Conventions & Patterns
 
-- **Rendering: all HTML lives in `src/kpress/format/templates/*.jinja`, never in Python.**
-  Build markup by adding/editing a template and rendering it through the one strict
-  environment in [`format/templating.py`](src/kpress/format/templating.py)
+- **Rendering: all HTML lives in `src/kpress/format/templates/*.jinja`, never in
+  Python.** Build markup by adding/editing a template and rendering it through the one
+  strict environment in [`format/templating.py`](src/kpress/format/templating.py)
   (`render_template`); never assemble HTML with Python f-strings or string
-  concatenation. The environment is `StrictUndefined` + autoescape, so a missing/typo'd
-  variable is an immediate hard failure and plain values are escaped by default — mark
-  trusted markup with `| safe` in the template. Every template's public variables are
-  pinned in `contract.PUBLIC_TEMPLATE_VARIABLES` and the template must actually be
-  rendered by the code (tests enforce both). This rule exists because the kash→kpress
-  extraction once left the templates orphaned while rendering happened in f-strings; do
-  not reintroduce that split.
+  concatenation. The environment is `StrictUndefined` + autoescape, so a missing/typo’d
+  variable is an immediate hard failure and plain values are escaped by default.
+  Mark trusted markup with `| safe` in the template.
+  Every template’s public variables are pinned in `contract.PUBLIC_TEMPLATE_VARIABLES`
+  and the template must actually be rendered by the code (tests enforce both).
+  This rule exists because the kash→kpress extraction once left the templates orphaned
+  while rendering happened in f-strings; do not reintroduce that split.
 - The public surface (Python names, CSS classes/variables, template variables, data
   attributes, manifest markers) is pinned in `kpress.contract` and enforced by tests.
-  Change it only with contract, docs, tests, and goldens updated in the same patch —
+  Change it only with contract, docs, tests, and goldens updated in the same patch,
   never via compatibility shims.
 - Browser assets are source-first native ESM with no build step; do not add a bundler or
   host build requirement (see [CONTRIBUTING.md](CONTRIBUTING.md)).
@@ -97,3 +97,7 @@ Run pprose as `pprose <command>` if on PATH, else `uvx pprose@0.1.0 <command>`
 (zero-install via uv).
 
 <!-- END PPROSE INTEGRATION -->
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

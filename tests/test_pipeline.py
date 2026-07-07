@@ -1,4 +1,4 @@
-"""Build-pipeline plugin tests (kpress-design.md "Extension and Injection
+"""Build-pipeline plugin tests (docs/kpress-design.md "Extension and Injection
 Model", layer E): ordered stage plugins + tree/page-HTML transforms."""
 
 from __future__ import annotations

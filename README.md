@@ -40,11 +40,11 @@ an inner rendering library wrapped by your own site shell.
 
 Architecture and contracts:
 
-- [kpress-design.md](kpress-design.md): architecture, package boundary, and the public
-  contract (HTML/CSS contracts, asset model, optimizer, host integration).
-- [kpress-reader-features.md](kpress-reader-features.md): the durable catalog of reader
-  features and the behavior each guarantees.
-- [kpress-icons.md](kpress-icons.md): the icon sprite contract.
+- [kpress-design.md](docs/kpress-design.md): architecture, package boundary, and the
+  public contract (HTML/CSS contracts, asset model, optimizer, host integration).
+- [docs/kpress-design.md](docs/kpress-design.md) (Feature Catalog): the durable catalog
+  of reader features and the behavior each guarantees.
+- [kpress-icons.md](docs/kpress-icons.md): the icon sprite contract.
 
 Using and validating KPress:
 
@@ -71,7 +71,7 @@ Project status and process:
 KPress is a young package and evolves by **hard cuts**: API and contract changes land
 directly, with no deprecation shims and no backward-compatibility layers.
 A change is acceptable when an out-of-date caller fails loudly with a clear error
-message — never silently.
+message, never silently.
 The supported surface is pinned in `kpress.contract` (`PUBLIC_*` names) and enforced by
 tests; changing a public name means updating the contract, docs, tests, and goldens in
 the same patch, and release/PR notes are the migration guide.

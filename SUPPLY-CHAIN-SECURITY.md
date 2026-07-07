@@ -24,7 +24,7 @@ Enforce the cool-off at resolution time:
 | npm 11.10+ | `NPM_CONFIG_MIN_RELEASE_AGE=14` |
 | npm (any) | `NPM_CONFIG_BEFORE=<now-14d>` (absolute ISO date) |
 | pnpm 11+ | `minimumReleaseAge: 20160` in `pnpm-workspace.yaml` |
-| Cargo / Go | no native gate — commit the lockfile, install `--locked` / `-mod=readonly`, human-review re-resolves |
+| Cargo / Go | no native gate: commit the lockfile, install `--locked` / `-mod=readonly`, human-review re-resolves |
 
 ## First-party exemption
 
@@ -57,7 +57,7 @@ cool-off.
 1. **Never install unthinkingly.** Confirm the package is needed, the name is spelled
    correctly (typosquats are common), and the version clears the cool-off (or is
    first-party, lockfile-pinned, or a documented exception).
-2. **Disable install/lifecycle scripts by default** — the primary worm exfiltration
+2. **Disable install/lifecycle scripts by default:** the primary worm exfiltration
    vector (`NPM_CONFIG_IGNORE_SCRIPTS=true`; pnpm `ignoreScripts: true` + `allowBuilds`
    allowlist; `UV_NO_BUILD` / `PIP_ONLY_BINARY` to refuse sdist builds).
 3. **Commit lockfiles; install frozen** (`npm ci`, `pnpm install --frozen-lockfile`,
@@ -77,7 +77,7 @@ patch):
 - Pin the exact `package@version`; verify against OSV / GHSA / maintainer postmortem.
 - Confirm afterward that the version was not subsequently yanked.
 
-**Agents never self-approve an exception** — prepare the record; a human signs off.
+**Agents never self-approve an exception:** prepare the record; a human signs off.
 The first-party exemption above is the only standing carve-out and does not require a
 per-install sign-off.
 

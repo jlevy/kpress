@@ -17,8 +17,8 @@ git diff --check
 ```
 
 KPress browser assets are source-first native ESM. Do not add a host build step or a
-runtime JavaScript bundler requirement without updating `kpress-design.md`, tests, and
-the package lint gate in the same change.
+runtime JavaScript bundler requirement without updating `docs/kpress-design.md`, tests,
+and the package lint gate in the same change.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

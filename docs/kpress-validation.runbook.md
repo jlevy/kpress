@@ -45,7 +45,7 @@ export KPRESS_VALIDATION_ROOT="${TMPDIR:-/tmp}/kpress-validation-$(date +%Y%m%d-
 mkdir -p "$KPRESS_VALIDATION_ROOT"
 ```
 
-## Part 0 — Runtime Readiness (`kpress doctor`)
+## Part 0: Runtime Readiness (`kpress doctor`)
 
 Before anything else, probe whether this machine can run the surfaces you are about to
 validate. This is a runtime probe, not a dev quality gate.
@@ -59,7 +59,7 @@ uv run kpress doctor --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" --json
 `--profile`/`--config` runs exit non-zero only when a requested or config-required
 capability (optimizer `full`, `br`, PDF) is unavailable.
 
-## Part 1 — Automated Package Gates
+## Part 1: Automated Package Gates
 
 These are the required package gates for ordinary KPress changes.
 
@@ -115,7 +115,7 @@ npx lefthook run pre-commit
 
 Review and re-stage any hook-written Markdown or spelling fixes before committing.
 
-## Part 2 — Host Adapter Boundary Gates
+## Part 2: Host Adapter Boundary Gates
 
 Run these when changing KPress runtime APIs, package assets, print metadata, static
 export seams, or host adapter behavior.
@@ -143,7 +143,7 @@ Expected result:
 - The adapter does not import KPress publisher, PDF, optimizer, subprocess, browser, or
   Node-related modules unless a static export path explicitly calls them.
 
-## Part 3 — Golden Fixtures
+## Part 3: Golden Fixtures
 
 Run this when rendered HTML, packaged assets, static output, manifest shape, or accepted
 fixtures may have changed.
@@ -183,7 +183,7 @@ Review at least:
 - print-surface markup
 - absence of host-shell selectors in KPress output
 
-## Part 4 — CLI and Static Publishing Smoke
+## Part 4: CLI and Static Publishing Smoke
 
 This part exercises the public CLI workflows and static publisher in a disposable tree.
 It can run independently of the golden update flow.
@@ -195,7 +195,7 @@ It can run independently of the golden update flow.
 > owns those files and runtime fetches.
 > The `public-sealed` directory names below describe the *hashed + gzipped package-asset
 > shape* (production layout), not a sealed asset graph.
-> See `kpress-design.md` § “Asset sealing: deferred for v1” and
+> See `docs/kpress-design.md` § “Asset sealing: deferred for v1” and
 > `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md` for the v2
 > roadmap.
 
@@ -243,7 +243,7 @@ uv run kpress build \
   --precompress gzip
 ```
 
-### Brotli precompression — opt-in extra
+### Brotli precompression: opt-in extra
 
 `gzip` precompression is in the stdlib and runs in every install.
 `br` (Brotli) is gated behind the `kpress[optimize]` extra so the base wheel stays lean.
@@ -271,7 +271,7 @@ uv run kpress build \
 # manifest's `precompress` field includes both methods.
 ```
 
-Confirm the missing-extra path is honest — without `kpress[optimize]` installed,
+Confirm the missing-extra path is honest: without `kpress[optimize]` installed,
 requesting `br` must fail with exit code `2` and a clear diagnostic, not produce partial
 output:
 
@@ -350,7 +350,7 @@ Confirm:
 - routes include `/` and `/about.html`
 - gzip sidecars exist for HTML/CSS/JS/JSON outputs when precompression is configured
 
-## Part 5 — Agent-Operated Manual Review
+## Part 5: Agent-Operated Manual Review
 
 An agent should run these checks before asking for human visual acceptance.
 They are not a substitute for the human checks in Part 6.
@@ -463,7 +463,7 @@ Open the printed URL. Confirm:
 
 Stop the host server after the check.
 
-## Part 6 — Human Visual and Functional Acceptance
+## Part 6: Human Visual and Functional Acceptance
 
 The human operator should complete this part before a feature-complete KPress reader or
 publishing milestone is considered accepted.

@@ -49,7 +49,7 @@ _static_root_override: Path | None = None
 # in-session cache (zero requests during multi-page browsing) while letting a
 # normal reload revalidate against the content-hash ETag below (a cheap 304 when
 # unchanged). Content-addressed URLs would let us restore `immutable`; see
-# kpress-design.md "Static asset caching".
+# docs/kpress-design.md "Static asset caching".
 _ASSET_VERSION_SEGMENT = f"v{__version__}"
 _VERSION_SEG_RE = re.compile(r"^v\d[\w.+-]*$")
 _VERSIONED_CACHE_CONTROL = "public, max-age=31536000"
@@ -264,6 +264,9 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         # so they are part of the identity. Stable-stringified: dicts are not
         # hashable and key order must not matter.
         json.dumps(widgets, sort_keys=True, default=str),
+        # extra_tags change what the sanitizer admits, so renders with different
+        # whitelists must not share a cache entry.
+        tuple(request.extra_tags),
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -300,11 +303,10 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         profile=profile,
         document_profile=profile,
         # Dynamic host render serves arbitrary documents from the embedder's
-        # worktree. The body must be treated as untrusted: switch from
-        # `trusted-local` (raw HTML passthrough) to `sanitized-local` so
-        # `<script>`, event-handler attributes, and `javascript:` URLs are
-        # stripped before the host injects the fragment into its shell.
-        trust_mode="sanitized-local",
+        # worktree, so the body cannot be trusted: sanitize so `<script>`,
+        # event-handler attributes, and `javascript:` URLs are stripped before
+        # the host injects the fragment into its shell.
+        trust_mode="sanitized",
         host=request.host,
         metadata=metadata,
     )
@@ -319,12 +321,17 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         include_assets=True,
         show_doc_header=request.show_doc_header,
         widgets=widgets,
+        extra_tags=tuple(request.extra_tags),
         printable=True,
         metadata=metadata,
     )
     try:
         result = render_fragment(document, options)
-    except KPressRenderError:
+    except (KPressRenderError, KPressInvalidRequestError):
+        # Invalid request input (e.g. a forbidden or malformed extra_tags entry,
+        # validated inside the sanitizer) must surface as KPressInvalidRequestError,
+        # like every other malformed request field — not be re-wrapped as a render
+        # failure by the broad handler below.
         raise
     except Exception as exc:
         raise KPressRenderError(f"{type(exc).__name__}: {exc}") from exc

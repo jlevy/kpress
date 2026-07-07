@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
 import nh3
 
+from kpress.contract import (
+    PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES,
+    PUBLIC_PASS_THROUGH_ATTRIBUTES,
+    PUBLIC_PASS_THROUGH_TAGS,
+)
+from kpress.errors import KPressInvalidRequestError
 from kpress.format.model import Diagnostic, TrustMode
 
 _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
@@ -134,17 +141,126 @@ _ALLOWED_ATTRIBUTES["*"] = _GLOBAL_ATTRIBUTES
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto", "tel"}
 _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
 
+# Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
+# unions any host `extra_tags` on top of this default set. `class`/`data-*` survive on
+# them (class via _GLOBAL_ATTRIBUTES, data-* via _GENERIC_ATTRIBUTE_PREFIXES); `style`,
+# `on*`, and unsafe-URL attributes stay sanitized — see PUBLIC_PASS_THROUGH_ATTRIBUTES.
+_DEFAULT_PASS_THROUGH_TAGS = set(PUBLIC_PASS_THROUGH_TAGS)
+_PASS_THROUGH_ATTRIBUTE_PREFIXES = set(PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES)
 
-def sanitize_raw_html(html: str, trust_mode: TrustMode) -> tuple[str, list[Diagnostic]]:
-    """Return raw HTML according to the configured trust mode."""
 
-    if trust_mode == "trusted-local":
+# The shape of an admissible pass-through tag name: a standard HTML element or a
+# custom-element name — lowercase, starting with a letter, optionally containing
+# digits/hyphens. The same shape markdown-it / nh3 accept.
+EXTRA_TAG_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
+# Tag names that must NEVER be admitted as pass-through, even though they match the
+# shape regex. `script`/`style` are in nh3's clean-content set: admitting either makes
+# ammonia raise (a hard render-time failure). The rest are active/embedding/metadata
+# elements that carry real risk (script execution, navigation, form capture, media
+# embedding, parser-context confusion) and have no place in a *styling* whitelist.
+# Custom elements (hyphenated) are inert by the HTML spec, so the escape hatch for
+# genuinely custom markup stays open. Shared with kpress.publish.config, which reports
+# violations as `format.html.extra_tags` errors at config time.
+FORBIDDEN_EXTRA_TAGS = frozenset(
+    {
+        "script",
+        "style",
+        "iframe",
+        "object",
+        "embed",
+        "base",
+        "meta",
+        "link",
+        "noscript",
+        "template",
+        "textarea",
+        "select",
+        "option",
+        "form",
+        "title",
+        "xmp",
+        "plaintext",
+        "noembed",
+        "noframes",
+        "frame",
+        "frameset",
+        "applet",
+        "video",
+        "audio",
+        "source",
+        "track",
+        "picture",
+    }
+)
+
+
+def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
+    """The whitelist for a render: the always-on defaults unioned with host extras.
+
+    Every extra tag is validated here as well as at config time, so the direct
+    ``RenderOptions.extra_tags`` path (which never passes through config loading) fails
+    with a clear ``KPressInvalidRequestError`` instead of an nh3 panic
+    (``script``/``style``) or a silently ineffective entry.
+    """
+
+    tags: set[str] = set(_DEFAULT_PASS_THROUGH_TAGS)
+    for tag in extra_tags or ():
+        if not EXTRA_TAG_NAME_RE.match(tag):
+            msg = (
+                f"Invalid extra_tags entry {tag!r}; expected a lowercase HTML or "
+                f"custom-element tag name (letters, digits, hyphens)"
+            )
+            raise KPressInvalidRequestError(msg)
+        if tag in FORBIDDEN_EXTRA_TAGS:
+            msg = (
+                f"Forbidden extra_tags entry {tag!r}: active, embedding, and metadata "
+                f"elements cannot be admitted as styleable pass-through tags. Use a "
+                f"hyphenated custom-element name (e.g. 'x-callout') for custom markup."
+            )
+            raise KPressInvalidRequestError(msg)
+        tags.add(tag)
+    return tags
+
+
+def sanitize_raw_html(
+    html: str,
+    trust_mode: TrustMode,
+    *,
+    extra_tags: Iterable[str] | None = None,
+) -> tuple[str, list[Diagnostic]]:
+    """Return raw HTML according to the configured trust mode.
+
+    ``trusted`` skips sanitization entirely. ``sanitized`` applies the nh3 profile:
+    the XSS-inert allow-set plus the pass-through whitelist (``<span>``/``<div>`` plus
+    any ``extra_tags`` the host activates). Whitelist-only tags carry
+    ``class``/``data-*`` but never ``style``/``on*``/unsafe URLs.
+    """
+
+    if trust_mode == "trusted":
         return html, []
+
+    pass_through = _pass_through_tags(extra_tags)
+    # Tags admitted *only* via the pass-through whitelist carry the pass-through
+    # attribute policy (class/data-*) — never id/href/src from _GLOBAL_ATTRIBUTES,
+    # which the standard tags legitimately keep.
+    # This also keeps content-authored ids off whitelisted custom elements
+    # (DOM clobbering).
+    restricted = pass_through - _ALLOWED_TAGS
+    prefix_tuple = tuple(_PASS_THROUGH_ATTRIBUTE_PREFIXES)
+
+    def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
+        if element not in restricted:
+            return value
+        if attribute in PUBLIC_PASS_THROUGH_ATTRIBUTES or attribute.startswith(prefix_tuple):
+            return value
+        return None
 
     sanitized = nh3.clean(
         html,
-        tags=_ALLOWED_TAGS,
+        tags=_ALLOWED_TAGS | pass_through,
         attributes=_ALLOWED_ATTRIBUTES,
+        attribute_filter=_restrict_pass_through,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
@@ -214,7 +330,7 @@ def _restore_camelcase_at_attributes(svg: str) -> str:
 
 
 def sanitize_generated_svg(svg: str) -> str:
-    """Return KPress-generated inline SVG using the public-static sanitizer policy."""
+    """Return KPress-generated inline SVG using the sanitized-mode nh3 profile."""
 
     sanitized = nh3.clean(
         svg,
