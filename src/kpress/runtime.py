@@ -267,6 +267,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         # extra_tags change what the sanitizer admits, so renders with different
         # whitelists must not share a cache entry.
         tuple(request.extra_tags),
+        tuple(request.extra_attributes),
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -322,6 +323,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         show_doc_header=request.show_doc_header,
         widgets=widgets,
         extra_tags=tuple(request.extra_tags),
+        extra_attributes=tuple(request.extra_attributes),
         printable=True,
         metadata=metadata,
     )

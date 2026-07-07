@@ -119,7 +119,7 @@ feature guarantees); the sections named in the table carry the architecture deta
 | Area | Current implementation | Detail |
 | --- | --- | --- |
 | Markdown rendering | GFM via `markdown-it-py` + plugins: stable duplicate-safe heading IDs, footnotes and backrefs, fence-safe parsing | Markdown, Sanitization, and Source Rendering |
-| Sanitization and trust | nh3 single authority; `trusted` / `sanitized` trust modes, failing closed on unknown values; pass-through whitelist (`div`/`span` + host `extra_tags` on every path, validated against a forbidden-tag set) | Markdown, Sanitization, and Source Rendering |
+| Sanitization and trust | nh3 single authority; `trusted` / `sanitized` trust modes, failing closed on unknown values; pass-through whitelist (`div`/`span` + host `extra_tags` on every path) and host-declared inert `extra_attributes` (e.g. `kind`, `term`), both validated against forbidden-name sets | Markdown, Sanitization, and Source Rendering |
 | Code and source views | Pygments highlighting, code-copy controls, printable source profiles | Document Profiles; Document Components |
 | Math | KaTeX with `off` / lazy `auto` modes; semantic MathML output; zero math assets when absent | Feature Catalog subsections below |
 | Diagrams | Mermaid adapter behind explicit hooks; SVG passthrough | Feature Catalog subsections below |
@@ -166,8 +166,9 @@ feature guarantees); the sections named in the table carry the architecture deta
   safe/unsafe policy and diagnostics; see
   [The Document Dialect and Trust Modes](#the-document-dialect-and-trust-modes).
   The sanitized mode admits a configurable pass-through tag allowlist (`<span>`/`<div>`
-  always, plus `format.html.extra_tags`) carrying `class`/`data-*`; `style`, `on*`
-  handlers, and unsafe URLs are always stripped.
+  always, plus `format.html.extra_tags`) carrying `class`/`data-*` plus any
+  host-declared inert `format.html.extra_attributes` (semantic names like `kind` or
+  `term`); `style`, `on*` handlers, and unsafe URLs are always stripped.
 - **Footnotes.** Definitions, references, backrefs, tooltip-ready anchors, sequential
   superscript numbering (markers show `1, 2, 3 …` matching the footnotes section
   regardless of the authored label), missing-reference and unused-definition
@@ -526,7 +527,8 @@ pointing at attacker servers), DOM clobbering (content-authored `id`s shadowing 
 the page’s scripts look up), and parser-context confusion (`<template>`, `<xmp>`,
 `<base>`, `<meta>`). The `sanitized` mode strips all of these unconditionally —
 including on whitelisted pass-through tags; tags admitted only via the whitelist carry
-`class`/`data-*` and nothing else.
+`class`/`data-*` plus any host-declared `extra_attributes` (validated inert names —
+never `on*`, `style`, URL-bearing, or DOM-identity attributes) and nothing else.
 Safe URL schemes are `http`/`https`/`mailto`/`tel`.
 
 Choosing a mode is mechanical:
@@ -683,11 +685,14 @@ The contract module also declares:
   `RenderOptions.extra_tags` equivalent), which is unioned with the defaults per render.
   Whitelisted tags reach the output untouched under the `sanitized` trust mode and
   trivially under `trusted`. Tags admitted *only* via the whitelist (custom
-  `extra_tags`) carry `class`/`data-*` and nothing else; `<span>`/`<div>` are also part
-  of the standard allow-set, so they additionally keep its standard global attributes
-  (e.g. `id` for author anchors).
-  `style`, `on*` handlers, and unsafe-URL attributes stay sanitized on every tag.
-  This is a styleable pass-through, never “turn sanitization off”.
+  `extra_tags`) carry `class`/`data-*` plus any host-declared
+  `format.html.extra_attributes` (inert semantic names like `kind`/`term`, validated
+  against a forbidden set — never `on*`, `style`, URL-bearing, or DOM-identity names)
+  and nothing else; `<span>`/`<div>` are also part of the standard allow-set, so they
+  additionally keep its standard global attributes (e.g. `id` for author anchors).
+  Declared extra attributes ride only on whitelist-only tags; standard HTML keeps its
+  fixed policy. `style`, `on*` handlers, and unsafe-URL attributes stay sanitized on
+  every tag. This is a styleable pass-through, never “turn sanitization off”.
   A document with no whitelisted tags renders exactly as before.
 
 There is no `BuildMode` type.
@@ -1404,10 +1409,12 @@ KPress documents the conventions; the tag vocabularies are the plugins’ busine
   own use by convention, so plugins do not squat them.
   This is a governance signal, not a hard-coded list.
 - **Attributes.** Plugin tags carry clean inert attributes.
-  `class` and `data-*` are the posture-portable channels — the only attributes that
-  survive the `sanitized` trust mode on a whitelisted tag — so plugin payloads belong in
-  `data-*`. Anything else (semantic names such as `kind` or `term`, `id`, ARIA) survives
-  only under `trusted`; `on*`, `style`, and unsafe-URL attributes are always stripped.
+  A plugin declares its semantic attribute names (`kind`, `term`, …) through
+  `format.html.extra_attributes` and they survive `sanitized` on whitelisted tags, so
+  `<k-block kind="epigram">` is the idiomatic form; `class` stays available and `data-*`
+  remains the open-ended escape hatch for arbitrary payload (no declaration needed).
+  `id` and ARIA survive only under `trusted`; `on*`, `style`, and unsafe-URL attributes
+  are always stripped.
 - **No pinned vocabulary.** KPress does not freeze a closed dialect.
   Codifying one is deliberately deferred: pinning today’s tags would lock current shape
   into a contract before the design has settled.
@@ -1438,8 +1445,9 @@ or behavior over them:
 - **Structural devices** (preprocessing and CSS). A leading glyph on a Markdown block
   gives it a meaning or format; a data ruleset maps glyph→kind.
   The preprocessor walks base blocks (paragraphs, list items, whole blockquotes), wraps
-  a matched block in `<x-device data-x-kind="…">`, and splices it back at the block’s
-  source span; host CSS styles each kind (callout, definition, alignment, hidden).
+  a matched block in `<x-device kind="…">` (the tag and `kind` declared via
+  `extra_tags`/`extra_attributes`), and splices it back at the block’s source span; host
+  CSS styles each kind (callout, definition, alignment, hidden).
   Adding a device is a config edit, zero KPress changes.
 - **Inline badges** (preprocessing and CSS). A shortcode such as `:new:` rewrites to an
   inline `<x-badge>`, the degenerate case of the same engine, CSS only.

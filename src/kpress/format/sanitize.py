@@ -195,6 +195,67 @@ FORBIDDEN_EXTRA_TAGS = frozenset(
 )
 
 
+# Attribute names that must NEVER be admitted on pass-through tags, plus the `on*`
+# handler prefix (rejected by pattern below). `style` reopens the CSS channel the
+# policy exists to close; URL-bearing names (`href`, `src`, ...) turn an inert styling
+# tag into a navigation/embedding vector; `id`/`name` enable DOM clobbering (the same
+# hole the page-model fix closed); `is`/`slot` hook custom-element/shadow behavior;
+# `http-equiv`/`srcdoc` are parser-context hazards. Shared with kpress.publish.config,
+# which reports violations as `format.html.extra_attributes` errors at config time.
+FORBIDDEN_EXTRA_ATTRIBUTES = frozenset(
+    {
+        "style",
+        "href",
+        "src",
+        "srcset",
+        "srcdoc",
+        "action",
+        "formaction",
+        "background",
+        "ping",
+        "poster",
+        "data",
+        "cite",
+        "usemap",
+        "id",
+        "name",
+        "is",
+        "slot",
+        "http-equiv",
+        "target",
+        "download",
+        "rel",
+    }
+)
+
+
+def _pass_through_attributes(extra_attributes: Iterable[str] | None) -> frozenset[str]:
+    """The extra attribute names admitted on whitelist-only tags for a render.
+
+    Validated here as well as at config time, so the direct
+    ``RenderOptions.extra_attributes`` path fails with a clear
+    ``KPressInvalidRequestError`` instead of silently dropping the attribute.
+    """
+
+    names: set[str] = set()
+    for name in extra_attributes or ():
+        if not EXTRA_TAG_NAME_RE.match(name):
+            msg = (
+                f"Invalid extra_attributes entry {name!r}; expected a lowercase "
+                f"attribute name (letters, digits, hyphens)"
+            )
+            raise KPressInvalidRequestError(msg)
+        if name in FORBIDDEN_EXTRA_ATTRIBUTES or name.startswith("on"):
+            msg = (
+                f"Forbidden extra_attributes entry {name!r}: event handlers, style, "
+                f"URL-bearing, and DOM-identity attributes cannot be admitted on "
+                f"pass-through tags. Use a data-* attribute for open-ended payload."
+            )
+            raise KPressInvalidRequestError(msg)
+        names.add(name)
+    return frozenset(names)
+
+
 def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
     """The whitelist for a render: the always-on defaults unioned with host extras.
 
@@ -228,19 +289,24 @@ def sanitize_raw_html(
     trust_mode: TrustMode,
     *,
     extra_tags: Iterable[str] | None = None,
+    extra_attributes: Iterable[str] | None = None,
 ) -> tuple[str, list[Diagnostic]]:
     """Return raw HTML according to the configured trust mode.
 
     ``trusted`` skips sanitization entirely. ``sanitized`` applies the nh3 profile:
     the XSS-inert allow-set plus the pass-through whitelist (``<span>``/``<div>`` plus
-    any ``extra_tags`` the host activates). Whitelist-only tags carry
-    ``class``/``data-*`` but never ``style``/``on*``/unsafe URLs.
+    any ``extra_tags`` the host activates). Whitelist-only tags carry ``class``,
+    ``data-*``, and any host-declared ``extra_attributes`` (inert semantic names like
+    ``kind`` or ``term``, validated against a forbidden set) — never
+    ``style``/``on*``/unsafe URLs. Standard HTML tags keep their fixed policy;
+    ``extra_attributes`` widens only the whitelist-only (custom-element) tags.
     """
 
     if trust_mode == "trusted":
         return html, []
 
     pass_through = _pass_through_tags(extra_tags)
+    extra_attrs = _pass_through_attributes(extra_attributes)
     # Tags admitted *only* via the pass-through whitelist carry the pass-through
     # attribute policy (class/data-*) — never id/href/src from _GLOBAL_ATTRIBUTES,
     # which the standard tags legitimately keep.
@@ -251,15 +317,31 @@ def sanitize_raw_html(
 
     def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
         if element not in restricted:
+            # Standard tags keep their fixed policy: a host-declared extra attribute
+            # rides only on whitelist-only tags, never widens standard HTML (unless
+            # the name is independently allowed for this element anyway).
+            if attribute in extra_attrs and attribute not in _ALLOWED_ATTRIBUTES.get(
+                element, _GLOBAL_ATTRIBUTES
+            ):
+                return None
             return value
-        if attribute in PUBLIC_PASS_THROUGH_ATTRIBUTES or attribute.startswith(prefix_tuple):
+        if attribute in PUBLIC_PASS_THROUGH_ATTRIBUTES or attribute in extra_attrs:
+            return value
+        if attribute.startswith(prefix_tuple):
             return value
         return None
+
+    attributes = _ALLOWED_ATTRIBUTES
+    if extra_attrs:
+        # Extend the global allow-set so nh3 lets the names reach the filter; the
+        # filter then confines them to whitelist-only tags.
+        attributes = dict(_ALLOWED_ATTRIBUTES)
+        attributes["*"] = _GLOBAL_ATTRIBUTES | extra_attrs
 
     sanitized = nh3.clean(
         html,
         tags=_ALLOWED_TAGS | pass_through,
-        attributes=_ALLOWED_ATTRIBUTES,
+        attributes=attributes,
         attribute_filter=_restrict_pass_through,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
         url_schemes=_ALLOWED_URL_SCHEMES,

@@ -1244,3 +1244,27 @@ def test_programmatic_title_staging_survives_astral_plane_characters(tmp_path: P
 
     html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
     assert f"<title>{title}</title>" in html
+
+
+def test_format_html_extra_attributes_parses_validates_and_rejects_forbidden(
+    tmp_path: Path,
+) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import FormatConfig, load_config
+
+    assert FormatConfig().extra_attributes == ()
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\nformat:\n  html:\n    extra_attributes: [kind, term]\n",
+        encoding="utf-8",
+    )
+    assert load_config(config).format.extra_attributes == ("kind", "term")
+
+    for forbidden in ("style", "onclick", "src", "id"):
+        bad = tmp_path / f"{forbidden}.yml"
+        bad.write_text(
+            f"sources:\n  - path: .\nformat:\n  html:\n    extra_attributes: [{forbidden}]\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(KPressPublishError, match="Forbidden"):
+            load_config(bad)

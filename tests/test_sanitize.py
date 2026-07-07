@@ -111,3 +111,26 @@ def test_extra_tags_validated_on_direct_render_path() -> None:
     for bad in ("script", "frameset", "Not-Valid", ""):
         with pytest.raises(KPressInvalidRequestError):
             sanitize_raw_html("<p>x</p>", "sanitized", extra_tags=[bad])
+
+
+def test_extra_attributes_survive_on_whitelisted_tags_only() -> None:
+    html = '<x-callout kind="tip" term="stock option">D</x-callout><p kind="tip">p</p>'
+    out, _ = sanitize_raw_html(
+        html, "sanitized", extra_tags=["x-callout"], extra_attributes=["kind", "term"]
+    )
+    assert '<x-callout kind="tip" term="stock option">' in out
+    # Standard tags keep their fixed policy: the declared name does not widen <p>.
+    assert '<p kind="tip">' not in out
+    assert "<p>p</p>" in out
+
+    # Without the declaration the same attribute is stripped from the whitelisted tag.
+    undeclared, _ = sanitize_raw_html(html, "sanitized", extra_tags=["x-callout"])
+    assert "kind=" not in undeclared
+
+
+def test_extra_attributes_validated_on_direct_render_path() -> None:
+    for bad in ("style", "onclick", "href", "id", "Not-Valid", ""):
+        with pytest.raises(KPressInvalidRequestError):
+            sanitize_raw_html(
+                "<p>x</p>", "sanitized", extra_tags=["x-callout"], extra_attributes=[bad]
+            )

@@ -949,6 +949,7 @@ def parse_markdown(
     math: MathMode = "auto",
     diagrams: DiagramMode = "auto",
     extra_tags: Iterable[str] | None = None,
+    extra_attributes: Iterable[str] | None = None,
 ) -> DocumentTree:
     """Parse KPress Markdown into stable, KPress-owned HTML.
 
@@ -973,7 +974,9 @@ def parse_markdown(
     # Fail closed: everything except the explicit "trusted" opt-out sanitizes, so an
     # out-of-contract trust_mode value can never skip sanitization.
     if trust_mode != "trusted":
-        html, html_diagnostics = sanitize_raw_html(html, trust_mode, extra_tags=extra_tags)
+        html, html_diagnostics = sanitize_raw_html(
+            html, trust_mode, extra_tags=extra_tags, extra_attributes=extra_attributes
+        )
         diagnostics.extend(html_diagnostics)
     diagnostics.extend(_broken_anchor_diagnostics(html))
 

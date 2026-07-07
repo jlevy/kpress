@@ -545,6 +545,7 @@ def build_site(
                 show_frontmatter=config.format.show_frontmatter,
                 widgets=config.format.widgets,
                 extra_tags=config.format.extra_tags,
+                extra_attributes=config.format.extra_attributes,
                 transform_tree=extensions.transform_tree if extensions else None,
                 head_extra_html=config.head_extra_html,
                 header_html=config.header_html,
@@ -738,6 +739,7 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
             asset_mode=asset_mode,
             asset_url_prefix=STANDALONE_ASSET_PREFIX,
             extra_tags=request.extra_tags,
+            extra_attributes=request.extra_attributes,
         ),
     )
     report = build_html(
