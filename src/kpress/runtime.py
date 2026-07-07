@@ -327,7 +327,11 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
     )
     try:
         result = render_fragment(document, options)
-    except KPressRenderError:
+    except (KPressRenderError, KPressInvalidRequestError):
+        # Invalid request input (e.g. a forbidden or malformed extra_tags entry,
+        # validated inside the sanitizer) must surface as KPressInvalidRequestError,
+        # like every other malformed request field — not be re-wrapped as a render
+        # failure by the broad handler below.
         raise
     except Exception as exc:
         raise KPressRenderError(f"{type(exc).__name__}: {exc}") from exc

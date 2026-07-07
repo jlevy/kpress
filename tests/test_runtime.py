@@ -340,3 +340,21 @@ def test_render_view_threads_extra_tags_and_keys_the_cache_on_them() -> None:
     assert '<x-callout class="tip" data-k="v">' in admitted["html"]
     assert "<x-callout" not in stripped["html"]
     assert "Note" in stripped["html"]
+
+
+def test_render_view_invalid_extra_tags_raise_invalid_request_error() -> None:
+    # A forbidden or malformed extra_tags entry is bad request input, so it must
+    # surface as KPressInvalidRequestError (like an unsupported print profile), not
+    # be re-wrapped as a KPressRenderError by render_view's broad error handler.
+    request = runtime.KPressRenderRequest(
+        source_text="# Doc\n",
+        source_path="docs/doc.md",
+        kind="markdown",
+        view="rendered",
+        ext=".md",
+        mtime_hash="b",
+        size=6,
+        extra_tags=("script",),
+    )
+    with pytest.raises(KPressInvalidRequestError, match="extra_tags"):
+        runtime.render_view(request)
