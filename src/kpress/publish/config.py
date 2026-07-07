@@ -150,7 +150,7 @@ class BuildOptions:
 @dataclass(frozen=True)
 class BuildExtensions:
     """Host build-pipeline extensions (the extension model's layer E; see
-    kpress-design.md "Extension and Injection Model").
+    docs/kpress-design.md "Extension and Injection Model").
 
     These are callables and stage objects, not config-file values: the pipeline
     is the Python-side extension seam (whole-artifact, build-time work). It

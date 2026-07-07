@@ -19,9 +19,8 @@ DOC_PATHS = [
     "NOTICE.md",
     "SECURITY.md",
     "TODO.md",
-    "kpress-design.md",
-    "kpress-icons.md",
-    "kpress-reader-features.md",
+    "docs/kpress-design.md",
+    "docs/kpress-icons.md",
     "docs",
 ]
 

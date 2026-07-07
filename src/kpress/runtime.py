@@ -49,7 +49,7 @@ _static_root_override: Path | None = None
 # in-session cache (zero requests during multi-page browsing) while letting a
 # normal reload revalidate against the content-hash ETag below (a cheap 304 when
 # unchanged). Content-addressed URLs would let us restore `immutable`; see
-# kpress-design.md "Static asset caching".
+# docs/kpress-design.md "Static asset caching".
 _ASSET_VERSION_SEGMENT = f"v{__version__}"
 _VERSION_SEG_RE = re.compile(r"^v\d[\w.+-]*$")
 _VERSIONED_CACHE_CONTROL = "public, max-age=31536000"

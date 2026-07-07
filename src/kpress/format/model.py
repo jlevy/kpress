@@ -12,7 +12,7 @@ from kpress.models import PrintProfile, ThemeMode
 
 DocumentProfile = PrintProfile
 # Trust modes: who wrote the content and where the output lands. See the
-# "Trust Modes and the Sanitization Threat Model" section of kpress-design.md
+# "Trust Modes and the Sanitization Threat Model" section of docs/kpress-design.md
 # for the threat model and the entry-point → mode mapping.
 TrustMode = Literal["trusted-local", "sanitized-local", "public-static"]
 TocMode = Literal["off", "auto", "on"]
@@ -142,7 +142,7 @@ class RenderOptions:
     extra_tags: tuple[str, ...] = ()
     printable: bool = True
     # Widget presence + opaque config map (the extension model's layer D; see
-    # kpress-design.md "Extension and Injection Model"). Keys are widget ids;
+    # docs/kpress-design.md "Extension and Injection Model"). Keys are widget ids;
     # values are "on" | "off" | "auto" | bool | a config dict (dict implies on).
     # KPress never interprets the config — it is serialized verbatim into the
     # #kpress-page-model block for the widget's own JS (schema-with-the-code).

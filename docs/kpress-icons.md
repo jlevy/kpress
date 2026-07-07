@@ -94,8 +94,8 @@ its own glyph set today (an `icons.js` in that repo), a superset that also has
 app-chrome glyphs KPress does not need (`folder`, `file`, `file-text`, `layout-grid`,
 `activity`, `printer`, `box`, `chevron-right`, and bespoke reading-font `serif`/`sans`
 shapes). It shares the same Lucide family and attribute signature so overlapping glyphs
-match KPress. The direction (see `kpress-design.md`) is for the host app to lean on the
-KPress sprite for the shared glyphs rather than keep its own copies; that move is
+match KPress. The direction (see `docs/kpress-design.md`) is for the host app to lean on
+the KPress sprite for the shared glyphs rather than keep its own copies; that move is
 tracked separately and not yet done.
 
 ## How to add a glyph

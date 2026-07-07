@@ -10,7 +10,7 @@ twitter_card: summary
 # KPress Reader Showcase
 
 This document is the manual end-to-end review surface for the KPress reader. Every
-section below maps to a feature in `kpress-reader-features.md` and to a heading in
+section below maps to a feature in the design doc's Feature Catalog and to a heading in
 `docs/kpress-e2e-testing.runbook.md`. Walk it top to bottom in a browser and confirm each
 behaves as the runbook describes.
 

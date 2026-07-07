@@ -286,7 +286,7 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
 # Built-in build-pipeline stage names (BuildExtensions.pipeline entries).
 PUBLIC_PIPELINE_STAGES = ("kpress:none", "kpress:full")
 
-# Extension-model name contracts (kpress-design.md "Extension and Injection
+# Extension-model name contracts (docs/kpress-design.md "Extension and Injection
 # Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
 
 # Built-in chrome widget ids registered through kpress.widgets.

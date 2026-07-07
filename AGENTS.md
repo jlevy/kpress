@@ -45,8 +45,8 @@ browserless DOM tests for the ESM helpers, and the extraction safety checks
 
 KPress is a Python library and CLI that renders Markdown into readable HTML documents
 and publishes them as static sites.
-[README.md](README.md) is the orientation map; [kpress-design.md](kpress-design.md) is
-the architecture and public-contract reference.
+[README.md](README.md) is the orientation map; [kpress-design.md](docs/kpress-design.md)
+is the architecture and public-contract reference.
 
 ## Conventions & Patterns
 

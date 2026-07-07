@@ -40,11 +40,11 @@ an inner rendering library wrapped by your own site shell.
 
 Architecture and contracts:
 
-- [kpress-design.md](kpress-design.md): architecture, package boundary, and the public
-  contract (HTML/CSS contracts, asset model, optimizer, host integration).
-- [kpress-reader-features.md](kpress-reader-features.md): the durable catalog of reader
-  features and the behavior each guarantees.
-- [kpress-icons.md](kpress-icons.md): the icon sprite contract.
+- [kpress-design.md](docs/kpress-design.md): architecture, package boundary, and the
+  public contract (HTML/CSS contracts, asset model, optimizer, host integration).
+- [docs/kpress-design.md](docs/kpress-design.md) (Feature Catalog): the durable catalog
+  of reader features and the behavior each guarantees.
+- [kpress-icons.md](docs/kpress-icons.md): the icon sprite contract.
 
 Using and validating KPress:
 

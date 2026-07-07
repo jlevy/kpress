@@ -195,7 +195,7 @@ It can run independently of the golden update flow.
 > owns those files and runtime fetches.
 > The `public-sealed` directory names below describe the *hashed + gzipped package-asset
 > shape* (production layout), not a sealed asset graph.
-> See `kpress-design.md` § “Asset sealing: deferred for v1” and
+> See `docs/kpress-design.md` § “Asset sealing: deferred for v1” and
 > `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md` for the v2
 > roadmap.
 

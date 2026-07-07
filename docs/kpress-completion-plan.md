@@ -700,7 +700,7 @@ kash; they are the recorded exceptions:
     tokens; the kash `--color-*` token *names* are provided but mapped to KPress values.
     This departure applies to the default `neutral` palette only: the `warm` preset
     keeps kash/textpress’s teal link (exact conversion) atop a warm-rotated neutral
-    structure (see the palette presets in [kpress-design.md](../kpress-design.md)).
+    structure (see the palette presets in [kpress-design.md](kpress-design.md)).
 12. **Blue-based dark palette** (same hue choice in dark mode; `neutral` only, as with
     #11).
 13. **Sans on the `.kpress` wrapper, serif only inside `.kpress-prose`:** UI chrome is

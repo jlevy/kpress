@@ -425,7 +425,7 @@ def _theme_bootstrap_script() -> str:
 @lru_cache(maxsize=1)
 def _standalone_page_reset() -> str:
     # Standalone-only page-shell reset, inlined render-blocking in <head>. Source lives in
-    # css/page-reset.css (see kpress-design.md "Standalone scroll model").
+    # css/page-reset.css (see docs/kpress-design.md "Standalone scroll model").
     return f"<style>{read_package_text('css/page-reset.css')}</style>"
 
 
@@ -520,7 +520,7 @@ def build_page_model(
 
     One builder serves both surfaces: ``render_page`` serializes it into the
     ``#kpress-page-model`` block; ``runtime.render_view`` echoes it in the
-    dynamic payload so embeds read the same data (kpress-design.md "Page model
+    dynamic payload so embeds read the same data (docs/kpress-design.md "Page model
     block and widget mounts").
 
     ``headings`` carries the post-processed TOC entries — a lone leading H1 is

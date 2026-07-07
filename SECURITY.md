@@ -15,8 +15,8 @@ Security-sensitive changes should preserve these package contracts:
   (`<span>`/`<div>` plus `format.html.extra_tags`) that admits known custom tags
   carrying only `class`/`data-*`, while `style`, `on*` handlers, and unsafe-URL schemes
   are always stripped.
-  See “Trust Modes and the Sanitization Threat Model” in `kpress-design.md` for the full
-  threat model and mode selection.
+  See “Trust Modes and the Sanitization Threat Model” in `docs/kpress-design.md` for the
+  full threat model and mode selection.
 - Dynamic host rendering uses explicit trust modes; `trusted-local` (no sanitization) is
   only for rendering the user’s own local files.
 - Static publishing must not write outside the configured output tree.
