@@ -47,6 +47,14 @@
   padding-block-start: var(--kpress-page-margin-block-start);
 }
 
+/* Standalone pages on phones: the 2rem gutter is a third of the padding stack;
+   narrow it so the reading column keeps its width. */
+@media (max-width: 767px) {
+  .kpress-page-main {
+    --kpress-page-margin-inline: 0.75rem;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────
    Document layout + Table of Contents: the responsive system.
 
@@ -1058,6 +1066,33 @@
   background-color: var(--kpress-doc-code-bg);
 }
 
+/* A sans-serif region: front matter, hero blocks, and other UI-voiced passages
+   switch from the serif reading face to the sans stack. */
+.kpress .sans-text {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+}
+
+.kpress .sans-text p {
+  margin-block: 0.8rem;
+}
+
+.kpress .sans-text h1 {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: 1.75rem;
+  font-weight: 380;
+  margin-block: 1rem 1.2rem;
+}
+
+.kpress .sans-text h2 {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+  font-size: 1.25rem;
+  font-weight: 440;
+  margin-block: 1rem 0.8rem;
+}
+
 .kpress .centered-headers h1,
 .kpress .centered-headers h2,
 .kpress .centered-headers h3 {
@@ -1639,9 +1674,35 @@
 }
 
 @container kpress-doc (max-width: 47.99rem) {
+  /* Narrow screens get a tighter frame: the wide-screen gutters stack up to several
+     rem per side, which is dead space on a phone (kash used 1.5rem total). The doc
+     and long-text pads shrink here; the standalone page gutter shrinks in the
+     media rule by .kpress-page-main below. */
+  .kpress-doc {
+    padding-inline: 0.5rem;
+  }
+
   .kpress-long-text {
     max-width: 100%;
     overflow-x: hidden;
+    padding-inline: 1rem;
+  }
+
+  /* The wide 4rem pull-in reads as wasted width on a phone. */
+  .kpress blockquote {
+    margin-inline: 0.75rem 1rem;
+  }
+
+  /* Shallower list indents on narrow screens (kash parity). */
+  .kpress-prose ul,
+  .kpress-prose ol,
+  .kpress .concepts ul {
+    margin-left: 1rem;
+  }
+
+  /* Three columns are unreadable at phone width. */
+  .kpress .concepts {
+    column-count: 1;
   }
 
   .kpress-table-wrap {
