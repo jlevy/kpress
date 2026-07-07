@@ -36,25 +36,22 @@ def test_svg_camelcase_restore_skips_text_content() -> None:
 
 def test_span_and_div_pass_through_by_default() -> None:
     html = '<div class="wrap" data-x="1"><span class="hl" data-y="2">hi</span></div>'
-    for mode in ("public-static", "sanitized-local"):
-        out, _ = sanitize_raw_html(html, mode)  # pyright: ignore[reportArgumentType]
-        assert '<div class="wrap" data-x="1">' in out
-        assert '<span class="hl" data-y="2">' in out
+    out, _ = sanitize_raw_html(html, "sanitized")
+    assert '<div class="wrap" data-x="1">' in out
+    assert '<span class="hl" data-y="2">' in out
 
 
-def test_extra_tags_survive_under_sanitizing_modes() -> None:
+def test_extra_tags_survive_under_sanitized() -> None:
     html = '<x-callout class="variant" data-variant="x">D</x-callout>'
-    for mode in ("public-static", "sanitized-local"):
-        out, _ = sanitize_raw_html(html, mode, extra_tags=["x-callout"])  # pyright: ignore[reportArgumentType]
-        assert out == '<x-callout class="variant" data-variant="x">D</x-callout>'
+    out, _ = sanitize_raw_html(html, "sanitized", extra_tags=["x-callout"])
+    assert out == '<x-callout class="variant" data-variant="x">D</x-callout>'
 
 
 def test_non_whitelisted_tag_is_stripped() -> None:
     html = "<x-callout>kept</x-callout>"
-    for mode in ("public-static", "sanitized-local"):
-        out, _ = sanitize_raw_html(html, mode)  # pyright: ignore[reportArgumentType]
-        assert "<x-callout" not in out
-        assert "kept" in out
+    out, _ = sanitize_raw_html(html, "sanitized")
+    assert "<x-callout" not in out
+    assert "kept" in out
 
 
 def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
@@ -62,49 +59,47 @@ def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
         '<x-callout class="ok" data-k="v" style="color:red" onclick="bad()" '
         'href="javascript:alert(1)">D</x-callout>'
     )
-    for mode in ("public-static", "sanitized-local"):
-        out, _ = sanitize_raw_html(html, mode, extra_tags=["x-callout"])  # pyright: ignore[reportArgumentType]
-        assert 'class="ok"' in out
-        assert 'data-k="v"' in out
-        assert "style" not in out
-        assert "onclick" not in out
-        assert "javascript:" not in out
+    out, _ = sanitize_raw_html(html, "sanitized", extra_tags=["x-callout"])
+    assert 'class="ok"' in out
+    assert 'data-k="v"' in out
+    assert "style" not in out
+    assert "onclick" not in out
+    assert "javascript:" not in out
 
 
-def test_extra_tags_carry_only_class_and_data_attributes_in_broad_modes() -> None:
-    # In public-static/sanitized-local the pass-through attribute policy still applies
-    # to tags admitted only via the whitelist: class/data-* ride through, but the
-    # global attributes standard tags keep (id/href/src) are stripped, so a custom
-    # element cannot carry navigation, resource loads, or a clobbering id.
+def test_extra_tags_carry_only_class_and_data_attributes() -> None:
+    # The pass-through attribute policy applies to tags admitted only via the
+    # whitelist: class/data-* ride through, but the global attributes standard tags
+    # keep (id/href/src) are stripped, so a custom element cannot carry navigation,
+    # resource loads, or a clobbering id.
     html = (
         '<x-callout id="steal" href="https://evil.test" src="https://evil.test/x" '
         'class="ok" data-k="v">D</x-callout>'
         '<a id="anchor" href="https://example.com">link</a>'
     )
-    for mode in ("public-static", "sanitized-local"):
-        out, _ = sanitize_raw_html(html, mode, extra_tags=["x-callout"])  # pyright: ignore[reportArgumentType]
-        callout = re.search(r"<x-callout[^>]*>", out)
-        assert callout
-        assert 'class="ok"' in callout.group(0)
-        assert 'data-k="v"' in callout.group(0)
-        for dropped in ("id=", "href=", "src="):
-            assert dropped not in callout.group(0)
-        # Standard tags are unaffected by the pass-through restriction.
-        anchor = re.search(r"<a[^>]*>", out)
-        assert anchor
-        assert 'href="https://example.com"' in anchor.group(0)
-        assert 'id="anchor"' in anchor.group(0)
+    out, _ = sanitize_raw_html(html, "sanitized", extra_tags=["x-callout"])
+    callout = re.search(r"<x-callout[^>]*>", out)
+    assert callout
+    assert 'class="ok"' in callout.group(0)
+    assert 'data-k="v"' in callout.group(0)
+    for dropped in ("id=", "href=", "src="):
+        assert dropped not in callout.group(0)
+    # Standard tags are unaffected by the pass-through restriction.
+    anchor = re.search(r"<a[^>]*>", out)
+    assert anchor
+    assert 'href="https://example.com"' in anchor.group(0)
+    assert 'id="anchor"' in anchor.group(0)
 
 
 def test_media_embedding_tags_are_forbidden_extra_tags() -> None:
     for bad in ("video", "audio", "source", "track", "picture"):
         with pytest.raises(KPressInvalidRequestError):
-            sanitize_raw_html("<p>x</p>", "public-static", extra_tags=[bad])
+            sanitize_raw_html("<p>x</p>", "sanitized", extra_tags=[bad])
 
 
-def test_trusted_local_skips_sanitization() -> None:
+def test_trusted_skips_sanitization() -> None:
     html = '<x-callout style="x" onclick="y()">D</x-callout>'
-    out, diagnostics = sanitize_raw_html(html, "trusted-local")
+    out, diagnostics = sanitize_raw_html(html, "trusted")
     assert out == html
     assert diagnostics == []
 
@@ -115,4 +110,4 @@ def test_extra_tags_validated_on_direct_render_path() -> None:
     # nh3 panic (script/style) or a silently ineffective entry.
     for bad in ("script", "frameset", "Not-Valid", ""):
         with pytest.raises(KPressInvalidRequestError):
-            sanitize_raw_html("<p>x</p>", "public-static", extra_tags=[bad])
+            sanitize_raw_html("<p>x</p>", "sanitized", extra_tags=[bad])

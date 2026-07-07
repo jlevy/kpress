@@ -59,8 +59,9 @@ class FormatConfig:
     show_frontmatter: bool = True
     # Whitelist of additional pass-through HTML/XML tag names (YAML:
     # format.html.extra_tags). Unioned with the always-on <span>/<div> defaults and
-    # admitted across every trust mode, carrying class/data-* but never style/on*/unsafe
-    # URLs. Threaded into RenderOptions.extra_tags. Empty by default (output unchanged).
+    # admitted under the sanitized trust mode, carrying class/data-* but never
+    # style/on*/unsafe URLs. Threaded into RenderOptions.extra_tags. Empty by default
+    # (output unchanged).
     extra_tags: tuple[str, ...] = ()
     # Widget presence + opaque config map (extension model layer D). Keys are
     # widget ids; values normalize to "on" | "off" | "auto" or pass through as

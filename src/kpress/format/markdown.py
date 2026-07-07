@@ -380,9 +380,9 @@ def _mark_standalone_image_figures(tokens: list[Token]) -> None:
 
 
 def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode) -> MarkdownIt:
-    # Raw HTML always reaches the renderer; the sanitizing modes (sanitized-local,
-    # public-static) then run nh3 over the output as the single authority on what
-    # survives (kpress.format.sanitize.sanitize_raw_html).
+    # Raw HTML always reaches the renderer; the sanitized mode then runs nh3 over the
+    # output as the single authority on what survives
+    # (kpress.format.sanitize.sanitize_raw_html).
     md = MarkdownIt("js-default", {"html": True})
     md.use(tasklists_plugin, enabled=False)
     md.use(footnote_plugin)
@@ -945,7 +945,7 @@ def parse_markdown(
     markdown: str,
     *,
     title: str,
-    trust_mode: TrustMode = "trusted-local",
+    trust_mode: TrustMode = "trusted",
     math: MathMode = "auto",
     diagrams: DiagramMode = "auto",
     extra_tags: Iterable[str] | None = None,
@@ -953,7 +953,7 @@ def parse_markdown(
     """Parse KPress Markdown into stable, KPress-owned HTML.
 
     ``extra_tags`` is the host whitelist of additional pass-through HTML tags, unioned
-    with the always-on ``<span>``/``<div>`` defaults and admitted under every sanitizing
+    with the always-on ``<span>``/``<div>`` defaults and admitted under the sanitized
     trust mode (see ``kpress.format.sanitize.sanitize_raw_html``).
     """
 
@@ -970,10 +970,9 @@ def parse_markdown(
     diagnostics: list[Diagnostic] = []
     diagnostics.extend(_math_diagnostics(env))
     diagnostics.extend(_footnote_diagnostics(tokens, env))
-    # Fail closed: every mode except the explicit trusted-local opt-out sanitizes, so
-    # an out-of-contract trust_mode value (e.g. the removed "untrusted") can never
-    # skip sanitization.
-    if trust_mode != "trusted-local":
+    # Fail closed: everything except the explicit "trusted" opt-out sanitizes, so an
+    # out-of-contract trust_mode value can never skip sanitization.
+    if trust_mode != "trusted":
         html, html_diagnostics = sanitize_raw_html(html, trust_mode, extra_tags=extra_tags)
         diagnostics.extend(html_diagnostics)
     diagnostics.extend(_broken_anchor_diagnostics(html))

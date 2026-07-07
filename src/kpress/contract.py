@@ -243,11 +243,11 @@ PUBLIC_DATA_ATTRIBUTES = (
 )
 
 # Whitelisted pass-through HTML/XML tags: the input contract is "Markdown + a known set
-# of HTML tags". These tags reach the rendered output untouched under EVERY sanitizing
-# trust mode (sanitized-local, public-static) and trivially under trusted-local.
-# `<span>`/`<div>` are always allowed, matching GitHub / CommonMark renderer norms; a
-# host activates more through `format.html.extra_tags` (RenderOptions.extra_tags),
-# which is unioned with this default set per render.
+# of HTML tags". These tags reach the rendered output untouched under the sanitized
+# trust mode and trivially under trusted. `<span>`/`<div>` are always allowed, matching
+# GitHub / CommonMark renderer norms; a host activates more through
+# `format.html.extra_tags` (RenderOptions.extra_tags), which is unioned with this
+# default set per render.
 PUBLIC_PASS_THROUGH_TAGS = (
     "div",
     "span",

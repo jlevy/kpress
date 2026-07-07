@@ -11,10 +11,10 @@ from kpress.errors import KPressPublishError
 from kpress.models import PrintProfile, ThemeMode
 
 DocumentProfile = PrintProfile
-# Trust modes: who wrote the content and where the output lands. See the
-# "Trust Modes and the Sanitization Threat Model" section of docs/kpress-design.md
-# for the threat model and the entry-point → mode mapping.
-TrustMode = Literal["trusted-local", "sanitized-local", "public-static"]
+# Trust modes: do we trust the person who wrote the content? See "The Document
+# Dialect and Trust Modes" in docs/kpress-design.md for the threat model and the
+# entry-point → mode mapping.
+TrustMode = Literal["trusted", "sanitized"]
 TocMode = Literal["off", "auto", "on"]
 MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]
@@ -81,7 +81,7 @@ class DocumentInput:
     frontmatter_error: str | None = None
     profile: DocumentProfile = "document"
     document_profile: DocumentProfile = "document"
-    trust_mode: TrustMode = "trusted-local"
+    trust_mode: TrustMode = "trusted"
     host: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -136,7 +136,7 @@ class RenderOptions:
     diagrams: DiagramMode = "auto"
     # Whitelist of additional pass-through HTML/XML tag names the host activates
     # (config: format.html.extra_tags). Unioned with the always-on <span>/<div> defaults
-    # and admitted across every sanitizing trust mode, carrying class/data-* (never
+    # and admitted under the sanitized trust mode, carrying class/data-* (never
     # style/on*/unsafe URLs). See kpress.contract.PUBLIC_PASS_THROUGH_TAGS. Empty by
     # default: with no extra tags, output is unchanged.
     extra_tags: tuple[str, ...] = ()

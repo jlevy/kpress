@@ -231,21 +231,20 @@ def sanitize_raw_html(
 ) -> tuple[str, list[Diagnostic]]:
     """Return raw HTML according to the configured trust mode.
 
-    ``trusted-local`` skips sanitization entirely. The sanitizing modes
-    (``sanitized-local``, ``public-static``) share one nh3 profile: the XSS-inert
-    allow-set plus the pass-through whitelist (``<span>``/``<div>`` plus any
-    ``extra_tags`` the host activates). Whitelist-only tags carry ``class``/``data-*``
-    but never ``style``/``on*``/unsafe URLs.
+    ``trusted`` skips sanitization entirely. ``sanitized`` applies the nh3 profile:
+    the XSS-inert allow-set plus the pass-through whitelist (``<span>``/``<div>`` plus
+    any ``extra_tags`` the host activates). Whitelist-only tags carry
+    ``class``/``data-*`` but never ``style``/``on*``/unsafe URLs.
     """
 
-    if trust_mode == "trusted-local":
+    if trust_mode == "trusted":
         return html, []
 
     pass_through = _pass_through_tags(extra_tags)
     # Tags admitted *only* via the pass-through whitelist carry the pass-through
-    # attribute policy (class/data-*) even in the broad sanitizing modes — never
-    # id/href/src from _GLOBAL_ATTRIBUTES, which the standard tags legitimately
-    # keep. This also keeps content-authored ids off whitelisted custom elements
+    # attribute policy (class/data-*) — never id/href/src from _GLOBAL_ATTRIBUTES,
+    # which the standard tags legitimately keep.
+    # This also keeps content-authored ids off whitelisted custom elements
     # (DOM clobbering).
     restricted = pass_through - _ALLOWED_TAGS
     prefix_tuple = tuple(_PASS_THROUGH_ATTRIBUTE_PREFIXES)
@@ -331,7 +330,7 @@ def _restore_camelcase_at_attributes(svg: str) -> str:
 
 
 def sanitize_generated_svg(svg: str) -> str:
-    """Return KPress-generated inline SVG using the public-static sanitizer policy."""
+    """Return KPress-generated inline SVG using the sanitized-mode nh3 profile."""
 
     sanitized = nh3.clean(
         svg,

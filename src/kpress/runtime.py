@@ -303,11 +303,10 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         profile=profile,
         document_profile=profile,
         # Dynamic host render serves arbitrary documents from the embedder's
-        # worktree. The body must be treated as untrusted: switch from
-        # `trusted-local` (raw HTML passthrough) to `sanitized-local` so
-        # `<script>`, event-handler attributes, and `javascript:` URLs are
-        # stripped before the host injects the fragment into its shell.
-        trust_mode="sanitized-local",
+        # worktree, so the body cannot be trusted: sanitize so `<script>`,
+        # event-handler attributes, and `javascript:` URLs are stripped before
+        # the host injects the fragment into its shell.
+        trust_mode="sanitized",
         host=request.host,
         metadata=metadata,
     )

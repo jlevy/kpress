@@ -156,8 +156,8 @@ A captured frame uses the `frame-capture` treatment:
 
 ## Details and raw HTML
 
-<details><summary>Expand for trusted-local HTML</summary><p>This collapsible block is
-authored as trusted-local raw HTML and should render inline with the reader's details
+<details><summary>Expand for trusted-mode HTML</summary><p>This collapsible block is
+authored as trusted-mode raw HTML and should render inline with the reader's details
 styling, and have a sensible print policy.</p></details>
 
 ## Semantic blocks

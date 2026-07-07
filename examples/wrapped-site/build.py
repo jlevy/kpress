@@ -87,10 +87,10 @@ def _render_all() -> list[RenderedFragment]:
             source_text=markdown,
             source_path=str(source),
             logical_path=page.url,
-            # These documents are authored by the site owner, so the
-            # public-static (full-trust) profile is appropriate. A wrapper
-            # rendering untrusted user content would use "sanitized-local".
-            trust_mode="public-static",
+            # Sanitize even though these documents are authored by the site
+            # owner: published pages should carry no raw scripts or handlers,
+            # matching what kpress's own static publisher does.
+            trust_mode="sanitized",
         )
         fragment = render_fragment(document, RenderOptions(asset_mode="linked"))
         rendered.append(

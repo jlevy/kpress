@@ -525,7 +525,7 @@ def build_site(
                 logical_path=route,
                 frontmatter=doc.metadata,
                 sidematter=doc.sidematter,
-                trust_mode="public-static",
+                trust_mode="sanitized",
             ),
             RenderOptions(
                 asset_url_prefix=asset_prefix,
@@ -731,7 +731,7 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
             source_text=source_text,
             body_markdown=source_text,
             source_path=str(source),
-            trust_mode="public-static",
+            trust_mode="sanitized",
         ),
         RenderOptions(
             print_profile=request.print_profile,

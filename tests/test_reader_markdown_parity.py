@@ -179,7 +179,7 @@ def test_youtube_iframes_render_as_no_network_video_placeholders() -> None:
     tree = parse_markdown(
         '<iframe src="https://www.youtube.com/embed/demo?start=12" title="Demo video"></iframe>',
         title="Video",
-        trust_mode="public-static",
+        trust_mode="sanitized",
     )
 
     assert "https://www.youtube.com" not in tree.html
@@ -407,58 +407,53 @@ def test_raw_html_trust_modes_preserve_safe_html_and_strip_unsafe_html() -> None
     trusted = parse_markdown(
         '<section onclick="bad()"><em>Safe</em><script>alert("x")</script></section>',
         title="Trusted",
-        trust_mode="trusted-local",
+        trust_mode="trusted",
     )
-    public = parse_markdown(
+    sanitized = parse_markdown(
         '<section onclick="bad()"><em>Safe</em><script>alert("x")</script></section>',
-        title="Public",
-        trust_mode="public-static",
+        title="Sanitized",
+        trust_mode="sanitized",
     )
     assert 'onclick="bad()"' in trusted.html
     assert "<script>" in trusted.html
-    assert "<em>Safe</em>" in public.html
-    assert "onclick" not in public.html
-    assert "<script>" not in public.html
-    assert public.diagnostics[0].type == "html_sanitized"
+    assert "<em>Safe</em>" in sanitized.html
+    assert "onclick" not in sanitized.html
+    assert "<script>" not in sanitized.html
+    assert sanitized.diagnostics[0].type == "html_sanitized"
 
 
-def test_whitelisted_tag_survives_with_class_and_data_across_postures() -> None:
-    source = '<x-callout class="variant" data-variant="x">D</x-callout>'
-    for mode in ("public-static", "sanitized-local"):
-        tree = parse_markdown(
-            source,
-            title="Whitelist",
-            trust_mode=mode,  # pyright: ignore[reportArgumentType]
-            extra_tags=("x-callout",),
-        )
-        assert '<x-callout class="variant" data-variant="x">D</x-callout>' in tree.html
+def test_whitelisted_tag_survives_with_class_and_data() -> None:
+    tree = parse_markdown(
+        '<x-callout class="variant" data-variant="x">D</x-callout>',
+        title="Whitelist",
+        trust_mode="sanitized",
+        extra_tags=("x-callout",),
+    )
+    assert '<x-callout class="variant" data-variant="x">D</x-callout>' in tree.html
 
 
 def test_non_whitelisted_tag_still_stripped_with_active_whitelist() -> None:
-    for mode in ("public-static", "sanitized-local"):
-        tree = parse_markdown(
-            "<x-unknown>kept</x-unknown>",
-            title="Whitelist",
-            trust_mode=mode,  # pyright: ignore[reportArgumentType]
-            extra_tags=("x-callout",),
-        )
-        assert "<x-unknown" not in tree.html
-        assert "kept" in tree.html
+    tree = parse_markdown(
+        "<x-unknown>kept</x-unknown>",
+        title="Whitelist",
+        trust_mode="sanitized",
+        extra_tags=("x-callout",),
+    )
+    assert "<x-unknown" not in tree.html
+    assert "kept" in tree.html
 
 
 def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
-    source = '<x-callout class="ok" data-k="v" style="color:red" onclick="bad()">D</x-callout>'
-    for mode in ("public-static", "sanitized-local"):
-        tree = parse_markdown(
-            source,
-            title="Whitelist",
-            trust_mode=mode,  # pyright: ignore[reportArgumentType]
-            extra_tags=("x-callout",),
-        )
-        assert 'class="ok"' in tree.html
-        assert 'data-k="v"' in tree.html
-        assert "style" not in tree.html
-        assert "onclick" not in tree.html
+    tree = parse_markdown(
+        '<x-callout class="ok" data-k="v" style="color:red" onclick="bad()">D</x-callout>',
+        title="Whitelist",
+        trust_mode="sanitized",
+        extra_tags=("x-callout",),
+    )
+    assert 'class="ok"' in tree.html
+    assert 'data-k="v"' in tree.html
+    assert "style" not in tree.html
+    assert "onclick" not in tree.html
 
 
 def test_whitelisted_block_renders_inner_markdown() -> None:
@@ -468,7 +463,7 @@ def test_whitelisted_block_renders_inner_markdown() -> None:
     tree = parse_markdown(
         source,
         title="Whitelist",
-        trust_mode="public-static",
+        trust_mode="sanitized",
         extra_tags=("x-callout",),
     )
     assert "<x-callout" in tree.html
@@ -479,26 +474,26 @@ def test_no_whitelist_output_unchanged() -> None:
     # With no extra_tags, a document with no whitelisted custom tags renders identically
     # whether or not the whitelist machinery is invoked (the byte-identical guarantee).
     source = '# Title\n\nA paragraph with <span class="hl">inline</span> markup.\n'
-    baseline = parse_markdown(source, title="Doc", trust_mode="public-static")
-    with_empty = parse_markdown(source, title="Doc", trust_mode="public-static", extra_tags=())
+    baseline = parse_markdown(source, title="Doc", trust_mode="sanitized")
+    with_empty = parse_markdown(source, title="Doc", trust_mode="sanitized", extra_tags=())
     assert with_empty.html == baseline.html
 
 
 def test_whitelisted_tag_reaches_static_page_output() -> None:
-    # Integration: the static publish path renders public-static; a whitelisted tag with
+    # Integration: the static publish path renders sanitized; a whitelisted tag with
     # class/data-* reaches the full page output with its attributes intact.
     document = DocumentInput(
         title="Custom tag",
         source_text='<x-callout class="variant" data-variant="x">Body</x-callout>',
         body_markdown='<x-callout class="variant" data-variant="x">Body</x-callout>',
         source_path="custom.md",
-        trust_mode="public-static",
+        trust_mode="sanitized",
     )
     page = render_page(document, RenderOptions(extra_tags=("x-callout",)))
     assert '<x-callout class="variant" data-variant="x">Body</x-callout>' in page.html
 
 
-def test_public_static_sanitizer_blocks_adversarial_html_bypasses() -> None:
+def test_sanitizer_blocks_adversarial_html_bypasses() -> None:
     tree = parse_markdown(
         dedent(
             """
@@ -509,7 +504,7 @@ def test_public_static_sanitizer_blocks_adversarial_html_bypasses() -> None:
             """
         ).strip(),
         title="Unsafe",
-        trust_mode="public-static",
+        trust_mode="sanitized",
     )
 
     assert "onerror" not in tree.html
@@ -524,11 +519,11 @@ def test_public_static_sanitizer_blocks_adversarial_html_bypasses() -> None:
     assert any(item.type == "html_sanitized" for item in tree.diagnostics)
 
 
-def test_sanitized_local_preserves_rendered_markdown_html() -> None:
+def test_sanitized_mode_preserves_rendered_markdown_html() -> None:
     tree = parse_markdown(
         "# Title\n\n**bold** <script>alert(1)</script>",
         title="Sanitized",
-        trust_mode="sanitized-local",
+        trust_mode="sanitized",
     )
 
     assert "<h1" in tree.html
@@ -754,7 +749,7 @@ def test_invalid_math_falls_back_to_source_with_diagnostic() -> None:
 
 
 def test_public_static_sanitizer_preserves_generated_mathml() -> None:
-    tree = parse_markdown("$a^2$", title="Public math", trust_mode="public-static")
+    tree = parse_markdown("$a^2$", title="Public math", trust_mode="sanitized")
 
     assert "<math " in tree.html
     assert "<msup><mi>a</mi><mn>2</mn></msup>" in tree.html

@@ -149,24 +149,19 @@ def test_public_data_attributes_are_emitted_on_rendered_tables() -> None:
 
 
 def test_pass_through_tag_contract_is_honored_by_the_sanitizer() -> None:
-    """The pinned pass-through whitelist survives every sanitizing posture, carrying
-    only the pinned attribute policy (class + data-* prefix); style/on* stay stripped."""
+    """The pinned pass-through whitelist survives sanitization, carrying only the
+    pinned attribute policy (class + data-* prefix); style/on* stay stripped."""
 
     prefix = PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES[0]
     attr = PUBLIC_PASS_THROUGH_ATTRIBUTES[0]
     for tag in PUBLIC_PASS_THROUGH_TAGS:
         source = f'<{tag} {attr}="ok" {prefix}k="v" style="color:red" onclick="bad()">D</{tag}>'
-        for mode in ("public-static", "sanitized-local"):
-            tree = kpress_format.parse_markdown(
-                source,
-                title="Contract",
-                trust_mode=mode,  # pyright: ignore[reportArgumentType]
-            )
-            assert f"<{tag} " in tree.html
-            assert f'{attr}="ok"' in tree.html
-            assert f'{prefix}k="v"' in tree.html
-            assert "style" not in tree.html
-            assert "onclick" not in tree.html
+        tree = kpress_format.parse_markdown(source, title="Contract", trust_mode="sanitized")
+        assert f"<{tag} " in tree.html
+        assert f'{attr}="ok"' in tree.html
+        assert f'{prefix}k="v"' in tree.html
+        assert "style" not in tree.html
+        assert "onclick" not in tree.html
 
 
 def test_template_variable_contract_matches_packaged_templates() -> None:
