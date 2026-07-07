@@ -1057,7 +1057,9 @@
 }
 
 .kpress .boxed-text {
-  border: 1px solid var(--kpress-doc-border);
+  /* The deliberate ink rule (kash border-hairline), not the faint doc border:
+     a box the author drew should read as drawn. */
+  border: 1px solid var(--kpress-doc-border-hairline);
   margin: 1rem 0;
   padding: 0 1rem;
 }
@@ -1498,6 +1500,19 @@
      track the *text* lands at the full 48rem measure (border-box), not the
      40rem it shrank to under 4rem padding. The 75rem band floor still fits:
      15 + 3 + 53 = 71rem + the 2×2rem page gutters = 75rem exactly. */
+  /* The site header/footer rows follow the same geometry as the doc grid: with a
+     TOC the grid left-anchors inside .kpress-doc (1rem doc pad + 15rem track +
+     3rem gap) and .kpress-long-text pads 2.5rem, so the reading text's inline
+     start sits at 21.5rem. A centered header would drift off that column as the
+     pane widens; align its content instead. Only the inline centering is
+     cancelled: the footer keeps its block gap above. */
+  .kpress-page-main:has(.kpress-toc) .kpress-site-header,
+  .kpress-page-main:has(.kpress-toc) .kpress-site-footer {
+    margin-inline: 0;
+    max-width: none;
+    padding-inline-start: 21.5rem;
+  }
+
   .kpress-content-with-toc .kpress-long-text {
     grid-column: 2;
     margin: 0;
