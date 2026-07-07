@@ -227,6 +227,7 @@
      blue-tinted doc-border) at low opacity so it reads gray, not blue. */
   --color-hint-gentle: color-mix(in srgb, var(--kpress-doc-muted) 18%, transparent);
   --color-border-hint: var(--kpress-doc-border);
+  --color-border-hairline: var(--kpress-doc-border-hairline);
   --color-hover-bg: var(--kpress-doc-surface-hover);
   --color-hover: var(--kpress-doc-border);
   --color-selection: color-mix(in srgb, var(--kpress-doc-link) 20%, transparent);
@@ -300,6 +301,9 @@
   --kpress-doc-text: oklch(21.01% 0.0318 264.7);
   --kpress-doc-muted: oklch(50.06% 0.025 259.2);
   --kpress-doc-border: oklch(89.90% 0.0151 260.7);
+  /* A crisp near-ink rule for deliberate frames (boxed-text): kash's
+     border-hairline (hsl 188 2% 34%) was a *dark* thin line, not a faint one. */
+  --kpress-doc-border-hairline: oklch(42.00% 0.006 260.7);
   --kpress-doc-link: oklch(45.76% 0.1445 254.7);
   --kpress-doc-bg: oklch(100.00% 0 0);
   --kpress-doc-code-bg: oklch(97.85% 0.0045 258.3);
@@ -325,6 +329,7 @@
   --kpress-doc-text: oklch(94.40% 0.0097 252.8);
   --kpress-doc-muted: oklch(76.58% 0.0205 252.9);
   --kpress-doc-border: oklch(33.73% 0.0207 254.1);
+  --kpress-doc-border-hairline: oklch(80.00% 0.008 254.1);
   --kpress-doc-link: oklch(76.68% 0.1208 255.4);
   --kpress-doc-bg: oklch(18.98% 0.0094 255.6);
   --kpress-doc-code-bg: oklch(24.16% 0.0153 256.8);
@@ -346,6 +351,7 @@
   --kpress-doc-text: oklch(21.01% 0.022 208);
   --kpress-doc-muted: oklch(50.06% 0.022 208);
   --kpress-doc-border: oklch(89.90% 0.012 208);
+  --kpress-doc-border-hairline: oklch(42.00% 0.006 208);
   --kpress-doc-link: oklch(56.60% 0.061 208);
   /* A mild cream -- kept very light (matches textpress's near-white code surface)
      so monospace spans and tooltips read as a gentle tan, not a heavy one. */
@@ -360,6 +366,7 @@
   --kpress-doc-text: oklch(94.40% 0.01 208);
   --kpress-doc-muted: oklch(76.58% 0.02 208);
   --kpress-doc-border: oklch(33.73% 0.016 208);
+  --kpress-doc-border-hairline: oklch(80.00% 0.007 208);
   --kpress-doc-link: oklch(74.90% 0.07 208);
   --kpress-doc-code-bg: oklch(24.16% 0.012 83);
 }
