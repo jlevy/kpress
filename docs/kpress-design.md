@@ -525,8 +525,9 @@ resource loading and navigation (`<iframe>`, `<embed>`, `<form>`, media elements
 pointing at attacker servers), DOM clobbering (content-authored `id`s shadowing elements
 the page’s scripts look up), and parser-context confusion (`<template>`, `<xmp>`,
 `<base>`, `<meta>`). The `sanitized` mode strips all of these unconditionally —
-including on whitelisted pass-through tags, which carry `class`/`data-*` and nothing
-else. Safe URL schemes are `http`/`https`/`mailto`/`tel`.
+including on whitelisted pass-through tags; tags admitted only via the whitelist carry
+`class`/`data-*` and nothing else.
+Safe URL schemes are `http`/`https`/`mailto`/`tel`.
 
 Choosing a mode is mechanical:
 
@@ -681,8 +682,11 @@ The contract module also declares:
   renderers); a host activates more through `format.html.extra_tags` (the
   `RenderOptions.extra_tags` equivalent), which is unioned with the defaults per render.
   Whitelisted tags reach the output untouched under the `sanitized` trust mode and
-  trivially under `trusted`, carrying only `class` and `data-*`. `style`, `on*`
-  handlers, and unsafe-URL attributes stay sanitized even on a whitelisted tag.
+  trivially under `trusted`. Tags admitted *only* via the whitelist (custom
+  `extra_tags`) carry `class`/`data-*` and nothing else; `<span>`/`<div>` are also part
+  of the standard allow-set, so they additionally keep its standard global attributes
+  (e.g. `id` for author anchors).
+  `style`, `on*` handlers, and unsafe-URL attributes stay sanitized on every tag.
   This is a styleable pass-through, never “turn sanitization off”.
   A document with no whitelisted tags renders exactly as before.
 

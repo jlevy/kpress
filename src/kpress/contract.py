@@ -253,10 +253,12 @@ PUBLIC_PASS_THROUGH_TAGS = (
     "span",
 )
 
-# Attribute policy on whitelisted pass-through tags: only `class` and the `data-*`
-# prefix survive (data-* rides the generic-prefix allowance, so it is not enumerated
-# here). `style`, `on*` handlers, and unsafe-URL attributes stay sanitized even on a
-# whitelisted tag — this is a styleable pass-through, never "turn sanitization off".
+# Attribute policy on tags admitted only via the whitelist (custom extra_tags): only
+# `class` and the `data-*` prefix survive (data-* rides the generic-prefix allowance,
+# so it is not enumerated here). `<span>`/`<div>` are also part of the sanitizer's
+# standard allow-set and keep its standard global attributes. `style`, `on*` handlers,
+# and unsafe-URL attributes stay sanitized on every tag — this is a styleable
+# pass-through, never "turn sanitization off".
 PUBLIC_PASS_THROUGH_ATTRIBUTES = ("class",)
 PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES = ("data-",)
 
