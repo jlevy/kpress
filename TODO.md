@@ -1,0 +1,108 @@
+# KPress Backlog and Status
+
+This is KPress’s public implementation ledger.
+It answers two separate questions:
+
+1. **Capability status:** What works today, and how is it verified?
+2. **Backlog status:** What remains, in what order, and which tbd bead owns it?
+
+The code and contract tests are authoritative for shipped behavior.
+tbd is authoritative for issue status and dependencies.
+This file is the maintained view across both.
+Update all three together when a public capability changes.
+
+Last reconciled: 2026-07-12 on the `v0.1.0` stabilization branch.
+
+## Release Status
+
+KPress is usable as a Python library and CLI. All code-owned stabilization gates are
+closed; `v0.1.0` is not ready to publish until the remaining release-operation row is
+closed. The release will use the exact version `v0.1.0`; alpha status is conveyed by
+package metadata and release notes, not by a version suffix.
+
+| Gate | Bead | Status | Exit condition |
+| --- | --- | --- | --- |
+| Trusted publication and external install | `kpr-1kfq` | Open | The trusted publisher is confirmed, the single stabilization PR is green and merged, `v0.1.0` is published, and a clean project passes the documented smoke. |
+
+Completed stabilization gates:
+
+| Gate | Bead | Result |
+| --- | --- | --- |
+| Public planning and docs hygiene | `kpr-nyc1` | Closed; the public ledger, docs, source, tests, and fixtures are checked for private paths, project names, and tracker IDs. |
+| Platform claim | `kpr-wx2a` | Closed; metadata and docs state the verified macOS/Linux POSIX boundary, while native Windows remains tracked. |
+| CLI and export truth | `kpr-q9bg` | Closed; fictional conversion/export surfaces are removed, and PDF uses Playwright/Chromium or fails clearly. |
+| Deterministic full optimizer | `kpr-4cds` | Closed; a reviewed lock ships, cold-cache bootstrap uses `npm ci`, doctor’s network flag is real, and preflight precedes output mutation. |
+| Vendored-asset licensing | `kpr-6xq2` | Closed; complete Lucide/Feather, KaTeX, PT Serif, and Source Sans 3 texts ship in the wheel. |
+
+## Capability Matrix
+
+“Automated” means a current test or quality gate exercises the capability.
+“Browser and print” records real-browser evidence separately; browserless DOM tests do
+not count as visual acceptance.
+
+| Area | Implementation | Automated evidence | Browser and print evidence | Remaining beads |
+| --- | --- | --- | --- | --- |
+| Markdown and document model | Implemented for GFM tables/tasks, nested structures, footnotes, code, math markers, raw-HTML postures, stable headings, frontmatter, and sidematter | Parser, sanitizer, document-contract, reader-parity, and golden suites | Representative long-form pages have been exercised; the full provider/edge corpus is not visually accepted | `kpr-1zxy`, `kpr-qmii` |
+| HTML safety and custom tags | Exact extra-tag and inert-attribute admission is implemented; dangerous tags, event handlers, inline style, and unsafe URLs fail closed or are stripped with itemized diagnostics | Config, sanitizer, public-contract, and dynamic/static parity tests | No separate visual gate is required for the safety floor | `kpr-ej80` for optional declared prefix patterns |
+| Page shell and design system | Standalone page, themes, palettes, reading fonts, TOC, content card, semantic styles, and public CSS-variable/class contracts are implemented | Golden, CSS-contract, font, content-card, and publish-workflow tests | Light/dark, desktop/narrow, settings, structural content, and tooltip smoke have evidence; the complete matrix remains open | `kpr-qmii`, `kpr-vxy5` |
+| Client runtime | Widget and behavior registries, configuration, mount/remount, teardown, fault isolation, settings, TOC, tooltips, tables, code copy, tabs, video popovers, overlay, and viewport helpers are implemented | 117 browserless Vitest tests plus focused Python contract tests and a real Playwright tooltip smoke | Full keyboard, touch, reduced-motion, popover, and print interaction acceptance remains open | `kpr-qmii`, `kpr-vxy5`, `kpr-jqx2` |
+| Extension surfaces | Typed Python config, ordered build pipeline stages, tree/page transforms, chrome slots, widget configuration, public JS exports, CSS variables, and generic integration guidance are implemented and pinned | Public-contract, pipeline, runtime, examples, and clean-room wheel tests | Representative host integration works; opaque page data and a simpler CSS-var layer are not shipped | `kpr-4qxl`, `kpr-ef65`, `kpr-hh97` |
+| Static publishing | Multi-source discovery, deterministic routes, static assets, linked/hashed modes, manifests, sitemap/robots/redirects, precompression, cache invalidation, and fail-loud diagnostics are implemented | Publish, route, manifest, cache, equivalence, golden, and clean-room example suites | External clean-room builds pass; deployed cache-busting policy and a KPress-owned collection/navigation layer remain | `kpr-5ar3`, `kpr-w993` |
+| Optimizer | `none` and optional `full` stages work; a reviewed npm lock ships, cold-cache bootstrap uses `npm ci`, and preflight runs before output mutation | Optimizer, pipeline, manifest, doctor network-semantics, cold/offline/error, and preflight tests | Warm and cold cache paths are verified on the supported platforms | — |
+| CLI and local workflows | `init`, `convert`, `format`, `render`, `paste`, `files`, `export`, `clean`, `build`, `optimize`, and `doctor` have tested supported paths; unsupported source conversion is explicit | CLI, workflow, clean-room, and wheel smoke tests | HTML paths are verified; PDF delegates to the real browser-print pipeline | `kpr-qmii` for full visual acceptance |
+| Print and PDF | Print CSS and a Playwright/Chromium browser-PDF backend exist; no placeholder PDF path is exposed | Print-contract, missing-dependency, and browser-backend unit tests | Full print-preview/PDF artifact acceptance remains open | `kpr-qmii` |
+| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | External install from the built wheel passes; published-install verification waits for the tag | `kpr-1kfq` |
+| Platforms and maintenance | Python 3.12–3.14 on Linux/macOS is the declared and verified implementation boundary | CI covers supported Python versions on Ubuntu; local macOS gates pass | Native Windows support is not verified or claimed | `kpr-isp2`, `kpr-nev3`, `kpr-gkj6` |
+
+## Prioritized Backlog
+
+### P1: Required Before `v0.1.0`
+
+- `kpr-1kfq`: review and merge the single stabilization PR, confirm trusted publishing,
+  publish the exact `v0.1.0` tag, and verify installation from an external clean project
+
+### P2: Stabilization After the First Alpha
+
+- `kpr-nev3`: enable public dependency vulnerability monitoring
+- `kpr-qmii`: complete the real-browser and print acceptance matrix
+- `kpr-1zxy`: expand canonical document and provider fixtures
+- `kpr-vxy5`: audit accessibility and keyboard behavior
+- `kpr-jqx2`: expose host-neutral ready and lifecycle events
+- `kpr-4qxl`: add an opaque per-page extension-data seam
+- `kpr-5ar3`: add a supported cache-busted asset URL policy
+- `kpr-w993`: design the multi-page collection and navigation layer
+
+### P3: Deferred Evolution
+
+- `kpr-gkj6`: update CI’s Node setup action before its runner deadline
+- `kpr-isp2`: restore and verify native Windows support
+- `kpr-hh97`: migrate remaining render markup into live strict templates
+- `kpr-xsog`: design verified offline assets and truly self-contained output
+- `kpr-ef65`: evaluate schema-checked simple CSS-variable configuration
+- `kpr-ej80`: add declared plugin-prefix admission without weakening sanitization
+- `kpr-e48f`: support optional icon sprite overrides without weakening the built-in icon
+  contract
+- `kpr-6nvi`: rename the historical `video-popover.js` asset to match its current
+  inline-embed behavior
+
+## Maintenance Rules
+
+- Every active backlog line must name one real open or in-progress `kpr-*` bead.
+- Closed beads leave the active lists; shipped capability remains in the matrix.
+- A capability is “implemented” only when code, public contract, docs, and automated
+  tests agree.
+- Browserless DOM tests establish behavior, not visual acceptance.
+  Record actual desktop, narrow, dark, print, console, and network evidence under the
+  browser bead.
+- New deferrals require a bead before the code or docs call them deferred.
+- Keep private repository names, machine paths, and non-public tracker IDs out of this
+  repository. Historical detail belongs in Git, not this current-status ledger.
+
+Useful public orientation: [README](README.md),
+[design and public contracts](docs/kpress-design.md),
+[validation runbook](docs/kpress-validation.runbook.md), and
+[release notes](docs/releases/0.1.0.md).
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

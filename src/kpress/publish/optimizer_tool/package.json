@@ -1,0 +1,8 @@
+{
+  "name": "kpress-optimizer-cache",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "html-minifier-next": "6.2.3"
+  }
+}

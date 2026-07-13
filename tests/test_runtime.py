@@ -116,7 +116,7 @@ def test_runtime_static_root_override(tmp_path: Path) -> None:
     assert asset.content == b".x{}\n"
 
 
-# --- security: dynamic render must strip active content (orig-w14p) -----
+# --- security: dynamic render must strip active content --------------------
 
 
 _XSS_PAYLOADS = [
@@ -134,7 +134,7 @@ def test_dynamic_render_strips_active_content_from_document_body(label: str, pay
     """The dynamic render path serves arbitrary host-supplied documents.
     Host apps inject the returned HTML fragment into their shell via
     `innerHTML`, so active content in the document body must not survive
-    sanitization. Regression for orig-w14p.
+    sanitization.
     """
 
     source = f"# Title\n\n{payload}\n"

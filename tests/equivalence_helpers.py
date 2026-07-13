@@ -189,8 +189,8 @@ def _render_hashed(fixture: EquivalenceFixture, tmp_path: Path) -> str:
         encoding="utf-8",
     )
 
-    # `inline` is config-rejected for end users until self-contained
-    # (orig-7ehk); the harness selects it programmatically because the
+    # `inline` is config-rejected for end users until self-contained; the
+    # harness selects it programmatically because the
     # equivalence comparison wants fully-embedded CSS/JS text.
     build_site(config, BuildOptions(asset_mode="inline"))
 

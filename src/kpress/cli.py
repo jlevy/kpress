@@ -114,9 +114,7 @@ def _cmd_files(args: argparse.Namespace) -> int:
 
 def _cmd_export(args: argparse.Namespace) -> int:
     return _print_result(
-        export_document(
-            args.input, html=args.html, pdf=args.pdf, docx=args.docx, work_root=args.work_root
-        )
+        export_document(args.input, html=args.html, pdf=args.pdf, work_root=args.work_root)
     )
 
 
@@ -217,11 +215,10 @@ def build_parser() -> argparse.ArgumentParser:
     files = sub.add_parser("files", help="List files in the work root.")
     files.set_defaults(func=_cmd_files)
 
-    export = sub.add_parser("export", help="Export a document to HTML and optional PDF/DOCX.")
+    export = sub.add_parser("export", help="Export a document to HTML and optional PDF.")
     export.add_argument("input")
     export.add_argument("--html")
     export.add_argument("--pdf")
-    export.add_argument("--docx")
     export.set_defaults(func=_cmd_export)
 
     clean = sub.add_parser("clean", help="Remove the build output directory and work root.")
@@ -355,7 +352,7 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
             detail = f" - {r.reason}" if r.reason else ""
             print(f"{_DOCTOR_LABELS[name] + ':':<20}{r.status}{detail}")
 
-    failed = [n for n in required if results[n].status not in {"ok", "skipped"}]
+    failed = [n for n in required if results[n].status != "ok"]
     return 2 if failed else 0
 
 

@@ -9,6 +9,8 @@ The document and publishing paths are usable and tested, but public seams may st
 change by hard cut before a stable release.
 
 KPress requires Python 3.12 or newer.
+Version `0.1.0` supports macOS and Linux; native Windows support is tracked for a later
+alpha (`kpr-isp2`).
 
 ## Install and build a site
 
@@ -101,6 +103,8 @@ uv run pytest
 
 Architecture and stability contracts live in
 [`docs/kpress-design.md`](docs/kpress-design.md).
+Current capability status, release gates, and the prioritized public backlog live in
+[`TODO.md`](TODO.md).
 See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), and
 [`SUPPLY-CHAIN-SECURITY.md`](SUPPLY-CHAIN-SECURITY.md) before contributing or reporting
 a vulnerability. General defects and integration feedback belong in the

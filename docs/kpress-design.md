@@ -259,8 +259,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   absence of the optional dependency produces a clear error, never a silent downgrade.
 
 This document describes the alpha architecture and public contract.
-Open implementation work is tracked in the public issue tracker rather than a duplicated
-status ledger.
+Open implementation work and current capability status are indexed in
+[`TODO.md`](../TODO.md).
 
 ## Dependency Rules
 
@@ -1606,8 +1606,8 @@ self-contained:
   Reader modules are 11 files, ~1,930 LOC, with a shallow single-root import graph (3
   modules import from `overlay.js`; nothing else has imports).
   A topological concat and strip of `import`/`export` statements is ~30 lines of Python
-  or one `npx esbuild` call (same pattern as `html-minifier-next`). Then plumb
-  `--asset-mode` through `format`/`render` and switch inline JS emission from
+  or one managed Node/esbuild call.
+  Then plumb `--asset-mode` through `format`/`render` and switch inline JS emission from
   `<script type="module">` to classic `<script>`. This alone unblocks `file://` for
   documents with system-font fallback acceptable.
 - **Tier 2 (~half day):** inline reader fonts.
@@ -1780,15 +1780,15 @@ no built-in regex pseudo-minifier and no silent fallback.
   This is a fully supported output; a static build with `none` is correct, readable, and
   deployable.
 - `full` (stage name `full`): opt in to Node-backed minification/optimization.
-  KPress runs `html-minifier-next@6.2.3` through `npx --package`, so callers keep no
-  project `package.json` and npm manages the fetch and cache.
-  This mode requires Node.js with `npx` on `PATH`.
+  KPress ships a reviewed `package-lock.json` for `html-minifier-next@6.2.3`, copies it
+  into a file-locked user cache, and installs only with `npm ci --ignore-scripts`.
+  Callers keep no project `package.json`. This mode requires Node.js with npm on `PATH`.
 
 Selection is explicit: `optimizer.mode` in `kpress.yml`, `--optimizer`, or
-`BuildOptions.optimizer`. If `full` is selected and `npx` is unavailable, optimization
-raises `KPressMissingOptionalDependencyError` with an actionable message.
-It never downgrades to `none` silently, and an unknown mode is an error.
-If optimization is not requested, `npx` is not required.
+`BuildOptions.optimizer`. If `full` is selected and Node, npm, or the locked package is
+unavailable, optimization raises `KPressMissingOptionalDependencyError` with an
+actionable message. It never downgrades to `none` silently, and an unknown mode is an
+error. If optimization is not requested, Node and npm are not required.
 
 **Pipeline plugins.** A host generalizes the single mode into an ordered stage list via
 `build_site(config, extensions=BuildExtensions(...))`:
@@ -1814,22 +1814,12 @@ it stays an explicit ordered list: no priorities, no hook lifecycle.
 The manifest records the configured stages in `pipeline` and the stages that changed
 each file in `applied_pipeline` (see below).
 
-The current public contract is deliberately simpler than a full JavaScript package
-setup: if callers ask for optimization, they need `npx`; if they do not ask for
-optimization, they do not need it.
-The `npx --package` implementation pins the top-level minifier package while letting npm
-own package installation and cache layout.
-That is acceptable for the current KPress publishing slice.
-
-A future hardening layer can improve dependency reproducibility without changing that
-public contract.
-The cleaner long-term shape is modeled on the useful parts of `tminify`:
-Python API, tiny JavaScript wrapper, committed lockfile, `npm ci`, file-locked
-user-cache installation, and structured subprocess errors.
-
-`full` should be preflighted at the start of a publish operation, before writing or
-copying outputs. If `npx` or the optimizer package is unavailable, the publish command
-should fail conspicuously with no partial success status and no fallback to `none`.
+The full optimizer is preflighted at the start of a publish operation, before creating,
+purging, writing, or copying outputs.
+A cold cache is installed from the shipped lock; an npm or network failure leaves the
+prior output untouched.
+If Node, npm, or the locked optimizer package is unavailable, the publish command fails
+conspicuously with no partial success status and no fallback to `none`.
 
 ### Precompression
 
@@ -1875,7 +1865,7 @@ kpress format INPUT --output-dir DIR
 kpress render INPUT.md --output OUTPUT.html
 kpress paste --title TITLE
 kpress files
-kpress export INPUT.md --html OUT.html --pdf OUT.pdf --docx OUT.docx
+kpress export INPUT.md --html OUT.html --pdf OUT.pdf
 kpress build --config kpress.yml
 kpress build --config kpress.yml --asset-mode hashed --optimizer full --precompress gzip
 kpress doctor --config kpress.yml
@@ -1912,15 +1902,15 @@ source of truth, shared with the `optimizer=full` preflight in
   There is no `dev`/`production` mode; doctor reads the resolved explicit axes and fails
   only when a capability the config actually requires (optimizer `full`, `br`
   precompression, or PDF enabled) is unavailable.
-- `--allow-network`: only gate for the optimizer cold-cache smoke; the `npx` presence
-  check is always no-network.
+- `--allow-network`: only gate for `doctor` to bootstrap a cold optimizer cache with the
+  shipped lock. Warm-cache and Node/npm presence checks are always no-network.
 - `--json`: stable `{kpress_version, platform, capabilities}` with the closed status
   set.
 
-Capability semantics mirror the runtime contract: `optimizer=none` with no `npx` is OK;
+Capability semantics mirror the runtime contract: `optimizer=none` without Node is OK;
 `optimizer=full` without the toolchain, `br` without `brotli`, or PDF without Playwright
-are failures only when that path is requested, otherwise reported
-`unavailable`/`skipped`.
+are failures only when that path is requested, otherwise reported as unavailable or
+skipped.
 
 ## Browser Asset Quality Gate
 
@@ -2222,19 +2212,18 @@ into a request, then surfaces the returned build report (or `KPressRenderError` 
 | `KPressRenderError` | Render pipeline raised | 502 with diagnostics |
 | `KPressAssetNotFoundError` | Asset path rejected as unsafe or missing | 404 |
 | `KPressUnavailableError` | KPress package not importable | 503; degrade to a host-side fallback if any |
-| `KPressMissingOptionalDependencyError` | Static-export with `optimizer=full` and no npx, or `pdf` with no Playwright | 503 (or surface to the user as a setup error) |
+| `KPressMissingOptionalDependencyError` | Static export with `optimizer=full` and no Node/npm, or PDF with no Playwright | 503 (or surface to the user as a setup error) |
 
 `KPressInvalidRequestError` is a `ValueError` subclass for ergonomic catching, but hosts
 should catch it specifically rather than catching all `ValueError`s.
 
-### Reference adapter
+### Embedding adapter guidance
 
-The original host app’s `kpress_adapter.py` is the canonical embedding reference:
-optional import (`try: from kpress import runtime`), translated exceptions (every KPress
-exception type is re-wrapped into a host-side type so callers never need to import
-kpress), and an explicit `kpress_available()` probe for graceful degradation.
-Other embedding hosts (Electron viewers, hosted web deployments, custom web apps) should
-follow the same pattern.
+An embedding adapter should import `kpress.runtime` as a required dependency, translate
+KPress exceptions only at an application boundary that needs application-specific error
+types, serve the full asset closure, and keep host chrome outside the KPress fragment.
+If an application deliberately makes KPress optional, its availability probe and
+fallback are application-owned; KPress itself does not provide a fail-quiet adapter.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

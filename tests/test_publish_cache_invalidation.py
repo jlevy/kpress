@@ -1,4 +1,4 @@
-"""End-to-end cache-invalidation proofs for the static build (orig-aquv).
+"""End-to-end cache-invalidation proofs for the static build.
 
 The static build output must be a pure, deterministic function of its inputs:
 identical inputs reproduce identical content hashes, and any meaningful input
@@ -74,7 +74,7 @@ def test_optimizer_mode_invalidates_output(tmp_path: Path) -> None:
     from kpress.publish.optimize import full_optimizer_available
 
     if not full_optimizer_available():
-        pytest.skip("full optimizer requires Node/npx")
+        pytest.skip("full optimizer requires Node/npm")
     config = _site(tmp_path)
     none_hash = _page_hash(tmp_path, config, BuildOptions(asset_mode="hashed", optimizer="none"))
     full_hash = _page_hash(tmp_path, config, BuildOptions(asset_mode="hashed", optimizer="full"))
@@ -98,7 +98,7 @@ def test_unchanged_rebuild_is_stable_under_repeat(tmp_path: Path) -> None:
     assert first == second
 
 
-# --- stale output removal (orig-8qo4) -----------------------------------
+# --- stale output removal -------------------------------------------------
 
 
 def test_deleted_source_is_purged_from_next_build_output(tmp_path: Path) -> None:

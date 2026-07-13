@@ -93,7 +93,7 @@ class PdfPublishConfig:
     """Publisher PDF settings.
 
     Disambiguated from ``kpress.format.pdf.PdfOptions`` (the per-render
-    options carrying ``output``/``backend``/``page_size``/etc.). The
+    options carrying ``output``/``page_size``/etc.). The
     config dataclass declares what the *site* enables; the render
     dataclass parameterizes a single ``render_pdf`` call.
     """
@@ -215,8 +215,8 @@ def _checked_choice(name: str, value: object, allowed: tuple[str, ...]) -> str:
     """Membership-check a closed enum-like config value.
 
     Provided-but-invalid → `KPressPublishError` so a typo in production
-    config fails the build instead of silently shipping a different policy
-    (orig-1tkb). Omitted-value defaults are the caller's concern.
+    config fails the build instead of silently shipping a different policy.
+    Omitted-value defaults are the caller's concern.
     """
 
     if not isinstance(value, str) or value not in allowed:
@@ -231,7 +231,7 @@ def _validated_optimizer_mode(optimizer: dict[str, object]) -> str:
 
     Omitted → default `"none"`. Provided-but-invalid → `KPressPublishError`
     so a typo in production config fails the build instead of silently
-    downgrading (orig-1tkb).
+    downgrading.
     """
 
     if "mode" not in optimizer:
@@ -416,9 +416,9 @@ def validate_config(config: KPressConfig) -> KPressConfig:
 
     ``load_config`` enforces these for the YAML dialect at parse time; the
     typed (programmatic) dialect must fail just as loudly — a type-legal value
-    like ``asset_mode="inline"`` silently ships a feature-broken site
-    (orig-7ehk), a widget-presence typo must not silently ship different
-    chrome (orig-1tkb), and every closed value set (asset/optimizer/math/toc/
+    like ``asset_mode="inline"`` silently ships a feature-broken site, a
+    widget-presence typo must not silently ship different
+    chrome, and every closed value set (asset/optimizer/math/toc/
     diagrams/color-mode/precompress) is membership-checked so a cast-away typo
     cannot ship a different publish policy. Returns the config with widget
     presence scalars normalized, so both dialects publish identical page-model
@@ -515,7 +515,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     # loudly. A typo in production config silently shipping a different
     # asset/optimizer/math policy than the operator intended is a real
     # publishing risk and inconsistent with KPress's elsewhere-strict
-    # reserved-path / collision / unsafe-asset stance (orig-1tkb).
+    # reserved-path / collision / unsafe-asset stance.
     toc = _checked_choice("format.toc", fmt.get("toc"), _TOC_MODES) if "toc" in fmt else "auto"
     math = _checked_choice("format.math", fmt.get("math"), _MATH_MODES) if "math" in fmt else "auto"
     diagrams = (
@@ -536,7 +536,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     if "asset_mode" in publish:
         asset_mode = publish.get("asset_mode")
         # `inline` is rejected at the config surface until it is truly
-        # self-contained (orig-7ehk): inlined ES modules still import
+        # self-contained: inlined ES modules still import
         # sibling files, so the published pages would silently lose reader
         # features. The programmatic BuildOptions override keeps accepting it
         # for the equivalence harness and future single-file work.

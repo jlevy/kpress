@@ -3,7 +3,7 @@
 Builds the kpress wheel, installs it into a fresh venv, and renders/builds in
 a scratch directory with no repo imports — proving package data (CSS, JS,
 fonts, icon sprite, KaTeX, templates) ships in the wheel and resolves via
-``importlib.resources``. This is the v0.1 publishability gate (orig-wp8v).
+``importlib.resources``. This is the v0.1 publishability gate.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ needs_uv = pytest.mark.skipif(shutil.which("uv") is None, reason="clean-room gat
 
 _CLEAN_ROOM_SCRIPT = """
 import sys
+from importlib import resources
 from pathlib import Path
 
 import kpress
@@ -28,6 +29,11 @@ import kpress
 # The interpreter must resolve kpress from the venv, never the repo checkout.
 location = Path(kpress.__file__).resolve()
 assert "site-packages" in str(location), f"kpress resolved outside the venv: {location}"
+
+license_root = resources.files("kpress").joinpath("licenses")
+for name in ("lucide.txt", "katex.txt", "pt-serif.txt", "source-sans-3.txt"):
+    text = license_root.joinpath(name).read_text(encoding="utf-8")
+    assert "Copyright" in text, f"third-party license missing or incomplete: {name}"
 
 from kpress.format import DocumentInput, RenderOptions, render_page
 

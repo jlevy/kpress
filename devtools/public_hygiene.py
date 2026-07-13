@@ -24,10 +24,12 @@ TEXT_SUFFIXES: Final = {
 }
 
 PUBLIC_ROOT_FILES: Final = (
+    "AGENTS.md",
     "CONTRIBUTING.md",
     "NOTICE.md",
     "README.md",
     "SECURITY.md",
+    "TODO.md",
     # docs/*.md files are covered by the "docs" entry in PUBLIC_DIRS; listing
     # them here too would scan them twice and duplicate findings.
     "pyproject.toml",
@@ -37,7 +39,7 @@ PUBLIC_ROOT_FILES: Final = (
     "tsconfig.json",
 )
 
-PUBLIC_DIRS: Final = ("docs", "src/kpress")
+PUBLIC_DIRS: Final = (".agents", "docs", "examples", "src/kpress", "tests")
 
 RULE_PATTERNS: Final = (
     (

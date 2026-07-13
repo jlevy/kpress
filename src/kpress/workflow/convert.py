@@ -1,12 +1,9 @@
 """Local document conversion workflow.
 
-KPress core only knows how to *copy* inputs that are already Markdown (or
-plain text that is valid as Markdown) into the workspace. Real format
-conversion (HTML → Markdown, DOCX → Markdown, PDF → Markdown, etc.)
-requires an optional extra with the right library (e.g. ``html2text``,
-``markdownify``, ``pandoc``). Until those extras exist,
-:func:`convert_document` copies the passthrough cases and surfaces a
-missing-extra diagnostic for everything else.
+KPress core only knows how to *copy* inputs that are already Markdown (or plain text
+that is valid as Markdown) into the workspace. KPress 0.1.0 does not advertise format
+conversion extras: HTML, DOCX, PDF, and other source formats must be converted
+externally before calling :func:`convert_document`.
 """
 
 from __future__ import annotations
@@ -22,15 +19,8 @@ from kpress.workflow.workspace import WorkflowResult, prepare_work_root
 # workspace file with the same content rather than a confusing diagnostic.
 _PASSTHROUGH_SUFFIXES = frozenset({".md", ".markdown", ".txt"})
 
-# Inputs that need a real converter behind an optional extra. The extra
-# isn't built yet — we emit a clear diagnostic instead of a fake conversion.
-_NEEDS_CONVERTER_EXTRA = {
-    ".html": "kpress[convert-html]",
-    ".htm": "kpress[convert-html]",
-    ".docx": "kpress[convert-office]",
-    ".pdf": "kpress[convert-pdf]",
-    ".rst": "kpress[convert-rst]",
-}
+# Inputs that require conversion outside KPress 0.1.0.
+_UNSUPPORTED_CONVERSION_SUFFIXES = frozenset({".html", ".htm", ".docx", ".pdf", ".rst"})
 
 
 def convert_document(
@@ -40,24 +30,22 @@ def convert_document(
 
     ``.md``/``.markdown``/``.txt`` are copied verbatim and renamed to
     ``.md`` in the workspace. Any other extension returns a workspace
-    result with a diagnostic naming the optional extra that would
-    provide the conversion (``kpress[convert-html]``,
-    ``kpress[convert-office]``, ``kpress[convert-pdf]``, etc.) and
-    writes nothing.
+    result with a diagnostic directing the caller to convert externally and writes
+    nothing. KPress does not advertise optional extras that do not exist.
     """
 
     root = prepare_work_root(work_root)
     source = Path(input_path)
     suffix = source.suffix.lower()
 
-    if suffix in _NEEDS_CONVERTER_EXTRA:
-        extra = _NEEDS_CONVERTER_EXTRA[suffix]
+    if suffix in _UNSUPPORTED_CONVERSION_SUFFIXES:
         return WorkflowResult(
             command="convert",
             work_root=root,
             diagnostics=[
-                f"Converting {suffix} to Markdown requires the {extra} optional extra "
-                f"(not yet implemented in KPress core)."
+                f"Converting {suffix} to Markdown is not supported by KPress 0.1.0. "
+                "Convert the source to Markdown with an external tool, then pass the "
+                "result to KPress."
             ],
         )
 
@@ -68,7 +56,7 @@ def convert_document(
             diagnostics=[
                 f"Cannot convert {suffix or 'extension-less'} input: no built-in handler "
                 f"and no known optional extra. Supported inputs: "
-                f"{sorted(_PASSTHROUGH_SUFFIXES | _NEEDS_CONVERTER_EXTRA.keys())}."
+                f"{sorted(_PASSTHROUGH_SUFFIXES)}."
             ],
         )
 

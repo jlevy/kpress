@@ -20,7 +20,7 @@ from kpress.publish.optimize import (
 )
 
 needs_full = pytest.mark.skipif(
-    not full_optimizer_available(), reason="full optimizer requires Node/npx"
+    not full_optimizer_available(), reason="full optimizer requires Node/npm"
 )
 
 
@@ -63,7 +63,7 @@ def test_full_optimizer_errors_when_node_unavailable_no_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(shutil, "which", _stub_which)
-    with pytest.raises(KPressMissingOptionalDependencyError, match=r"html-minifier-next|npx"):
+    with pytest.raises(KPressMissingOptionalDependencyError, match=r"html-minifier-next|Node"):
         get_optimizer("full").optimize("<p>  x  </p>", kind="html")
 
 

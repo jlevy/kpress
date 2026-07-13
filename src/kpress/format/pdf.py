@@ -5,10 +5,9 @@ from __future__ import annotations
 import importlib
 import tempfile
 from dataclasses import dataclass
-from html.parser import HTMLParser
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Protocol, cast
 
 from kpress.errors import KPressMissingOptionalDependencyError
 from kpress.format.model import RenderedPage
@@ -20,7 +19,6 @@ class PdfOptions:
     """Options for browser-print-style PDF output."""
 
     output: Path | None = None
-    backend: Literal["minimal", "browser"] = "minimal"
     page_size: str = "Letter"
     print_background: bool = True
 
@@ -49,6 +47,9 @@ class _PdfBrowser(Protocol):
 
 
 class _PdfChromium(Protocol):
+    @property
+    def executable_path(self) -> str: ...
+
     def launch(self) -> _PdfBrowser: ...
 
 
@@ -66,56 +67,6 @@ class _PdfPlaywrightContext(Protocol):
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> bool | None: ...
-
-
-class _TextExtractor(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.parts: list[str] = []
-
-    def handle_data(self, data: str) -> None:
-        stripped = " ".join(data.split())
-        if stripped:
-            self.parts.append(stripped)
-
-
-# Single-line placeholder PDF can fit roughly this many escaped-text
-# characters on one letter-sized page at 12pt Helvetica before the BT/ET
-# stream stops being legible. The full document is always available in
-# the matching HTML output; the minimal PDF is a smoke artifact, not a
-# rendering target, so we truncate explicitly rather than line-wrap.
-_MINIMAL_PDF_TEXT_BUDGET_CHARS = 2000
-
-
-def _minimal_pdf_bytes(text: str) -> bytes:
-    """Build a deterministic single-page placeholder PDF.
-
-    Used when no browser backend is available (``backend="minimal"`` or
-    the optional ``kpress[pdf]`` extra missing). Truncates text to
-    ``_MINIMAL_PDF_TEXT_BUDGET_CHARS`` after escape; readers that need
-    the full document should consult the paired HTML output.
-    """
-
-    escaped = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-    safe = escaped[:_MINIMAL_PDF_TEXT_BUDGET_CHARS]
-    stream = f"BT /F1 12 Tf 72 720 Td ({safe}) Tj ET"
-    objects = [
-        "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
-        "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
-        "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
-        "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
-        f"5 0 obj << /Length {len(stream)} >> stream\n{stream}\nendstream endobj",
-    ]
-    body = "%PDF-1.4\n"
-    offsets = [0]
-    for obj in objects:
-        offsets.append(len(body.encode("latin-1")))
-        body += obj + "\n"
-    xref = len(body.encode("latin-1"))
-    body += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n"
-    body += "".join(f"{offset:010d} 00000 n \n" for offset in offsets[1:])
-    body += f"trailer << /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n"
-    return body.encode("latin-1")
 
 
 def _sync_playwright() -> _PdfPlaywrightContext:
@@ -149,6 +100,12 @@ def _write_browser_pdf(
             html_path.write_text(html, encoding="utf-8")
         pdf_path = Path(temp_dir) / "kpress-output.pdf"
         with _sync_playwright() as playwright:
+            chromium_path = Path(playwright.chromium.executable_path)
+            if not chromium_path.is_file():
+                raise KPressMissingOptionalDependencyError(
+                    "Browser PDF export requires Playwright Chromium. "
+                    "Run `playwright install chromium`."
+                )
             browser = playwright.chromium.launch()
             try:
                 page = browser.new_page()
@@ -172,7 +129,11 @@ def _write_browser_pdf(
 
 
 def render_pdf(page: RenderedPage | Path, options: PdfOptions | None = None) -> PdfReport:
-    """Generate a PDF artifact from rendered page HTML."""
+    """Generate a browser-rendered PDF artifact from rendered page HTML.
+
+    PDF export is never emulated with a placeholder. Missing Playwright or Chromium
+    raises ``KPressMissingOptionalDependencyError`` with the required setup.
+    """
 
     options = options or PdfOptions()
     if isinstance(page, Path):
@@ -183,15 +144,9 @@ def render_pdf(page: RenderedPage | Path, options: PdfOptions | None = None) -> 
         html = page.html
         output = options.output or Path("kpress-output.pdf")
         source_path = None
-    if options.backend == "browser":
-        return _write_browser_pdf(
-            html=html,
-            source_path=source_path,
-            output=output,
-            options=options,
-        )
-    parser = _TextExtractor()
-    parser.feed(html)
-    data = _minimal_pdf_bytes(" ".join(parser.parts) or "KPress document")
-    write_bytes_atomic(output, data)
-    return PdfReport(path=output, bytes_written=len(data), backend="minimal-pdf")
+    return _write_browser_pdf(
+        html=html,
+        source_path=source_path,
+        output=output,
+        options=options,
+    )

@@ -2,31 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from pytest import MonkeyPatch
 
 import kpress.format.pdf as pdf_module
 from kpress.errors import KPressMissingOptionalDependencyError
-from kpress.format import DocumentInput, render_page
-
-
-def test_render_pdf_writes_deterministic_artifact(tmp_path: Path) -> None:
-    page = render_page(
-        DocumentInput(
-            title="PDF",
-            source_text="# PDF\n\nPrintable body.",
-            body_markdown="# PDF\n\nPrintable body.",
-            source_path="pdf.md",
-        )
-    )
-
-    report = pdf_module.render_pdf(
-        page,
-        pdf_module.PdfOptions(output=tmp_path / "doc.pdf"),
-    )
-
-    assert report.backend == "minimal-pdf"
-    assert report.bytes_written == report.path.stat().st_size
-    assert report.path.read_bytes().startswith(b"%PDF-1.4")
 
 
 def test_browser_pdf_backend_reports_missing_playwright(
@@ -45,12 +25,36 @@ def test_browser_pdf_backend_reports_missing_playwright(
     try:
         pdf_module.render_pdf(
             html_path,
-            pdf_module.PdfOptions(output=tmp_path / "doc.pdf", backend="browser"),
+            pdf_module.PdfOptions(output=tmp_path / "doc.pdf"),
         )
     except KPressMissingOptionalDependencyError as exc:
         assert "playwright install chromium" in str(exc)
     else:
         raise AssertionError("browser PDF backend should report missing Playwright")
+
+
+def test_browser_pdf_backend_reports_missing_chromium(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    html_path = tmp_path / "doc.html"
+    html_path.write_text("<h1>PDF</h1>", encoding="utf-8")
+
+    class FakeChromium:
+        executable_path = str(tmp_path / "missing-chromium")
+
+    class FakePlaywright:
+        chromium = FakeChromium()
+
+        def __enter__(self) -> FakePlaywright:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+            return False
+
+    monkeypatch.setattr(pdf_module, "_sync_playwright", lambda: FakePlaywright())
+
+    with pytest.raises(KPressMissingOptionalDependencyError, match="install chromium"):
+        pdf_module.render_pdf(html_path, pdf_module.PdfOptions(output=tmp_path / "doc.pdf"))
 
 
 def test_browser_pdf_backend_uses_playwright_print_pipeline(
@@ -59,6 +63,8 @@ def test_browser_pdf_backend_uses_playwright_print_pipeline(
     html_path = tmp_path / "doc.html"
     html_path.write_text("<!doctype html><h1>PDF</h1>", encoding="utf-8")
     events: list[tuple[object, ...]] = []
+    chromium_path = tmp_path / "chromium"
+    chromium_path.touch()
 
     class FakePage:
         def goto(self, url: str, *, wait_until: str) -> None:
@@ -80,6 +86,8 @@ def test_browser_pdf_backend_uses_playwright_print_pipeline(
             events.append(("close",))
 
     class FakeChromium:
+        executable_path = str(chromium_path)
+
         def launch(self) -> FakeBrowser:
             events.append(("launch",))
             return FakeBrowser()
@@ -101,7 +109,6 @@ def test_browser_pdf_backend_uses_playwright_print_pipeline(
         html_path,
         pdf_module.PdfOptions(
             output=tmp_path / "doc.pdf",
-            backend="browser",
             page_size="A4",
             print_background=False,
         ),

@@ -1,10 +1,8 @@
 """Package-asset copy helpers for the KPress static publisher.
 
-The historical asset sealer (HTML/CSS/JS URL rewriter, external fetcher,
-offline-tree verifier) is deferred to v2 — see
-``docs/kpress-design.md`` § "Asset sealing: deferred for v1"
-and the v1-removal spec at
-``docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md``.
+Verified external-asset publishing (HTML/CSS/JS URL rewriting, external fetch,
+and offline-tree verification) is deferred to v2; see
+``docs/kpress-design.md`` § "Asset sealing: deferred for v1" and ``kpr-xsog``.
 
 In v1, this subpackage owns only the package-asset graph: KPress's
 vendored CSS/JS/fonts and the KaTeX bundle when math is present.

@@ -17,7 +17,7 @@ We copy the few glyphs we use into the sprite and record where each came from.
 
 ## The single source of truth
 
-[`src/kpress/format/static/icons/icons.svg`](src/kpress/format/static/icons/icons.svg)
+[`src/kpress/format/static/icons/icons.svg`](../src/kpress/format/static/icons/icons.svg)
 is the one place KPress SVG geometry lives.
 It is a hidden sprite: a `<svg style="display: none">` holding one
 `<symbol id="kpress-icon-<name>">` per glyph.
@@ -26,8 +26,8 @@ It is a hidden sprite: a `<svg style="display: none">` holding one
   `render_fragment`, via the cached `_icon_sprite()`), and its
   `_icon(name, *, css_class, attrs)` helper emits a glyph as
   `<svg …><use href="#kpress-icon-<name>"></use></svg>`.
-- **Client side**, [`static/js/icons.js`](src/kpress/format/static/js/icons.js) exports
-  `icon(name, className)`, which builds the same
+- **Client side**, [`static/js/icons.js`](../src/kpress/format/static/js/icons.js)
+  exports `icon(name, className)`, which builds the same
   `<svg><use href="#kpress-icon-<name>"></svg>` reference.
   `code-copy.js` imports it for the copy/check/error glyphs.
 
@@ -89,14 +89,9 @@ the obvious word.
 | `list` | `list` | Collapsed TOC toggle |
 | `triangle-alert` | `triangle-alert` (was Feather `alert-triangle`) | Code-copy error state |
 
-**The host app** (an embedding host application, developed in its own repository) keeps
-its own glyph set today (an `icons.js` in that repo), a superset that also has
-app-chrome glyphs KPress does not need (`folder`, `file`, `file-text`, `layout-grid`,
-`activity`, `printer`, `box`, `chevron-right`, and bespoke reading-font `serif`/`sans`
-shapes). It shares the same Lucide family and attribute signature so overlapping glyphs
-match KPress. The direction (see `docs/kpress-design.md`) is for the host app to lean on
-the KPress sprite for the shared glyphs rather than keep its own copies; that move is
-tracked separately and not yet done.
+Embedding applications may keep app-chrome glyphs that KPress does not need.
+They should reuse KPress’s sprite for overlapping reader controls so those controls
+retain one source of truth, while app-specific icons remain owned by the application.
 
 ## How to add a glyph
 
@@ -138,14 +133,14 @@ archaeological. Because every glyph is one `<symbol>` in one file, the swap touc
 ## Future: pluggable icon sets in KPress
 
 The glyphs now live in one front-end-native file with the family/version/license in the
-sprite header. The remaining seam, not worth building until a consumer needs it (brand
-icons, a different family for one site):
+sprite header. The remaining seam, tracked by `kpr-e48f`, is useful when a concrete
+consumer needs brand icons or a different family for one site:
 
 - Let `render_*` accept an optional sprite override (an alternate `icons.svg`, or a
   name→symbol map merged over the built-in set) so the default stays batteries-included
   and zero-config.
-- Have the host app consume the KPress sprite for the shared glyphs instead of
-  duplicating them, keeping one source of truth across the two packages.
+- Let embedding applications consume the KPress sprite for shared glyphs instead of
+  duplicating them.
 
 Until there is a real second consumer, the single sprite plus this doc are the right
 amount of structure.

@@ -56,9 +56,10 @@ Document-relative files and external URLs remain the consuming project’s respo
 `inline` is rejected for site builds until the reader modules and fonts can form a
 genuinely self-contained file.
 
-The optional `full` optimizer needs Node.
-Brotli needs `kpress[optimize]`. Selecting a missing toolchain is a hard error; KPress
-never silently downgrades the build.
+The optional `full` optimizer needs Node with npm.
+Its first use installs a reviewed, locked toolchain in the KPress user cache before
+output is touched. Brotli needs `kpress[optimize]`. Selecting a missing toolchain is a
+hard error; KPress never silently downgrades the build.
 
 ## Wrap KPress in a site pipeline
 

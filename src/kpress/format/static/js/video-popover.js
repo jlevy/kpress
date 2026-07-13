@@ -15,7 +15,8 @@ import { behaviors } from "./runtime.js";
  * override really turns the built-in off — late placeholders included).
  *
  * NOTE: the filename is historical (this used to be a click-to-open popover);
- * it is now an inline embedder. A rename is tracked as follow-up cleanup.
+ * it is now an inline embedder. The atomic asset/contract rename is tracked by
+ * `kpr-6nvi`.
  */
 
 const EMBED_HOST = "https://www.youtube-nocookie.com";

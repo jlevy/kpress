@@ -1,9 +1,7 @@
 /* KPress design tokens -- the source of truth for the KPress design system.
  *
- * STRUCTURE (one comment-headed section per group; see
- * docs/project/specs/active/plan-2026-06-12-ui-ux-refinement.md -> "Structured token
- * organization" for the map this mirrors, the playground that exposes it, and the
- * contract that pins the public subset):
+ * STRUCTURE (one comment-headed section per group; the public subset is pinned by
+ * contract.py and the design-system playground exercises the tunable surface):
  *
  *   Foundations (.kpress, .kpress-page-main, .kpress-tooltip) -- theme-INDEPENDENT:
  *     1. Typography: families / weights / sizes / line-heights / section-label caps

@@ -163,7 +163,7 @@ publish:
 
 
 def test_build_site_inline_asset_mode_inlines_package_css_and_js(tmp_path: Path) -> None:
-    # `inline` is config-rejected until truly self-contained (orig-7ehk);
+    # `inline` is config-rejected until truly self-contained;
     # the programmatic BuildOptions override remains for the equivalence
     # harness and the future single-file work, exercised here.
     (tmp_path / "docs").mkdir()
@@ -258,7 +258,7 @@ publish:
     ) == normalize_document_surface(dynamic_html).count("Intro with")
 
 
-def test_workflow_format_and_export_html_pdf(tmp_path: Path) -> None:
+def test_workflow_format_and_export_html(tmp_path: Path) -> None:
     source = tmp_path / "doc.md"
     source.write_text("# Doc\n\nBody\n", encoding="utf-8")
     work_root = tmp_path / ".kpress"
@@ -267,13 +267,11 @@ def test_workflow_format_and_export_html_pdf(tmp_path: Path) -> None:
     exported = export_document(
         source,
         html=tmp_path / "out" / "doc.html",
-        pdf=tmp_path / "out" / "doc.pdf",
         work_root=work_root,
     )
 
     assert any(path.name == "doc.html" for path in formatted.outputs)
     assert (tmp_path / "out" / "doc.html").exists()
-    assert (tmp_path / "out" / "doc.pdf").read_bytes().startswith(b"%PDF")
     assert exported.diagnostics == []
 
     # The formatted/exported HTML references ./_kpress/assets; that bundle must
@@ -291,7 +289,7 @@ def test_workflow_format_and_export_html_pdf(tmp_path: Path) -> None:
 def test_workflow_format_export_have_no_dangling_kpress_refs(tmp_path: Path) -> None:
     """Every ./_kpress/assets URL the formatted and exported HTML references
     must resolve to a real file beside the HTML, so a single-doc format/export
-    opens offline with zero dangling assets (orig-quj4).
+    opens offline with zero dangling assets.
     """
     source = tmp_path / "doc.md"
     source.write_text("# Doc\n\nBody with `code` and a [link](https://x.test).\n", encoding="utf-8")
@@ -325,7 +323,7 @@ def test_workflow_format_export_have_no_dangling_kpress_refs(tmp_path: Path) -> 
     )
 
 
-# --- invalid config values must raise, not silently downgrade (orig-1tkb) -
+# --- invalid config values must raise, not silently downgrade --------------
 
 
 def test_invalid_publish_asset_mode_raises(tmp_path: Path) -> None:
@@ -611,7 +609,7 @@ def test_external_and_local_refs_pass_through_verbatim(tmp_path: Path) -> None:
     """Spec acceptance: post-seal-removal, document-local and external asset
     URLs are emitted into the rendered HTML verbatim; the deploy layer
     owns delivery. Only KPress's own package assets land in ``_kpress/``.
-    See ``docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md``.
+    This regression pins the public removal of the retired sealed-build dialect.
 
     Uses ``<img>`` tags (which survive the publish sanitizer) for both
     local and external refs — the point of this test is the *fetch/seal*
@@ -826,7 +824,7 @@ def test_static_passthrough_rejects_reserved_and_colliding_paths(tmp_path: Path)
 
 
 def test_inline_asset_mode_and_single_file_export_are_gated(tmp_path: Path) -> None:
-    """Until single-file output is truly self-contained (orig-7ehk), the
+    """Until single-file output is truly self-contained, the
     config surface and the single-file export refuse loudly instead of
     emitting pages whose ES-module imports would 404 after relocation.
     """
@@ -1046,13 +1044,13 @@ def test_programmatic_config_fails_as_loudly_as_yaml(tmp_path: Path) -> None:
         )
         return dataclasses.replace(base, **overrides)  # type: ignore[arg-type]
 
-    # inline asset mode: type-legal, semantically rejected (orig-7ehk).
+    # inline asset mode: type-legal, semantically rejected.
     with pytest.raises(KPressPublishError, match="not yet supported"):
         build_site(
             config(publish=PublishConfig(output_dir=tmp_path / "public", asset_mode="inline"))
         )
 
-    # widget-value typo: fails loudly (orig-1tkb)...
+    # Widget-value typo: fails loudly.
     with pytest.raises(KPressPublishError, match="format.widgets"):
         build_site(config(format=FormatConfig(widgets={"settings": "Off"})))
 

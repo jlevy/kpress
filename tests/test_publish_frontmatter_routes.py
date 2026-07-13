@@ -241,7 +241,7 @@ def test_frontmatter_format_contract_survives_full_publish_pipeline(tmp_path: Pa
     assert manifest["routes"] == {"/reports/q3.html": "reports/q3.html"}
 
 
-# --- security: public_path traversal must not escape output_dir (orig-ymsl) ---
+# --- security: public_path traversal must not escape output_dir ---
 
 
 # Empty/whitespace public_path values are not attacks — they're "no
