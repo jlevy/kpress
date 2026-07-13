@@ -323,7 +323,7 @@ def optimize_text(content: str, *, kind: ContentKind | str, backend: str | None 
 
 # Built-in pipeline stage names a host may reference in BuildExtensions.pipeline
 # (pinned by contract.PUBLIC_PIPELINE_STAGES).
-BUILTIN_PIPELINE_STAGES = ("kpress:none", "kpress:full")
+BUILTIN_PIPELINE_STAGES = ("none", "full")
 
 
 def resolve_stage(stage: OptimizerBackend | str) -> OptimizerBackend:
@@ -336,9 +336,9 @@ def resolve_stage(stage: OptimizerBackend | str) -> OptimizerBackend:
 
     if not isinstance(stage, str):
         return stage
-    if stage == "kpress:none":
+    if stage == "none":
         return NoneOptimizer()
-    if stage == "kpress:full":
+    if stage == "full":
         return FullOptimizer()
     from kpress.errors import KPressPublishError
 
@@ -358,15 +358,16 @@ def optimize_file(
     content = path.read_text(encoding="utf-8")
     original_size = len(content.encode("utf-8"))
     resolved_backend = backend or "none"
-    optimized = optimize_text(content, kind=kind, backend=resolved_backend)
-    write_text_atomic(path, optimized)
+    normalized = cast(ContentKind, kind if kind in {"html", "css", "js"} else "other")
+    result = get_optimizer(resolved_backend).optimize(content, kind=normalized)
+    write_text_atomic(path, result.content)
     return OutputFile(
         path=path.name,
         kind=path.suffix.lstrip("."),
-        content_hash=content_hash(optimized),
-        size=len(optimized.encode("utf-8")),
+        content_hash=content_hash(result.content),
+        size=len(result.content.encode("utf-8")),
         original_size=original_size,
-        optimizer_backend=resolved_backend,
+        applied_pipeline=[resolved_backend] if result.changed else [],
     )
 
 

@@ -1000,24 +1000,3 @@ A--&gt;B</code></pre>
     expect(tabs[1]?.getAttribute("aria-selected")).toBe("true");
   });
 });
-
-describe("print.js reader-export contract", () => {
-  it("exposes printKpressDocument and delegates to window.print", async () => {
-    // print.js is intentionally trivial — a host helper, not an interaction
-    // surface. But a regression that drops the export or stops calling
-    // window.print() would break Command-P from an embedding host's shell, so
-    // pin the contract here. happy-dom does not provide window.print by
-    // default; install a fake first so spying on it succeeds.
-    const original = globalThis.print;
-    const fake = vi.fn();
-    globalThis.print = fake;
-    try {
-      const mod = await importFresh("print.js");
-      expect(typeof mod.printKpressDocument).toBe("function");
-      mod.printKpressDocument();
-      expect(fake).toHaveBeenCalledTimes(1);
-    } finally {
-      globalThis.print = original;
-    }
-  });
-});

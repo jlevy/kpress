@@ -66,10 +66,10 @@ class KPressExportRequest:
     view: str
     print_profile: PrintProfile = "document"
     theme_mode: ThemeMode = "system"
-    export_mode: Literal["page", "single-file", "static-hosted", "sealed-static-hosted", "pdf"] = (
+    export_mode: Literal["page", "single-file", "static-hosted", "hashed-static-hosted", "pdf"] = (
         "page"
     )
-    asset_mode: Literal["linked", "inline", "sealed"] = "linked"
+    asset_mode: Literal["linked", "inline", "hashed"] = "linked"
     optimize: bool = False
     destination: str | Path | None = None
     # Whitelist of additional pass-through HTML/XML tag names — same contract as

@@ -1,6 +1,6 @@
-"""Optimized hashed/sealed builds: every emitted asset reference must resolve.
+"""Optimized hashed builds: every emitted asset reference must resolve.
 
-In hashed/sealed modes the page is rendered against raw-package-byte hashes,
+In hashed mode the page is rendered against raw-package-byte hashes,
 the emitted files are hashed from their *optimized* bytes, and
 ``_rewrite_package_asset_urls`` reconciles the two across the final HTML —
 import-map values included. These tests pin that reconciliation with a
@@ -15,35 +15,35 @@ from pathlib import Path
 
 import pytest
 
-import kpress.publish.build as build_module
-from kpress.publish import build_site
-from kpress.publish.optimize import optimize_text
+from kpress.publish import BuildExtensions, build_site
+from kpress.publish.optimize import OptimizerResult
 
 _HASHED_REF = re.compile(r"_kpress/assets/(?P<rel>[\w./-]+\.[0-9a-f]{16}\.(?:js|css|woff2))")
 
 
-def _fake_optimize_text(content: str, *, kind: str, backend: str | None = "none") -> str:
-    """Byte-changing stand-in for the full optimizer (same signature)."""
+class FakeFullOptimizer:
+    """Deterministic byte-changing stand-in for the optional Node stage."""
 
-    if backend == "none":
-        return optimize_text(content, kind=kind, backend="none")
-    if kind == "css":
-        return content + "\n/* minified */\n"
-    if kind == "js":
-        return content + "\n// minified\n"
-    if kind == "html":
-        return content.replace("</body>", "<!-- minified --></body>")
-    return content
+    name = "full"
+
+    def optimize(self, content: str, *, kind: str) -> OptimizerResult:
+        original = content
+        if kind == "css":
+            content += "\n/* minified */\n"
+        elif kind == "js":
+            content += "\n// minified\n"
+        elif kind == "html":
+            content = content.replace("</body>", "<!-- minified --></body>")
+        return OptimizerResult(content=content, backend=self.name, changed=content != original)
 
 
-@pytest.mark.parametrize("asset_mode", ["hashed", "sealed"])
+FAKE_FULL = BuildExtensions(pipeline=[FakeFullOptimizer()])
+
+
+@pytest.mark.parametrize("asset_mode", ["hashed"])
 def test_optimized_build_asset_refs_resolve_to_emitted_files(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, asset_mode: str
+    tmp_path: Path, asset_mode: str
 ) -> None:
-    monkeypatch.setattr(build_module, "optimize_text", _fake_optimize_text)
-    import kpress.publish.capability as capability
-
-    monkeypatch.setattr(capability, "preflight_optimizer_full", lambda: None)
 
     (tmp_path / "index.md").write_text(
         "# Home\n\nProse with `code` and a [link](about).\n", encoding="utf-8"
@@ -56,7 +56,7 @@ def test_optimized_build_asset_refs_resolve_to_emitted_files(
         encoding="utf-8",
     )
 
-    report = build_site(config)
+    report = build_site(config, extensions=FAKE_FULL)
     output_dir = tmp_path / "public"
     emitted = {
         path.relative_to(output_dir).as_posix() for path in output_dir.rglob("*") if path.is_file()
@@ -73,27 +73,22 @@ def test_optimized_build_asset_refs_resolve_to_emitted_files(
         checked += len(refs)
     # The reference set must cover both CSS links and the JS import map.
     assert checked >= 10
-    assert report.optimizer_backend == "full"
+    assert report.pipeline == ["full"]
 
 
 def test_optimized_build_import_map_values_match_emitted_js(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     import json
-
-    monkeypatch.setattr(build_module, "optimize_text", _fake_optimize_text)
-    import kpress.publish.capability as capability
-
-    monkeypatch.setattr(capability, "preflight_optimizer_full", lambda: None)
 
     (tmp_path / "index.md").write_text("# Home\n\n`code`\n", encoding="utf-8")
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: sealed\n"
+        "sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: hashed\n"
         "optimizer:\n  mode: full\n",
         encoding="utf-8",
     )
-    build_site(config)
+    build_site(config, extensions=FAKE_FULL)
     output_dir = tmp_path / "public"
     html = (output_dir / "index.html").read_text(encoding="utf-8")
     raw = re.search(r'<script type="importmap">(.*?)</script>', html, re.DOTALL)

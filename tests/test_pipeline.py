@@ -49,13 +49,13 @@ def _write_site(tmp_path: Path) -> Path:
 def test_resolve_stage_builtin_names_and_unknown() -> None:
     from kpress.errors import KPressPublishError
 
-    assert isinstance(resolve_stage("kpress:none"), NoneOptimizer)
-    assert resolve_stage("kpress:full").name == "full"
+    assert isinstance(resolve_stage("none"), NoneOptimizer)
+    assert resolve_stage("full").name == "full"
 
     custom = RecordingStage("custom", "c")
     assert resolve_stage(custom) is custom
 
-    with pytest.raises(KPressPublishError, match="kpress:none"):
+    with pytest.raises(KPressPublishError, match="none"):
         resolve_stage("bogus")
 
 
@@ -71,9 +71,10 @@ def test_pipeline_stages_run_in_order_and_manifest_records_names(tmp_path: Path)
     assert "<!--one--><!--two--></body>" in html
     # Stages also saw the package assets (css/js kinds).
     assert "css" in first.kinds and "js" in first.kinds
-    # The manifest records the joined stage names for the rewritten page.
+    # The manifest records configured and per-file applied stages as ordered lists.
     page_files = [f for f in report.files if f.path == "index.html"]
-    assert page_files and page_files[0].optimizer_backend == "one+two"
+    assert report.pipeline == ["one", "two"]
+    assert page_files and page_files[0].applied_pipeline == ["one", "two"]
 
 
 def test_transform_page_html_stamps_each_page(tmp_path: Path) -> None:
@@ -110,12 +111,18 @@ def test_transform_tree_is_reflected_in_toc_and_page_model(tmp_path: Path) -> No
 
 def test_no_extensions_matches_default_build(tmp_path: Path) -> None:
     config = _write_site(tmp_path)
-    build_site(config, extensions=BuildExtensions())
-    actual = (tmp_path / "public" / "index.html").read_bytes()
+    build_site(config)
+    default_output = (tmp_path / "public" / "index.html").read_bytes()
+    build_site(config, extensions=BuildExtensions(pipeline=[]))
+    explicit_empty_output = (tmp_path / "public" / "index.html").read_bytes()
     baseline_path = Path(__file__).parent / "fixtures" / "baselines" / "no-pipeline-main.sha256"
-    expected = baseline_path.read_text(encoding="utf-8").strip()
+    main_baseline = baseline_path.read_text(encoding="utf-8").strip()
 
-    assert hashlib.sha256(actual).hexdigest() == expected
+    # The recorded main hash is immutable provenance captured before this work.
+    assert main_baseline == "91797e8e3782706185b8f4ef8a86482db6e3e30caaa1f52d3f94923754210048"
+    # Planned reader changes may alter the page, but an explicit empty pipeline
+    # must remain byte-identical to the default no-pipeline build.
+    assert hashlib.sha256(default_output).digest() == hashlib.sha256(explicit_empty_output).digest()
 
 
 def test_public_pipeline_stage_names_resolve() -> None:

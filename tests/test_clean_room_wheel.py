@@ -88,7 +88,7 @@ def test_wheel_installs_and_builds_in_clean_venv(tmp_path: Path) -> None:
     site.mkdir()
     (site / "index.md").write_text("# Clean Room\n\nProse with `code`.\n", encoding="utf-8")
     (site / "kpress.yml").write_text(
-        "sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: sealed\n",
+        "sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: hashed\n",
         encoding="utf-8",
     )
     env = {

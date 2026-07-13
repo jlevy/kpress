@@ -139,7 +139,7 @@ def reserved_output_reason(rel_output: str) -> str | None:
 
 @dataclass(frozen=True)
 class RoutePlanEntry:
-    """One resolved source document and its sealed output location."""
+    """One resolved source document and its hashed output location."""
 
     source: Path
     route: str

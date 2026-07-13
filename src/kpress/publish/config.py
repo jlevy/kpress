@@ -44,7 +44,6 @@ class SourceConfig:
 class FormatConfig:
     """Default document rendering configuration."""
 
-    theme: str = "default"
     palette: str = "neutral"
     color_mode: str = "system"
     # Site default for the reading-font chooser (see RenderOptions.prose_font):
@@ -120,7 +119,6 @@ class OptimizerOptions:
 class KPressConfig:
     """Complete KPress static site config."""
 
-    title: str = "KPress Site"
     base_url: str = ""
     build_date: str = ""
     # Page chrome slots: opaque site-owned HTML, resolved to strings at load
@@ -167,7 +165,7 @@ class BuildExtensions:
     """
 
     # Ordered stages run over each deployable text artifact (html/css/js).
-    # Entries are built-in stage names ("kpress:none" / "kpress:full") or stage
+    # Entries are built-in stage names ("none" / "full") or stage
     # objects with the optimizer-backend shape. None derives the list from
     # optimizer.mode — full back-compat.
     pipeline: Sequence[str | OptimizerBackend] | None = None
@@ -208,7 +206,7 @@ _MATH_MODES = ("off", "auto")
 _DIAGRAM_MODES = ("off", "auto", "mermaid")
 _COLOR_MODES = ("system", "light", "dark")
 _PROSE_FONTS = ("serif", "sans")
-_ASSET_MODES = ("hosted", "linked", "hashed", "sealed")
+_ASSET_MODES = ("hosted", "linked", "hashed")
 _OPTIMIZER_MODES = ("none", "full")
 _PRECOMPRESS_METHODS = ("gzip", "br")
 
@@ -341,7 +339,6 @@ _KNOWN_TOP_LEVEL_KEYS = frozenset({"site", "publish", "format", "pdf", "optimize
 _KNOWN_PUBLISH_KEYS = frozenset({"output_dir", "asset_mode"})
 _KNOWN_FORMAT_KEYS = frozenset(
     {
-        "theme",
         "palette",
         "color_mode",
         "prose_font",
@@ -361,7 +358,7 @@ _KNOWN_OPTIMIZER_KEYS = frozenset({"mode", "precompress"})
 _KNOWN_PDF_KEYS = frozenset({"enabled", "page_size"})
 _CHROME_SLOT_NAMES = ("head_extra_html", "header_html", "footer_html")
 _KNOWN_SITE_KEYS = frozenset(
-    {"title", "base_url", "build_date", "redirects"}
+    {"base_url", "build_date", "redirects"}
     | set(_CHROME_SLOT_NAMES)
     | {f"{name}_file" for name in _CHROME_SLOT_NAMES}
 )
@@ -410,7 +407,7 @@ def _parse_yaml_text(text: str) -> YamlDict:
 _INLINE_ASSET_MODE_ERROR = (
     "publish.asset_mode 'inline' is not yet supported for site builds: the "
     "output would not be self-contained (ES-module imports and fonts stay "
-    "external). Use 'sealed' for a fully offline site."
+    "external). Use 'hashed' for production multi-file output."
 )
 
 
@@ -545,10 +542,10 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         # for the equivalence harness and future single-file work.
         if asset_mode == "inline":
             raise KPressPublishError(_INLINE_ASSET_MODE_ERROR)
-        if asset_mode not in {"hosted", "linked", "hashed", "sealed"}:
+        if asset_mode not in {"hosted", "linked", "hashed"}:
             msg = (
                 f"Invalid publish.asset_mode {asset_mode!r}; "
-                f"expected one of 'hosted', 'linked', 'hashed', 'sealed'"
+                f"expected one of 'hosted', 'linked', 'hashed'"
             )
             raise KPressPublishError(msg)
     else:
@@ -556,7 +553,6 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     redirects = [_as_dict(rule) for rule in _as_list(site.get("redirects", [])) if _as_dict(rule)]
     config_dir = config_path.parent
     return KPressConfig(
-        title=str(site.get("title", "KPress Site")),
         base_url=str(site.get("base_url", "")),
         build_date=str(site.get("build_date", "")),
         head_extra_html=_resolve_chrome_slot(site, "head_extra_html", config_dir),
@@ -565,7 +561,6 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         redirects=redirects,
         sources=sources or [SourceConfig()],
         format=FormatConfig(
-            theme=str(fmt.get("theme", "default")),
             palette=str(fmt.get("palette", "neutral")),
             color_mode=color_mode,
             prose_font=cast(ProseFont, prose_font),

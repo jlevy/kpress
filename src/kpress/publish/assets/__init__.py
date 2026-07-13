@@ -14,7 +14,7 @@ verbatim and handled by the deploy layer.
 
 from __future__ import annotations
 
-from kpress.publish.seal.copy import copy_katex_assets, copy_package_assets
+from kpress.publish.assets.copy import copy_katex_assets, copy_package_assets
 
 __all__ = [
     "copy_katex_assets",

@@ -1,7 +1,7 @@
-"""Dynamic-vs-sealed equivalence tests for the full reader fixture corpus.
+"""Dynamic-vs-hashed equivalence tests for the full reader fixture corpus.
 
 Each fixture document is rendered through both the dynamic path (render_page)
-and the production sealed path (build_site with inline assets), then the
+and the production hashed path (build_site with inline assets), then the
 normalized document surfaces are compared.  Accepted differences are limited to
 URL shape, hashing, minification, compression, and documented optimizations.
 """

@@ -67,6 +67,21 @@ def test_unsafe_attributes_stripped_on_whitelisted_tag() -> None:
     assert "javascript:" not in out
 
 
+def test_sanitizer_reports_each_removed_item_with_location() -> None:
+    html = '<p style="color:red">safe</p>\n<x-callout onclick="bad()">content</x-callout>'
+
+    out, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert "style=" not in out
+    assert "<x-callout" not in out
+    assert [(item.type, item.location) for item in diagnostics] == [
+        ("html_sanitized_attribute", "line 1, column 1"),
+        ("html_sanitized_tag", "line 2, column 1"),
+    ]
+    assert "style" in diagnostics[0].message
+    assert "x-callout" in diagnostics[1].message
+
+
 def test_extra_tags_carry_only_class_and_data_attributes() -> None:
     # The pass-through attribute policy applies to tags admitted only via the
     # whitelist: class/data-* ride through, but the global attributes standard tags

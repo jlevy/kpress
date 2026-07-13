@@ -20,7 +20,7 @@ MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
 ProseFont = Literal["serif", "sans"]
-AssetMode = Literal["hosted", "linked", "hashed", "inline", "sealed"]
+AssetMode = Literal["hosted", "linked", "hashed", "inline"]
 OptimizerMode = Literal["none", "full"]
 
 

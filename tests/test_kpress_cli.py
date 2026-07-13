@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from pytest import CaptureFixture
 
-from kpress.cli import main
+from kpress.cli import build_parser, main
 from kpress.errors import KPressMissingOptionalDependencyError
 
 
@@ -49,6 +49,21 @@ def test_cli_format_asset_mode_lever(tmp_path: Path) -> None:
     for rejected in ("bogus", "inline"):
         with pytest.raises(SystemExit):
             _ = main(["--work-root", work, "format", str(src), "--asset-mode", rejected])
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["format", "doc.md", "--show"],
+        ["render", "doc.md", "--show"],
+        ["paste", "--plaintext"],
+        ["paste", "--show"],
+        ["files", "--all"],
+    ],
+)
+def test_cli_rejects_retired_no_op_flags(args: list[str]) -> None:
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(args)
 
 
 def test_cli_init_and_build(tmp_path: Path, capsys: CaptureFixture[str]) -> None:

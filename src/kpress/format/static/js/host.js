@@ -5,9 +5,12 @@
  * parent frame decides how resize, expand, and close requests affect shell chrome.
  */
 
+import { behaviors } from "./runtime.js";
+
 const MESSAGE_SOURCE = "kpress";
 const MESSAGE_VERSION = 1;
 const DEFAULT_TARGET_ORIGIN = "*";
+export const HOST_BEHAVIOR_ID = "host";
 
 /**
  * @typedef {"kpress:ready" | "kpress:resize" | "kpress:expand" | "kpress:close"} KpressHostMessageType
@@ -235,4 +238,9 @@ export function initKpressHost(root = document, options = {}) {
   };
 }
 
-initKpressHost();
+behaviors.register(HOST_BEHAVIOR_ID, {
+  bind(root, config) {
+    const controller = initKpressHost(root, config);
+    return () => controller.destroy();
+  },
+});

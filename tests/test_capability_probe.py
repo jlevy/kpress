@@ -147,7 +147,7 @@ def test_build_site_full_preflight_fails_with_untouched_output(
     (site_dir / "index.md").write_text("# Hello\n\nWorld.\n", encoding="utf-8")
     config = site_dir / "kpress.yml"
     config.write_text(
-        "site:\n  title: Test\nsources:\n  - path: .\npublish:\n  output_dir: public\n",
+        "site:\nsources:\n  - path: .\npublish:\n  output_dir: public\n",
         encoding="utf-8",
     )
     output_dir = site_dir / "public"

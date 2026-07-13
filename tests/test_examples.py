@@ -82,7 +82,7 @@ def test_static_site_example_builds_multiple_urls(tmp_path: Path) -> None:
     assert js_assets
     for asset in js_assets:
         assert asset.read_text(encoding="utf-8").startswith("/*!"), asset.name
-    assert report.optimizer_backend == "license-banner"
+    assert report.pipeline == ["license-banner"]
 
 
 def test_wrapped_site_example_embeds_fragments(tmp_path: Path) -> None:

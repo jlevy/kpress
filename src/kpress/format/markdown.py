@@ -180,7 +180,7 @@ def _render_footnote_anchor(tokens: list[Token], idx: int, _options: Any, _env: 
     ref_id = _footnote_ref_id(tokens[idx])
     # Literal NBSP + upwards-arrow + NBSP ( ↑ ), matching kash.
     # Using the literal characters rather than the &nbsp;/&uarr; entities keeps
-    # the dynamic and sealed/published render paths byte-equivalent — the sealer
+    # the dynamic and hashed/published render paths byte-equivalent — the sealer
     # decodes entities, which would otherwise diverge from the dynamic output.
     return f' <a href="#fnref-{ref_id}" class="kpress-footnote-backref">&nbsp;↑&nbsp;</a>'
 

@@ -50,7 +50,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
     if not config.exists():
         write_text_atomic(
             config,
-            "site:\n  title: KPress Site\n\nsources:\n  - path: .\n\npublish:\n  output_dir: public\n",
+            "sources:\n  - path: .\n\npublish:\n  output_dir: public\n",
         )
     return _print_result(WorkflowResult(command="init", work_root=root, outputs=[config]))
 
@@ -192,9 +192,8 @@ def build_parser() -> argparse.ArgumentParser:
     convert.add_argument("--output")
     convert.set_defaults(func=_cmd_convert)
 
-    # `inline` is deliberately not offered: it is not yet self-contained
-    # (orig-7ehk); `sealed` is the supported offline output.
-    asset_mode_choices = ["hosted", "linked", "hashed", "sealed"]
+    # `inline` is deliberately not offered: it is not yet self-contained.
+    asset_mode_choices = ["hosted", "linked", "hashed"]
 
     fmt = sub.add_parser(
         "format", help="Render a Markdown file to paired Markdown and HTML outputs."
@@ -202,25 +201,20 @@ def build_parser() -> argparse.ArgumentParser:
     fmt.add_argument("input")
     fmt.add_argument("--output-dir")
     fmt.add_argument("--asset-mode", choices=asset_mode_choices, default="linked")
-    fmt.add_argument("--show", action="store_true")
     fmt.set_defaults(func=_cmd_format)
 
     render = sub.add_parser("render", help="Render one Markdown input to a single HTML file.")
     render.add_argument("input")
     render.add_argument("--output")
     render.add_argument("--asset-mode", choices=asset_mode_choices, default="linked")
-    render.add_argument("--show", action="store_true")
     render.set_defaults(func=_cmd_render)
 
     paste = sub.add_parser("paste", help="Create a document from pasted or piped text.")
     paste.add_argument("--title", default="Pasted Document")
     paste.add_argument("--text")
-    paste.add_argument("--plaintext", action="store_true")
-    paste.add_argument("--show", action="store_true")
     paste.set_defaults(func=_cmd_paste)
 
     files = sub.add_parser("files", help="List files in the work root.")
-    files.add_argument("--all", action="store_true")
     files.set_defaults(func=_cmd_files)
 
     export = sub.add_parser("export", help="Export a document to HTML and optional PDF/DOCX.")

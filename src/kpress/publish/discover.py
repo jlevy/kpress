@@ -8,6 +8,20 @@ from kpress.errors import KPressPublishError
 from kpress.publish.config import KPressConfig
 
 
+def _is_excluded(relative_path: str, patterns: list[str]) -> bool:
+    """Match source-relative excludes, including every descendant of ``dir/**``."""
+
+    path = Path(relative_path)
+    for pattern in patterns:
+        if path.match(pattern):
+            return True
+        if pattern.endswith("/**"):
+            prefix = pattern.removesuffix("/**").rstrip("/")
+            if relative_path == prefix or relative_path.startswith(f"{prefix}/"):
+                return True
+    return False
+
+
 def config_base_dir(config: KPressConfig) -> Path:
     """The one path anchor for relative sources/output and the asset boundary.
 
@@ -44,7 +58,7 @@ def discover_sources(config: KPressConfig) -> list[Path]:
                 if not path.is_file():
                     continue
                 rel = path.relative_to(root).as_posix()
-                if any(Path(rel).match(excluded) for excluded in source.exclude):
+                if _is_excluded(rel, source.exclude):
                     continue
                 found.append(path)
     return sorted(set(found))
@@ -69,7 +83,7 @@ def discover_static_files(config: KPressConfig) -> list[tuple[Path, Path]]:
                 if not path.is_file():
                     continue
                 rel = path.relative_to(root).as_posix()
-                if any(Path(rel).match(excluded) for excluded in source.exclude):
+                if _is_excluded(rel, source.exclude):
                     continue
                 found.setdefault(path, root)
     return sorted(found.items())

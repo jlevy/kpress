@@ -95,16 +95,15 @@ def test_write_site_files_uses_absolute_urls_lastmod_and_escaping(tmp_path: Path
     assert {p.name for p in written} >= {"sitemap.xml", "robots.txt"}
 
 
-def test_write_site_files_stays_relative_without_base_url(tmp_path: Path) -> None:
+def test_write_site_files_omits_sitemap_without_base_url(tmp_path: Path) -> None:
     output_dir = tmp_path / "public"
     output_dir.mkdir()
 
     write_site_files(output_dir, {"/": "index.html"})
 
-    sitemap = (output_dir / "sitemap.xml").read_text(encoding="utf-8")
     robots = (output_dir / "robots.txt").read_text(encoding="utf-8")
-    assert "<loc>/</loc>" in sitemap
-    assert "Sitemap: /sitemap.xml" in robots
+    assert not (output_dir / "sitemap.xml").exists()
+    assert "Sitemap:" not in robots
 
 
 def test_write_site_files_emits_redirects_file(tmp_path: Path) -> None:
@@ -127,7 +126,6 @@ def test_build_site_emits_absolute_sitemap_and_redirects(tmp_path: Path) -> None
     config = tmp_path / "kpress.yml"
     config.write_text(
         """site:
-  title: Test
   base_url: https://site.example/
   build_date: 2026-05-17
   redirects:
@@ -168,7 +166,6 @@ def test_build_site_subpath_base_url_prefixes_package_assets(tmp_path: Path) -> 
     config = tmp_path / "kpress.yml"
     config.write_text(
         """site:
-  title: Test
   base_url: https://site.example/docs/
 
 sources:

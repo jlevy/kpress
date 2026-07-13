@@ -6,7 +6,6 @@
 # differs from the wrapped-site example.
 
 site:
-  title: KPress Static Site Example
   # The extension-model demo (content/extensions.md): site-owned JS and CSS
   # injected through the head slot. The JS registers a minimap widget, a bare
   # theme toggle, a TOC aspect tweak, a footnote-handling override, and a

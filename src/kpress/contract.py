@@ -9,7 +9,7 @@ from __future__ import annotations
 
 CONTRACT_VERSION = "kpress-contract-v1"
 ASSET_MANIFEST_SCHEMA_VERSION = "kpress-asset-manifest-v1"
-BUILD_MANIFEST_SCHEMA_VERSION = "kpress-build-manifest-v1"
+BUILD_MANIFEST_SCHEMA_VERSION = "kpress-build-manifest-v2"
 
 PUBLIC_PACKAGE_API = (
     "ASSET_MANIFEST_SCHEMA_VERSION",
@@ -204,6 +204,19 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-caps-spacing",
     "--kpress-caps-transform",
     "--kpress-measure",
+    "--kpress-page-margin-block-start",
+    "--kpress-page-margin-inline",
+    "--kpress-radius-none",
+    "--kpress-radius-sm",
+    "--kpress-radius-md",
+    "--kpress-radius-lg",
+    "--kpress-radius-pill",
+    "--kpress-transition-fast",
+    "--kpress-transition-med",
+    "--kpress-transition-slow",
+    "--kpress-transition-fade",
+    "--kpress-card-border",
+    "--kpress-card-shadow",
     "--kpress-settings-inset-block",
     "--kpress-settings-inset-inline",
     "--kpress-print-font-size",
@@ -263,7 +276,6 @@ PUBLIC_PASS_THROUGH_ATTRIBUTES = ("class",)
 PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES = ("data-",)
 
 PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
-    "fragment.html.jinja": ("body_html",),
     "page.html.jinja": (
         "asset_tags",
         "footer_html",
@@ -276,17 +288,10 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
         "theme_mode",
         "title",
     ),
-    "components/code-block.html.jinja": ("code", "language_class"),
-    "components/footnotes.html.jinja": ("footnote_items",),
-    "components/frontmatter.html.jinja": ("metadata_rows",),
-    "components/metadata.html.jinja": ("title",),
-    "components/source.html.jinja": ("source_text",),
-    "components/table.html.jinja": ("table_html",),
-    "components/toc.html.jinja": ("toc_items",),
 }
 
 # Built-in build-pipeline stage names (BuildExtensions.pipeline entries).
-PUBLIC_PIPELINE_STAGES = ("kpress:none", "kpress:full")
+PUBLIC_PIPELINE_STAGES = ("none", "full")
 
 # Extension-model name contracts (docs/kpress-design.md "Extension and Injection
 # Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
@@ -336,6 +341,22 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
         "TOOLTIP_SHOW_DELAY_MS",
     ),
     "js/settings-widget.js": ("mountSettings",),
+    "js/host.js": ("HOST_BEHAVIOR_ID", "initKpressHost"),
+    "js/icons.js": ("icon",),
+    "js/overlay.js": (
+        "OVERLAY_VIEWPORT_MARGIN_PX",
+        "OVERLAY_DEFAULT_GAP_PX",
+        "dismissOnEscape",
+        "dismissOnResize",
+        "toggleBackdrop",
+    ),
+    "js/viewport.js": (
+        "resolveKpressViewport",
+        "viewportBounds",
+        "rectRelativeToViewport",
+        "addViewportResizeListener",
+        "viewportScrollContext",
+    ),
 }
 
 BUILD_MANIFEST_REQUIRED_KEYS = (
@@ -345,6 +366,7 @@ BUILD_MANIFEST_REQUIRED_KEYS = (
     "assets",
     "routes",
     "diagnostics",
+    "pipeline",
 )
 
 ASSET_MANIFEST_REQUIRED_KEYS = ("schema_version", "assets")

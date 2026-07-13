@@ -122,6 +122,12 @@ def test_css_class_and_variable_contract_is_present_in_assets_and_markup() -> No
     declared_variables = set(re.findall(r"(--kpress-[a-z0-9-]+)\s*:", css_text))
     assert set(PUBLIC_CSS_VARIABLES) <= declared_variables
 
+    style_tokens = (_KPRESS_ROOT / "src/kpress/format/static/css/style-tokens.css").read_text(
+        encoding="utf-8"
+    )
+    foundation_selector = style_tokens.split("{", 1)[0]
+    assert ":root" in foundation_selector
+
 
 def test_host_css_variable_seam_matches_shipped_css() -> None:
     """Host-override tokens are consumed (never declared) via

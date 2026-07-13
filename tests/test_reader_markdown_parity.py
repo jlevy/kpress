@@ -419,7 +419,10 @@ def test_raw_html_trust_modes_preserve_safe_html_and_strip_unsafe_html() -> None
     assert "<em>Safe</em>" in sanitized.html
     assert "onclick" not in sanitized.html
     assert "<script>" not in sanitized.html
-    assert sanitized.diagnostics[0].type == "html_sanitized"
+    assert [diagnostic.type for diagnostic in sanitized.diagnostics] == [
+        "html_sanitized_attribute",
+        "html_sanitized_tag",
+    ]
 
 
 def test_whitelisted_tag_survives_with_class_and_data() -> None:
@@ -516,7 +519,7 @@ def test_sanitizer_blocks_adversarial_html_bypasses() -> None:
     assert (
         '<a href="https://example.com/safe" target="_blank" rel="noopener noreferrer">safe link</a>'
     ) in tree.html
-    assert any(item.type == "html_sanitized" for item in tree.diagnostics)
+    assert any(item.type.startswith("html_sanitized_") for item in tree.diagnostics)
 
 
 def test_sanitized_mode_preserves_rendered_markdown_html() -> None:
@@ -530,7 +533,7 @@ def test_sanitized_mode_preserves_rendered_markdown_html() -> None:
     assert "<strong>bold</strong>" in tree.html
     assert "&lt;h1" not in tree.html
     assert "<script>" not in tree.html
-    assert any(item.type == "html_sanitized" for item in tree.diagnostics)
+    assert any(item.type.startswith("html_sanitized_") for item in tree.diagnostics)
 
 
 def test_external_links_get_new_tab_safety_policy_without_changing_internal_links() -> None:
@@ -753,7 +756,7 @@ def test_public_static_sanitizer_preserves_generated_mathml() -> None:
 
     assert "<math " in tree.html
     assert "<msup><mi>a</mi><mn>2</mn></msup>" in tree.html
-    assert not any(item.type == "html_sanitized" for item in tree.diagnostics)
+    assert not any(item.type.startswith("html_sanitized") for item in tree.diagnostics)
 
 
 def test_render_page_respects_math_and_diagram_off_modes() -> None:

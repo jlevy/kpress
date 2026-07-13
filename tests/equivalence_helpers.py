@@ -1,6 +1,6 @@
-"""Reusable dynamic-vs-sealed equivalence harness for KPress.
+"""Reusable dynamic-vs-hashed equivalence harness for KPress.
 
-Compares dynamic zero-build rendering (render_page) against production sealed
+Compares dynamic zero-build rendering (render_page) against production hashed
 publishing (build_site) and asserts that the document surface is structurally
 equivalent.  Accepted differences are limited to:
 
@@ -36,7 +36,7 @@ FIXTURE_DOCUMENTS = KPRESS_ROOT / "tests" / "fixtures" / "documents"
 
 @dataclass(frozen=True)
 class EquivalenceFixture:
-    """A fixture for dynamic-vs-sealed equivalence comparison."""
+    """A fixture for dynamic-vs-hashed equivalence comparison."""
 
     name: str
     source_path: Path
@@ -151,7 +151,7 @@ def _render_dynamic(fixture: EquivalenceFixture) -> str:
 
 
 def _render_sealed(fixture: EquivalenceFixture, tmp_path: Path) -> str:
-    """Render a fixture through the sealed build_site path with inline assets."""
+    """Render a fixture through the hashed build_site path with inline assets."""
 
     docs = tmp_path / "docs"
     docs.mkdir(parents=True, exist_ok=True)
@@ -177,9 +177,6 @@ def _render_sealed(fixture: EquivalenceFixture, tmp_path: Path) -> str:
 
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "site:\n"
-        f"  title: {fixture.title}\n"
-        "\n"
         "sources:\n"
         "  - path: docs\n"
         "\n"
@@ -259,8 +256,8 @@ def normalize_document_surface(html: str) -> str:
     # Strip content hashes from filenames (pattern: name.16hexchars.ext).
     html = re.sub(r"\.[0-9a-f]{16}(\.\w+)", r"\1", html)
 
-    # Normalize sealed asset paths.
-    html = re.sub(r"/assets/sealed/[0-9a-f]{16}-", "/assets/sealed/", html)
+    # Normalize hashed asset paths.
+    html = re.sub(r"/assets/hashed/[0-9a-f]{16}-", "/assets/hashed/", html)
 
     # Collapse whitespace.
     html = re.sub(r"\s+", " ", html).strip()
@@ -302,7 +299,7 @@ def page_model_differences(dynamic_html: str, sealed_html: str) -> list[str]:
         if dynamic_model.get(key) != sealed_model.get(key):
             differences.append(
                 f"page model {key!r}: dynamic={dynamic_model.get(key)!r} "
-                f"sealed={sealed_model.get(key)!r}"
+                f"hashed={sealed_model.get(key)!r}"
             )
     return differences
 
@@ -386,7 +383,7 @@ def assert_equivalence(
     if only_dynamic:
         differences.append(f"only in dynamic: {only_dynamic}")
     if only_sealed:
-        differences.append(f"only in sealed: {only_sealed}")
+        differences.append(f"only in hashed: {only_sealed}")
 
     # The page model is stripped from the surface comparison above; compare it
     # structurally here so published-data parity breaks fail too.
@@ -415,7 +412,7 @@ def assert_content_equivalence(
     """Assert normalized text content is equivalent between modes.
 
     Beyond structural elements, this checks that the visible text content
-    (stripped of all tags) matches between dynamic and sealed output.
+    (stripped of all tags) matches between dynamic and hashed output.
     """
 
     dynamic_html = _render_dynamic(fixture)
@@ -444,7 +441,7 @@ def assert_content_equivalence(
         if only_dynamic:
             differences.append(f"text only in dynamic: {sorted(only_dynamic)[:10]}")
         if only_sealed:
-            differences.append(f"text only in sealed: {sorted(only_sealed)[:10]}")
+            differences.append(f"text only in hashed: {sorted(only_sealed)[:10]}")
 
     dynamic_elements = extract_document_elements(dynamic_normalized)
     sealed_elements = extract_document_elements(sealed_normalized)
@@ -482,9 +479,6 @@ def build_readable_tree(
 
     config = site / "kpress.yml"
     config.write_text(
-        "site:\n"
-        "  title: Readable Site\n"
-        "\n"
         "sources:\n"
         "  - path: docs\n"
         "\n"
@@ -511,14 +505,14 @@ def build_sealed_tree(
 ) -> Path:
     """Build a site in production mode (hashed package assets, gzip precompression).
 
-    Historical name retained for the readable-vs-sealed golden suite; the
+    Historical name retained for the readable-vs-hashed golden suite; the
     actual asset-sealing pass is deferred to v2 (see
     ``docs/kpress-design.md`` § "Asset sealing: deferred for
     v1"). Today this exercises the readable→production package-asset
     shape: hashed paths plus gzip sidecars.
     """
 
-    site = tmp_path / "sealed-site"
+    site = tmp_path / "hashed-site"
     docs = site / "docs"
     docs.mkdir(parents=True)
     for name, content in sources.items():
@@ -526,9 +520,6 @@ def build_sealed_tree(
 
     config = site / "kpress.yml"
     config.write_text(
-        "site:\n"
-        "  title: Sealed Site\n"
-        "\n"
         "sources:\n"
         "  - path: docs\n"
         "\n"
@@ -553,14 +544,14 @@ def readable_vs_sealed_file_categories(
     readable_files: Sequence[str],
     sealed_files: Sequence[str],
 ) -> dict[str, list[str]]:
-    """Categorize file differences between readable and sealed output trees.
+    """Categorize file differences between readable and hashed output trees.
 
     Returns a dict with keys:
     - shared: files present in both (ignoring hashes)
     - readable_only: files only in readable
-    - sealed_only: files only in sealed (hashes, compression, etc.)
-    - hashed: sealed files that are hash-renamed versions of readable files
-    - compressed: sealed .gz/.br sidecar files
+    - sealed_only: files only in hashed (hashes, compression, etc.)
+    - hashed: hashed files that are hash-renamed versions of readable files
+    - compressed: hashed .gz/.br sidecar files
     """
 
     def normalize_name(name: str) -> str:

@@ -16,7 +16,6 @@ import pytest
 from kpress.publish import BuildOptions, build_site
 
 _CONFIG = """site:
-  title: Cache Test
 
 sources:
   - path: docs
@@ -185,4 +184,4 @@ def test_corrupt_prior_manifest_does_not_block_rebuild(tmp_path: Path) -> None:
     assert not (kpress_dir / "assets" / "stale.css").exists()
     # A fresh manifest is written.
     fresh = (kpress_dir / "kpress-manifest.json").read_text(encoding="utf-8")
-    assert '"schema_version": "kpress-build-manifest-v1"' in fresh
+    assert '"schema_version": "kpress-build-manifest-v2"' in fresh

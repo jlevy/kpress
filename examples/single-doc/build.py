@@ -59,7 +59,6 @@ def build(output_dir: Path | None = None) -> BuildReport:
         )
         return build_site(
             KPressConfig(
-                title=TITLE,
                 # Anchor for the staged content's relative media (no config file).
                 base_dir=Path(tmp),
                 # Chrome slots are plain strings — no YAML, no *_file dance.

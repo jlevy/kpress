@@ -22,7 +22,7 @@ class OutputFile:
     content_hash: str | None = None
     size: int | None = None
     original_size: int | None = None
-    optimizer_backend: str | None = None
+    applied_pipeline: list[str] = field(default_factory=list)
     compression: str | None = None
     source_path: str | None = None
 
@@ -34,8 +34,7 @@ class OutputFile:
             out["size"] = self.size
         if self.original_size is not None:
             out["original_size"] = self.original_size
-        if self.optimizer_backend is not None:
-            out["optimizer_backend"] = self.optimizer_backend
+        out["applied_pipeline"] = list(self.applied_pipeline)
         if self.compression is not None:
             out["compression"] = self.compression
         if self.source_path is not None:
@@ -45,7 +44,7 @@ class OutputFile:
 
 @dataclass(frozen=True)
 class ManifestAsset:
-    """One asset copied, sealed, or generated during a KPress build."""
+    """One asset copied or generated during a KPress build."""
 
     path: str
     kind: str
@@ -53,7 +52,6 @@ class ManifestAsset:
     output_path: str
     content_hash: str
     media_type: str | None = None
-    sealed: bool = True
 
     def _public_path(self) -> str:
         if self.kind != "external-url":
@@ -71,7 +69,6 @@ class ManifestAsset:
             "kind": self.kind,
             "output_path": self.output_path,
             "path": self._public_path(),
-            "sealed": self.sealed,
             "source": self._public_source(),
         }
         if self.media_type:
@@ -113,7 +110,7 @@ class BuildReport:
     assets: list[ManifestAsset] = field(default_factory=list)
     routes: dict[str, str] = field(default_factory=dict)
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
-    optimizer_backend: str | None = None
+    pipeline: list[str] = field(default_factory=list)
     precompress: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -126,9 +123,8 @@ class BuildReport:
             ],
             "routes": dict(sorted(self.routes.items())),
             "diagnostics": [redact_diagnostic(d) for d in self.diagnostics],
+            "pipeline": list(self.pipeline),
         }
-        if self.optimizer_backend is not None:
-            out["optimizer_backend"] = self.optimizer_backend
         if self.precompress:
             out["precompress"] = list(self.precompress)
         return out

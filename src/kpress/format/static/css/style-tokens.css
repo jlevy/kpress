@@ -23,6 +23,7 @@
  * contract.py::PUBLIC_CSS_VARIABLES. Core doc tokens read var(--kpress-host-*, <default>)
  * so an embedding host app can theme them; static pages and static-site builds override
  * via the same variables. */
+:root,
 .kpress,
 .kpress-page-main,
 .kpress-tooltip {
@@ -119,6 +120,8 @@
   /* Prose reading measure. 48rem (~768px) matches kash's --content-width; the
      earlier 76ch (~640px in serif) read narrower than the reference. */
   --kpress-measure: 48rem;
+  --kpress-page-margin-inline: 2rem;
+  --kpress-page-margin-block-start: 2.5rem;
   /* Settings gear position (standalone page shell only). The gear is `position:
      fixed`, pinned to the top-right of the document frame; these two tokens are
      its block/inline insets. Host-overridable through the `--kpress-host-*`
@@ -347,6 +350,7 @@
    stays near-black and the border stays a quiet hairline -- plus the code surface
    to cream (hue ~83). bg, surfaces, success, danger inherit neutral. */
 :root[data-kpress-palette="warm"],
+:root[data-kpress-palette="warm"] .kpress,
 .kpress[data-kpress-palette="warm"] {
   --kpress-doc-text: oklch(21.01% 0.022 208);
   --kpress-doc-muted: oklch(50.06% 0.022 208);
