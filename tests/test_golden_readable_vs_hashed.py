@@ -1,17 +1,12 @@
-"""Readable-vs-hashed output-tree goldens.
+"""Readable-vs-hashed publishing golden.
 
-Builds the same canonical source in readable mode (linked assets, no
-precompression) and hashed mode (content-hashed assets with explicit gzip
-precompression sidecars; optimizer left at the default ``none`` so the trees
-are deterministic without Node), then captures normalized output trees as
-goldens. The accepted differences between readable and hashed are exactly:
-content hashing in filenames, gzip precompression sidecars, and sitemap/robots
-metadata files. Full minification is an explicit, Node-gated option exercised
-separately, not a readable-vs-hashed default.
+The optimizer stays at the default `none` for deterministic trees without Node;
+accepted mode differences are pinned in the `categories` section of `trees.yaml`.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .equivalence_helpers import (
@@ -19,152 +14,71 @@ from .equivalence_helpers import (
     build_readable_tree,
     readable_vs_hashed_file_categories,
 )
-from .golden_helpers import (
-    KPRESS_ROOT,
-    assert_jsonable_matches_golden,
-    assert_matches_golden,
-    normalize_text_tree,
-)
+from .golden_helpers import KPRESS_ROOT, assert_yaml_matches_golden, snapshot_output_tree
 
-_GOLDEN_DIR = KPRESS_ROOT / "tests" / "golden" / "accepted" / "readable-vs-hashed"
+_GOLDEN_PATH = KPRESS_ROOT / "tests" / "golden" / "accepted" / "readable-vs-hashed" / "trees.yaml"
 
 _SOURCES = {
     "index.md": "# Home\n\nIntro paragraph with a [link](#details).\n\n## Details\n\n- first item\n- second item\n",
     "about.md": "# About\n\nStatic publishing fixture.\n",
 }
 
-
-def test_readable_output_tree_golden(tmp_path: Path) -> None:
-    readable_root = build_readable_tree(_SOURCES, tmp_path)
-    actual = normalize_text_tree(readable_root, temp_root=tmp_path)
-    assert_matches_golden(actual, _GOLDEN_DIR / "readable-tree.json")
+_CONTENT_HASH_RE = re.compile(r"\.[0-9a-f]{16}\.")
 
 
-def test_hashed_output_tree_golden(tmp_path: Path) -> None:
-    hashed_root = build_hashed_tree(_SOURCES, tmp_path)
-    actual = normalize_text_tree(hashed_root, temp_root=tmp_path)
-    assert_matches_golden(actual, _GOLDEN_DIR / "hashed-tree.json")
+def _file_paths(root: Path) -> list[str]:
+    return sorted(path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file())
 
 
-def test_readable_vs_hashed_file_categories_golden(tmp_path: Path) -> None:
+def _normalize_document_content(html: str) -> str:
+    # Keep this stricter than `normalize_document_surface`: both inputs are published
+    # pages, so inline-asset and body-URL differences must remain visible.
+    html = re.sub(r"<head>.*?</head>", "", html, flags=re.DOTALL)
+    html = re.sub(
+        r'<script\s+type="application/json"\s+id="kpress-diagnostics">.*?</script>',
+        "",
+        html,
+        flags=re.DOTALL,
+    )
+    html = re.sub(r"\s+", " ", html)
+    return html.strip()
+
+
+def test_readable_and_hashed_output_trees(tmp_path: Path) -> None:
     readable_root = build_readable_tree(_SOURCES, tmp_path / "readable")
     hashed_root = build_hashed_tree(_SOURCES, tmp_path / "hashed")
+    readable_files = _file_paths(readable_root)
+    hashed_files = _file_paths(hashed_root)
 
-    readable_files = sorted(
-        p.relative_to(readable_root).as_posix() for p in readable_root.rglob("*") if p.is_file()
-    )
-    hashed_files = sorted(
-        p.relative_to(hashed_root).as_posix() for p in hashed_root.rglob("*") if p.is_file()
-    )
-
-    categories = readable_vs_hashed_file_categories(readable_files, hashed_files)
-    assert_jsonable_matches_golden(categories, _GOLDEN_DIR / "file-categories.json")
-
-
-def test_hashed_has_hashed_assets(tmp_path: Path) -> None:
-    hashed_root = build_hashed_tree(_SOURCES, tmp_path)
-    hashed_files = sorted(
-        p.relative_to(hashed_root).as_posix() for p in hashed_root.rglob("*") if p.is_file()
+    assert_yaml_matches_golden(
+        {
+            "readable": snapshot_output_tree(readable_root, temp_root=tmp_path),
+            "hashed": snapshot_output_tree(hashed_root, temp_root=tmp_path),
+            "categories": readable_vs_hashed_file_categories(readable_files, hashed_files),
+        },
+        _GOLDEN_PATH,
     )
 
-    # Hashed CSS/JS must have content hashes in filenames.
-    hashed = [f for f in hashed_files if "_kpress/assets/" in f and ".gz" not in f]
-    css_js = [f for f in hashed if f.endswith((".css", ".js"))]
-    import re
+    readable_assets = [path for path in readable_files if path.endswith((".css", ".js"))]
+    hashed_assets = [
+        path
+        for path in hashed_files
+        if path.endswith((".css", ".js")) and "_kpress/assets/" in path
+    ]
+    assert readable_assets and hashed_assets
+    assert all(_CONTENT_HASH_RE.search(path) is None for path in readable_assets)
+    assert all(_CONTENT_HASH_RE.search(path) is not None for path in hashed_assets)
+    assert not any(path.endswith(".gz") for path in readable_files)
+    assert any(path.endswith(".gz") for path in hashed_files)
 
-    hash_pattern = re.compile(r"\.[0-9a-f]{16}\.")
-    for path in css_js:
-        assert hash_pattern.search(path), f"expected content hash in hashed asset: {path}"
-
-
-def test_hashed_has_precompressed_files(tmp_path: Path) -> None:
-    hashed_root = build_hashed_tree(_SOURCES, tmp_path)
-    hashed_files = sorted(
-        p.relative_to(hashed_root).as_posix() for p in hashed_root.rglob("*") if p.is_file()
-    )
-    gz_files = [f for f in hashed_files if f.endswith(".gz")]
-    assert gz_files, "hashed build must include .gz precompressed files"
-
-
-def test_readable_has_readable_asset_names(tmp_path: Path) -> None:
-    readable_root = build_readable_tree(_SOURCES, tmp_path)
-    readable_files = sorted(
-        p.relative_to(readable_root).as_posix() for p in readable_root.rglob("*") if p.is_file()
-    )
-
-    # Readable CSS/JS must have unhashed filenames.
-    import re
-
-    hash_pattern = re.compile(r"\.[0-9a-f]{16}\.")
-    css_js = [f for f in readable_files if f.endswith((".css", ".js"))]
-    for path in css_js:
-        assert not hash_pattern.search(path), f"readable asset should not have content hash: {path}"
-
-
-def test_readable_has_no_precompressed_files(tmp_path: Path) -> None:
-    readable_root = build_readable_tree(_SOURCES, tmp_path)
-    readable_files = sorted(
-        p.relative_to(readable_root).as_posix() for p in readable_root.rglob("*") if p.is_file()
-    )
-    gz_files = [f for f in readable_files if f.endswith(".gz")]
-    assert not gz_files, f"readable build should not include .gz files, got: {gz_files}"
-
-
-def test_readable_and_hashed_share_same_document_content(tmp_path: Path) -> None:
-    readable_root = build_readable_tree(_SOURCES, tmp_path / "readable")
-    hashed_root = build_hashed_tree(_SOURCES, tmp_path / "hashed")
-
-    # Both must produce the same HTML pages (by name, ignoring hashes in assets).
-    readable_html = sorted(
-        p.relative_to(readable_root).as_posix()
-        for p in readable_root.rglob("*.html")
-        if p.is_file()
-    )
-    hashed_html = sorted(
-        p.relative_to(hashed_root).as_posix() for p in hashed_root.rglob("*.html") if p.is_file()
-    )
-    assert readable_html == hashed_html, (
-        f"HTML pages differ: readable={readable_html}, hashed={hashed_html}"
-    )
-
-    import re
-
-    for page in readable_html:
-        readable_text = (readable_root / page).read_text(encoding="utf-8")
-        hashed_text = (hashed_root / page).read_text(encoding="utf-8")
-
-        # Strip asset URLs and whitespace to compare document structure.
-        def normalize(html: str) -> str:
-            html = re.sub(r"<head>.*?</head>", "", html, flags=re.DOTALL)
-            html = re.sub(
-                r'<style\s+data-kpress-asset="[^"]*">.*?</style>',
-                "",
-                html,
-                flags=re.DOTALL,
-            )
-            html = re.sub(
-                r'<script\s+type="module"\s+data-kpress-asset="[^"]*">.*?</script>',
-                "",
-                html,
-                flags=re.DOTALL,
-            )
-            html = re.sub(
-                r'<script\s+type="application/json"\s+id="kpress-diagnostics">.*?</script>',
-                "",
-                html,
-                flags=re.DOTALL,
-            )
-            html = re.sub(
-                r"<script>\s*\(\(\)\s*=>\s*\{.*?\}\)\(\);\s*</script>",
-                "",
-                html,
-                flags=re.DOTALL,
-            )
-            # Collapse whitespace between tags (minification difference).
-            html = re.sub(r">\s+<", "><", html)
-            html = re.sub(r"\s+", " ", html).strip()
-            return html
-
-        assert normalize(readable_text) == normalize(hashed_text), (
-            f"document content differs for {page}"
-        )
+    readable_pages = [path for path in readable_files if path.endswith(".html")]
+    hashed_pages = [path for path in hashed_files if path.endswith(".html")]
+    assert readable_pages
+    assert readable_pages == hashed_pages
+    for page in readable_pages:
+        readable_html = (readable_root / page).read_text(encoding="utf-8")
+        hashed_html = (hashed_root / page).read_text(encoding="utf-8")
+        normalized_readable = _normalize_document_content(readable_html)
+        normalized_hashed = _normalize_document_content(hashed_html)
+        assert normalized_readable
+        assert normalized_readable == normalized_hashed

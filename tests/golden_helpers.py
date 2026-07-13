@@ -4,13 +4,27 @@ import json
 import os
 from dataclasses import dataclass
 from hashlib import sha256
+from io import StringIO
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
+
+from frontmatter_format import custom_key_sort, new_yaml, read_yaml_file
 
 from kpress.format import DocumentInput, RenderOptions, render_page
 from kpress.format.model import TocMode
+from kpress.output import write_text_atomic
 
 KPRESS_ROOT = Path(__file__).resolve().parents[1]
+
+_PACKAGE_ASSET_PREFIX = "_kpress/assets/"
+_BINARY_SUFFIXES = frozenset({".br", ".gz"})
+# Match the digest width used by KPress asset filenames and manifests.
+_SHA256_PREFIX_LENGTH = 16
+# Keep paths on one line so ruamel's wrapped scalars do not add diff-hostile whitespace.
+_YAML_LINE_WIDTH = 4096
+_GOLDEN_KEY_SORT = custom_key_sort(
+    ["readable", "hashed", "categories", "files", "json", "text", "bytes", "sha256_16"]
+)
 
 
 @dataclass(frozen=True)
@@ -22,29 +36,18 @@ class GoldenScenario:
     toc_min_headings: int = 4
 
 
-def _parse_scalar(value: str) -> str | int:
-    raw = value.strip().strip('"').strip("'")
-    try:
-        return int(raw)
-    except ValueError:
-        return raw
-
-
 def load_scenario(path: Path) -> GoldenScenario:
-    data: dict[str, str | int] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, value = line.partition(":")
-        data[key.strip()] = _parse_scalar(value)
+    raw = read_yaml_file(path)
+    if not isinstance(raw, dict):
+        raise TypeError(f"Golden scenario must be a YAML mapping: {path}")
+    data = cast("dict[str, object]", raw)
     source = KPRESS_ROOT / "tests" / "fixtures" / "documents" / str(data["source"])
     return GoldenScenario(
         name=str(data["name"]),
         title=str(data["title"]),
         source=source,
         include_toc=str(data.get("include_toc", "auto")),
-        toc_min_headings=int(data.get("toc_min_headings", 4)),
+        toc_min_headings=int(cast("int | str", data.get("toc_min_headings", 4))),
     )
 
 
@@ -64,28 +67,52 @@ def render_scenario(scenario: GoldenScenario) -> str:
     ).html
 
 
-def normalize_text_tree(root: Path, *, temp_root: Path | None = None) -> str:
-    tree: dict[str, str] = {}
+def snapshot_output_tree(root: Path, *, temp_root: Path | None = None) -> dict[str, object]:
+    """Capture generated text while summarizing copied package assets and binary files."""
+
+    files: dict[str, object] = {}
     for path in sorted(item for item in root.rglob("*") if item.is_file()):
         rel = path.relative_to(root).as_posix()
-        if path.suffix in {".gz", ".br"}:
-            data = path.read_bytes()
-            text = f"[binary size={len(data)} sha256={sha256(data).hexdigest()[:16]}]"
+        data = path.read_bytes()
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            text = None
+
+        if rel.startswith(_PACKAGE_ASSET_PREFIX) or path.suffix in _BINARY_SUFFIXES or text is None:
+            files[rel] = {
+                "bytes": len(data),
+                "sha256_16": sha256(data).hexdigest()[:_SHA256_PREFIX_LENGTH],
+            }
+            continue
+
+        if temp_root is not None:
+            text = text.replace(str(temp_root), "[TMP]")
+        if path.suffix == ".json":
+            try:
+                parsed_json = json.loads(text)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Generated file is not valid JSON: {rel}") from exc
+            files[rel] = {"json": cast("object", parsed_json)}
         else:
-            text = path.read_text(encoding="utf-8", errors="ignore")
-            if temp_root is not None:
-                text = text.replace(str(temp_root), "[TMP]")
-        tree[rel] = text
-    return json.dumps(tree, indent=2, sort_keys=True) + "\n"
+            files[rel] = {"text": text}
+    return {"files": files}
 
 
 def assert_matches_golden(actual: str, expected_path: Path) -> None:
     if os.environ.get("KPRESS_UPDATE_GOLDENS") == "1":
-        expected_path.parent.mkdir(parents=True, exist_ok=True)
-        expected_path.write_text(actual, encoding="utf-8")
+        write_text_atomic(expected_path, actual)
     expected = expected_path.read_text(encoding="utf-8")
     assert actual == expected
 
 
-def assert_jsonable_matches_golden(actual: dict[str, Any], expected_path: Path) -> None:
-    assert_matches_golden(json.dumps(actual, indent=2, sort_keys=True) + "\n", expected_path)
+def assert_yaml_matches_golden(actual: object, expected_path: Path) -> None:
+    stream = StringIO()
+    yaml = new_yaml(key_sort=_GOLDEN_KEY_SORT, typ="rt")
+    yaml.width = _YAML_LINE_WIDTH
+    yaml.dump(actual, stream)  # pyright: ignore[reportUnknownMemberType]
+    serialized = stream.getvalue()
+    if os.environ.get("KPRESS_UPDATE_GOLDENS") == "1":
+        write_text_atomic(expected_path, serialized)
+    expected = expected_path.read_text(encoding="utf-8")
+    assert serialized == expected

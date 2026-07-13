@@ -11,7 +11,7 @@ tbd is authoritative for issue status and dependencies.
 This file is the maintained view across both.
 Update all three together when a public capability changes.
 
-Last reconciled: 2026-07-12 on the `v0.1.0` stabilization branch.
+Last reconciled: 2026-07-13.
 
 ## Release Status
 
@@ -45,7 +45,7 @@ not count as visual acceptance.
 | Markdown and document model | Implemented for GFM tables/tasks, nested structures, footnotes, code, math markers, raw-HTML postures, stable headings, frontmatter, and sidematter | Parser, sanitizer, document-contract, reader-parity, and golden suites | Representative long-form pages have been exercised; the full provider/edge corpus is not visually accepted | `kpr-1zxy`, `kpr-qmii` |
 | HTML safety and custom tags | Exact extra-tag and inert-attribute admission is implemented; dangerous tags, event handlers, inline style, and unsafe URLs fail closed or are stripped with itemized diagnostics | Config, sanitizer, public-contract, and dynamic/static parity tests | No separate visual gate is required for the safety floor | `kpr-ej80` for optional declared prefix patterns |
 | Page shell and design system | Standalone page, themes, palettes, reading fonts, TOC, content card, semantic styles, and public CSS-variable/class contracts are implemented | Golden, CSS-contract, font, content-card, and publish-workflow tests | Light/dark, desktop/narrow, settings, structural content, and tooltip smoke have evidence; the complete matrix remains open | `kpr-qmii`, `kpr-vxy5` |
-| Client runtime | Widget and behavior registries, configuration, mount/remount, teardown, fault isolation, settings, TOC, tooltips, tables, code copy, tabs, video popovers, overlay, and viewport helpers are implemented | 117 browserless Vitest tests plus focused Python contract tests and a real Playwright tooltip smoke | Full keyboard, touch, reduced-motion, popover, and print interaction acceptance remains open | `kpr-qmii`, `kpr-vxy5`, `kpr-jqx2` |
+| Client runtime | Widget and behavior registries, configuration, mount/remount, teardown, fault isolation, settings, TOC, tooltips, tables, code copy, tabs, video popovers, overlay, and viewport helpers are implemented | Browserless Vitest suites plus focused Python contract tests and a real Playwright tooltip smoke | Full keyboard, touch, reduced-motion, popover, and print interaction acceptance remains open | `kpr-qmii`, `kpr-vxy5`, `kpr-jqx2` |
 | Extension surfaces | Typed Python config, ordered build pipeline stages, tree/page transforms, chrome slots, widget configuration, public JS exports, CSS variables, and generic integration guidance are implemented and pinned | Public-contract, pipeline, runtime, examples, and clean-room wheel tests | Representative host integration works; opaque page data and a simpler CSS-var layer are not shipped | `kpr-4qxl`, `kpr-ef65`, `kpr-hh97` |
 | Static publishing | Multi-source discovery, deterministic routes, static assets, linked/hashed modes, manifests, sitemap/robots/redirects, precompression, cache invalidation, and fail-loud diagnostics are implemented | Publish, route, manifest, cache, equivalence, golden, and clean-room example suites | External clean-room builds pass; deployed cache-busting policy and a KPress-owned collection/navigation layer remain | `kpr-5ar3`, `kpr-w993` |
 | Optimizer | `none` and optional `full` stages work; a reviewed npm lock ships, cold-cache bootstrap uses `npm ci`, and preflight runs before output mutation | Optimizer, pipeline, manifest, doctor network-semantics, cold/offline/error, and preflight tests | Warm and cold cache paths are verified on the supported platforms | — |
@@ -65,7 +65,7 @@ not count as visual acceptance.
 
 - `kpr-nev3`: enable public dependency vulnerability monitoring
 - `kpr-qmii`: complete the real-browser and print acceptance matrix
-- `kpr-1zxy`: expand canonical document and provider fixtures
+- `kpr-1zxy`: expand representative document and provider fixtures
 - `kpr-vxy5`: audit accessibility and keyboard behavior
 - `kpr-jqx2`: expose host-neutral ready and lifecycle events
 - `kpr-4qxl`: add an opaque per-page extension-data seam
@@ -82,8 +82,8 @@ not count as visual acceptance.
 - `kpr-ej80`: add declared plugin-prefix admission without weakening sanitization
 - `kpr-e48f`: support optional icon sprite overrides without weakening the built-in icon
   contract
-- `kpr-6nvi`: rename the historical `video-popover.js` asset to match its current
-  inline-embed behavior
+- `kpr-6nvi`: rename the `video-popover.js` asset to match its current inline-embed
+  behavior
 
 ## Maintenance Rules
 
@@ -98,7 +98,7 @@ not count as visual acceptance.
 - Keep private repository names, machine paths, and non-public tracker IDs out of this
   repository. Historical detail belongs in Git, not this current-status ledger.
 
-Useful public orientation: [README](README.md),
+Useful public orientation: [README](README.md), [documentation index](docs/README.md),
 [design and public contracts](docs/kpress-design.md),
 [validation runbook](docs/kpress-validation.runbook.md), and
 [release notes](docs/releases/0.1.0.md).

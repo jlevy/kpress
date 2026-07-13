@@ -8,7 +8,7 @@ This is the project flag file.
 The full policy is `tbd guidelines supply-chain-hardening` (guidebook:
 <https://github.com/jlevy/supply-chain-hardening>).
 
-## Default: a 14-day cool-off
+## The Default: a 14-Day Cool-Off
 
 **Never install or upgrade to a third-party package version less than 14 days old**
 unless a documented exception applies.
@@ -26,7 +26,7 @@ Enforce the cool-off at resolution time:
 | pnpm 11+ | `minimumReleaseAge: 20160` in `pnpm-workspace.yaml` |
 | Cargo / Go | no native gate: commit the lockfile, install `--locked` / `-mod=readonly`, human-review re-resolves |
 
-## First-party exemption
+## First-Party Exemption
 
 **Packages we publish from our own repositories are exempt from the cool-off.** The
 cool-off exists so the wider community can detect and yank malicious versions before we
@@ -52,7 +52,7 @@ Current first-party dependencies (all `github.com/jlevy/*`):
 Anything not published from a repository we control is third-party and gets the full
 cool-off.
 
-## The other install rules
+## Other Install Rules
 
 1. **Never install unthinkingly.** Confirm the package is needed, the name is spelled
    correctly (typosquats are common), and the version clears the cool-off (or is
@@ -68,7 +68,7 @@ cool-off.
    `pnpm dlx` / `bunx` and review the resolved `package@version`.
 6. **No `curl | sh` from untrusted sources.** Verify the installer URL and checksums.
 
-## Exception process (third-party, within the window)
+## Exception Process for Third-Party Packages
 
 When a third-party version inside the window is genuinely needed (e.g. a same-day CVE
 patch):
@@ -82,4 +82,5 @@ The first-party exemption above is the only standing carve-out and does not requ
 per-install sign-off.
 
 <!-- This document follows common-doc-guidelines.md.
-See github.com/jlevy/practical-prose and review guidelines before editing. -->
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

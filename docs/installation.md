@@ -1,34 +1,29 @@
 # Installing uv and Python
 
-KPress `0.1.0` supports macOS and Linux with Python 3.12 or newer.
+The KPress `0.1.0` target supports macOS and Linux with Python 3.12 or newer.
 The current full optimizer uses a POSIX file lock, so Windows is not yet a supported
 runtime platform; native Windows support is tracked by `kpr-isp2`.
 
-This project is set up to use [**uv**](https://docs.astral.sh/uv/), the new package
-manager for Python. `uv` replaces traditional use of `pyenv`, `pipx`, `poetry`, `pip`,
-etc. This is a quick cheat sheet on that:
+KPress uses [uv](https://docs.astral.sh/uv/) to install Python, resolve the locked
+environment, and run project commands.
+Follow the repository [supply-chain policy](../SUPPLY-CHAIN-SECURITY.md) before
+installing or upgrading uv or any project dependency.
 
-On macOS or Linux, if you don’t have `uv` installed, a quick way to install it:
+Use the
+[official uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+for a reviewed installation method.
+The [CI workflow](../.github/workflows/ci.yml) owns the repository’s reviewed exact uv
+version. Use that version, verify its source and checksum, and confirm `uv --version`
+before using it on the lockfile.
+Do not run a mutable installer command copied from an unreviewed source.
 
-```shell
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-On macOS, if you prefer [brew](https://brew.sh/), you can install or upgrade uv with:
-
-```shell
-brew update
-brew install uv
-```
-
-See [uv’s docs](https://docs.astral.sh/uv/getting-started/installation/) for more
-installation methods and platforms.
-
-Now you can use uv to install a current Python environment:
+Install one of KPress’s supported Python versions:
 
 ```shell
-uv python install 3.13 # Or pick another version.
+uv python install 3.13
 ```
+
+Then continue with the [development guide](development.md).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

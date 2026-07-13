@@ -4,17 +4,18 @@ KPress is a Python library and CLI that turns Markdown into polished HTML docume
 static sites. It owns document rendering, typography, reader interactions, and the build
 pipeline while leaving site semantics and deployment to the consuming project.
 
-Version `0.1.0` is an alpha for developers evaluating KPress in real projects.
-The document and publishing paths are usable and tested, but public seams may still
-change by hard cut before a stable release.
+KPress is preparing the `0.1.0` alpha for developers evaluating it in real projects.
+The document and publishing paths are usable and tested, but the first public release is
+still gated by the work in [`TODO.md`](TODO.md), and public seams may change by hard cut
+before a stable release.
 
 KPress requires Python 3.12 or newer.
-Version `0.1.0` supports macOS and Linux; native Windows support is tracked for a later
-alpha (`kpr-isp2`).
+The `0.1.0` target supports macOS and Linux; native Windows support is tracked for a
+later alpha (`kpr-isp2`).
 
-## Install and build a site
+## Install and Build a Site
 
-Install the released package into a project:
+After `0.1.0` is published, install that exact release into a project:
 
 ```bash
 uv add kpress==0.1.0
@@ -45,12 +46,13 @@ assets under `public/_kpress/assets/`, and a deterministic build manifest at
 `public/_kpress/kpress-manifest.json`.
 
 `hashed` fingerprints KPress-owned CSS and JavaScript for production caching.
-It does not fetch, rewrite, or guarantee document-local and external assets.
+KPress copies eligible project-local media without rewriting its authored URLs and does
+not fetch or verify external assets or seal a complete asset graph.
 Use `linked` for readable local asset names and `hosted` when an embedding application
 serves KPress assets itself.
 Truly self-contained single-file and verified offline output are not part of `0.1.0`.
 
-## Use KPress as a library
+## Use KPress as a Library
 
 File-based sites can call the same publisher used by the CLI:
 
@@ -77,7 +79,7 @@ See [`examples/README.md`](examples/README.md) for commands and
 [`docs/kpress-static-publish.runbook.md`](docs/kpress-static-publish.runbook.md) for the
 publisher boundary.
 
-## What ships
+## What Ships
 
 - Vendored PT Serif and Source Sans 3, design tokens, light/dark/system modes, print
   CSS, and a no-flash theme bootstrap.
@@ -88,7 +90,13 @@ publisher boundary.
 - Typed Python APIs, native ESM browser modules, host-owned chrome slots, runtime
   widget/behavior registries, and sanitized or trusted raw-HTML modes.
 
-## Development and unreleased versions
+## Documentation
+
+[`docs/README.md`](docs/README.md) is the documentation index.
+It links the architecture and public-contract reference, installation and development
+guides, publishing guidance, validation runbooks, and release notes.
+
+## Development and Unreleased Versions
 
 External evaluators should start with the tagged package.
 Projects deliberately dogfooding unreleased work may pin an exact upstream commit or a
@@ -110,7 +118,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), and
 a vulnerability. General defects and integration feedback belong in the
 [issue tracker](https://github.com/jlevy/kpress/issues).
 
-## Compatibility policy
+## Compatibility Policy
 
 KPress evolves by hard cuts during the alpha: there are no deprecation shims.
 An out-of-date caller should fail loudly rather than appear to work.

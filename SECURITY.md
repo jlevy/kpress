@@ -1,11 +1,11 @@
 # Security Policy
 
-## Supported versions
+## Supported Versions
 
-Security fixes are provided for the current `0.1.x` alpha line.
-Upgrade to the newest patch before reporting a defect that may already be fixed.
+The supported release line is `0.1.x` alpha.
+Reports should reproduce on the most recent published patch or an exact source commit.
 
-## Report a vulnerability
+## Report a Vulnerability
 
 Do not open a public issue for a suspected vulnerability.
 Use
@@ -24,8 +24,9 @@ Security-sensitive changes should preserve these package contracts:
   and host-declared inert `format.html.extra_attributes` (validated semantic names such
   as `kind`; never `on*`, `style`, URL-bearing, or DOM-identity attributes), while
   `style`, `on*` handlers, and unsafe-URL schemes are always stripped.
-  See “The Document Dialect and Trust Modes” in `docs/kpress-design.md` for the full
-  threat model and mode selection.
+  See
+  [The Document Dialect and Trust Modes](docs/kpress-design.md#the-document-dialect-and-trust-modes)
+  for the full threat model and mode selection.
 - Rendering uses explicit trust modes; `trusted` (no sanitization) is only for rendering
   the user’s own local files.
 - Sanitization removes disallowed markup; it does not authenticate authorship or make
