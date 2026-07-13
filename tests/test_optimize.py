@@ -68,7 +68,14 @@ def test_full_optimizer_errors_when_node_unavailable_no_fallback(
 
 
 @needs_full
-def test_full_optimizer_minifies_deterministically() -> None:
+def test_full_optimizer_minifies_deterministically(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kpress.publish.optimize import ensure_tool_cache
+
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    _ = ensure_tool_cache(allow_network=True)
     optimizer = get_optimizer("full")
     first = optimizer.optimize("<main>\n  <p>x</p>\n</main>\n", kind="html")
     second = optimizer.optimize("<main>\n  <p>x</p>\n</main>\n", kind="html")
@@ -135,7 +142,14 @@ def test_build_html_none_keeps_content_and_omits_optimizer_metadata(tmp_path: Pa
 
 
 @needs_full
-def test_build_html_full_minifies_and_records_metadata(tmp_path: Path) -> None:
+def test_build_html_full_minifies_and_records_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kpress.publish.optimize import ensure_tool_cache
+
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    _ = ensure_tool_cache(allow_network=True)
     report = build_html(
         "<main>\n  <p>x</p>\n</main>\n",
         tmp_path / "page.html",

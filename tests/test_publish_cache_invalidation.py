@@ -70,11 +70,16 @@ def test_source_edit_invalidates_page_hash(tmp_path: Path) -> None:
     assert before != after
 
 
-def test_optimizer_mode_invalidates_output(tmp_path: Path) -> None:
-    from kpress.publish.optimize import full_optimizer_available
+def test_optimizer_mode_invalidates_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kpress.publish.optimize import ensure_tool_cache, full_optimizer_available
 
     if not full_optimizer_available():
         pytest.skip("full optimizer requires Node/npm")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    _ = ensure_tool_cache(allow_network=True)
     config = _site(tmp_path)
     none_hash = _page_hash(tmp_path, config, BuildOptions(asset_mode="hashed", optimizer="none"))
     full_hash = _page_hash(tmp_path, config, BuildOptions(asset_mode="hashed", optimizer="full"))
