@@ -3,15 +3,17 @@ type: is
 id: is-01kxcppx52sr5t9s438qwamc62
 title: Confirm trusted publishing and publish KPress 0.1.0
 kind: task
-status: in_progress
+status: closed
 priority: 1
-version: 6
+version: 7
 spec_path: TODO.md
 labels: []
 dependencies: []
 parent_id: is-01kxcpnre3k47pw88htva8xt0d
 created_at: 2026-07-13T03:00:42.273Z
-updated_at: 2026-07-13T17:32:46.455Z
+updated_at: 2026-07-13T17:46:02.727Z
+closed_at: 2026-07-13T17:46:02.726Z
+close_reason: Published GitHub release v0.1.0 from green main commit 21f2d2b through PyPI Trusted Publishing; verified PyPI metadata, exact-version CLI and import, README quickstart, and all three bundled examples from a clean external environment.
 ---
 Confirm the PyPI pending-publisher tuple for jlevy/kpress, merge the single stabilization PR with CI green, publish GitHub release v0.1.0, verify trusted publication, then install kpress==0.1.0 in a clean external project and repeat the documented CLI/library/examples smoke.
 
