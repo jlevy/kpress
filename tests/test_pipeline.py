@@ -4,6 +4,7 @@ Model", layer E): ordered stage plugins + tree/page-HTML transforms."""
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -109,11 +110,12 @@ def test_transform_tree_is_reflected_in_toc_and_page_model(tmp_path: Path) -> No
 
 def test_no_extensions_matches_default_build(tmp_path: Path) -> None:
     config = _write_site(tmp_path)
-    build_site(config)
-    plain = (tmp_path / "public" / "index.html").read_bytes()
-
     build_site(config, extensions=BuildExtensions())
-    assert (tmp_path / "public" / "index.html").read_bytes() == plain
+    actual = (tmp_path / "public" / "index.html").read_bytes()
+    baseline_path = Path(__file__).parent / "fixtures" / "baselines" / "no-pipeline-main.sha256"
+    expected = baseline_path.read_text(encoding="utf-8").strip()
+
+    assert hashlib.sha256(actual).hexdigest() == expected
 
 
 def test_public_pipeline_stage_names_resolve() -> None:
