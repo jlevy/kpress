@@ -32,8 +32,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
-- [Release Notes](releases/0.1.0.md): target paths and limits for the unreleased KPress
-  0.1.0 alpha
+- [Release Notes](releases/0.1.0.md): supported paths and limits for the KPress 0.1.0
+  alpha
 
 ## Examples
 
