@@ -437,6 +437,24 @@ Object.assign(kpressGlobal, {
   isReady: false,
 });
 
+function reapplyPresentationRegistrations() {
+  if (kpressGlobal.isReady !== true) {
+    return;
+  }
+  for (const id of widgetRegistry.keys()) {
+    remountAllFor(id);
+  }
+  for (const id of behaviorRegistry.keys()) {
+    // Theme emits theme:change from its own bind; rebinding it here would recurse.
+    if (id !== "theme") {
+      runBehavior(id);
+    }
+  }
+}
+
+on("theme:change", reapplyPresentationRegistrations);
+on("palette:change", reapplyPresentationRegistrations);
+
 function applyAll() {
   if (applied) {
     return;

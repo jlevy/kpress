@@ -18,7 +18,6 @@ DOC_PATHS = [
     "CONTRIBUTING.md",
     "NOTICE.md",
     "SECURITY.md",
-    "TODO.md",
     "docs/kpress-design.md",
     "docs/kpress-icons.md",
     "docs",

@@ -52,7 +52,7 @@ class EquivalenceResult:
     fixture_name: str
     passed: bool
     dynamic_elements: list[str]
-    sealed_elements: list[str]
+    hashed_elements: list[str]
     differences: list[str] = field(default_factory=list)
 
 
@@ -150,7 +150,7 @@ def _render_dynamic(fixture: EquivalenceFixture) -> str:
     return page.html
 
 
-def _render_sealed(fixture: EquivalenceFixture, tmp_path: Path) -> str:
+def _render_hashed(fixture: EquivalenceFixture, tmp_path: Path) -> str:
     """Render a fixture through the hashed build_site path with inline assets."""
 
     docs = tmp_path / "docs"
@@ -280,7 +280,7 @@ def extract_page_model(html: str) -> dict[str, object]:
     return cast("dict[str, object]", json.loads(match.group(1)))
 
 
-def page_model_differences(dynamic_html: str, sealed_html: str) -> list[str]:
+def page_model_differences(dynamic_html: str, hashed_html: str) -> list[str]:
     """Structurally compare the page models of two rendered pages.
 
     Only `route` is genuinely mode-variant (a published page has a site
@@ -291,15 +291,15 @@ def page_model_differences(dynamic_html: str, sealed_html: str) -> list[str]:
     """
 
     dynamic_model = extract_page_model(dynamic_html)
-    sealed_model = extract_page_model(sealed_html)
+    hashed_model = extract_page_model(hashed_html)
     dynamic_model["route"] = ""
-    sealed_model["route"] = ""
+    hashed_model["route"] = ""
     differences: list[str] = []
-    for key in sorted(set(dynamic_model) | set(sealed_model)):
-        if dynamic_model.get(key) != sealed_model.get(key):
+    for key in sorted(set(dynamic_model) | set(hashed_model)):
+        if dynamic_model.get(key) != hashed_model.get(key):
             differences.append(
                 f"page model {key!r}: dynamic={dynamic_model.get(key)!r} "
-                f"hashed={sealed_model.get(key)!r}"
+                f"hashed={hashed_model.get(key)!r}"
             )
     return differences
 
@@ -364,36 +364,36 @@ def assert_equivalence(
     """
 
     dynamic_html = _render_dynamic(fixture)
-    sealed_html = _render_sealed(fixture, tmp_path)
+    hashed_html = _render_hashed(fixture, tmp_path)
 
     dynamic_normalized = normalize_document_surface(dynamic_html)
-    sealed_normalized = normalize_document_surface(sealed_html)
+    hashed_normalized = normalize_document_surface(hashed_html)
 
     dynamic_elements = extract_document_elements(dynamic_normalized)
-    sealed_elements = extract_document_elements(sealed_normalized)
+    hashed_elements = extract_document_elements(hashed_normalized)
 
     differences: list[str] = []
 
     # Check element-level structural equivalence.
     dynamic_set = set(dynamic_elements)
-    sealed_set = set(sealed_elements)
-    only_dynamic = sorted(dynamic_set - sealed_set)
-    only_sealed = sorted(sealed_set - dynamic_set)
+    hashed_set = set(hashed_elements)
+    only_dynamic = sorted(dynamic_set - hashed_set)
+    only_hashed = sorted(hashed_set - dynamic_set)
 
     if only_dynamic:
         differences.append(f"only in dynamic: {only_dynamic}")
-    if only_sealed:
-        differences.append(f"only in hashed: {only_sealed}")
+    if only_hashed:
+        differences.append(f"only in hashed: {only_hashed}")
 
     # The page model is stripped from the surface comparison above; compare it
     # structurally here so published-data parity breaks fail too.
-    differences.extend(page_model_differences(dynamic_html, sealed_html))
+    differences.extend(page_model_differences(dynamic_html, hashed_html))
 
     result = EquivalenceResult(
         fixture_name=fixture.name,
         passed=not differences,
         dynamic_elements=dynamic_elements,
-        sealed_elements=sealed_elements,
+        hashed_elements=hashed_elements,
         differences=differences,
     )
 
@@ -416,10 +416,10 @@ def assert_content_equivalence(
     """
 
     dynamic_html = _render_dynamic(fixture)
-    sealed_html = _render_sealed(fixture, tmp_path)
+    hashed_html = _render_hashed(fixture, tmp_path)
 
     dynamic_normalized = normalize_document_surface(dynamic_html)
-    sealed_normalized = normalize_document_surface(sealed_html)
+    hashed_normalized = normalize_document_surface(hashed_html)
 
     def extract_visible_text(normalized_html: str) -> str:
         text = re.sub(r"<[^>]+>", " ", normalized_html)
@@ -429,28 +429,28 @@ def assert_content_equivalence(
         return text
 
     dynamic_text = extract_visible_text(dynamic_normalized)
-    sealed_text = extract_visible_text(sealed_normalized)
+    hashed_text = extract_visible_text(hashed_normalized)
 
     differences: list[str] = []
-    if dynamic_text != sealed_text:
+    if dynamic_text != hashed_text:
         # Find specific differences.
         dynamic_words = dynamic_text.split()
-        sealed_words = sealed_text.split()
-        only_dynamic = set(dynamic_words) - set(sealed_words)
-        only_sealed = set(sealed_words) - set(dynamic_words)
+        hashed_words = hashed_text.split()
+        only_dynamic = set(dynamic_words) - set(hashed_words)
+        only_hashed = set(hashed_words) - set(dynamic_words)
         if only_dynamic:
             differences.append(f"text only in dynamic: {sorted(only_dynamic)[:10]}")
-        if only_sealed:
-            differences.append(f"text only in hashed: {sorted(only_sealed)[:10]}")
+        if only_hashed:
+            differences.append(f"text only in hashed: {sorted(only_hashed)[:10]}")
 
     dynamic_elements = extract_document_elements(dynamic_normalized)
-    sealed_elements = extract_document_elements(sealed_normalized)
+    hashed_elements = extract_document_elements(hashed_normalized)
 
     result = EquivalenceResult(
         fixture_name=fixture.name,
         passed=not differences,
         dynamic_elements=dynamic_elements,
-        sealed_elements=sealed_elements,
+        hashed_elements=hashed_elements,
         differences=differences,
     )
 
@@ -496,7 +496,7 @@ def build_readable_tree(
     return site / "public"
 
 
-def build_sealed_tree(
+def build_hashed_tree(
     sources: dict[str, str],
     tmp_path: Path,
     *,
@@ -540,16 +540,16 @@ def build_sealed_tree(
     return site / "public"
 
 
-def readable_vs_sealed_file_categories(
+def readable_vs_hashed_file_categories(
     readable_files: Sequence[str],
-    sealed_files: Sequence[str],
+    hashed_files: Sequence[str],
 ) -> dict[str, list[str]]:
     """Categorize file differences between readable and hashed output trees.
 
     Returns a dict with keys:
     - shared: files present in both (ignoring hashes)
     - readable_only: files only in readable
-    - sealed_only: files only in hashed (hashes, compression, etc.)
+    - hashed_only: files only in hashed (hashes, compression, etc.)
     - hashed: hashed files that are hash-renamed versions of readable files
     - compressed: hashed .gz/.br sidecar files
     """
@@ -558,26 +558,26 @@ def readable_vs_sealed_file_categories(
         return re.sub(r"\.[0-9a-f]{16}(\.\w+)", r"\1", name)
 
     readable_set = set(readable_files)
-    sealed_set = set(sealed_files)
+    hashed_set = set(hashed_files)
 
     readable_normalized = {normalize_name(f): f for f in readable_files}
-    sealed_normalized = {normalize_name(f): f for f in sealed_files}
+    hashed_normalized = {normalize_name(f): f for f in hashed_files}
 
-    shared_keys = set(readable_normalized) & set(sealed_normalized)
+    shared_keys = set(readable_normalized) & set(hashed_normalized)
     shared = sorted(shared_keys)
 
-    readable_only = sorted(f for f in readable_set if normalize_name(f) not in sealed_normalized)
-    sealed_only = sorted(f for f in sealed_set if normalize_name(f) not in readable_normalized)
+    readable_only = sorted(f for f in readable_set if normalize_name(f) not in hashed_normalized)
+    hashed_only = sorted(f for f in hashed_set if normalize_name(f) not in readable_normalized)
 
     hashed = sorted(
-        f for f in sealed_set if f not in readable_set and normalize_name(f) in readable_normalized
+        f for f in hashed_set if f not in readable_set and normalize_name(f) in readable_normalized
     )
-    compressed = sorted(f for f in sealed_set if f.endswith((".gz", ".br")))
+    compressed = sorted(f for f in hashed_set if f.endswith((".gz", ".br")))
 
     return {
         "shared": shared,
         "readable_only": readable_only,
-        "sealed_only": sealed_only,
+        "hashed_only": hashed_only,
         "hashed": hashed,
         "compressed": compressed,
     }

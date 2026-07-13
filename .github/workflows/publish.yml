@@ -3,7 +3,6 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  workflow_dispatch: # Enable manual trigger.
 
 env:
   # Supply-chain cool-off: only consider releases older than this, so the publish
@@ -15,6 +14,7 @@ env:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       id-token: write # Mandatory for OIDC.
       contents: read
@@ -43,6 +43,16 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+      - name: Verify release tag and package version
+        run: |
+          case "$GITHUB_REF_NAME" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Refusing to publish non-release tag: $GITHUB_REF_NAME"; exit 1 ;;
+          esac
+          expected="${GITHUB_REF_NAME#v}"
+          actual="$(uv run kpress --version | awk '{print $2}')"
+          test "$actual" = "$expected"
 
       - name: Build package
         run: uv build

@@ -9,9 +9,9 @@ from kpress.publish import BuildOptions, build_site
 from kpress.workflow import export_document, format_document
 
 
-def test_sealed_build_has_no_eager_external_asset_refs(tmp_path: Path) -> None:
-    """A hashed build must not load external assets at page load. Author hyperlinks
-    (`<a href>`) to external sites are content, not eager loads, and stay allowed."""
+def test_hashed_video_fixture_has_no_eager_external_asset_refs(tmp_path: Path) -> None:
+    """The remote-video placeholder is lazy even though hashed mode itself makes no
+    general external-asset guarantee. Author hyperlinks remain content."""
     docs = tmp_path / "docs"
     docs.mkdir()
     (docs / "index.md").write_text(
@@ -1101,7 +1101,7 @@ def test_programmatic_enum_typos_fail_as_loudly_as_yaml() -> None:
 
 def test_unknown_programmatic_optimizer_mode_fails_the_build(tmp_path: Path) -> None:
     """A typo'd optimizer mode must never silently run the FULL optimizer
-    (any unknown mode used to fall through to the `kpress:full` stage)."""
+    (any unknown mode used to fall through to the `full` stage)."""
 
     from typing import cast
 

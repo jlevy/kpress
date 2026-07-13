@@ -398,4 +398,19 @@ describe("post-ready widget mutation", () => {
 
     expect(configs.at(-1)).toEqual({ replacement: true });
   });
+
+  it("reapplies widgets and behaviors after theme or palette changes", async () => {
+    document.body.innerHTML = '<div data-kpress-widget="panel"></div>';
+    const { behaviors, emit, widgets } = await importFresh("runtime.js");
+    const calls = [];
+    widgets.register("panel", { mount: () => calls.push("widget") });
+    behaviors.register("presentation", { bind: () => calls.push("behavior") });
+    calls.length = 0;
+
+    emit("theme:change", { resolved: "dark" });
+    expect(calls).toEqual(["widget", "behavior"]);
+    calls.length = 0;
+    emit("palette:change", { palette: "warm" });
+    expect(calls).toEqual(["widget", "behavior"]);
+  });
 });

@@ -13,7 +13,7 @@
     "_kpress/assets/js/icons.0240229bae537638.js.gz",
     "_kpress/assets/js/menu.25be240a6ae709b9.js.gz",
     "_kpress/assets/js/overlay.319f55d3699ca5f1.js.gz",
-    "_kpress/assets/js/runtime.8a558dc41f7fd1fd.js.gz",
+    "_kpress/assets/js/runtime.91530ca996e5f020.js.gz",
     "_kpress/assets/js/settings-widget.a60d023aac6a9709.js.gz",
     "_kpress/assets/js/tables.70d3fd27dc148ec3.js.gz",
     "_kpress/assets/js/tabs.0ff2581371d7eca1.js.gz",
@@ -39,7 +39,7 @@
     "_kpress/assets/js/icons.0240229bae537638.js",
     "_kpress/assets/js/menu.25be240a6ae709b9.js",
     "_kpress/assets/js/overlay.319f55d3699ca5f1.js",
-    "_kpress/assets/js/runtime.8a558dc41f7fd1fd.js",
+    "_kpress/assets/js/runtime.91530ca996e5f020.js",
     "_kpress/assets/js/settings-widget.a60d023aac6a9709.js",
     "_kpress/assets/js/tables.70d3fd27dc148ec3.js",
     "_kpress/assets/js/tabs.0ff2581371d7eca1.js",
@@ -49,8 +49,7 @@
     "_kpress/assets/js/video-popover.fb60ef02b7ac1136.js",
     "_kpress/assets/js/viewport.08def4056d11d8e4.js"
   ],
-  "readable_only": [],
-  "sealed_only": [
+  "hashed_only": [
     "_kpress/assets/css/components.a7afd51b2cca5a65.css.gz",
     "_kpress/assets/css/document.d313bf3c3a57eb93.css.gz",
     "_kpress/assets/css/print.f2878606767521d9.css.gz",
@@ -64,7 +63,7 @@
     "_kpress/assets/js/icons.0240229bae537638.js.gz",
     "_kpress/assets/js/menu.25be240a6ae709b9.js.gz",
     "_kpress/assets/js/overlay.319f55d3699ca5f1.js.gz",
-    "_kpress/assets/js/runtime.8a558dc41f7fd1fd.js.gz",
+    "_kpress/assets/js/runtime.91530ca996e5f020.js.gz",
     "_kpress/assets/js/settings-widget.a60d023aac6a9709.js.gz",
     "_kpress/assets/js/tables.70d3fd27dc148ec3.js.gz",
     "_kpress/assets/js/tabs.0ff2581371d7eca1.js.gz",
@@ -76,6 +75,7 @@
     "about.html.gz",
     "index.html.gz"
   ],
+  "readable_only": [],
   "shared": [
     "_kpress/assets/css/components.css",
     "_kpress/assets/css/document.css",

@@ -41,8 +41,7 @@ format:
 
 publish:
   output_dir: public
-  # `hashed` fingerprints asset filenames for long-lived caching; `sealed`
-  # produces a fully offline bundle.
+  # `hashed` fingerprints KPress-owned assets for long-lived caching.
   asset_mode: hashed
 
 optimizer:

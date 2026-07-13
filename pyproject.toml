@@ -35,9 +35,6 @@ classifiers = [
     "Topic :: Text Processing :: Markup :: HTML",
     "Topic :: Text Processing :: Markup :: Markdown",
     "Typing :: Typed",
-    # Blocks accidental publishing to PyPI (PyPI rejects this classifier).
-    # Remove this line when ready for the first public release:
-    "Private :: Do Not Upload",
 ]
 
 

@@ -28,7 +28,6 @@ PUBLIC_ROOT_FILES: Final = (
     "NOTICE.md",
     "README.md",
     "SECURITY.md",
-    "TODO.md",
     # docs/*.md files are covered by the "docs" entry in PUBLIC_DIRS; listing
     # them here too would scan them twice and duplicate findings.
     "pyproject.toml",

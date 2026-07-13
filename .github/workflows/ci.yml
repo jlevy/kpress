@@ -140,7 +140,7 @@ jobs:
           /tmp/wheeltest/bin/kpress doctor
           mkdir /tmp/site && cd /tmp/site
           printf '# Hello\n\nSmoke test.\n' > index.md
-          printf 'sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: sealed\n' > kpress.yml
+          printf 'sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: hashed\n' > kpress.yml
           /tmp/wheeltest/bin/kpress build
           test -f public/index.html
           ls public/_kpress/assets/css public/_kpress/assets/js public/_kpress/assets/fonts

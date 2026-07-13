@@ -193,8 +193,8 @@ It can run independently of the golden update flow.
 > (`https://cdn…/foo.js`) are emitted into the rendered HTML verbatim; the deploy layer
 > (CDN, S3, Netlify, etc.)
 > owns those files and runtime fetches.
-> The `public-sealed` directory names below describe the *hashed + gzipped package-asset
-> shape* (production layout), not a sealed asset graph.
+> The `public-hashed` directory names below describe the hashed + gzipped package-asset
+> shape. KPress does not claim a verified external-asset graph.
 > See `docs/kpress-design.md` § “Asset sealing: deferred for v1” and
 > `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md` for the v2
 > roadmap.
@@ -239,7 +239,7 @@ uv run kpress build \
 uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
-  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed" \
+  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed" \
   --precompress gzip
 ```
 
@@ -265,7 +265,7 @@ End-to-end brotli build smoke (the extra must already be installed):
 uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
-  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed-br" \
+  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed-br" \
   --precompress gzip --precompress br
 # Expect: `.br` sidecars beside `.html`/`.css`/`.js` and the build
 # manifest's `precompress` field includes both methods.
@@ -279,7 +279,7 @@ output:
 # Run this from a venv that does NOT have the optimize extra.
 if uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
-  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed-br-fail" \
+  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed-br-fail" \
   --precompress br; then
   echo "expected brotli to report missing kpress[optimize] extra"
   exit 1
@@ -331,15 +331,15 @@ $KPRESS_VALIDATION_ROOT/export/rich-components.pdf
 $KPRESS_VALIDATION_ROOT/export/rich-components.min.html
 $KPRESS_VALIDATION_ROOT/site/public-readable/index.html
 $KPRESS_VALIDATION_ROOT/site/public-readable/_kpress/kpress-manifest.json
-$KPRESS_VALIDATION_ROOT/site/public-sealed/index.html
-$KPRESS_VALIDATION_ROOT/site/public-sealed/_kpress/kpress-manifest.json
+$KPRESS_VALIDATION_ROOT/site/public-hashed/index.html
+$KPRESS_VALIDATION_ROOT/site/public-hashed/_kpress/kpress-manifest.json
 ```
 
 Inspect the production manifest:
 
 ```bash
 sed -n '1,220p' \
-  "$KPRESS_VALIDATION_ROOT/site/public-sealed/_kpress/kpress-manifest.json"
+  "$KPRESS_VALIDATION_ROOT/site/public-hashed/_kpress/kpress-manifest.json"
 ```
 
 Confirm:
@@ -377,30 +377,31 @@ Confirm:
 
 ### Static Output Review
 
-Review generated readable and sealed trees:
+Review generated readable and hashed trees:
 
 ```bash
 find "$KPRESS_VALIDATION_ROOT/site/public-readable" -maxdepth 4 -type f | sort
-find "$KPRESS_VALIDATION_ROOT/site/public-sealed" -maxdepth 4 -type f | sort
+find "$KPRESS_VALIDATION_ROOT/site/public-hashed" -maxdepth 4 -type f | sort
 ```
 
 Confirm:
 
 - readable output is uncompressed with linked asset names
-- sealed output uses hashed package assets
-- sealed output can be opened without unexpected remote network dependencies
+- hashed output uses content-fingerprinted KPress package assets
+- this fixture opens without unexpected remote requests; that is fixture evidence, not a
+  general guarantee about arbitrary content
 - manifests are deterministic and readable
 - no host navigation or shell chrome appears in KPress static output
 
 ### Local Browser Smoke
 
-Multi-file builds (`linked`, `hashed`, `sealed`) are server-rooted: their asset
-references and ES module scripts only resolve over HTTP, never `file://`. Choose the
-viewer by build shape, not an ad-hoc server:
+Multi-file builds (`linked`, `hashed`) are server-rooted: their asset references and ES
+module scripts only resolve over HTTP, never `file://`. Choose the viewer by build
+shape, not an ad-hoc server:
 
-- **Multi-file output (developer `linked` / production `hashed`+`sealed`):** review
-  through the host-app harness, which is the contracted dynamic KPress surface
-  (`/api/kpress/render` plus the `test_kpress_*` suite).
+- **Multi-file output (developer `linked` / production `hashed`):** review through the
+  host-app harness, which is the contracted dynamic KPress surface (`/api/kpress/render`
+  plus the `test_kpress_*` suite).
   A focused standalone static server is intentionally not part of this runbook unless a
   concrete need appears; see the lever model in [kpress-design.md](../kpress-design.md)
   ("Combinations under evaluation").
@@ -496,9 +497,9 @@ Use generated KPress static output, host-embedded document views, or both.
 ### Static Publishing
 
 - Readable output is easy to inspect.
-- Sealed output uses hashed assets and includes a manifest.
-- Sealed output works from a local static server.
-- No unexpected remote network requests are made in sealed/offline review.
+- Hashed output uses fingerprinted KPress assets and includes a manifest.
+- Hashed output works from a local static server.
+- The controlled fixture makes no unexpected remote network requests.
 - Sitemap, robots, and route outputs match the intended site shape.
 
 ### Print and PDF
