@@ -1,4 +1,8 @@
-"""Readable-vs-hashed publishing golden."""
+"""Readable-vs-hashed publishing golden.
+
+The optimizer stays at the default `none` for deterministic trees without Node;
+accepted mode differences are pinned in the `categories` section of `trees.yaml`.
+"""
 
 from __future__ import annotations
 
@@ -27,6 +31,8 @@ def _file_paths(root: Path) -> list[str]:
 
 
 def _normalize_document_content(html: str) -> str:
+    # Keep this stricter than `normalize_document_surface`: both inputs are published
+    # pages, so inline-asset and body-URL differences must remain visible.
     html = re.sub(r"<head>.*?</head>", "", html, flags=re.DOTALL)
     html = re.sub(
         r'<script\s+type="application/json"\s+id="kpress-diagnostics">.*?</script>',
@@ -72,6 +78,7 @@ def test_readable_and_hashed_output_trees(tmp_path: Path) -> None:
     for page in readable_pages:
         readable_html = (readable_root / page).read_text(encoding="utf-8")
         hashed_html = (hashed_root / page).read_text(encoding="utf-8")
-        assert _normalize_document_content(readable_html) == _normalize_document_content(
-            hashed_html
-        )
+        normalized_readable = _normalize_document_content(readable_html)
+        normalized_hashed = _normalize_document_content(hashed_html)
+        assert normalized_readable
+        assert normalized_readable == normalized_hashed

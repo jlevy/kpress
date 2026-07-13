@@ -23,6 +23,7 @@ Update flow:
 
    ```bash
    KPRESS_UPDATE_GOLDENS=1 uv run pytest tests/test_golden_publish.py -q
+   KPRESS_UPDATE_GOLDENS=1 uv run pytest tests/test_golden_readable_vs_hashed.py -q
    ```
 
 2. Review the full artifact diff, including rendered HTML, output trees, manifests, and

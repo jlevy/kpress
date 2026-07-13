@@ -89,7 +89,11 @@ def snapshot_output_tree(root: Path, *, temp_root: Path | None = None) -> dict[s
         if temp_root is not None:
             text = text.replace(str(temp_root), "[TMP]")
         if path.suffix == ".json":
-            files[rel] = {"json": cast("object", json.loads(text))}
+            try:
+                parsed_json = json.loads(text)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Generated file is not valid JSON: {rel}") from exc
+            files[rel] = {"json": cast("object", parsed_json)}
         else:
             files[rel] = {"text": text}
     return {"files": files}
