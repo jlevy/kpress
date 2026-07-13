@@ -43,6 +43,9 @@ release.
 
 6. Watch `.github/workflows/publish.yml`. It refuses a non-semantic tag and verifies
    that the dynamically derived package version exactly equals the tag before upload.
+   If the workflow fails transiently, re-run the failed jobs from the original Actions
+   run (or use `gh run rerun RUN_ID --failed`). A re-run keeps the original event ref
+   and commit; do not recreate the tag, republish the release, or add a manual dispatch.
 
 7. Verify the published package from a clean environment:
 

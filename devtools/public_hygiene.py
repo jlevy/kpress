@@ -39,7 +39,7 @@ PUBLIC_ROOT_FILES: Final = (
     "tsconfig.json",
 )
 
-PUBLIC_DIRS: Final = (".agents", "docs", "examples", "src/kpress", "tests")
+PUBLIC_DIRS: Final = (".agents", ".claude", "docs", "examples", "src/kpress", "tests")
 
 RULE_PATTERNS: Final = (
     (

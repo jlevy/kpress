@@ -413,4 +413,45 @@ describe("post-ready widget mutation", () => {
     emit("palette:change", { palette: "warm" });
     expect(calls).toEqual(["widget", "behavior"]);
   });
+
+  it("does not recurse when a presentation behavior emits another change", async () => {
+    const { behaviors, emit } = await importFresh("runtime.js");
+    let binds = 0;
+    let emitDuringBind = false;
+    behaviors.register("emitter", {
+      bind: () => {
+        binds += 1;
+        if (emitDuringBind) {
+          emit("theme:change", { resolved: "dark" });
+        }
+      },
+    });
+    binds = 0;
+    emitDuringBind = true;
+
+    emit("theme:change", { resolved: "dark" });
+
+    expect(binds).toBe(1);
+  });
+
+  it("disposes and prunes detached widget mounts during presentation changes", async () => {
+    const { emit, widgets } = await importFresh("runtime.js");
+    const calls = [];
+    widgets.register("temporary", {
+      mount: () => {
+        calls.push("mount");
+        return () => calls.push("dispose");
+      },
+    });
+    const el = document.createElement("div");
+    el.setAttribute("data-kpress-widget", "temporary");
+    document.body.appendChild(el);
+    widgets.mount("temporary", el);
+    calls.length = 0;
+    el.remove();
+
+    emit("palette:change", { palette: "warm" });
+
+    expect(calls).toEqual(["dispose"]);
+  });
 });

@@ -17,6 +17,8 @@ from kpress.contract import (
 from kpress.errors import KPressInvalidRequestError
 from kpress.format.model import Diagnostic, TrustMode
 
+# This nh3 policy and `_SanitizerAudit` describe the same decisions: update both
+# whenever tags, attributes, URL schemes, or pass-through restrictions change.
 _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
     "annotation",
     "button",
@@ -287,7 +289,11 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
 
 
 class _SanitizerAudit(HTMLParser):
-    """Identify user-authored tags and attributes that the nh3 policy removes."""
+    """Mirror the nh3 policy to diagnose each removed tag and attribute.
+
+    Keep this audit in sync with the policy constants above and the
+    ``_restrict_pass_through`` filter in ``sanitize_raw_html``.
+    """
 
     def __init__(
         self,

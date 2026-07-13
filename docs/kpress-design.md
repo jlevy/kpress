@@ -766,6 +766,15 @@ See `kpress-icons.md` for the KPress↔host glyph map.
 It must not reference host-shell selectors such as `.tree-pane`, `.preview-pane`,
 `.file-header`, or `.tab-bar`.
 
+Foundation tokens are declared on `:root` as well as KPress document and overlay scopes.
+The root declaration gives standalone page chrome and body-level fixed UI a complete
+namespaced default token set; it does not make unlisted internal tokens stable.
+Embedding hosts may rely on the variables in `contract.py::PUBLIC_CSS_VARIABLES` being
+initialized at the root for root-inheriting chrome.
+Document scopes redeclare their defaults, so a host customizes document tokens on
+`.kpress` (or through the documented `--kpress-host-*` hooks), not by assuming every
+root override crosses that scope.
+
 Current public variables (from `contract.py::PUBLIC_CSS_VARIABLES`):
 
 ```css
@@ -1265,7 +1274,7 @@ Runtime mutation semantics are uniform:
 | `configure(id, config)` | Merges config and reapplies immediately after ready. |
 | `register(id, implementation)` | Replaces the implementation and remounts/rebinds existing targets after ready. |
 | Explicit mount before ready | The ready pass sees the bound marker and does not mount twice. |
-| `theme:change` / `palette:change` | Reapplies presentation widgets and behaviors; the theme behavior itself is excluded to avoid recursion. |
+| `theme:change` / `palette:change` | Reapplies presentation widgets and behaviors, except a widget containing keyboard focus is preserved mid-interaction. The theme behavior is excluded and nested presentation changes are ignored to prevent recursion. |
 
 Widget mounts may return a disposer; KPress calls it before remounting.
 Behavior binds have the same disposer contract.
@@ -1816,9 +1825,11 @@ each file in `applied_pipeline` (see below).
 
 The full optimizer is preflighted at the start of a publish operation, before creating,
 purging, writing, or copying outputs.
-A cold cache is installed from the shipped lock; an npm or network failure leaves the
-prior output untouched.
-If Node, npm, or the locked optimizer package is unavailable, the publish command fails
+The preflight is network-free: a cold cache fails with instructions to run
+`kpress doctor --profile optimize --allow-network` once.
+That explicit doctor command installs from the shipped lock; subsequent builds consume
+only the warm cache.
+If Node or the locked optimizer package is unavailable, the publish command fails
 conspicuously with no partial success status and no fallback to `none`.
 
 ### Precompression
@@ -1902,8 +1913,9 @@ source of truth, shared with the `optimizer=full` preflight in
   There is no `dev`/`production` mode; doctor reads the resolved explicit axes and fails
   only when a capability the config actually requires (optimizer `full`, `br`
   precompression, or PDF enabled) is unavailable.
-- `--allow-network`: only gate for `doctor` to bootstrap a cold optimizer cache with the
-  shipped lock. Warm-cache and Node/npm presence checks are always no-network.
+- `--allow-network`: the only gate that bootstraps a cold optimizer cache with the
+  shipped lock. It is accepted by `doctor`; build and direct optimizer paths remain
+  network-free. Warm-cache and Node/npm presence checks are always no-network.
 - `--json`: stable `{kpress_version, platform, capabilities}` with the closed status
   set.
 
@@ -2212,7 +2224,7 @@ into a request, then surfaces the returned build report (or `KPressRenderError` 
 | `KPressRenderError` | Render pipeline raised | 502 with diagnostics |
 | `KPressAssetNotFoundError` | Asset path rejected as unsafe or missing | 404 |
 | `KPressUnavailableError` | KPress package not importable | 503; degrade to a host-side fallback if any |
-| `KPressMissingOptionalDependencyError` | Static export with `optimizer=full` and no Node/npm, or PDF with no Playwright | 503 (or surface to the user as a setup error) |
+| `KPressMissingOptionalDependencyError` | Static export with `optimizer=full` and a cold cache or no Node, or PDF with no Playwright | 503 (or surface to the user as a setup error) |
 
 `KPressInvalidRequestError` is a `ValueError` subclass for ergonomic catching, but hosts
 should catch it specifically rather than catching all `ValueError`s.

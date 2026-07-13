@@ -10,6 +10,7 @@ rollout policy. KPress intentionally has no deploy command.
 ```bash
 kpress init
 kpress build
+kpress doctor --profile optimize --allow-network
 kpress build --asset-mode hashed --optimizer full --precompress gzip
 kpress doctor --config kpress.yml
 kpress clean
@@ -57,9 +58,10 @@ Document-relative files and external URLs remain the consuming project’s respo
 genuinely self-contained file.
 
 The optional `full` optimizer needs Node with npm.
-Its first use installs a reviewed, locked toolchain in the KPress user cache before
-output is touched. Brotli needs `kpress[optimize]`. Selecting a missing toolchain is a
-hard error; KPress never silently downgrades the build.
+Bootstrap its reviewed, locked toolchain once with
+`kpress doctor --profile optimize --allow-network`; builds never fetch implicitly.
+Brotli needs `kpress[optimize]`. Selecting a missing toolchain is a hard error; KPress
+never silently downgrades the build.
 
 ## Wrap KPress in a site pipeline
 

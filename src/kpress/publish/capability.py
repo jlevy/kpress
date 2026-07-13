@@ -69,14 +69,15 @@ def probe_capability(name: str, *, allow_network: bool = False) -> ProbeResult:
 def preflight_optimizer_full() -> None:
     """Preflight the full optimizer toolchain.
 
-    This performs a deterministic locked-cache bootstrap when needed. It is called
-    at the start of build operations with optimizer=full, before any output is
-    created, purged, or written.
+    This requires a warm deterministic locked cache. It is called at the start of
+    build operations with optimizer=full, before any output is created, purged, or
+    written. Only ``kpress doctor --profile optimize --allow-network`` may bootstrap
+    a cold cache.
     """
 
     from kpress.publish.optimize import ensure_tool_cache
 
-    _ = ensure_tool_cache(allow_network=True)
+    _ = ensure_tool_cache(allow_network=False)
 
 
 def probe_all(*, allow_network: bool = False) -> dict[str, ProbeResult]:

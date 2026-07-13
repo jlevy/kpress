@@ -43,3 +43,17 @@ def test_public_package_paths_scan_test_fixtures(tmp_path: Path) -> None:
     findings = find_violations(public_package_paths(tmp_path))
 
     assert [(finding.rule, finding.line) for finding in findings] == [("private-path", 1)]
+
+
+def test_public_package_paths_scan_both_skill_trees(tmp_path: Path) -> None:
+    for skill_root in (".agents", ".claude"):
+        skill = tmp_path / skill_root / "skills" / "using-kpress" / "SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("Reference: /" + "Users/example/private/source.py\n", encoding="utf-8")
+
+    findings = find_violations(public_package_paths(tmp_path))
+
+    assert [(finding.path.parts[-4], finding.rule) for finding in findings] == [
+        (".agents", "private-path"),
+        (".claude", "private-path"),
+    ]

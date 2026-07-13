@@ -208,14 +208,43 @@ function mountAllFor(id) {
   }
 }
 
-/** @param {string} id */
-function remountAllFor(id) {
+/**
+ * Run and forget one widget mount's disposer.
+ *
+ * @param {string} id
+ * @param {HTMLElement} el
+ */
+function disposeWidgetMount(id, el) {
+  const dispose = widgetDisposers.get(el);
+  widgetDisposers.delete(el);
+  if (dispose) {
+    try {
+      dispose();
+    } catch (error) {
+      console.error(`kpress: widget "${id}" disposer failed`, error);
+    }
+  }
+}
+
+/**
+ * @param {string} id
+ * @param {boolean} preserveActive
+ */
+function remountAllFor(id, preserveActive) {
   const alreadyMounted = [...(widgetMounts.get(id) ?? [])];
   mountAllFor(id);
   for (const [el, config] of alreadyMounted) {
-    if (!el.isConnected && !el.hasAttribute("data-kpress-widget")) {
-      widgetMounts.get(id)?.delete(el);
-      widgetDisposers.delete(el);
+    if (!el.isConnected) {
+      disposeWidgetMount(id, el);
+      const mounts = widgetMounts.get(id);
+      mounts?.delete(el);
+      if (mounts?.size === 0) {
+        widgetMounts.delete(id);
+      }
+      el.removeAttribute("data-kpress-widget-bound");
+      continue;
+    }
+    if (preserveActive && (el === document.activeElement || el.contains(document.activeElement))) {
       continue;
     }
     widgets.mount(id, el, config ?? undefined);
@@ -230,7 +259,7 @@ export const widgets = {
   register(id, widget) {
     widgetRegistry.set(id, widget);
     if (applied) {
-      remountAllFor(id);
+      remountAllFor(id, false);
     }
   },
   /**
@@ -249,7 +278,7 @@ export const widgets = {
     }
     widgetConfigs.set(id, { ...(widgetConfigs.get(id) ?? {}), ...config });
     if (applied) {
-      remountAllFor(id);
+      remountAllFor(id, false);
     }
   },
   /**
@@ -271,15 +300,7 @@ export const widgets = {
     if (!el) {
       return;
     }
-    const previousDispose = widgetDisposers.get(el);
-    widgetDisposers.delete(el);
-    if (previousDispose) {
-      try {
-        previousDispose();
-      } catch (error) {
-        console.error(`kpress: widget "${id}" disposer failed`, error);
-      }
-    }
+    disposeWidgetMount(id, el);
     el.setAttribute("data-kpress-widget-bound", "true");
     let mounts = widgetMounts.get(id);
     if (!mounts) {
@@ -437,18 +458,25 @@ Object.assign(kpressGlobal, {
   isReady: false,
 });
 
+let presentationReapplyActive = false;
+
 function reapplyPresentationRegistrations() {
-  if (kpressGlobal.isReady !== true) {
+  if (kpressGlobal.isReady !== true || presentationReapplyActive) {
     return;
   }
-  for (const id of widgetRegistry.keys()) {
-    remountAllFor(id);
-  }
-  for (const id of behaviorRegistry.keys()) {
-    // Theme emits theme:change from its own bind; rebinding it here would recurse.
-    if (id !== "theme") {
-      runBehavior(id);
+  presentationReapplyActive = true;
+  try {
+    for (const id of widgetRegistry.keys()) {
+      remountAllFor(id, true);
     }
+    for (const id of behaviorRegistry.keys()) {
+      // Theme emits theme:change from its own bind; rebinding it here would recurse.
+      if (id !== "theme") {
+        runBehavior(id);
+      }
+    }
+  } finally {
+    presentationReapplyActive = false;
   }
 }
 

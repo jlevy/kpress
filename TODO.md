@@ -71,12 +71,12 @@ not count as visual acceptance.
 - `kpr-4qxl`: add an opaque per-page extension-data seam
 - `kpr-5ar3`: add a supported cache-busted asset URL policy
 - `kpr-w993`: design the multi-page collection and navigation layer
+- `kpr-hh97`: migrate remaining render markup into live strict templates
 
 ### P3: Deferred Evolution
 
 - `kpr-gkj6`: update CI’s Node setup action before its runner deadline
 - `kpr-isp2`: restore and verify native Windows support
-- `kpr-hh97`: migrate remaining render markup into live strict templates
 - `kpr-xsog`: design verified offline assets and truly self-contained output
 - `kpr-ef65`: evaluate schema-checked simple CSS-variable configuration
 - `kpr-ej80`: add declared plugin-prefix admission without weakening sanitization

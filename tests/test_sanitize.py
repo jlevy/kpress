@@ -149,3 +149,23 @@ def test_extra_attributes_validated_on_direct_render_path() -> None:
             sanitize_raw_html(
                 "<p>x</p>", "sanitized", extra_tags=["x-callout"], extra_attributes=[bad]
             )
+
+
+def test_sanitizer_audit_explains_every_representative_rewrite() -> None:
+    cases = (
+        ("<script>alert(1)</script>", None),
+        ('<p style="color:red">text</p>', None),
+        ('<a href="javascript:alert(1)">link</a>', None),
+        ('<x-callout onclick="bad()">tip</x-callout>', ["x-callout"]),
+    )
+
+    for html, extra_tags in cases:
+        sanitized, diagnostics = sanitize_raw_html(
+            html,
+            "sanitized",
+            extra_tags=extra_tags,
+        )
+
+        assert sanitized != html
+        assert diagnostics
+        assert all(item.type != "html_sanitized" for item in diagnostics)

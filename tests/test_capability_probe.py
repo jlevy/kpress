@@ -95,6 +95,22 @@ def test_probe_optimizer_allow_network_bootstraps_cold_cache(
     assert calls == [True]
 
 
+def test_build_preflight_never_bootstraps_over_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    from kpress.publish import capability, optimize
+
+    calls: list[bool] = []
+
+    def ensure_cache(*, allow_network: bool) -> Path:
+        calls.append(allow_network)
+        return Path("/warm-cache")
+
+    monkeypatch.setattr(optimize, "ensure_tool_cache", ensure_cache)
+
+    capability.preflight_optimizer_full()
+
+    assert calls == [False]
+
+
 def test_probe_precompress_brotli_reports_availability() -> None:
     from kpress.publish.capability import probe_capability
 
@@ -225,9 +241,14 @@ def test_build_html_none_mode_does_not_preflight(
 @needs_full
 def test_build_html_full_preflight_passes_and_builds(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """optimizer=full with Node/npm present preflights successfully and builds."""
+    """An explicitly bootstrapped optimizer cache supports a network-free build."""
     from kpress.publish import BuildOptions, build_html
+    from kpress.publish.capability import probe_capability
+
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    assert probe_capability("optimizer_full", allow_network=True).status == "ok"
 
     dest = tmp_path / "page.html"
     report = build_html("<main>\n  <p>x</p>\n</main>\n", dest, BuildOptions(optimizer="full"))

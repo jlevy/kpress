@@ -18,3 +18,5 @@ def test_publish_workflow_reports_version_mismatch() -> None:
     assert 'if [ "$actual" != "$expected" ]; then' in workflow
     assert "Release version mismatch:" in workflow
     assert '"$expected" "$RELEASE_TAG" "$actual"' in workflow
+    assert "import kpress; print(kpress.__version__)" in workflow
+    assert "awk" not in workflow

@@ -59,6 +59,7 @@ uv run kpress render \
 uv run kpress build \
   --config tests/e2e/kpress.yml \
   --output-dir /tmp/kpress-e2e/site-readable --asset-mode hashed
+uv run kpress doctor --profile optimize --allow-network
 uv run kpress build \
   --config tests/e2e/kpress.yml \
   --output-dir /tmp/kpress-e2e/site-hashed --asset-mode hashed --optimizer full

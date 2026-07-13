@@ -64,6 +64,8 @@ FULL_OPTIMIZER_VERSION = "6.2.3"
 _FULL_OPTIMIZER_SPEC = f"{FULL_OPTIMIZER_PACKAGE}@{FULL_OPTIMIZER_VERSION}"
 _NPM_INSTALL_TIMEOUT_SECONDS = 120
 _OPTIMIZER_RUN_TIMEOUT_SECONDS = 60
+_NPM_MIN_RELEASE_AGE_DAYS = "14"
+"""npm 11.10+ minimum-release-age value, expressed in days."""
 
 MISSING_FULL_OPTIMIZER_MESSAGE = (
     f"The KPress full optimizer requires Node.js with npm on PATH and "
@@ -107,7 +109,9 @@ def _npm_env() -> dict[str, str]:
 
     env = os.environ.copy()
     env.pop("NPM_CONFIG_MINIMUM_RELEASE_AGE", None)
-    env["NPM_CONFIG_MIN_RELEASE_AGE"] = "14"
+    # npm 11.10+ interprets this value in days. It is defense in depth only:
+    # integrity pins in the reviewed lock are the effective gate for `npm ci`.
+    env["NPM_CONFIG_MIN_RELEASE_AGE"] = _NPM_MIN_RELEASE_AGE_DAYS
     env["NPM_CONFIG_SAVE_EXACT"] = "true"
     env["NPM_CONFIG_PACKAGE_LOCK"] = "true"
     return env
@@ -149,7 +153,7 @@ def optimizer_cache_ready(cache_root: Path | None = None) -> bool:
     )
 
 
-def ensure_tool_cache(cache_root: Path | None = None, *, allow_network: bool = True) -> Path:
+def ensure_tool_cache(cache_root: Path | None = None, *, allow_network: bool = False) -> Path:
     """Ensure the locked npm tool cache is installed and return its path.
 
     Copies the package-owned, reviewed ``package.json`` and ``package-lock.json``
@@ -307,7 +311,10 @@ class FullOptimizer:
 
     def _get_cache_dir(self) -> Path:
         if self._cache_dir is None:
-            self._cache_dir = ensure_tool_cache(cache_root=self._cache_root)
+            self._cache_dir = ensure_tool_cache(
+                cache_root=self._cache_root,
+                allow_network=False,
+            )
         return self._cache_dir
 
     def optimize(self, content: str, *, kind: ContentKind) -> OptimizerResult:

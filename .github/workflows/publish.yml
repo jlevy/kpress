@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
           expected="${RELEASE_TAG#v}"
-          actual="$(uv run kpress --version | awk '{print $2}')"
+          actual="$(uv run python -c 'import kpress; print(kpress.__version__)')"
           if [ "$actual" != "$expected" ]; then
             printf 'Release version mismatch: expected %s from tag %s, got %s\n' \
               "$expected" "$RELEASE_TAG" "$actual" >&2
