@@ -5,7 +5,7 @@ title: KPress public roadmap and release readiness
 kind: epic
 status: open
 priority: 1
-version: 26
+version: 27
 spec_path: TODO.md
 labels: []
 dependencies: []
@@ -33,10 +33,10 @@ child_order_hints:
   - is-01kxcpz0t5x7ft3vj0x4dzzrc3
   - is-01kxcpz10rj1j639k6atzn7pak
 created_at: 2026-07-13T03:00:04.675Z
-updated_at: 2026-07-13T03:31:38.959Z
+updated_at: 2026-07-13T03:38:20.729Z
 ---
 Maintain the public two-dimensional KPress backlog: capability implementation and automated coverage on one axis; browser/print acceptance, release readiness, and deferred evolution on the other. TODO.md is the public status index and every active row maps to a child bead.
 
 ## Notes
 
-Public TODO.md is the governing two-axis ledger. Reconciled 2026-07-12: 5 code-owned P1 gates closed after 490 Python tests, 117 Vitest tests, full lint/type/public-hygiene, clean-room wheel validation, and a final uncommitted-diff review. Active inventory is 1 release-operation P1, 7 P2 stabilization items, and 9 P3 evolution/maintenance items; every active item is a child of this epic and maps to TODO.md.
+Public TODO.md is the governing two-axis ledger. Reconciled 2026-07-12: 5 code-owned P1 gates closed after 490 Python tests, 117 Vitest tests, full lint/type/public-hygiene, clean-room wheel validation, and a final diff review. Active child inventory is 1 release-operation P1, 8 P2 stabilization items, and 8 P3 evolution/maintenance items; every active child maps to TODO.md.
