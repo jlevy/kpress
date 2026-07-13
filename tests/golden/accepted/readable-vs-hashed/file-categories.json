@@ -1,6 +1,6 @@
 {
   "compressed": [
-    "_kpress/assets/css/components.a7afd51b2cca5a65.css.gz",
+    "_kpress/assets/css/components.eaaf555f69ac7362.css.gz",
     "_kpress/assets/css/document.d313bf3c3a57eb93.css.gz",
     "_kpress/assets/css/print.f2878606767521d9.css.gz",
     "_kpress/assets/css/style-tokens.5f152022ba8f0441.css.gz",
@@ -26,7 +26,7 @@
     "index.html.gz"
   ],
   "hashed": [
-    "_kpress/assets/css/components.a7afd51b2cca5a65.css",
+    "_kpress/assets/css/components.eaaf555f69ac7362.css",
     "_kpress/assets/css/document.d313bf3c3a57eb93.css",
     "_kpress/assets/css/print.f2878606767521d9.css",
     "_kpress/assets/css/style-tokens.5f152022ba8f0441.css",
@@ -50,7 +50,7 @@
     "_kpress/assets/js/viewport.08def4056d11d8e4.js"
   ],
   "hashed_only": [
-    "_kpress/assets/css/components.a7afd51b2cca5a65.css.gz",
+    "_kpress/assets/css/components.eaaf555f69ac7362.css.gz",
     "_kpress/assets/css/document.d313bf3c3a57eb93.css.gz",
     "_kpress/assets/css/print.f2878606767521d9.css.gz",
     "_kpress/assets/css/style-tokens.5f152022ba8f0441.css.gz",

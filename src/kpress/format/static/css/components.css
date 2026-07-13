@@ -1815,6 +1815,19 @@
   margin-top: 2rem;
 }
 
+/* Slot <-> reading-column alignment in the md single-column state: from 48rem
+   container width .kpress-long-text pads 4rem inline (kash's md:px-16), so the
+   slot content must pad the same or header/footer chrome sits 2.5rem off the
+   text's inline edge. Below 48rem both sides land at 1.5rem (long-text 1rem +
+   .kpress-doc 0.5rem); at >=75rem the docked-TOC rule re-anchors
+   padding-inline-start at the reading column, overriding this by specificity. */
+@container kpress-doc (min-width: 48rem) {
+  .kpress-site-header,
+  .kpress-site-footer {
+    padding-inline: 4rem;
+  }
+}
+
 .kpress-site-header a,
 .kpress-site-footer a {
   color: var(--kpress-doc-link);
