@@ -106,7 +106,7 @@ def assert_yaml_matches_golden(actual: object, expected_path: Path) -> None:
     stream = StringIO()
     yaml = new_yaml(key_sort=_GOLDEN_KEY_SORT, typ="rt")
     yaml.width = _YAML_LINE_WIDTH
-    yaml.dump(actual, stream)
+    yaml.dump(actual, stream)  # pyright: ignore[reportUnknownMemberType]
     serialized = stream.getvalue()
     if os.environ.get("KPRESS_UPDATE_GOLDENS") == "1":
         write_text_atomic(expected_path, serialized)
