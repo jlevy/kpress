@@ -15,19 +15,15 @@ Last reconciled: 2026-07-13.
 
 ## Release Status
 
-KPress is usable as a Python library and CLI. All code-owned stabilization gates are
-closed; `v0.1.0` is not ready to publish until the remaining release-operation row is
-closed. The release will use the exact version `v0.1.0`; alpha status is conveyed by
-package metadata and release notes, not by a version suffix.
+KPress `0.1.0` is published on PyPI as the first public alpha.
+All P1 release and stabilization gates are closed.
+Alpha status is conveyed by package metadata and release notes, not by a version suffix.
 
-| Gate | Bead | Status | Exit condition |
-| --- | --- | --- | --- |
-| Trusted publication and external install | `kpr-1kfq` | Open | The trusted publisher is confirmed, the single stabilization PR is green and merged, `v0.1.0` is published, and a clean project passes the documented smoke. |
-
-Completed stabilization gates:
+Completed release gates:
 
 | Gate | Bead | Result |
 | --- | --- | --- |
+| Trusted publication and external install | `kpr-1kfq` | Closed; GitHub release `v0.1.0` published through PyPI Trusted Publishing, and the registry package passed the documented CLI, clean-project, and bundled-example smokes. |
 | Public planning and docs hygiene | `kpr-nyc1` | Closed; the public ledger, docs, source, tests, and fixtures are checked for private paths, project names, and tracker IDs. |
 | Platform claim | `kpr-wx2a` | Closed; metadata and docs state the verified macOS/Linux POSIX boundary, while native Windows remains tracked. |
 | CLI and export truth | `kpr-q9bg` | Closed; fictional conversion/export surfaces are removed, and PDF uses Playwright/Chromium or fails clearly. |
@@ -51,15 +47,14 @@ not count as visual acceptance.
 | Optimizer | `none` and optional `full` stages work; a reviewed npm lock ships, cold-cache bootstrap uses `npm ci`, and preflight runs before output mutation | Optimizer, pipeline, manifest, doctor network-semantics, cold/offline/error, and preflight tests | Warm and cold cache paths are verified on the supported platforms | — |
 | CLI and local workflows | `init`, `convert`, `format`, `render`, `paste`, `files`, `export`, `clean`, `build`, `optimize`, and `doctor` have tested supported paths; unsupported source conversion is explicit | CLI, workflow, clean-room, and wheel smoke tests | HTML paths are verified; PDF delegates to the real browser-print pipeline | `kpr-qmii` for full visual acceptance |
 | Print and PDF | Print CSS and a Playwright/Chromium browser-PDF backend exist; no placeholder PDF path is exposed | Print-contract, missing-dependency, and browser-backend unit tests | Full print-preview/PDF artifact acceptance remains open | `kpr-qmii` |
-| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | External install from the built wheel passes; published-install verification waits for the tag | `kpr-1kfq` |
+| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | PyPI Trusted Publishing and external `kpress==0.1.0` CLI, import, README, and bundled-example builds are verified | — |
 | Platforms and maintenance | Python 3.12–3.14 on Linux/macOS is the declared and verified implementation boundary | CI covers supported Python versions on Ubuntu; local macOS gates pass | Native Windows support is not verified or claimed | `kpr-isp2`, `kpr-nev3`, `kpr-gkj6` |
 
 ## Prioritized Backlog
 
-### P1: Required Before `v0.1.0`
+### P1: Release Gates
 
-- `kpr-1kfq`: review and merge the single stabilization PR, confirm trusted publishing,
-  publish the exact `v0.1.0` tag, and verify installation from an external clean project
+No P1 release gates remain open.
 
 ### P2: Stabilization After the First Alpha
 
