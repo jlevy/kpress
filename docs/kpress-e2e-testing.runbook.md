@@ -18,15 +18,15 @@ Each step is tagged:
 - **[Human]:** needs a person’s eyes: visual appearance, font rendering, animation feel,
   print preview, real PDF.
 
-## What automated tests already cover (do not re-check by hand)
+## Automated Coverage
 
 - **Golden HTML** (`tests/golden/accepted/*/page.html`) pins the rendered markup,
   including the settings menu, footnote, and table structure.
   Run `pytest tests/test_golden_render.py`.
-- **JS-DOM tests** (`tests/js/*.test.js`, vitest + happy-dom) pin behavior: theme
-  switching
-  + gear open/close, TOC scroll/drawer, tooltip positioning, code-copy states, video
-    popover, tabs. Run `uv run python devtools/js_dom_tests.py`.
+- **Browserless DOM tests** (`tests/js/*.test.js`, Vitest and happy-dom) pin theme
+  switching, gear open/close, TOC scroll and drawer behavior, tooltip positioning,
+  code-copy states, video popovers, and tabs.
+  Run `uv run python devtools/js_dom_tests.py`.
 - **Asset/contract tests** pin the public CSS classes, CSS variables, and required
   selectors.
 
@@ -42,23 +42,26 @@ exercises every reader feature, plus a second page for cross-page navigation.
 It is *not* a golden fixture (so it can stay rich); the golden fixtures under
 `tests/fixtures/documents/` stay minimal for byte-stable comparison.
 
-Render it three ways, with **hashed assets** so the browser never serves a stale cached
-stylesheet after a re-render:
+Render it three ways.
+The standalone and production builds use hashed assets; the readable build uses stable
+linked names:
 
 ```bash
 rm -rf /tmp/kpress-e2e && mkdir -p /tmp/kpress-e2e
 
-# 1) Single standalone document (self-contained: package assets, KaTeX, and the
-#    document's images are all emitted beside the HTML):
+# 1) Single standalone document. Its complete output directory contains the HTML,
+#    package assets, any required KaTeX files, and eligible local document images.
 uv run kpress render \
   tests/e2e/docs/index.md \
   --output /tmp/kpress-e2e/showcase.html --asset-mode hashed
 
-# 2) Static site (readable) and 3) a production-style hashed build. The build collects
-#    the document's images automatically, so figures resolve from the output root:
+# 2) Readable static site with linked assets. The fixture declares its document images
+#    through sources[].static, so figures resolve from the output root.
 uv run kpress build \
   --config tests/e2e/kpress.yml \
-  --output-dir /tmp/kpress-e2e/site-readable --asset-mode hashed
+  --output-dir /tmp/kpress-e2e/site-readable --asset-mode linked
+
+# 3) Production-style static site with hashed assets and the optional full optimizer.
 uv run kpress doctor --profile optimize --allow-network
 uv run kpress build \
   --config tests/e2e/kpress.yml \
@@ -84,12 +87,13 @@ every asset 404 → an unstyled fragment):
 ( cd /tmp/kpress-e2e/site-hashed   && python3 -m http.server 8801 )   # → http://127.0.0.1:8801/
 ```
 
-The showcase’s “Reference” link (`reference.html`) resolves in the two **site** builds;
-in single-document mode there is no sibling page, so that one link is expectedly absent.
+The showcase’s “Reference” link (`reference.html`) resolves in the two **site** builds.
+The standalone render contains the link but does not emit the sibling page, so do not
+include that link in the standalone crawl.
 The minimal golden fixtures (`rich-components.md`, `semantic-components.md`,
 `minimal.md`) remain available if you want a smaller surface.
 
-## First load
+## First Load
 
 - **[Agent]** Open the page; the console has **no errors** and **no** “no
   `[data-kpress-viewport]` ancestor” warning (the standalone shell marks its own
@@ -97,7 +101,7 @@ The minimal golden fixtures (`rich-components.md`, `semantic-components.md`,
 - **[Agent]** The Network tab shows every CSS/JS/font asset resolving **200** (no 404s).
 - **[Human]** The document renders as a centered reading column with serif body text.
 
-## Settings menu (gear)
+## Settings Menu
 
 The only theme control is a gear-icon popover in the top-right; there is **no text
 `System | Light | Dark` chooser** anywhere.
@@ -113,7 +117,7 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Agent]** `aria-expanded` toggles on `.kpress-settings`; the active segment carries
   `aria-checked="true"`.
 
-## Theme and dark mode
+## Theme and Dark Mode
 
 - **[Human]** In **dark** mode the **entire window** is dark—not just the reading
   column. (`.kpress-page-main` carries the document background.)
@@ -130,7 +134,7 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Human]** Body prose is serif; UI chrome (TOC, tables, captions, tooltips,
   footnotes) is sans. Headings follow the type scale.
 
-## Table of contents
+## Table of Contents
 
 - **[Human]/[Agent]** Desktop: a sticky TOC rail; the active entry highlights as you
   scroll; clicking an entry smooth-scrolls to the heading.
@@ -151,7 +155,7 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
   tooltip), with its top border and muted color.
 - **[Agent]/[Human]** Resize the window with a tooltip open → it dismisses.
 
-## Internal-link tooltips
+## Internal-Link Tooltips
 
 - **[Agent]/[Human]** Hover an internal link (to a heading/figure/table/code) → a
   preview tooltip appears, viewport-aware (never clipped off-screen), with an arrow
@@ -163,14 +167,14 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Human]/[Agent]** A wide table scrolls horizontally on narrow widths; on desktop
   with a TOC it may break out to the full reading width.
 
-## Code blocks and copy
+## Code Blocks and Copy
 
 - **[Human]** Code blocks are syntax-highlighted (light and dark stylesheets).
 - **[Human]/[Agent]** Each code block has a **copy icon** control (not a text “Copy”
   box). Click it → the clipboard receives the code and the control shows a transient
   success state; an error state is reachable if the clipboard API is blocked.
 
-## Video popovers
+## Video Popovers
 
 - **[Agent]/[Human]** A YouTube link / embed renders as a no-network placeholder.
   Click it → a focus-trapped dialog opens; the TOC hides while it is open and restores
@@ -178,7 +182,7 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Agent]** In the **hashed fixture** build, opening the page makes **no** eager
   network calls; the YouTube embed URL is only constructed on click.
 
-## Tabs, math, diagrams
+## Tabs, Math, and Diagrams
 
 - **[Human]/[Agent]** Tabbed containers hydrate into an ARIA tablist with keyboard
   support.
@@ -190,15 +194,16 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Human]** Print preview (**Cmd/Ctrl+P**): light paper palette; the TOC, gear menu,
   video popovers, and copy controls are suppressed; tables and source blocks are not
   clipped; footnotes simplify; sensible page breaks.
-- **[Human]** Optional real PDF (requires `kpress[pdf]` +
-  `playwright install chromium`): `kpress export <doc>.md --pdf /tmp/out.pdf`; inspect
-  content, fonts, tables, page breaks.
+- **[Human]** Optional real PDF (requires the locked `kpress[pdf]` extra and a reviewed
+  Chromium download): `uv run --frozen playwright install chromium`, then
+  `uv run --frozen kpress export <doc>.md --pdf /tmp/out.pdf`. Inspect content, fonts,
+  tables, and page breaks.
   Absence of Playwright must give a clear error, never a silent downgrade.
 
-## Static site specifics
+## Static Site Checks
 
 - **[Agent]** Readable and hashed sites load from their **own root**; all assets
-  resolve; `/` ↔ `/about.html` navigation works.
+  resolve; `/` and `/reference.html` navigation works.
 - **[Agent]** This **hashed fixture** makes **no eager external asset loads**. Check the
   *asset* references—`src`/`href` on `<script>`, `<link>`, `<img>`, `<iframe>`—resolve
   locally; the only allowed external URL is the YouTube embed template inside
@@ -208,7 +213,7 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
   `http(s)://` will list them.
   That is expected, not a violation.
 
-## Responsive and accessibility
+## Responsive Layout and Accessibility
 
 - **[Human]/[Agent]** Resize from narrow (mobile) to wide (>1200px): the layout, TOC,
   tooltips, and tables adapt; nothing overflows the window.
@@ -218,13 +223,11 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Agent]** With `prefers-reduced-motion: reduce`, transitions/animations are
   suppressed.
 
-## Candidates to automate (so this runbook stays minimal)
+## Remaining Automation Candidates
 
 When a check below becomes a deterministic test, delete it from the manual list above:
 
 - CLI/diagnostic goldens: `kpress doctor --json`, render diagnostics payloads.
-- JS-DOM coverage for the **gear menu** (open/close, `aria-checked`, persistence) and
-  the **code-copy icon** (icon present, success/error state).
 - A headless-Chromium visual/smoke check (opt-in, never required CI) for theme,
   dark-mode-fills-viewport, and tooltip background—the highest-value [Human] items.
 

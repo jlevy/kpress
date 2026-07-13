@@ -5,7 +5,7 @@ KPress-owned assets, sitemap/robots/redirects, optimization, precompression, and
 build manifest. The consuming project owns deployment, credentials, cache headers, and
 rollout policy. KPress intentionally has no deploy command.
 
-## Build workflow
+## Build Workflow
 
 ```bash
 kpress init
@@ -43,7 +43,7 @@ optimizer:
 `site.base_url` is required to emit `sitemap.xml` and advertise it from `robots.txt`.
 Without it, KPress still builds a usable local site and omits the sitemap.
 
-## Asset modes
+## Asset Modes
 
 | Mode | Use |
 | --- | --- |
@@ -52,10 +52,12 @@ Without it, KPress still builds a usable local site and omits the sitemap.
 | `hashed` | Production multi-file hosting with content-hashed KPress assets. |
 
 These modes shape KPress-owned assets only.
-Document-relative files and external URLs remain the consuming project’s responsibility.
-`hashed` is not an offline-verification or external-asset-fetching guarantee.
-`inline` is rejected for site builds until the reader modules and fonts can form a
-genuinely self-contained file.
+KPress copies eligible project-local media references and files matched by
+`sources[].static`, preserving their authored URLs.
+Other document-relative files and all external URLs remain the consuming project’s
+responsibility. `hashed` is not an offline-verification or external-asset-fetching
+guarantee. `inline` is rejected for site builds because the reader modules and fonts do
+not form a self-contained file; `kpr-xsog` tracks that unsupported output shape.
 
 The optional `full` optimizer needs Node with npm.
 Bootstrap its reviewed, locked toolchain once with
@@ -63,7 +65,7 @@ Bootstrap its reviewed, locked toolchain once with
 Brotli needs `kpress[optimize]`. Selecting a missing toolchain is a hard error; KPress
 never silently downgrades the build.
 
-## Wrap KPress in a site pipeline
+## Wrap KPress in a Site Pipeline
 
 Generate site-owned Markdown before calling KPress, then deploy the complete output
 directory with the site’s tooling:
@@ -83,13 +85,13 @@ For Python-only orchestration, construct `KPressConfig` and pass a
 `BuildExtensions.pipeline`. Built-in stage names are `none` and `full`; custom stages
 use their own unprefixed names.
 
-## Verify the result
+## Verify the Result
 
 - Serve the complete output directory over HTTP and crawl every route and asset.
 - Inspect `_kpress/kpress-manifest.json`. Its `pipeline` records configured stages; each
   file’s `applied_pipeline` records the stages that changed that file.
-- Confirm content-local assets were copied through `sources[].static` or another
-  site-owned step.
+- Confirm eligible content-local media and `sources[].static` files were copied, and
+  account for any remaining site-owned assets in the deploy step.
 - Run `kpress doctor --config kpress.yml` in CI before a build that requests optional
   capabilities.
 - Exercise the tagged wheel outside the source checkout; the clean-room package test

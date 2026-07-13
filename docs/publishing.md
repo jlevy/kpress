@@ -4,7 +4,7 @@ KPress releases are built from a published GitHub release and uploaded to PyPI t
 OIDC trusted publishing.
 Do not upload from a workstation and do not manually dispatch the publish workflow.
 
-## One-time PyPI setup
+## One-Time PyPI Setup
 
 Register a pending trusted publisher with these exact values:
 
@@ -19,7 +19,7 @@ A pending publisher does not reserve the name, so confirm
 `https://pypi.org/project/kpress/` is still unclaimed immediately before the first
 release.
 
-## Release checklist
+## Release Checklist
 
 1. Start from an up-to-date, clean `main` and confirm CI is green.
 

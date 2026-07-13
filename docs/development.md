@@ -1,30 +1,23 @@
 # Development
 
-## Setting Up uv
+## Prerequisites
 
-This project is set up to use [uv](https://docs.astral.sh/uv/) to manage Python and
-dependencies. First, be sure you
-[have uv installed](https://docs.astral.sh/uv/getting-started/installation/).
+Install a supported Python and uv as described in [Installation](installation.md).
+Development also requires [Node.js](https://nodejs.org/) with npm.
+The lint gate uses the exact versions in `package.json` and `package-lock.json` for
+Biome, TypeScript `checkJs`, and browserless Vitest tests over the native ESM assets
+shipped in the wheel.
 
-Then [fork the jlevy/kpress repo](https://github.com/jlevy/kpress/fork) (having your own
-fork will make it easier to contribute) and
-[clone it](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository).
+Fork and clone [jlevy/kpress](https://github.com/jlevy/kpress).
+Run all commands below from the repository root.
 
-You will also need [Node](https://nodejs.org/) (and npm): the lint gate runs Biome,
-TypeScript `checkJs`, and browserless vitest DOM tests over the browser assets shipped
-in the wheel, using the exact-pinned toolchain in `package.json`/`package-lock.json`.
+## Common Workflows
 
-## Basic Developer Workflows
-
-The `Makefile` simply offers shortcuts to `uv` and `npx` commands for developer
-convenience.
-(For clarity, GitHub Actions don’t use the Makefile and just call `uv`/`npx`
-directly.)
+The `Makefile` provides local shortcuts.
+GitHub Actions invoke the underlying uv and npm commands directly.
 
 ```shell
-# First, install all dependencies and set up your virtual environment.
-# This runs `uv sync --all-extras` (all packages including dev and optional
-# dependencies) plus `npm ci` (the pinned JS toolchain for the lint gate).
+# Synchronize the Python and JavaScript environments from the repository locks.
 make install
 
 # Install the git hooks (lefthook; see lefthook.yml). Pre-commit hooks
@@ -32,103 +25,84 @@ make install
 # and fix spelling; pre-push runs the tests and the extraction safety check.
 make hooks-install
 
-# Run install, format, lint, and test:
+# Install, format, lint, and test.
 make
 
-# Auto-format Markdown (flowmark; honors .flowmarkignore):
+# Auto-format maintained Markdown.
 make format
 
-# Build wheel:
+# Build the source distribution and wheel.
 make build
 
-# Linting (auto-fixes formatting and lint issues):
+# Run the quality gate and apply supported fixes.
 make lint
 
-# Linting in check-only mode, matching CI (fails on issues, does not modify files):
+# Run the read-only quality gate used by CI.
 make lint-check
 
-# Run tests:
+# Run Python tests.
 make test
 
-# Delete all the build artifacts:
+# Delete local build artifacts and installed environments.
 make clean
-
-# Upgrade dependencies to compatible versions:
-make upgrade
-
-# To run tests by hand:
-uv run pytest   # all tests
-uv run pytest -s src/module/some_file.py  # one test, showing outputs
-
-# Build and install current dev executables, to let you use your dev copies
-# as local tools:
-uv tool install --editable .
-
-# Dependency management directly with uv:
-# Add a new dependency:
-uv add package_name
-# Add a development dependency:
-uv add --dev package_name
-# Update to latest compatible versions (including dependencies on git repos):
-uv sync --upgrade
-# Update a specific package:
-uv lock --upgrade-package package_name
-# Update dependencies on a package:
-uv add package_name@latest
-
-# Run a shell within the Python environment:
-uv venv
-source .venv/bin/activate
 ```
 
-See [uv docs](https://docs.astral.sh/uv/) for details.
+Direct equivalents used by CI and focused local work:
 
-## IDE setup
+```shell
+UV_EXCLUDE_NEWER="14 days" uv sync --all-extras --frozen
+npm ci
+uv run pytest tests --tb=short -q
+uv run python devtools/lint.py --check
+uv build
+```
+
+Install the repository hooks after the first environment sync:
+
+```shell
+make hooks-install
+```
+
+The pre-commit hook formats staged Python, JavaScript, CSS, JSON, and Markdown, then
+checks spelling. The pre-push hook runs tests and extraction-safety checks.
+
+## Dependency Changes
+
+Read [Supply-Chain Security](../SUPPLY-CHAIN-SECURITY.md) before changing a dependency.
+Every change must have a concrete reason, respect the 14-day cool-off unless a
+documented exception applies, preserve exact lockfile resolution, disable install
+scripts by default, and include a review of the lockfile diff and vulnerability-audit
+results.
+
+`make upgrade` exists for a deliberate, reviewed re-resolution.
+Do not run it as routine maintenance or use an unpinned `@latest` or zero-install
+command.
+
+## Documentation
+
+Documentation follows `tbd guidelines common-doc-guidelines`. Keep the
+[documentation index](README.md) current, describe the present implementation, avoid
+duplicating contract lists owned by `kpress.contract`, and retain the exact footer at
+the end of every maintained Markdown document.
+
+Run `make format` after editing Markdown.
+It applies the pinned flowmark formatter to the maintained tree and respects
+`.flowmarkignore`; files intentionally excluded as fixtures or example content remain
+byte-stable.
+
+## IDE Setup
 
 If you use VSCode or a fork like Cursor or Windsurf, you can install the following
 extensions:
 
 - [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
-
 - [Based Pyright](https://marketplace.visualstudio.com/items?itemName=detachhead.basedpyright)
   for type checking. Note that this extension works with non-Microsoft VSCode forks like
   Cursor.
 
-## Supply Chain Hardening
-
-Dependencies are an attack surface.
-Before adding or upgrading any dependency, follow
-[**supply-chain-hardening**](https://github.com/jlevy/supply-chain-hardening), a concise
-cross-ecosystem guide on installing dependencies safely.
-Its key defaults:
-
-- **Cool-off period:** Don’t install or upgrade to a release less than 14 days old
-  (absent a documented exception).
-  Most malicious publishes are caught within days.
-  For uv, set `UV_EXCLUDE_NEWER` to a cool-off window (recent uv accepts a relative
-  duration like `"14 days"`); this project’s CI workflows set it automatically.
-
-- **Vet before adding:** Confirm the package is actually needed and its name is spelled
-  correctly (typosquats are common), and prefer a little first-party code over a new
-  dependency.
-
-- **Pin, lock, and audit:** Commit your `uv.lock`, pin GitHub Actions to a commit SHA or
-  immutable tag, and run a vulnerability audit (e.g. `pip-audit`) after changes.
-
 ## Publishing Releases
 
-See [publishing.md](publishing.md) for instructions on publishing to PyPI.
-
-## Documentation
-
-- [uv docs](https://docs.astral.sh/uv/)
-
-- [basedpyright docs](https://docs.basedpyright.com/latest/)
-
-* * *
-
-*This file was built with
-[simple-modern-uv](https://github.com/jlevy/simple-modern-uv).*
+See [Publishing KPress Releases](publishing.md) for the trusted PyPI workflow.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

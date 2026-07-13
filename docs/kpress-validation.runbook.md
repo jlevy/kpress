@@ -27,11 +27,10 @@ Run modes:
   Keep browser automation as an optional operator aid unless a later spec explicitly
   changes that boundary.
 - Package resolution must respect the two-week supply-chain cool-off
-  (SUPPLY-CHAIN-SECURITY.md): `UV_EXCLUDE_NEWER` gates Python resolution (set in CI;
-  export locally when re-resolving), `.npmrc` sets npm’s `min-release-age=14` with exact
-  pins in `package.json`, and both lockfiles are committed and installed frozen.
-  Current KPress npm pins are `@biomejs/biome@2.4.14`, `typescript@6.0.3`,
-  `vitest@4.1.5`, and `happy-dom@20.9.0`.
+  ([Supply-Chain Security](../SUPPLY-CHAIN-SECURITY.md)): `UV_EXCLUDE_NEWER` gates
+  Python resolution, `.npmrc` sets npm’s release-age floor, `package.json` carries exact
+  direct pins, and both lockfiles are committed and installed frozen.
+  The manifests and lockfiles, not this runbook, own package versions.
 - Keep generated scratch output outside the repo unless you are intentionally updating
   golden fixtures.
 - If a command below returns non-zero where a non-zero status is expected, the command
@@ -52,12 +51,12 @@ validate. This is a runtime probe, not a dev quality gate.
 
 ```bash
 uv run kpress doctor
-uv run kpress doctor --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" --json
 ```
 
 `doctor` never hits the network by default and never fails on bare discovery;
 `--profile`/`--config` runs exit non-zero only when a requested or config-required
 capability (optimizer `full`, `br`, PDF) is unavailable.
+Run the config-aware probe in Part 4 after that part creates its fixture config.
 
 ## Part 1: Automated Package Gates
 
@@ -110,7 +109,7 @@ Before committing, stage only the intended files and let the repo hook run norma
 To run the same staged-file hook explicitly:
 
 ```bash
-npx lefthook run pre-commit
+npx --no-install lefthook run pre-commit
 ```
 
 Review and re-stage any hook-written Markdown or spelling fixes before committing.
@@ -183,15 +182,16 @@ Review at least:
 This part exercises the public CLI workflows and static publisher in a disposable tree.
 It can run independently of the golden update flow.
 
-> **Note on asset sealing in v1.** `kpress build` does not seal document-local or
-> external asset refs in v1. Document-local refs (`./image.png`) and external CDN URLs
-> (`https://cdn…/foo.js`) are emitted into the rendered HTML verbatim; the deploy layer
-> (CDN, S3, Netlify, etc.)
-> owns those files and runtime fetches.
+> **Note on asset sealing in v1.** `kpress build` does not seal a complete
+> document-local or external asset graph.
+> Relative URLs and external CDN URLs are emitted verbatim.
+> KPress copies eligible project-local media and files declared by `sources[].static`;
+> the deploy layer owns the remaining files and runtime fetches.
 > The `public-hashed` directory names below describe the hashed + gzipped package-asset
 > shape. KPress does not claim a verified external-asset graph.
-> See `docs/kpress-design.md` § “Asset sealing: deferred for v1” and `kpr-xsog` for the
-> v2 roadmap.
+> See
+> [Unsupported Complete Asset Sealing](kpress-design.md#unsupported-complete-asset-sealing)
+> and `kpr-xsog` for the tracked design work.
 
 Create inputs:
 
@@ -202,6 +202,9 @@ mkdir -p "$KPRESS_VALIDATION_ROOT"
 cp tests/fixtures/documents/rich-components.md \
   "$KPRESS_VALIDATION_ROOT/rich-components.md"
 cp -R tests/fixtures/sites/basic "$KPRESS_VALIDATION_ROOT/site"
+
+uv run kpress doctor \
+  --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" --json
 ```
 
 Run local document workflows:
@@ -219,8 +222,7 @@ uv run kpress \
 uv run kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   export "$KPRESS_VALIDATION_ROOT/rich-components.md" \
-  --html "$KPRESS_VALIDATION_ROOT/export/rich-components.html" \
-  --pdf "$KPRESS_VALIDATION_ROOT/export/rich-components.pdf"
+  --html "$KPRESS_VALIDATION_ROOT/export/rich-components.html"
 ```
 
 Run static publishing in both modes:
@@ -237,7 +239,26 @@ uv run kpress build \
   --precompress gzip
 ```
 
-### Brotli precompression: opt-in extra
+### Optional Browser-Backed PDF
+
+PDF output requires the locked `kpress[pdf]` extra and a separately downloaded
+Playwright Chromium binary.
+It is a manual acceptance path, not a prerequisite for the ordinary CLI and publishing
+smoke above:
+
+```bash
+UV_EXCLUDE_NEWER="14 days" uv sync --frozen --extra pdf
+uv run --frozen playwright install chromium
+uv run --frozen kpress export \
+  "$KPRESS_VALIDATION_ROOT/rich-components.md" \
+  --pdf "$KPRESS_VALIDATION_ROOT/export/rich-components.pdf"
+```
+
+Review the browser download under the supply-chain policy before running the install
+command. If Playwright or Chromium is absent, `kpress export --pdf` must fail with a
+clear optional-dependency diagnostic and no placeholder output.
+
+### Brotli Precompression: Opt-In Extra
 
 `gzip` precompression is in the stdlib and runs in every install.
 `br` (Brotli) is gated behind the `kpress[optimize]` extra so the base wheel stays lean.
@@ -247,7 +268,7 @@ installs `--all-extras`, so its `test` jobs exercise it).
 Re-run with the extra locally to exercise the path:
 
 ```bash
-uv sync --extra optimize
+UV_EXCLUDE_NEWER="14 days" uv sync --frozen --extra optimize
 uv run pytest \
   tests/test_optimize.py::test_precompress_brotli_records_compression_method \
   --tb=short -q
@@ -285,6 +306,7 @@ fi
 Run optimizer and expected missing-extra checks:
 
 ```bash
+uv run kpress doctor --profile optimize --allow-network
 uv run kpress optimize \
   "$KPRESS_VALIDATION_ROOT/export/rich-components.html" \
   --output "$KPRESS_VALIDATION_ROOT/export/rich-components.min.html" \
@@ -311,7 +333,6 @@ Expected output files:
 $KPRESS_VALIDATION_ROOT/formatted/rich-components.md
 $KPRESS_VALIDATION_ROOT/formatted/rich-components.html
 $KPRESS_VALIDATION_ROOT/export/rich-components.html
-$KPRESS_VALIDATION_ROOT/export/rich-components.pdf
 $KPRESS_VALIDATION_ROOT/export/rich-components.min.html
 $KPRESS_VALIDATION_ROOT/site/public-readable/index.html
 $KPRESS_VALIDATION_ROOT/site/public-readable/_kpress/kpress-manifest.json
@@ -427,7 +448,6 @@ Open the printed URL. Confirm:
 - KPress assets load from the host’s configured static asset path
 - the application shell remains outside the KPress fragment
 - Command+P prints the document surface without application chrome
-- source view remains printable with the source print profile
 - KPress import or render failures surface as errors rather than partial success
 
 Stop the example server after the check.
@@ -478,9 +498,9 @@ Use generated KPress static output, host-embedded document views, or both.
   diagrams are readable.
 - Source PDFs include truncation warnings when source previews are truncated.
 - Generated PDF artifacts open and contain expected document text.
-- Browser-backed PDFs are optional and require `kpress[pdf]` plus a local Chromium
-  install: `uv run --extra pdf playwright install chromium`. The required CI path covers
-  the adapter with fake Playwright tests; real Chromium PDF output is manual acceptance
+- Browser-backed PDFs are optional and require the locked `kpress[pdf]` extra plus a
+  local Chromium install, as described in Part 4. The required CI path covers the
+  adapter with fake Playwright tests; real Chromium PDF output is manual acceptance
   evidence.
 
 ### Host Integration

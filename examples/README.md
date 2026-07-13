@@ -1,9 +1,9 @@
 # KPress Examples
 
-Two runnable examples take a folder of Markdown documents from source to a built site
-you can browse or upload, showing the two ways to consume KPress.
-Each example’s `build.py` builds the site, can serve it locally so you can click through
-it, and can package it as an uploadable `.zip`:
+Three runnable examples cover full static generation, host-wrapped fragments, and a
+typed programmatic build. The two site examples take a folder of Markdown documents to a
+built site you can browse or upload. Each site example’s `build.py` builds the site, can
+serve it locally, and can package it as an uploadable `.zip`:
 
 ```bash
 python build.py            # build ./public
@@ -18,8 +18,9 @@ object storage, a Netlify drop, GitHub Pages, or a plain web server.
 | --- | --- | --- |
 | `static-site/` | Full static generator | **KPress:** the whole page, theme, and nav |
 | `wrapped-site/` | Inner rendering library | **Your** outer template, CMS, or SSG |
+| `single-doc/` | Typed Python library | **KPress:** one standalone document page |
 
-Both are real, tested builds; see `../tests/test_examples.py`.
+All three are tested builds; see `../tests/test_examples.py`.
 
 ## 1. `static-site/`: KPress as the Generator
 
@@ -33,7 +34,7 @@ build_site("kpress.yml")          # writes ./public
 
 ```bash
 cd static-site
-python build.py --serve           # build and browse (or: kpress build kpress.yml)
+python build.py --serve           # build and browse (or: kpress build)
 ```
 
 KPress discovers every `*.md`, derives clean URLs from the directory layout (with
@@ -56,8 +57,8 @@ The outer builder (`build.py`, standing in for your framework) does four things,
 through KPress’s **public API**:
 
 1. **Render to a fragment:** call `kpress.format.render_fragment(...)`. The result is a
-   fully styled, self-contained `<article>` plus a manifest of the CSS and JS it needs,
-   with no page chrome.
+   document `<article>` plus a manifest of the CSS and JavaScript it needs, with no page
+   chrome.
 2. **Self-host the assets:** copy them out of the package with
    `kpress.get_static_asset(...)`. The manifest lists the *declared* top-level CSS and
    JS, but those files have dependencies the browser also fetches: CSS `url(...)`
@@ -80,8 +81,8 @@ rendered document.
 The wrapper depends only on KPress’s public surface:
 
 - `kpress.format.render_fragment` and `render_page` render a document.
-- `kpress.get_static_asset` and `static_asset_url` obtain packaged assets.
-- `kpress.publish.build_site` and `build_html` run full-site and single-file builds.
+- `kpress.get_static_asset` obtains packaged assets.
+- `kpress.publish.build_site` and `build_html` run full-site and single-page builds.
 
 Everything else (the Markdown pipeline, theming internals, asset hashing) stays private.
 Because the contract is this fragment-plus-assets seam, an outer tool can wrap KPress
@@ -91,7 +92,7 @@ not the complete set of files to *serve*. A wrapper must serve the transitive cl
 (the CSS `url()` and JS `import` graphs), which the example resolves with
 `get_static_asset` in `build.py`.
 
-## End to End, and What a Real Deploy Wrapper Would Add
+## End-to-End Deployment Boundary
 
 These examples go all the way to a navigable site you can browse (`--serve`) and an
 uploadable artifact (`--zip`); see `_runner.py` for those two helpers.
@@ -105,7 +106,7 @@ object storage or a host, then invalidate the CDN). None of that changes how KPr
 called. It wraps the same `render_fragment` and `get_static_asset` core shown here; only
 the final “copy `public/` somewhere” step becomes a real upload.
 
-## The library-call path (single-doc)
+## The Library-Call Path (`single-doc/`)
 
 `single-doc/` is the exemplary *programmatic* integration: one Markdown document
 published by constructing a typed `KPressConfig` in Python and calling
@@ -114,10 +115,11 @@ strings, widget selection as a dict. A Python host calling a Python library
 writes Python; the YAML file is the veneer for file-based setups, not the API.
 (Production site builders follow this same pattern.)
 
-## Extension-model tour (static-site)
+## Extension-Model Tour (`static-site/`)
 
-`static-site/content/extensions.md` + `static-site/content/demo/extensions.js` are the
-living tour of the extension model (kpress-design.md → *Extension and Injection Model*):
+`static-site/content/extensions.md` and `static-site/content/demo/extensions.js` are a
+working tour of the
+[Extension and Injection Model](../docs/kpress-design.md#extension-and-injection-model):
 a **minimap widget** built from the page model, a **bare theme toggle** over the built-in
 theme engine, a **TOC toggle tweak** (custom icon + always-visible policy via callback
 config), a **footnote-handling override** over unchanged markup, and a **glossary
