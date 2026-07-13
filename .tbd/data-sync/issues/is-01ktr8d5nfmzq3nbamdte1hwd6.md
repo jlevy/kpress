@@ -5,11 +5,15 @@ title: Rewrite or prune internal monorepo planning docs before public release
 kind: task
 status: in_progress
 priority: 1
-version: 6
+version: 10
+spec_path: TODO.md
 labels: []
-dependencies: []
+dependencies:
+  - type: blocks
+    target: is-01kxcppx52sr5t9s438qwamc62
+parent_id: is-01kxcpnre3k47pw88htva8xt0d
 created_at: 2026-06-10T07:54:30.958Z
-updated_at: 2026-07-13T03:00:45.209Z
+updated_at: 2026-07-13T03:02:14.844Z
 ---
 TODO.md, docs/kpress-completion-plan.md, and the docs/*.runbook.md files carry trading-* bead references and monorepo paths from the original repo. Per EXTRACTION.md, rewrite for a standalone audience or prune before the repo/package goes public. Also: remove the 'Private :: Do Not Upload' classifier in pyproject.toml and finalize SECURITY.md reporting process at first publish (see EXTRACTION.md Release Blockers).
 

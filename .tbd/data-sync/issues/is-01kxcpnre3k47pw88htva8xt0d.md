@@ -5,7 +5,8 @@ title: KPress public roadmap and release readiness
 kind: epic
 status: open
 priority: 1
-version: 14
+version: 22
+spec_path: TODO.md
 labels: []
 dependencies: []
 child_order_hints:
@@ -22,7 +23,14 @@ child_order_hints:
   - is-01kxcppz7pyg8b0dx1b3v2s2t7
   - is-01kxcppze5dcef44awg1aevm76
   - is-01kxcppzmqm09d56dcdgwr1yar
+  - is-01ktr8d5nfmzq3nbamdte1hwd6
+  - is-01kxcaxb0bnrt6yr3yhye4cq09
+  - is-01kxcaxb6mm170gqj4a6zk5p4b
+  - is-01kxcaxbcv8grb6hb92k9bzg45
+  - is-01kxcaxbm1kwka3bz82hf6vmyj
+  - is-01kxcaxbt84v7hdbqqah579bp7
+  - is-01ktrcf35sbv7aex5whe2sqrq9
 created_at: 2026-07-13T03:00:04.675Z
-updated_at: 2026-07-13T03:00:44.823Z
+updated_at: 2026-07-13T03:02:14.344Z
 ---
 Maintain the public two-dimensional KPress backlog: capability implementation and automated coverage on one axis; browser/print acceptance, release readiness, and deferred evolution on the other. TODO.md is the public status index and every active row maps to a child bead.

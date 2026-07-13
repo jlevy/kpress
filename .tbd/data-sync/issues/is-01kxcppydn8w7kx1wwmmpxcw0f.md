@@ -5,11 +5,12 @@ title: Add cache-busted public asset URLs
 kind: feature
 status: open
 priority: 2
-version: 1
+version: 2
+spec_path: TODO.md
 labels: []
 dependencies: []
 parent_id: is-01kxcpnre3k47pw88htva8xt0d
 created_at: 2026-07-13T03:00:43.572Z
-updated_at: 2026-07-13T03:00:43.572Z
+updated_at: 2026-07-13T03:02:14.368Z
 ---
 Give linked/static builds a supported content-addressed or versioned asset URL policy so deployed CSS/JS/font updates do not remain behind stale unversioned URLs. Preserve deterministic manifests and offline/local development.
