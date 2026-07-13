@@ -1,93 +1,126 @@
 # KPress
 
-KPress renders Markdown into polished, readable HTML documents and publishes them as
-static sites. It is a Python library and CLI, not a framework: it owns document
-rendering, typography, and the static build pipeline, and stays out of site semantics
-and deployment so publishing pipelines and embedding hosts can wrap it.
+KPress is a Python library and CLI that turns Markdown into polished HTML documents and
+static sites. It owns document rendering, typography, reader interactions, and the build
+pipeline while leaving site semantics and deployment to the consuming project.
 
-What you get out of the box:
+Version `0.1.0` is an alpha for developers evaluating KPress in real projects.
+The document and publishing paths are usable and tested, but public seams may still
+change by hard cut before a stable release.
 
-- High-quality document typography: vendored PT Serif and Source Sans 3, a documented
-  CSS token system, light/dark/system themes with a no-flash bootstrap, print CSS.
-- Reader features as progressive enhancement: table of contents, footnote and link
-  tooltips, code copy, tabs, video popovers, responsive tables, KaTeX math with a MathML
-  no-JS fallback. All JS is native ESM, source-first, zero-build.
-- A full static build: route planning, sitemap/robots/redirects, content-hashed or fully
-  offline (sealed) assets, optional minification and precompression, and a deterministic
-  build manifest.
-- A dynamic host API for embedding applications, and sanitization trust modes for raw
-  HTML.
+KPress requires Python 3.12 or newer.
+Version `0.1.0` supports macOS and Linux; native Windows support is tracked for a later
+alpha (`kpr-isp2`).
 
-## Quickstart
+## Install and build a site
+
+Install the released package into a project:
 
 ```bash
-uv add kpress          # library
-uvx kpress --help      # CLI
-
-mkdir mysite && cd mysite
-uvx kpress init        # writes a starter kpress.yml
-echo "# Hello" > index.md
-uvx kpress build       # renders to public/
+uv add kpress==0.1.0
 ```
 
-KPress is also usable as a library: `kpress.format.render_page(...)` renders one
-document, and `kpress.publish.build_site("kpress.yml")` is the programmatic
-`kpress build`. The two runnable examples in [examples/](examples/README.md) show both
-consumption styles end to end: KPress as the whole static-site generator, and KPress as
-an inner rendering library wrapped by your own site shell.
+Create this minimal `kpress.yml`:
 
-## Documentation
+```yaml
+sources:
+  - path: content
 
-Architecture and contracts:
+publish:
+  output_dir: public
+  asset_mode: hashed
+```
 
-- [kpress-design.md](docs/kpress-design.md): architecture, package boundary, and the
-  public contract (HTML/CSS contracts, asset model, optimizer, host integration).
-- [docs/kpress-design.md](docs/kpress-design.md) (Feature Catalog): the durable catalog
-  of reader features and the behavior each guarantees.
-- [kpress-icons.md](docs/kpress-icons.md): the icon sprite contract.
+Then add a document and build it:
 
-Using and validating KPress:
+```bash
+mkdir -p content
+printf '# Hello\n\nBuilt with KPress.\n' > content/index.md
+uv run kpress build
+python -m http.server 8080 -d public
+```
 
-- [examples/](examples/README.md): runnable static-site and wrapper examples.
-- [docs/kpress-static-publish.runbook.md](docs/kpress-static-publish.runbook.md): how to
-  build and ship a static site, and where KPress’s responsibility ends.
-- [docs/kpress-validation.runbook.md](docs/kpress-validation.runbook.md): end-to-end
-  validation gates.
-- [docs/kpress-e2e-testing.runbook.md](docs/kpress-e2e-testing.runbook.md): manual
-  browser acceptance checks.
+Open `http://127.0.0.1:8080/`. The build writes `public/index.html`, the packaged reader
+assets under `public/_kpress/assets/`, and a deterministic build manifest at
+`public/_kpress/kpress-manifest.json`.
 
-Project status and process:
+`hashed` fingerprints KPress-owned CSS and JavaScript for production caching.
+It does not fetch, rewrite, or guarantee document-local and external assets.
+Use `linked` for readable local asset names and `hosted` when an embedding application
+serves KPress assets itself.
+Truly self-contained single-file and verified offline output are not part of `0.1.0`.
 
-- [TODO.md](TODO.md): implementation status ledger.
-- [docs/kpress-completion-plan.md](docs/kpress-completion-plan.md): map of remaining
-  work to verified completion.
-- [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md): dev
-  setup and the quality gate.
-- [SECURITY.md](SECURITY.md), [SUPPLY-CHAIN-SECURITY.md](SUPPLY-CHAIN-SECURITY.md),
-  [NOTICE.md](NOTICE.md): security policy, dependency policy, and third-party notices.
+## Use KPress as a library
 
-## Compatibility policy
+File-based sites can call the same publisher used by the CLI:
 
-KPress is a young package and evolves by **hard cuts**: API and contract changes land
-directly, with no deprecation shims and no backward-compatibility layers.
-A change is acceptable when an out-of-date caller fails loudly with a clear error
-message, never silently.
-The supported surface is pinned in `kpress.contract` (`PUBLIC_*` names) and enforced by
-tests; changing a public name means updating the contract, docs, tests, and goldens in
-the same patch, and release/PR notes are the migration guide.
+```python
+from kpress.publish import build_site
 
-## Development
+report = build_site("kpress.yml")
+print(report.routes)
+```
+
+Python hosts can instead construct a typed `KPressConfig`, render a standalone page with
+`kpress.format.render_page`, or render an embeddable fragment with
+`kpress.format.render_fragment`.
+
+The three runnable examples cover the supported integration shapes:
+
+- [`examples/static-site/`](examples/static-site/): KPress owns a complete static site.
+- [`examples/wrapped-site/`](examples/wrapped-site/): an outer site shell embeds KPress
+  fragments and serves the asset closure.
+- [`examples/single-doc/`](examples/single-doc/): a typed, programmatic build with no
+  YAML config.
+
+See [`examples/README.md`](examples/README.md) for commands and
+[`docs/kpress-static-publish.runbook.md`](docs/kpress-static-publish.runbook.md) for the
+publisher boundary.
+
+## What ships
+
+- Vendored PT Serif and Source Sans 3, design tokens, light/dark/system modes, print
+  CSS, and a no-flash theme bootstrap.
+- Progressive reader features: table of contents, footnote and link tooltips, code copy,
+  tabs, video placeholders, responsive tables, and KaTeX math with MathML.
+- Static discovery and routing, sitemap/robots/redirects, content-hashed package assets,
+  optional optimization and precompression, and schema-versioned manifests.
+- Typed Python APIs, native ESM browser modules, host-owned chrome slots, runtime
+  widget/behavior registries, and sanitized or trusted raw-HTML modes.
+
+## Development and unreleased versions
+
+External evaluators should start with the tagged package.
+Projects deliberately dogfooding unreleased work may pin an exact upstream commit or a
+maintained fork, but should treat that as a separate, faster-moving consumption path and
+record the pin.
 
 ```bash
 uv sync --all-extras
-uv run pytest tests --tb=short -q
-uv run python devtools/lint.py --check
+make lint-check
+uv run pytest
 ```
+
+Architecture and stability contracts live in
+[`docs/kpress-design.md`](docs/kpress-design.md).
+Current capability status, release gates, and the prioritized public backlog live in
+[`TODO.md`](TODO.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), and
+[`SUPPLY-CHAIN-SECURITY.md`](SUPPLY-CHAIN-SECURITY.md) before contributing or reporting
+a vulnerability. General defects and integration feedback belong in the
+[issue tracker](https://github.com/jlevy/kpress/issues).
+
+## Compatibility policy
+
+KPress evolves by hard cuts during the alpha: there are no deprecation shims.
+An out-of-date caller should fail loudly rather than appear to work.
+The supported surface is pinned in `kpress.contract`; public-name changes update the
+contract, docs, tests, goldens, and release notes together.
 
 ## License
 
-AGPL-3.0-or-later; see `LICENSE`. Third-party vendored components (Lucide icons, KaTeX,
-PT Serif, Source Sans 3) are listed with their licenses in [NOTICE.md](NOTICE.md).
+AGPL-3.0-or-later; see [`LICENSE`](LICENSE). Vendored components and their licenses are
+listed in [`NOTICE.md`](NOTICE.md).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

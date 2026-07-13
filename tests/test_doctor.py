@@ -52,7 +52,7 @@ def test_doctor_render_profile_ok(capsys: CaptureFixture[str]) -> None:
     assert payload["capabilities"]["render"]["status"] == "ok"
 
 
-def test_doctor_optimize_profile_fails_without_npx(
+def test_doctor_optimize_profile_fails_without_node(
     capsys: CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(shutil, "which", _no_which)
@@ -62,7 +62,7 @@ def test_doctor_optimize_profile_fails_without_npx(
     assert payload["capabilities"]["optimizer_full"]["status"] != "ok"
 
 
-def test_doctor_default_does_not_fail_when_npx_missing(
+def test_doctor_default_does_not_fail_when_node_missing(
     capsys: CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(shutil, "which", _no_which)
@@ -95,5 +95,5 @@ def test_doctor_config_aggregate_ok_when_nothing_optional_required(
     config.write_text("sources:\n  - path: docs\n", encoding="utf-8")
     code = main(["doctor", "--config", str(config)])
     capsys.readouterr()
-    # optimizer=none, no br, no pdf -> missing npx is not a failure.
+    # optimizer=none, no br, no pdf -> missing Node is not a failure.
     assert code == 0

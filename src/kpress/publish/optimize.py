@@ -5,11 +5,12 @@ from __future__ import annotations
 import fcntl
 import gzip
 import importlib
-import json
 import os
 import shutil
 import subprocess
 from dataclasses import dataclass
+from hashlib import sha256
+from importlib import resources
 from pathlib import Path
 from typing import Literal, Protocol, cast
 
@@ -61,9 +62,13 @@ FULL_OPTIMIZER_VERSION = "6.2.3"
 """The pinned version of the ``full`` optimizer npm package."""
 
 _FULL_OPTIMIZER_SPEC = f"{FULL_OPTIMIZER_PACKAGE}@{FULL_OPTIMIZER_VERSION}"
+_NPM_INSTALL_TIMEOUT_SECONDS = 120
+_OPTIMIZER_RUN_TIMEOUT_SECONDS = 60
+_NPM_MIN_RELEASE_AGE_DAYS = "14"
+"""npm 11.10+ minimum-release-age value, expressed in days."""
 
 MISSING_FULL_OPTIMIZER_MESSAGE = (
-    f"The KPress full optimizer requires Node.js with npm and npx on PATH and "
+    f"The KPress full optimizer requires Node.js with npm on PATH and "
     f"{FULL_OPTIMIZER_PACKAGE}. Install Node.js (the package is installed into a "
     f"managed cache via npm ci, no project setup needed), or select optimizer 'none'."
 )
@@ -103,47 +108,78 @@ def _npm_env() -> dict[str, str]:
     """
 
     env = os.environ.copy()
-    env["NPM_CONFIG_MINIMUM_RELEASE_AGE"] = "20160"
+    env.pop("NPM_CONFIG_MINIMUM_RELEASE_AGE", None)
+    # npm 11.10+ interprets this value in days. It is defense in depth only:
+    # integrity pins in the reviewed lock are the effective gate for `npm ci`.
+    env["NPM_CONFIG_MIN_RELEASE_AGE"] = _NPM_MIN_RELEASE_AGE_DAYS
     env["NPM_CONFIG_SAVE_EXACT"] = "true"
     env["NPM_CONFIG_PACKAGE_LOCK"] = "true"
     return env
 
 
-_CACHE_PACKAGE_JSON = json.dumps(
-    {
-        "name": "kpress-optimizer-cache",
-        "version": "0.0.0",
-        "private": True,
-        "dependencies": {
-            FULL_OPTIMIZER_PACKAGE: FULL_OPTIMIZER_VERSION,
-        },
-    },
-    indent=2,
-    sort_keys=True,
-)
+def _optimizer_tool_text(name: str) -> str:
+    """Read one reviewed optimizer-tool manifest shipped in the wheel."""
+
+    return (
+        resources.files("kpress.publish")
+        .joinpath("optimizer_tool", name)
+        .read_text(encoding="utf-8")
+    )
 
 
-def ensure_tool_cache(cache_root: Path | None = None) -> Path:
+def _cache_bin(cache_dir: Path) -> Path:
+    return cache_dir / "node_modules" / ".bin" / FULL_OPTIMIZER_PACKAGE
+
+
+def _optimizer_lock_digest() -> str:
+    return sha256(_optimizer_tool_text("package-lock.json").encode("utf-8")).hexdigest()
+
+
+def _cache_matches_shipped_lock(cache_dir: Path) -> bool:
+    marker = cache_dir / ".kpress-lock-sha256"
+    try:
+        recorded = marker.read_text(encoding="utf-8").strip()
+    except OSError:
+        return False
+    return _cache_bin(cache_dir).exists() and recorded == _optimizer_lock_digest()
+
+
+def optimizer_cache_ready(cache_root: Path | None = None) -> bool:
+    """Return whether Node and a cache matching the shipped lock are ready."""
+
+    root = cache_root or _default_cache_root()
+    return shutil.which("node") is not None and _cache_matches_shipped_lock(
+        root / _FULL_OPTIMIZER_SPEC
+    )
+
+
+def ensure_tool_cache(cache_root: Path | None = None, *, allow_network: bool = False) -> Path:
     """Ensure the locked npm tool cache is installed and return its path.
 
-    Creates a package-owned directory with a pinned ``package.json``, then
-    installs via ``npm ci`` (when a lockfile from a prior install exists)
-    or ``npm install --ignore-scripts`` (first-time bootstrap) under a file
-    lock so concurrent callers do not corrupt the ``node_modules`` tree.
+    Copies the package-owned, reviewed ``package.json`` and ``package-lock.json``
+    into the cache and installs only via ``npm ci``. A cold cache requires explicit
+    network permission. Installation is file-locked so concurrent callers cannot
+    corrupt ``node_modules``.
     """
 
     root = cache_root or _default_cache_root()
     cache_dir = root / _FULL_OPTIMIZER_SPEC
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    pkg_json = cache_dir / "package.json"
-    lock_json = cache_dir / "package-lock.json"
-
-    write_text_atomic(pkg_json, _CACHE_PACKAGE_JSON)
-
-    bin_path = cache_dir / "node_modules" / ".bin" / FULL_OPTIMIZER_PACKAGE
-    if bin_path.exists():
+    if shutil.which("node") is None:
+        raise KPressMissingOptionalDependencyError(MISSING_FULL_OPTIMIZER_MESSAGE)
+    if _cache_matches_shipped_lock(cache_dir):
         return cache_dir
+    if not allow_network:
+        raise KPressMissingOptionalDependencyError(
+            "The KPress full optimizer cache is cold. Run `kpress doctor --profile "
+            "optimize --allow-network` once, or select optimizer 'none'."
+        )
+    npm = shutil.which("npm")
+    if npm is None:
+        raise KPressMissingOptionalDependencyError(MISSING_FULL_OPTIMIZER_MESSAGE)
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    write_text_atomic(cache_dir / "package.json", _optimizer_tool_text("package.json"))
+    write_text_atomic(cache_dir / "package-lock.json", _optimizer_tool_text("package-lock.json"))
 
     lock_file = cache_dir / ".install.lock"
     # `with` guarantees the lock_fd closes even if flock raises (interrupted
@@ -152,33 +188,37 @@ def ensure_tool_cache(cache_root: Path | None = None) -> Path:
     with lock_file.open("w") as lock_fd:
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
         try:
-            if bin_path.exists():
+            if _cache_matches_shipped_lock(cache_dir):
                 return cache_dir
 
-            npm = shutil.which("npm")
-            if npm is None:
-                raise KPressMissingOptionalDependencyError(MISSING_FULL_OPTIMIZER_MESSAGE)
-
-            if lock_json.exists():
-                install_cmd = [npm, "ci", "--ignore-scripts"]
-            else:
-                install_cmd = [npm, "install", "--ignore-scripts"]
-
-            result = subprocess.run(
-                install_cmd,
-                cwd=cache_dir,
-                env=_npm_env(),
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=120,
-            )
+            try:
+                result = subprocess.run(
+                    [npm, "ci", "--ignore-scripts"],
+                    cwd=cache_dir,
+                    env=_npm_env(),
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=_NPM_INSTALL_TIMEOUT_SECONDS,
+                )
+            except FileNotFoundError as exc:
+                raise KPressMissingOptionalDependencyError(MISSING_FULL_OPTIMIZER_MESSAGE) from exc
+            except subprocess.TimeoutExpired as exc:
+                raise KPressOptimizerError(
+                    f"npm ci for {_FULL_OPTIMIZER_SPEC} timed out after "
+                    f"{_NPM_INSTALL_TIMEOUT_SECONDS} seconds."
+                ) from exc
             if result.returncode != 0:
                 stderr = result.stderr.strip()
                 raise KPressOptimizerError(
-                    f"npm install for {_FULL_OPTIMIZER_SPEC} failed "
-                    f"(exit {result.returncode}): {stderr}"
+                    f"npm ci for {_FULL_OPTIMIZER_SPEC} failed (exit {result.returncode}): {stderr}"
                 )
+            if not _cache_bin(cache_dir).exists():
+                raise KPressOptimizerError(
+                    f"npm ci for {_FULL_OPTIMIZER_SPEC} succeeded but did not install "
+                    f"the {FULL_OPTIMIZER_PACKAGE} executable."
+                )
+            write_text_atomic(cache_dir / ".kpress-lock-sha256", _optimizer_lock_digest() + "\n")
         finally:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
 
@@ -186,9 +226,9 @@ def ensure_tool_cache(cache_root: Path | None = None) -> Path:
 
 
 def full_optimizer_available() -> bool:
-    """Return whether the optional `full` optimizer toolchain (npx) is present."""
+    """Return whether Node and npm can bootstrap the optional full optimizer."""
 
-    return shutil.which("npx") is not None
+    return shutil.which("node") is not None and shutil.which("npm") is not None
 
 
 def _run_full_optimizer(
@@ -211,12 +251,19 @@ def _run_full_optimizer(
 
     try:
         result = subprocess.run(
-            cmd, input=payload, capture_output=True, text=True, check=False, timeout=60
+            cmd,
+            input=payload,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_OPTIMIZER_RUN_TIMEOUT_SECONDS,
         )
     except FileNotFoundError as exc:
         raise KPressMissingOptionalDependencyError(MISSING_FULL_OPTIMIZER_MESSAGE) from exc
     except subprocess.TimeoutExpired as exc:
-        raise KPressOptimizerError(f"{FULL_OPTIMIZER_PACKAGE} timed out after 60 seconds.") from exc
+        raise KPressOptimizerError(
+            f"{FULL_OPTIMIZER_PACKAGE} timed out after {_OPTIMIZER_RUN_TIMEOUT_SECONDS} seconds."
+        ) from exc
     if result.returncode != 0:
         stderr = result.stderr.strip()
         raise KPressOptimizerError(
@@ -250,7 +297,7 @@ class FullOptimizer:
 
     The package is installed deterministically into a managed, file-locked
     cache directory via ``npm ci`` with a pinned lockfile. Callers maintain
-    no project ``package.json``. If the Node toolchain (npm/npx) or the
+    no project ``package.json``. If the Node/npm toolchain or the
     package is unavailable, optimization raises
     ``KPressMissingOptionalDependencyError``. There is no silent fallback.
     Dynamic rendering never imports or calls this optimizer.
@@ -264,9 +311,10 @@ class FullOptimizer:
 
     def _get_cache_dir(self) -> Path:
         if self._cache_dir is None:
-            if not full_optimizer_available():
-                raise KPressMissingOptionalDependencyError(MISSING_FULL_OPTIMIZER_MESSAGE)
-            self._cache_dir = ensure_tool_cache(cache_root=self._cache_root)
+            self._cache_dir = ensure_tool_cache(
+                cache_root=self._cache_root,
+                allow_network=False,
+            )
         return self._cache_dir
 
     def optimize(self, content: str, *, kind: ContentKind) -> OptimizerResult:
@@ -323,7 +371,7 @@ def optimize_text(content: str, *, kind: ContentKind | str, backend: str | None 
 
 # Built-in pipeline stage names a host may reference in BuildExtensions.pipeline
 # (pinned by contract.PUBLIC_PIPELINE_STAGES).
-BUILTIN_PIPELINE_STAGES = ("kpress:none", "kpress:full")
+BUILTIN_PIPELINE_STAGES = ("none", "full")
 
 
 def resolve_stage(stage: OptimizerBackend | str) -> OptimizerBackend:
@@ -336,9 +384,9 @@ def resolve_stage(stage: OptimizerBackend | str) -> OptimizerBackend:
 
     if not isinstance(stage, str):
         return stage
-    if stage == "kpress:none":
+    if stage == "none":
         return NoneOptimizer()
-    if stage == "kpress:full":
+    if stage == "full":
         return FullOptimizer()
     from kpress.errors import KPressPublishError
 
@@ -358,15 +406,16 @@ def optimize_file(
     content = path.read_text(encoding="utf-8")
     original_size = len(content.encode("utf-8"))
     resolved_backend = backend or "none"
-    optimized = optimize_text(content, kind=kind, backend=resolved_backend)
-    write_text_atomic(path, optimized)
+    normalized = cast(ContentKind, kind if kind in {"html", "css", "js"} else "other")
+    result = get_optimizer(resolved_backend).optimize(content, kind=normalized)
+    write_text_atomic(path, result.content)
     return OutputFile(
         path=path.name,
         kind=path.suffix.lstrip("."),
-        content_hash=content_hash(optimized),
-        size=len(optimized.encode("utf-8")),
+        content_hash=content_hash(result.content),
+        size=len(result.content.encode("utf-8")),
         original_size=original_size,
-        optimizer_backend=resolved_backend,
+        applied_pipeline=[resolved_backend] if result.changed else [],
     )
 
 

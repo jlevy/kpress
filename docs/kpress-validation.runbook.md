@@ -115,32 +115,27 @@ npx lefthook run pre-commit
 
 Review and re-stage any hook-written Markdown or spelling fixes before committing.
 
-## Part 2: Host Adapter Boundary Gates
+## Part 2: Embedding Boundary Gates
 
 Run these when changing KPress runtime APIs, package assets, print metadata, static
-export seams, or host adapter behavior.
-
-The embedding host maintains its own KPress adapter tests (for example, export-seam,
-render-route, asset-loading, plugin-SDK, and print-contract tests).
-Run the host’s focused KPress test suite from the host project:
+export seams, or embedding behavior:
 
 ```bash
-# Example: run the host project's KPress-focused tests.
-# Adjust the project name and test paths for your embedding host.
-uv run --project <host-project> pytest \
-  <host-project>/tests/test_kpress_export_seam.py \
-  <host-project>/tests/test_kpress_render_route.py \
-  <host-project>/tests/test_kpress_asset_loading_js.py \
-  <host-project>/tests/test_kpress_print_contract.py \
+uv run pytest \
+  tests/test_runtime.py \
+  tests/test_asset_contract.py \
+  tests/test_document_contract.py \
   --tb=short -q
+
+uv run python examples/wrapped-site/build.py
 ```
 
 Expected result:
 
-- Focused KPress/host adapter tests pass.
-- The host adapter still imports only the KPress runtime path during ordinary dynamic
-  rendering.
-- The adapter does not import KPress publisher, PDF, optimizer, subprocess, browser, or
+- Focused runtime and embedding-contract tests pass.
+- The wrapped example imports only the KPress format/runtime path during ordinary
+  dynamic rendering.
+- The example does not import KPress publisher, PDF, optimizer, subprocess, browser, or
   Node-related modules unless a static export path explicitly calls them.
 
 ## Part 3: Golden Fixtures
@@ -193,11 +188,10 @@ It can run independently of the golden update flow.
 > (`https://cdn…/foo.js`) are emitted into the rendered HTML verbatim; the deploy layer
 > (CDN, S3, Netlify, etc.)
 > owns those files and runtime fetches.
-> The `public-sealed` directory names below describe the *hashed + gzipped package-asset
-> shape* (production layout), not a sealed asset graph.
-> See `docs/kpress-design.md` § “Asset sealing: deferred for v1” and
-> `docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md` for the v2
-> roadmap.
+> The `public-hashed` directory names below describe the hashed + gzipped package-asset
+> shape. KPress does not claim a verified external-asset graph.
+> See `docs/kpress-design.md` § “Asset sealing: deferred for v1” and `kpr-xsog` for the
+> v2 roadmap.
 
 Create inputs:
 
@@ -239,7 +233,7 @@ uv run kpress build \
 uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
-  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed" \
+  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed" \
   --precompress gzip
 ```
 
@@ -265,7 +259,7 @@ End-to-end brotli build smoke (the extra must already be installed):
 uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
-  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed-br" \
+  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed-br" \
   --precompress gzip --precompress br
 # Expect: `.br` sidecars beside `.html`/`.css`/`.js` and the build
 # manifest's `precompress` field includes both methods.
@@ -279,7 +273,7 @@ output:
 # Run this from a venv that does NOT have the optimize extra.
 if uv run kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
-  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-sealed-br-fail" \
+  --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed-br-fail" \
   --precompress br; then
   echo "expected brotli to report missing kpress[optimize] extra"
   exit 1
@@ -297,24 +291,14 @@ uv run kpress optimize \
   --backend full
 ```
 
-Clipboard and DOCX extras are intentionally absent in the base package.
-These commands should return exit code `2` with clear JSON diagnostics:
+The clipboard extra is intentionally absent in the base package.
+This command should return exit code `2` with a clear JSON diagnostic:
 
 ```bash
 if uv run kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   paste --title ClipboardSmoke; then
   echo "expected paste to report missing clipboard extra"
-  exit 1
-else
-  test "$?" -eq 2
-fi
-
-if uv run kpress \
-  --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
-  export "$KPRESS_VALIDATION_ROOT/rich-components.md" \
-  --docx "$KPRESS_VALIDATION_ROOT/export/rich-components.docx"; then
-  echo "expected export to report missing office extra"
   exit 1
 else
   test "$?" -eq 2
@@ -331,15 +315,15 @@ $KPRESS_VALIDATION_ROOT/export/rich-components.pdf
 $KPRESS_VALIDATION_ROOT/export/rich-components.min.html
 $KPRESS_VALIDATION_ROOT/site/public-readable/index.html
 $KPRESS_VALIDATION_ROOT/site/public-readable/_kpress/kpress-manifest.json
-$KPRESS_VALIDATION_ROOT/site/public-sealed/index.html
-$KPRESS_VALIDATION_ROOT/site/public-sealed/_kpress/kpress-manifest.json
+$KPRESS_VALIDATION_ROOT/site/public-hashed/index.html
+$KPRESS_VALIDATION_ROOT/site/public-hashed/_kpress/kpress-manifest.json
 ```
 
 Inspect the production manifest:
 
 ```bash
 sed -n '1,220p' \
-  "$KPRESS_VALIDATION_ROOT/site/public-sealed/_kpress/kpress-manifest.json"
+  "$KPRESS_VALIDATION_ROOT/site/public-hashed/_kpress/kpress-manifest.json"
 ```
 
 Confirm:
@@ -362,8 +346,8 @@ Review the current contract against implementation and docs:
 ```bash
 git diff -- \
   src/kpress/contract.py \
-  kpress-design.md \
-  docs/project/specs/active/plan-2026-05-16-kpress-package-and-publisher.md
+  docs/kpress-design.md \
+  TODO.md
 ```
 
 Confirm:
@@ -377,42 +361,36 @@ Confirm:
 
 ### Static Output Review
 
-Review generated readable and sealed trees:
+Review generated readable and hashed trees:
 
 ```bash
 find "$KPRESS_VALIDATION_ROOT/site/public-readable" -maxdepth 4 -type f | sort
-find "$KPRESS_VALIDATION_ROOT/site/public-sealed" -maxdepth 4 -type f | sort
+find "$KPRESS_VALIDATION_ROOT/site/public-hashed" -maxdepth 4 -type f | sort
 ```
 
 Confirm:
 
 - readable output is uncompressed with linked asset names
-- sealed output uses hashed package assets
-- sealed output can be opened without unexpected remote network dependencies
+- hashed output uses content-fingerprinted KPress package assets
+- this fixture opens without unexpected remote requests; that is fixture evidence, not a
+  general guarantee about arbitrary content
 - manifests are deterministic and readable
 - no host navigation or shell chrome appears in KPress static output
 
 ### Local Browser Smoke
 
-Multi-file builds (`linked`, `hashed`, `sealed`) are server-rooted: their asset
-references and ES module scripts only resolve over HTTP, never `file://`. Choose the
-viewer by build shape, not an ad-hoc server:
+Multi-file builds (`linked`, `hashed`) are server-rooted: their asset references and ES
+module scripts only resolve over HTTP, never `file://`. Serve the generated tree from
+its root:
 
-- **Multi-file output (developer `linked` / production `hashed`+`sealed`):** review
-  through the host-app harness, which is the contracted dynamic KPress surface
-  (`/api/kpress/render` plus the `test_kpress_*` suite).
-  A focused standalone static server is intentionally not part of this runbook unless a
-  concrete need appears; see the lever model in [kpress-design.md](../kpress-design.md)
-  ("Combinations under evaluation").
+- **Multi-file output (developer `linked` / production `hashed`):** run
+  `python -m http.server 8080 -d "$KPRESS_VALIDATION_ROOT/site/public-hashed"` and open
+  `http://127.0.0.1:8080/`.
 - **Single self-contained file:** only an `inline` build with classic (non-module)
-  reader JS opens over `file://`; that combination is deferred (tracked work), so do not
-  validate single-doc output via `file://` until it lands.
+  reader JS would open over `file://`; that combination is deferred under `kpr-xsog`, so
+  do not validate single-doc output via `file://` until it lands.
 
-Do not hand-roll `python -m http.server` as the review path.
-If a transient static server is unavoidable for a one-off check, treat it as scratch,
-never as the documented procedure.
-
-When reviewing multi-file output through the host harness, confirm:
+When reviewing multi-file output, confirm:
 
 - the home page renders
 - `/about.html` renders
@@ -426,7 +404,7 @@ When reviewing multi-file output through the host harness, confirm:
 - the document remains readable at desktop and narrow viewport widths
 - print preview shows document content without navigation chrome
 
-Stop the host harness after the check.
+Stop the static server after the check.
 
 Optional Playwright-assisted workflow:
 
@@ -438,30 +416,21 @@ Optional Playwright-assisted workflow:
 - Save screenshots or console/network notes as review evidence when they explain a
   decision or failure.
 
-### Host Embedding Smoke
+### Embedding Smoke
 
-Start the embedding host against the KPress fixture site.
-The exact command depends on the host application:
-
-```bash
-# Example: start the host's dev server pointed at the KPress fixture site.
-# Adjust the project name and command for your embedding host.
-uv run --project <host-project> <host-command> serve \
-  tests/fixtures/sites/basic \
-  --path docs/index.md \
-  --no-open
-```
+Run [`examples/wrapped-site/build.py`](../examples/wrapped-site/build.py), serve its
+generated output, and open the root page.
 
 Open the printed URL. Confirm:
 
 - the Markdown document view uses KPress-rendered markup
 - KPress assets load from the host’s configured static asset path
-- the print icon appears only for printable views
-- Command+P prints the document surface, not the file tree or header
+- the application shell remains outside the KPress fragment
+- Command+P prints the document surface without application chrome
 - source view remains printable with the source print profile
-- no KPress-unavailable fallback warning appears when KPress is installed
+- KPress import or render failures surface as errors rather than partial success
 
-Stop the host server after the check.
+Stop the example server after the check.
 
 ## Part 6: Human Visual and Functional Acceptance
 
@@ -496,9 +465,9 @@ Use generated KPress static output, host-embedded document views, or both.
 ### Static Publishing
 
 - Readable output is easy to inspect.
-- Sealed output uses hashed assets and includes a manifest.
-- Sealed output works from a local static server.
-- No unexpected remote network requests are made in sealed/offline review.
+- Hashed output uses fingerprinted KPress assets and includes a manifest.
+- Hashed output works from a local static server.
+- The controlled fixture makes no unexpected remote network requests.
 - Sitemap, robots, and route outputs match the intended site shape.
 
 ### Print and PDF

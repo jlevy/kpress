@@ -26,8 +26,8 @@ Per-build overrides that take precedence over `kpress.yml`:
 | Field | Purpose |
 | --- | --- |
 | `output_dir` | Where to write the site (overrides config) |
-| `asset_mode` | `hashed`, `linked`, `inline`, or `sealed` |
-| `optimizer` | `none`, `safe`, or `full` |
+| `asset_mode` | `hosted`, `linked`, or `hashed` |
+| `optimizer` | `none` or `full` |
 | `precompress` | List of encodings to pre-generate, e.g. `[gzip]` |
 
 See the package README for the full publishing contract.

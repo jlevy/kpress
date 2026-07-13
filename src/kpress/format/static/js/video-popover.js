@@ -4,7 +4,7 @@ import { behaviors } from "./runtime.js";
  * KPress inline video embed.
  *
  * A YouTube reference is rendered server-side as a safe, network-free
- * placeholder (`[data-kpress-video-id]`), so sanitized and sealed output never
+ * placeholder (`[data-kpress-video-id]`), so sanitized and hashed output never
  * ship an external `<iframe>`. At runtime this replaces each placeholder with
  * the inline YouTube player — no popup. The player (and its only network
  * request) loads when this script runs, and lazily once it scrolls into view.
@@ -15,7 +15,8 @@ import { behaviors } from "./runtime.js";
  * override really turns the built-in off — late placeholders included).
  *
  * NOTE: the filename is historical (this used to be a click-to-open popover);
- * it is now an inline embedder. A rename is tracked as follow-up cleanup.
+ * it is now an inline embedder. The atomic asset/contract rename is tracked by
+ * `kpr-6nvi`.
  */
 
 const EMBED_HOST = "https://www.youtube-nocookie.com";

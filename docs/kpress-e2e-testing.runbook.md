@@ -54,14 +54,15 @@ uv run kpress render \
   tests/e2e/docs/index.md \
   --output /tmp/kpress-e2e/showcase.html --asset-mode hashed
 
-# 2) Static site (readable) and 3) a production-style sealed build. The build collects
+# 2) Static site (readable) and 3) a production-style hashed build. The build collects
 #    the document's images automatically, so figures resolve from the output root:
 uv run kpress build \
   --config tests/e2e/kpress.yml \
   --output-dir /tmp/kpress-e2e/site-readable --asset-mode hashed
+uv run kpress doctor --profile optimize --allow-network
 uv run kpress build \
   --config tests/e2e/kpress.yml \
-  --output-dir /tmp/kpress-e2e/site-sealed --asset-mode sealed --optimizer full
+  --output-dir /tmp/kpress-e2e/site-hashed --asset-mode hashed --optimizer full
 ```
 
 Serve over **HTTP, not `file://`**: KPress JS uses ES module imports, which browsers
@@ -80,7 +81,7 @@ every asset 404 → an unstyled fragment):
 
 ```bash
 ( cd /tmp/kpress-e2e/site-readable && python3 -m http.server 8800 )   # → http://127.0.0.1:8800/
-( cd /tmp/kpress-e2e/site-sealed   && python3 -m http.server 8801 )   # → http://127.0.0.1:8801/
+( cd /tmp/kpress-e2e/site-hashed   && python3 -m http.server 8801 )   # → http://127.0.0.1:8801/
 ```
 
 The showcase’s “Reference” link (`reference.html`) resolves in the two **site** builds;
@@ -174,8 +175,8 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Agent]/[Human]** A YouTube link / embed renders as a no-network placeholder.
   Click it → a focus-trapped dialog opens; the TOC hides while it is open and restores
   on close. Maximize/restore works; **Escape** and the close control dismiss it.
-- **[Agent]** In the **sealed** build, opening the page makes **no** eager network
-  calls; the YouTube embed URL is only constructed on click.
+- **[Agent]** In the **hashed fixture** build, opening the page makes **no** eager
+  network calls; the YouTube embed URL is only constructed on click.
 
 ## Tabs, math, diagrams
 
@@ -196,9 +197,9 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 
 ## Static site specifics
 
-- **[Agent]** Readable and sealed sites load from their **own root**; all assets
+- **[Agent]** Readable and hashed sites load from their **own root**; all assets
   resolve; `/` ↔ `/about.html` navigation works.
-- **[Agent]** The **sealed** build makes **no eager external asset loads**. Check the
+- **[Agent]** This **hashed fixture** makes **no eager external asset loads**. Check the
   *asset* references—`src`/`href` on `<script>`, `<link>`, `<img>`, `<iframe>`—resolve
   locally; the only allowed external URL is the YouTube embed template inside
   `video-popover.js` (a deliberate click-time feature, not a load-time call).

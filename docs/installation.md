@@ -1,5 +1,9 @@
 # Installing uv and Python
 
+KPress `0.1.0` supports macOS and Linux with Python 3.12 or newer.
+The current full optimizer uses a POSIX file lock, so Windows is not yet a supported
+runtime platform; native Windows support is tracked by `kpr-isp2`.
+
 This project is set up to use [**uv**](https://docs.astral.sh/uv/), the new package
 manager for Python. `uv` replaces traditional use of `pyenv`, `pipx`, `poetry`, `pip`,
 etc. This is a quick cheat sheet on that:

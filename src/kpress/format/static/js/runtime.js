@@ -28,7 +28,7 @@
 /** @typedef {{ get(key: string): string | null, set(key: string, value: string): void }} KpressStorageAdapter */
 /** @typedef {(detail?: unknown) => void} KpressListener */
 /** @typedef {Record<string, unknown>} KpressConfig */
-/** @typedef {{ mount(el: HTMLElement, config: KpressConfig, model: KpressConfig): void }} KpressWidget */
+/** @typedef {{ mount(el: HTMLElement, config: KpressConfig, model: KpressConfig): (() => void) | void }} KpressWidget */
 /**
  * A behavior binds handling over server-rendered markup. `bind` MAY return a
  * disposer that tears the binding down (listeners, observers); the runtime
@@ -177,6 +177,11 @@ let applied = false;
 const widgetRegistry = new Map();
 /** @type {Map<string, KpressConfig>} */
 const widgetConfigs = new Map();
+/** Mounted elements and their explicit replacement config (null means resolved config). */
+/** @type {Map<string, Map<HTMLElement, KpressConfig | null>>} */
+const widgetMounts = new Map();
+/** @type {Map<HTMLElement, () => void>} */
+const widgetDisposers = new Map();
 
 /**
  * Widget config: the page model's (opaque, verbatim) config under any
@@ -203,6 +208,49 @@ function mountAllFor(id) {
   }
 }
 
+/**
+ * Run and forget one widget mount's disposer.
+ *
+ * @param {string} id
+ * @param {HTMLElement} el
+ */
+function disposeWidgetMount(id, el) {
+  const dispose = widgetDisposers.get(el);
+  widgetDisposers.delete(el);
+  if (dispose) {
+    try {
+      dispose();
+    } catch (error) {
+      console.error(`kpress: widget "${id}" disposer failed`, error);
+    }
+  }
+}
+
+/**
+ * @param {string} id
+ * @param {boolean} preserveActive
+ */
+function remountAllFor(id, preserveActive) {
+  const alreadyMounted = [...(widgetMounts.get(id) ?? [])];
+  mountAllFor(id);
+  for (const [el, config] of alreadyMounted) {
+    if (!el.isConnected) {
+      disposeWidgetMount(id, el);
+      const mounts = widgetMounts.get(id);
+      mounts?.delete(el);
+      if (mounts?.size === 0) {
+        widgetMounts.delete(id);
+      }
+      el.removeAttribute("data-kpress-widget-bound");
+      continue;
+    }
+    if (preserveActive && (el === document.activeElement || el.contains(document.activeElement))) {
+      continue;
+    }
+    widgets.mount(id, el, config ?? undefined);
+  }
+}
+
 export const widgets = {
   /**
    * @param {string} id
@@ -211,7 +259,7 @@ export const widgets = {
   register(id, widget) {
     widgetRegistry.set(id, widget);
     if (applied) {
-      mountAllFor(id);
+      remountAllFor(id, false);
     }
   },
   /**
@@ -229,6 +277,9 @@ export const widgets = {
       return;
     }
     widgetConfigs.set(id, { ...(widgetConfigs.get(id) ?? {}), ...config });
+    if (applied) {
+      remountAllFor(id, false);
+    }
   },
   /**
    * Mount a registered widget into an element (embeds mount anywhere). The
@@ -249,9 +300,19 @@ export const widgets = {
     if (!el) {
       return;
     }
+    disposeWidgetMount(id, el);
     el.setAttribute("data-kpress-widget-bound", "true");
+    let mounts = widgetMounts.get(id);
+    if (!mounts) {
+      mounts = new Map();
+      widgetMounts.set(id, mounts);
+    }
+    mounts.set(el, config ?? null);
     try {
-      widget.mount(el, config ?? resolveWidgetConfig(id), getModel());
+      const dispose = widget.mount(el, config ?? resolveWidgetConfig(id), getModel());
+      if (typeof dispose === "function") {
+        widgetDisposers.set(el, dispose);
+      }
     } catch (error) {
       console.error(`kpress: widget "${id}" mount failed`, error);
     }
@@ -359,6 +420,9 @@ export const behaviors = {
       return;
     }
     behaviorConfigs.set(id, { ...(behaviorConfigs.get(id) ?? {}), ...config });
+    if (applied) {
+      runBehavior(id);
+    }
   },
   /**
    * Re-run one behavior's binding (after an override post-ready, or after
@@ -393,6 +457,31 @@ Object.assign(kpressGlobal, {
   behaviors,
   isReady: false,
 });
+
+let presentationReapplyActive = false;
+
+function reapplyPresentationRegistrations() {
+  if (kpressGlobal.isReady !== true || presentationReapplyActive) {
+    return;
+  }
+  presentationReapplyActive = true;
+  try {
+    for (const id of widgetRegistry.keys()) {
+      remountAllFor(id, true);
+    }
+    for (const id of behaviorRegistry.keys()) {
+      // Theme emits theme:change from its own bind; rebinding it here would recurse.
+      if (id !== "theme") {
+        runBehavior(id);
+      }
+    }
+  } finally {
+    presentationReapplyActive = false;
+  }
+}
+
+on("theme:change", reapplyPresentationRegistrations);
+on("palette:change", reapplyPresentationRegistrations);
 
 function applyAll() {
   if (applied) {

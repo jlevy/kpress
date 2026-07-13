@@ -20,7 +20,7 @@ MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
 ProseFont = Literal["serif", "sans"]
-AssetMode = Literal["hosted", "linked", "hashed", "inline", "sealed"]
+AssetMode = Literal["hosted", "linked", "hashed", "inline"]
 OptimizerMode = Literal["none", "full"]
 
 
@@ -181,7 +181,7 @@ def parse_widgets(value: object) -> dict[str, Any]:
     Each value becomes "on" | "off" | "auto" (bools normalize to on/off) or
     passes through verbatim as the widget's config dict (which implies on).
     Anything else fails loudly — consistent with the strict format.math /
-    asset_mode stance (orig-1tkb): a typo must not silently ship different
+    asset_mode stance: a typo must not silently ship different
     chrome than the operator intended. Every dialect (YAML ``format.widgets``,
     typed configs, dynamic ``KPressRenderRequest.widgets``) runs this so all
     surfaces publish identical widget data.

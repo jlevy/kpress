@@ -84,7 +84,6 @@ DEFAULT_JS_ASSETS = [
     "js/video-popover.js",
     "js/tabs.js",
     "js/host.js",
-    "js/print.js",
 ]
 # Transitive ESM dependencies that the JS modules in DEFAULT_JS_ASSETS import
 # at runtime. They are copied into the output tree (so the relative
@@ -156,7 +155,7 @@ def katex_asset_refs() -> dict[str, list[str]]:
 
 
 def katex_asset_manifest() -> AssetManifest:
-    """Return stable, sealed KaTeX asset references for a static build."""
+    """Return stable, hashed KaTeX asset references for a static build."""
 
     refs: list[AssetRef] = []
     for rel_path in [*KATEX_CSS_ASSETS, *KATEX_JS_ASSETS, *KATEX_FONT_ASSETS]:
@@ -170,7 +169,7 @@ def katex_asset_manifest() -> AssetManifest:
                 media_type=media_type or "application/octet-stream",
                 content_hash=content_hash(data),
                 output_path=rel_path,
-                mode="sealed",
+                mode="hashed",
             )
         )
     return AssetManifest(refs)
@@ -194,7 +193,7 @@ def package_asset_url(path: str, *, prefix: str = "/kpress-static/") -> str:
 def package_asset_output_path(path: str, *, mode: AssetMode = "hosted") -> str:
     """Return the static output path for a package asset in an asset mode.
 
-    In hashed/sealed mode every asset -- CSS and JS alike -- gets a content-hashed
+    In hashed mode every asset -- CSS and JS alike -- gets a content-hashed
     filename built from its own bytes. JS modules are emitted byte-for-byte as they
     ship in the package: their relative ``import "./x.js"`` specifiers are *not*
     rewritten. The browser resolves those specifiers to the hashed files through an
@@ -203,10 +202,10 @@ def package_asset_output_path(path: str, *, mode: AssetMode = "hosted") -> str:
     """
 
     rel = path.strip("/")
-    # KaTeX is a pinned, sealed vendor bundle: its stylesheet references font
+    # KaTeX is a pinned, hashed vendor bundle: its stylesheet references font
     # faces by relative `fonts/` URL, so the whole `katex/` subtree must keep
     # stable, unhashed names in every asset mode for those URLs to resolve.
-    if mode not in {"hashed", "sealed"} or rel.startswith(("fonts/", "katex/")):
+    if mode != "hashed" or rel.startswith(("fonts/", "katex/")):
         return rel
     digest = content_hash(read_package_bytes(rel))
     posix = PurePosixPath(rel)
@@ -216,7 +215,7 @@ def package_asset_output_path(path: str, *, mode: AssetMode = "hosted") -> str:
 def package_js_import_map(*, mode: AssetMode, prefix: str) -> dict[str, str]:
     """Map each package JS module's natural URL to its emitted URL, for an import map.
 
-    In hashed/sealed mode the emitted module files carry content-hashed names while
+    In hashed mode the emitted module files carry content-hashed names while
     their ``import "./x.js"`` specifiers are left untouched. A
     ``<script type="importmap">`` built from this mapping lets the browser resolve those
     specifiers to the hashed files, so KPress never has to parse or rewrite the JS.
@@ -232,7 +231,7 @@ def package_js_import_map(*, mode: AssetMode, prefix: str) -> dict[str, str]:
     an empty mapping for modes that do not hash filenames (nothing to remap).
     """
 
-    if mode not in {"hashed", "sealed"}:
+    if mode != "hashed":
         return {}
     base = prefix.rstrip("/") + "/"
     return {

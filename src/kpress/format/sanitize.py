@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from html.parser import HTMLParser
+from urllib.parse import urlsplit
 
 import nh3
 
@@ -15,6 +17,8 @@ from kpress.contract import (
 from kpress.errors import KPressInvalidRequestError
 from kpress.format.model import Diagnostic, TrustMode
 
+# This nh3 policy and `_SanitizerAudit` describe the same decisions: update both
+# whenever tags, attributes, URL schemes, or pass-through restrictions change.
 _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
     "annotation",
     "button",
@@ -284,6 +288,79 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
     return tags
 
 
+class _SanitizerAudit(HTMLParser):
+    """Mirror the nh3 policy to diagnose each removed tag and attribute.
+
+    Keep this audit in sync with the policy constants above and the
+    ``_restrict_pass_through`` filter in ``sanitize_raw_html``.
+    """
+
+    def __init__(
+        self,
+        *,
+        pass_through: set[str],
+        extra_attributes: frozenset[str],
+    ) -> None:
+        super().__init__(convert_charrefs=False)
+        self.allowed_tags = _ALLOWED_TAGS | pass_through
+        self.restricted_tags = pass_through - _ALLOWED_TAGS
+        self.extra_attributes = extra_attributes
+        self.diagnostics: list[Diagnostic] = []
+
+    def _location(self) -> str:
+        line, offset = self.getpos()
+        return f"line {line}, column {offset + 1}"
+
+    def _attribute_allowed(self, tag: str, name: str, value: str | None) -> bool:
+        if tag in self.restricted_tags:
+            allowed = (
+                name in PUBLIC_PASS_THROUGH_ATTRIBUTES
+                or name in self.extra_attributes
+                or any(name.startswith(prefix) for prefix in _PASS_THROUGH_ATTRIBUTE_PREFIXES)
+            )
+        else:
+            allowed_names = _ALLOWED_ATTRIBUTES.get(tag, _GLOBAL_ATTRIBUTES)
+            allowed = name in allowed_names or any(
+                name.startswith(prefix) for prefix in _GENERIC_ATTRIBUTE_PREFIXES
+            )
+        if not allowed:
+            return False
+        if name in {"href", "src"} and value:
+            scheme = urlsplit(value.strip()).scheme.lower()
+            if scheme and scheme not in _ALLOWED_URL_SCHEMES:
+                return False
+        return True
+
+    def _audit_tag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        location = self._location()
+        if tag not in self.allowed_tags:
+            self.diagnostics.append(
+                Diagnostic(
+                    type="html_sanitized_tag",
+                    message=f"Removed raw HTML tag <{tag}>.",
+                    severity="warning",
+                    location=location,
+                )
+            )
+            return
+        for name, value in attrs:
+            if not self._attribute_allowed(tag, name, value):
+                self.diagnostics.append(
+                    Diagnostic(
+                        type="html_sanitized_attribute",
+                        message=f"Removed attribute {name!r} from <{tag}>.",
+                        severity="warning",
+                        location=location,
+                    )
+                )
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._audit_tag(tag, attrs)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._audit_tag(tag, attrs)
+
+
 def sanitize_raw_html(
     html: str,
     trust_mode: TrustMode,
@@ -338,6 +415,10 @@ def sanitize_raw_html(
         attributes = dict(_ALLOWED_ATTRIBUTES)
         attributes["*"] = _GLOBAL_ATTRIBUTES | extra_attrs
 
+    audit = _SanitizerAudit(pass_through=pass_through, extra_attributes=extra_attrs)
+    audit.feed(html)
+    audit.close()
+
     sanitized = nh3.clean(
         html,
         tags=_ALLOWED_TAGS | pass_through,
@@ -347,8 +428,8 @@ def sanitize_raw_html(
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
     )
-    diagnostics: list[Diagnostic] = []
-    if sanitized != html:
+    diagnostics = audit.diagnostics
+    if sanitized != html and not diagnostics:
         diagnostics.append(
             Diagnostic(
                 type="html_sanitized",

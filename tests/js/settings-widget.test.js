@@ -105,6 +105,23 @@ describe("settings widget", () => {
     expect(light.getAttribute("aria-checked")).toBe("true");
   });
 
+  it("keeps the settings menu open and focused while switching themes", async () => {
+    await importFresh("settings-widget.js");
+    const el = settingsMount();
+    sharedWidgets.mount("settings", el, { choosers: ["theme", "reading-font"] });
+
+    const gear = /** @type {HTMLElement} */ (el.querySelector(".kpress-settings-btn"));
+    gear.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const dark = /** @type {HTMLElement} */ (el.querySelector('[data-kpress-theme-choice="dark"]'));
+    dark.focus();
+    dark.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(el.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(dark);
+    expect(dark.getAttribute("aria-checked")).toBe("true");
+    expect(el.querySelector("[data-kpress-prose-choice]")).toBeTruthy();
+  });
+
   it("reading-font chooser stamps, persists, and marks the prose font", async () => {
     await importFresh("settings-widget.js");
     const el = settingsMount();

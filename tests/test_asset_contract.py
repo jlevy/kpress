@@ -29,12 +29,12 @@ def test_scroll_surfaces_share_the_minimal_scrollbar_token() -> None:
 
 
 def test_hashed_js_imports_resolve_via_import_map() -> None:
-    """In hashed/sealed builds JS files get content-hashed names, but their `./x.js` ESM
+    """In hashed/hashed builds JS files get content-hashed names, but their `./x.js` ESM
     imports are left byte-for-byte untouched -- the emitted import map remaps each specifier
     to its hashed file. This pins that contract: every `./x.js` a module imports has an
     import-map entry pointing at the actually-emitted hashed file (the same path the
     `<script src>` resolves to), and no hashed specifier is ever written into the JS source.
-    Regression for orig-7x4v (404 on hashed imports) and orig-zjvc (no JS rewriting)."""
+    This prevents 404s on hashed imports without rewriting the module source."""
     from kpress.format.assets import (
         DEFAULT_JS_ASSETS,
         TRANSITIVE_JS_ASSETS,
@@ -378,7 +378,6 @@ def test_browser_assets_are_native_esm() -> None:
         "diagrams.js",
         "video-popover.js",
         "tabs.js",
-        "print.js",
         "viewport.js",
     }
     for script in scripts:
@@ -391,6 +390,23 @@ def test_no_tailwind_runtime_in_kpress_assets() -> None:
     for path in Path("src/kpress/format/static").rglob("*"):
         if path.is_file() and path.suffix in {".css", ".js", ".json", ".html"}:
             assert "tailwind" not in path.read_text(encoding="utf-8").lower()
+
+
+def test_warm_palette_selector_recipe_and_native_borders_are_pinned() -> None:
+    css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
+
+    for selector in (
+        ':root[data-kpress-palette="warm"]',
+        ':root[data-kpress-palette="warm"] .kpress',
+        '.kpress[data-kpress-palette="warm"]',
+        ':root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"]',
+        ':root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] .kpress',
+        '.kpress[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"]',
+    ):
+        assert selector in css
+    warm_light = css.split('data-kpress-palette="warm"] {', 1)[1].split("}", 1)[0]
+    assert "--kpress-doc-border:" in warm_light
+    assert "--kpress-doc-border-hairline:" in warm_light
 
 
 def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
@@ -452,7 +468,7 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
 def test_footnote_backref_uses_literal_glyph_for_seal_equivalence() -> None:
     """The footnote backref must use literal NBSP+arrow chars, not &nbsp;/&uarr;
     entities — the seal/publish pipeline decodes entities, so entities would make
-    the dynamic and sealed render paths diverge (see markdown.py)."""
+    the dynamic and hashed render paths diverge (see markdown.py)."""
 
     from kpress.format.markdown import parse_markdown
 

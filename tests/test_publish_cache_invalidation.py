@@ -1,4 +1,4 @@
-"""End-to-end cache-invalidation proofs for the static build (orig-aquv).
+"""End-to-end cache-invalidation proofs for the static build.
 
 The static build output must be a pure, deterministic function of its inputs:
 identical inputs reproduce identical content hashes, and any meaningful input
@@ -16,7 +16,6 @@ import pytest
 from kpress.publish import BuildOptions, build_site
 
 _CONFIG = """site:
-  title: Cache Test
 
 sources:
   - path: docs
@@ -71,11 +70,16 @@ def test_source_edit_invalidates_page_hash(tmp_path: Path) -> None:
     assert before != after
 
 
-def test_optimizer_mode_invalidates_output(tmp_path: Path) -> None:
-    from kpress.publish.optimize import full_optimizer_available
+def test_optimizer_mode_invalidates_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kpress.publish.optimize import ensure_tool_cache, full_optimizer_available
 
     if not full_optimizer_available():
-        pytest.skip("full optimizer requires Node/npx")
+        pytest.skip("full optimizer requires Node/npm")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    _ = ensure_tool_cache(allow_network=True)
     config = _site(tmp_path)
     none_hash = _page_hash(tmp_path, config, BuildOptions(asset_mode="hashed", optimizer="none"))
     full_hash = _page_hash(tmp_path, config, BuildOptions(asset_mode="hashed", optimizer="full"))
@@ -99,7 +103,7 @@ def test_unchanged_rebuild_is_stable_under_repeat(tmp_path: Path) -> None:
     assert first == second
 
 
-# --- stale output removal (orig-8qo4) -----------------------------------
+# --- stale output removal -------------------------------------------------
 
 
 def test_deleted_source_is_purged_from_next_build_output(tmp_path: Path) -> None:
@@ -185,4 +189,4 @@ def test_corrupt_prior_manifest_does_not_block_rebuild(tmp_path: Path) -> None:
     assert not (kpress_dir / "assets" / "stale.css").exists()
     # A fresh manifest is written.
     fresh = (kpress_dir / "kpress-manifest.json").read_text(encoding="utf-8")
-    assert '"schema_version": "kpress-build-manifest-v1"' in fresh
+    assert '"schema_version": "kpress-build-manifest-v2"' in fresh

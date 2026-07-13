@@ -16,6 +16,7 @@ from kpress.format.assets import content_hash, package_asset_output_path
 from kpress.format.model import AssetMode, DiagramMode, OptimizerMode, ThemeMode
 from kpress.models import KPressExportRequest
 from kpress.output import write_bytes_atomic, write_text_atomic
+from kpress.publish.assets import copy_katex_assets, copy_package_assets
 from kpress.publish.config import (
     BuildExtensions,
     BuildOptions,
@@ -31,7 +32,6 @@ from kpress.publish.optimize import (
     FullOptimizer,
     NoneOptimizer,
     OptimizerBackend,
-    optimize_text,
     precompress_file,
     resolve_stage,
 )
@@ -41,7 +41,6 @@ from kpress.publish.routes import (
     reserved_output_reason,
     route_for_source,
 )
-from kpress.publish.seal import copy_katex_assets, copy_package_assets
 from kpress.publish.site_files import write_site_files
 
 
@@ -104,7 +103,7 @@ def _resolve_pipeline(
 
     A host pipeline (BuildExtensions.pipeline) wins; otherwise the list derives
     from optimizer.mode — `none` is an empty pipeline (byte-identical output),
-    `full` is the single built-in `kpress:full` stage. Identity stages
+    `full` is the single built-in `full` stage. Identity stages
     (NoneOptimizer) are dropped: they change nothing and would pollute the
     manifest's stage names.
     """
@@ -114,7 +113,7 @@ def _resolve_pipeline(
     elif optimizer == "none":
         stages = []
     elif optimizer == "full":
-        stages = [resolve_stage("kpress:full")]
+        stages = [resolve_stage("full")]
     else:
         # An unknown mode must never fall through to the full optimizer: a
         # typo'd cast-away value would silently rewrite every artifact.
@@ -123,11 +122,11 @@ def _resolve_pipeline(
     return [stage for stage in stages if not isinstance(stage, NoneOptimizer)]
 
 
-def _run_stages(stages: list[OptimizerBackend], content: str, kind: str) -> tuple[str, str | None]:
-    """Run the pipeline over one artifact; return (content, joined names).
+def _run_stages(stages: list[OptimizerBackend], content: str, kind: str) -> tuple[str, list[str]]:
+    """Run the pipeline over one artifact; return content and applied stage names.
 
     The joined names cover stages that actually changed the content (the
-    manifest's `optimizer_backend`); None when nothing was rewritten.
+    manifest's ``applied_pipeline``); empty when nothing was rewritten.
     """
 
     normalized = cast(ContentKind, kind if kind in {"html", "css", "js"} else "other")
@@ -144,16 +143,17 @@ def _run_stages(stages: list[OptimizerBackend], content: str, kind: str) -> tupl
         if result.changed:
             applied.append(stage.name)
         content = result.content
-    return content, "+".join(applied) if applied else None
+    return content, applied
 
 
-def _asset_optimizer(stages: list[OptimizerBackend]) -> Callable[[str, str], str] | None:
+def _asset_optimizer(
+    stages: list[OptimizerBackend],
+) -> Callable[[str, str], tuple[str, list[str]]] | None:
     if not stages:
         return None
 
-    def optimize_asset(content: str, kind: str) -> str:
-        content, _names = _run_stages(stages, content, kind)
-        return content
+    def optimize_asset(content: str, kind: str) -> tuple[str, list[str]]:
+        return _run_stages(stages, content, kind)
 
     return optimize_asset
 
@@ -184,7 +184,7 @@ def _output_file(
     *,
     kind: str | None = None,
     original_size: int | None = None,
-    optimizer_backend: str | None = None,
+    applied_pipeline: list[str] | None = None,
 ) -> OutputFile:
     data = path.read_bytes()
     return OutputFile(
@@ -193,7 +193,7 @@ def _output_file(
         content_hash=content_hash(data),
         size=len(data),
         original_size=original_size,
-        optimizer_backend=optimizer_backend,
+        applied_pipeline=applied_pipeline or [],
     )
 
 
@@ -274,7 +274,12 @@ def _source_root_for(config: KPressConfig, base: Path, source: Path) -> Path:
     for idx, root in enumerate(roots):
         if source.resolve().is_relative_to(root):
             return root if idx == 0 else base
-    return roots[0] if roots else base
+    candidates = ", ".join(str(root) for root in roots) or "<none>"
+    msg = (
+        f"Discovered source {source.resolve()} does not belong to any configured "
+        f"source root. Candidate roots: {candidates}"
+    )
+    raise KPressPublishError(msg)
 
 
 def _precompress_outputs(
@@ -451,7 +456,8 @@ def build_site(
     optimizer = _optimizer(config, options)
     stages = _resolve_pipeline(extensions, optimizer)
 
-    # Preflight: verify the full optimizer toolchain before writing any output.
+    # Preflight: bootstrap and verify the locked full optimizer before creating or
+    # purging any output.
     if any(isinstance(stage, FullOptimizer) for stage in stages):
         from kpress.publish.capability import preflight_optimizer_full
 
@@ -461,7 +467,7 @@ def build_site(
     # Delete KPress-owned outputs from the previous build before writing this
     # one. Without this, deleting a source file leaves its rendered HTML in
     # `output_dir` forever — the static publish output stops being a pure
-    # function of the current inputs (orig-8qo4). We only delete files
+    # function of the current inputs. We only delete files
     # listed in the prior manifest (plus the `_kpress/` infrastructure tree
     # we own); user files that happen to share the directory are untouched.
     _purge_prior_kpress_outputs(output_dir)
@@ -568,7 +574,7 @@ def build_site(
                 output_dir,
                 kind="html",
                 original_size=len(rendered_bytes) if applied_stages else None,
-                optimizer_backend=applied_stages,
+                applied_pipeline=applied_stages,
             )
         )
         for asset_path in _collect_document_assets(
@@ -597,14 +603,14 @@ def build_site(
 
     files.extend(_precompress_outputs(output_dir, files, precompress))
 
-    pipeline_names = "+".join(stage.name for stage in stages) if stages else None
+    pipeline_names = [stage.name for stage in stages]
     report = BuildReport(
         output_dir=output_dir,
         files=files,
         assets=assets,
         routes=routes,
         diagnostics=[],
-        optimizer_backend=pipeline_names,
+        pipeline=pipeline_names,
         precompress=precompress,
     )
     manifest = report.write_manifest()
@@ -615,7 +621,7 @@ def build_site(
         assets=assets,
         routes=routes,
         diagnostics=[],
-        optimizer_backend=pipeline_names,
+        pipeline=pipeline_names,
         precompress=precompress,
     )
 
@@ -626,7 +632,7 @@ def build_html(src_html: str, dest_html: Path, options: BuildOptions | None = No
     optimizer: OptimizerMode = options.optimizer if options and options.optimizer else "none"
     do_optimize = optimizer != "none"
 
-    # Preflight: verify the full optimizer toolchain before writing any output.
+    # Preflight: bootstrap and verify the locked full optimizer before writing output.
     if optimizer == "full":
         from kpress.publish.capability import preflight_optimizer_full
 
@@ -634,7 +640,8 @@ def build_html(src_html: str, dest_html: Path, options: BuildOptions | None = No
 
     original_bytes = src_html.encode("utf-8")
     original_size = len(original_bytes)
-    html = optimize_text(src_html, kind="html", backend=optimizer) if do_optimize else src_html
+    stages = [resolve_stage(optimizer)] if do_optimize else []
+    html, applied = _run_stages(stages, src_html, "html")
     write_text_atomic(dest_html, html)
     files = [
         _output_file(
@@ -642,7 +649,7 @@ def build_html(src_html: str, dest_html: Path, options: BuildOptions | None = No
             dest_html.parent,
             kind="html",
             original_size=original_size if do_optimize else None,
-            optimizer_backend=optimizer if do_optimize else None,
+            applied_pipeline=applied,
         )
     ]
     precompress_methods = list(options.precompress) if options and options.precompress else []
@@ -651,7 +658,7 @@ def build_html(src_html: str, dest_html: Path, options: BuildOptions | None = No
     report = BuildReport(
         output_dir=dest_html.parent,
         files=files,
-        optimizer_backend=optimizer if do_optimize else None,
+        pipeline=[optimizer] if do_optimize else [],
         precompress=precompress_methods,
     )
     return report
@@ -714,15 +721,15 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
     destination = Path(request.destination) if request.destination else source.with_suffix(".html")
     source_text = source.read_text(encoding="utf-8")
     # `single-file` is not yet truly self-contained: inlined ES modules still
-    # import sibling `./x.js` files and fonts stay external (orig-7ehk), so
+    # import sibling `./x.js` files and fonts stay external, so
     # a relocated single file would silently lose its reader features. Refuse
-    # rather than emit a broken artifact; `sealed` is the supported
-    # self-contained output.
+    # rather than emit a broken artifact; `hashed` is the supported production
+    # multi-file output, but it does not fetch or guarantee external assets.
     if request.export_mode == "single-file":
         msg = (
             "Export mode 'single-file' is not yet supported: the output would not be "
-            "self-contained (ES-module imports and fonts stay external). Use a sealed "
-            "static build for a fully offline artifact."
+            "self-contained (ES-module imports and fonts stay external). Use a hashed "
+            "multi-file build and serve its complete output directory."
         )
         raise KPressPublishError(msg)
     asset_mode: AssetMode = request.asset_mode

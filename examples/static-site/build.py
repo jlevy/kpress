@@ -59,8 +59,8 @@ class LicenseBannerStage:
 
 
 # The ordered pipeline: the demo stage, then the built-in no-op (swap in
-# "kpress:full" to minify after the banner is applied — order is the point).
-EXTENSIONS = BuildExtensions(pipeline=[LicenseBannerStage(), "kpress:none"])
+# "full" to minify after the banner is applied — order is the point).
+EXTENSIONS = BuildExtensions(pipeline=[LicenseBannerStage(), "none"])
 
 
 def main(argv: list[str]) -> int:

@@ -37,26 +37,29 @@ def write_site_files(
     written: list[Path] = []
     lastmods = lastmods or {}
 
-    entries: list[str] = []
-    for route in sorted(routes):
-        loc = escape(_absolute(base_url, route))
-        lastmod = lastmods.get(route)
-        if lastmod:
-            entries.append(f"<url><loc>{loc}</loc><lastmod>{escape(lastmod)}</lastmod></url>")
-        else:
-            entries.append(f"<url><loc>{loc}</loc></url>")
-    sitemap = output_dir / "sitemap.xml"
-    write_text_atomic(
-        sitemap,
-        f'<?xml version="1.0" encoding="UTF-8"?>'
-        f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-        f"{''.join(entries)}</urlset>\n",
-    )
-    written.append(sitemap)
+    if base_url:
+        entries: list[str] = []
+        for route in sorted(routes):
+            loc = escape(_absolute(base_url, route))
+            lastmod = lastmods.get(route)
+            if lastmod:
+                entries.append(f"<url><loc>{loc}</loc><lastmod>{escape(lastmod)}</lastmod></url>")
+            else:
+                entries.append(f"<url><loc>{loc}</loc></url>")
+        sitemap = output_dir / "sitemap.xml"
+        write_text_atomic(
+            sitemap,
+            f'<?xml version="1.0" encoding="UTF-8"?>'
+            f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            f"{''.join(entries)}</urlset>\n",
+        )
+        written.append(sitemap)
 
     robots = output_dir / "robots.txt"
-    sitemap_url = _absolute(base_url, "/sitemap.xml")
-    write_text_atomic(robots, f"User-agent: *\nAllow: /\nSitemap: {sitemap_url}\n")
+    robots_text = "User-agent: *\nAllow: /\n"
+    if base_url:
+        robots_text += f"Sitemap: {_absolute(base_url, '/sitemap.xml')}\n"
+    write_text_atomic(robots, robots_text)
     written.append(robots)
 
     if redirects:

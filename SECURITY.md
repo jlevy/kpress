@@ -1,11 +1,19 @@
 # Security Policy
 
-KPress is not yet published as a standalone open-source repository.
+## Supported versions
 
-Until a public repository and maintainer contact are chosen, report security issues to
-the repository maintainers through the private project channel.
-Before public distribution, replace this section with the final public reporting
-process.
+Security fixes are provided for the current `0.1.x` alpha line.
+Upgrade to the newest patch before reporting a defect that may already be fixed.
+
+## Report a vulnerability
+
+Do not open a public issue for a suspected vulnerability.
+Use
+[GitHub private vulnerability reporting](https://github.com/jlevy/kpress/security/advisories/new)
+so the maintainers can investigate and coordinate a fix.
+Include the KPress and Python versions, the affected entry point and trust mode, a
+minimal reproducer, the impact you observed, and whether the report may be shared with
+upstream dependencies.
 
 Security-sensitive changes should preserve these package contracts:
 
@@ -20,6 +28,10 @@ Security-sensitive changes should preserve these package contracts:
   threat model and mode selection.
 - Rendering uses explicit trust modes; `trusted` (no sanitization) is only for rendering
   the user’s own local files.
+- Sanitization removes disallowed markup; it does not authenticate authorship or make
+  surviving user-controlled content unforgeable.
+  Hosts must not treat sanitized labels, classes, or `data-*` values as privileged
+  identity or authorization signals.
 - Static publishing must not write outside the configured output tree.
 - Extraction checks must fail on local path leaks, private workspace references, and
   secret-like tokens in public package files.

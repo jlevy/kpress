@@ -362,7 +362,7 @@ def _inline_js_text(path: str) -> str:
 
 
 def _is_katex_asset(path: str) -> bool:
-    # KaTeX is vendored as a sealed bundle: its stylesheet keeps relative
+    # KaTeX is vendored as a hashed bundle: its stylesheet keeps relative
     # `fonts/` URLs, so it is always linked (never inlined or hashed) to keep
     # those references resolvable offline.
     return path.startswith("katex/")

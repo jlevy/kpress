@@ -461,7 +461,7 @@ def test_source_profile_truncates_large_source_with_visible_warning() -> None:
 
 
 def test_template_resource_is_packaged() -> None:
-    assert "kpress-print-surface" in read_package_text("templates/fragment.html.jinja")
+    assert "<!doctype html>" in read_package_text("templates/page.html.jinja")
 
 
 def test_show_doc_header_toggles_rendered_doc_header() -> None:

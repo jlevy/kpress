@@ -3,7 +3,6 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  workflow_dispatch: # Enable manual trigger.
 
 env:
   # Supply-chain cool-off: only consider releases older than this, so the publish
@@ -15,6 +14,7 @@ env:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       id-token: write # Mandatory for OIDC.
       contents: read
@@ -22,6 +22,7 @@ jobs:
       - name: Checkout (official GitHub action)
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.release.tag_name }}
           # Important for versioning plugins:
           fetch-depth: 0
 
@@ -43,6 +44,22 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+      - name: Verify release tag and package version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            printf 'Refusing to publish non-release tag: %s\n' "$RELEASE_TAG" >&2
+            exit 1
+          fi
+          expected="${RELEASE_TAG#v}"
+          actual="$(uv run python -c 'import kpress; print(kpress.__version__)')"
+          if [ "$actual" != "$expected" ]; then
+            printf 'Release version mismatch: expected %s from tag %s, got %s\n' \
+              "$expected" "$RELEASE_TAG" "$actual" >&2
+            exit 1
+          fi
 
       - name: Build package
         run: uv build

@@ -25,7 +25,9 @@ keywords = ["documents", "html", "markdown", "publishing", "rendering"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Operating System :: OS Independent",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
@@ -35,9 +37,6 @@ classifiers = [
     "Topic :: Text Processing :: Markup :: HTML",
     "Topic :: Text Processing :: Markup :: Markdown",
     "Typing :: Typed",
-    # Blocks accidental publishing to PyPI (PyPI rejects this classifier).
-    # Remove this line when ready for the first public release:
-    "Private :: Do Not Upload",
 ]
 
 

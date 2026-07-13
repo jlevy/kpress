@@ -20,7 +20,7 @@ from kpress.publish.optimize import (
 )
 
 needs_full = pytest.mark.skipif(
-    not full_optimizer_available(), reason="full optimizer requires Node/npx"
+    not full_optimizer_available(), reason="full optimizer requires Node/npm"
 )
 
 
@@ -63,12 +63,19 @@ def test_full_optimizer_errors_when_node_unavailable_no_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(shutil, "which", _stub_which)
-    with pytest.raises(KPressMissingOptionalDependencyError, match=r"html-minifier-next|npx"):
+    with pytest.raises(KPressMissingOptionalDependencyError, match=r"html-minifier-next|Node"):
         get_optimizer("full").optimize("<p>  x  </p>", kind="html")
 
 
 @needs_full
-def test_full_optimizer_minifies_deterministically() -> None:
+def test_full_optimizer_minifies_deterministically(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kpress.publish.optimize import ensure_tool_cache
+
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    _ = ensure_tool_cache(allow_network=True)
     optimizer = get_optimizer("full")
     first = optimizer.optimize("<main>\n  <p>x</p>\n</main>\n", kind="html")
     second = optimizer.optimize("<main>\n  <p>x</p>\n</main>\n", kind="html")
@@ -128,14 +135,21 @@ def test_build_html_none_keeps_content_and_omits_optimizer_metadata(tmp_path: Pa
     assert (tmp_path / "page.html").read_text(encoding="utf-8") == "<main>\n  <p>x</p>\n</main>\n"
     assert any(file.path == "page.html.gz" for file in report.files)
     manifest = report.as_dict()
-    assert manifest.get("optimizer_backend") is None
+    assert manifest["pipeline"] == []
     html_files = [f for f in manifest["files"] if f["kind"] == "html"]
-    assert html_files[0].get("optimizer_backend") is None
+    assert html_files[0]["applied_pipeline"] == []
     assert html_files[0].get("original_size") is None
 
 
 @needs_full
-def test_build_html_full_minifies_and_records_metadata(tmp_path: Path) -> None:
+def test_build_html_full_minifies_and_records_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kpress.publish.optimize import ensure_tool_cache
+
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    _ = ensure_tool_cache(allow_network=True)
     report = build_html(
         "<main>\n  <p>x</p>\n</main>\n",
         tmp_path / "page.html",
@@ -143,11 +157,11 @@ def test_build_html_full_minifies_and_records_metadata(tmp_path: Path) -> None:
     )
     assert (tmp_path / "page.html").read_text(encoding="utf-8") == "<main><p>x</p></main>\n"
     manifest = report.as_dict()
-    assert manifest["optimizer_backend"] == "full"
+    assert manifest["pipeline"] == ["full"]
     assert "gzip" in manifest["precompress"]
     html_files = [f for f in manifest["files"] if f["kind"] == "html"]
     assert "original_size" in html_files[0]
-    assert html_files[0]["optimizer_backend"] == "full"
+    assert html_files[0]["applied_pipeline"] == ["full"]
     gz_files = [f for f in manifest["files"] if f["kind"] == "gz"]
     assert gz_files[0]["compression"] == "gzip"
     assert gz_files[0]["source_path"] == "page.html"
@@ -211,7 +225,7 @@ def test_optimize_file_none_records_metadata(tmp_path: Path) -> None:
     original_size = source.stat().st_size
     output = optimize_file(source, kind="other", backend="none")
     assert output.original_size == original_size
-    assert output.optimizer_backend == "none"
+    assert output.applied_pipeline == []
     assert output.size == original_size
 
 
@@ -224,16 +238,16 @@ def test_output_file_serialization_includes_optimizer_metadata() -> None:
         content_hash="abc123",
         size=100,
         original_size=150,
-        optimizer_backend="full",
+        applied_pipeline=["full"],
     )
     d = optimized.as_dict()
     assert d["original_size"] == 150
-    assert d["optimizer_backend"] == "full"
+    assert d["applied_pipeline"] == ["full"]
 
     plain = OutputFile(path="page.html", kind="html", content_hash="abc123", size=100)
     d = plain.as_dict()
     assert "original_size" not in d
-    assert "optimizer_backend" not in d
+    assert d["applied_pipeline"] == []
 
 
 def test_output_file_serialization_includes_compression_metadata() -> None:

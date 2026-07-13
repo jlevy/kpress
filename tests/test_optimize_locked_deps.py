@@ -1,4 +1,4 @@
-"""Tests for the locked full-optimizer dependency layer (orig-zc7g).
+"""Tests for the locked full-optimizer dependency layer.
 
 The full optimizer manages html-minifier-next in a package-owned cache
 directory with a pinned lockfile and file-locked installs. These tests
@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
+from typing import cast
 
 import pytest
 
-from kpress.errors import KPressMissingOptionalDependencyError
+from kpress.errors import KPressMissingOptionalDependencyError, KPressOptimizerError
 from kpress.publish.optimize import (
     FULL_OPTIMIZER_PACKAGE,
     FULL_OPTIMIZER_VERSION,
@@ -23,13 +25,17 @@ from kpress.publish.optimize import (
 )
 
 needs_full = pytest.mark.skipif(
-    not full_optimizer_available(), reason="full optimizer requires Node/npx"
+    not full_optimizer_available(), reason="full optimizer requires Node/npm"
 )
 
 
 def _stub_which(name: str) -> None:
     _ = name
     return
+
+
+def _fake_tool_path(name: str) -> str:
+    return f"/usr/bin/{name}"
 
 
 class TestLockedCacheStructure:
@@ -39,7 +45,7 @@ class TestLockedCacheStructure:
     def test_ensure_cache_creates_package_json(self, tmp_path: Path) -> None:
         from kpress.publish.optimize import ensure_tool_cache
 
-        cache = ensure_tool_cache(cache_root=tmp_path)
+        cache = ensure_tool_cache(cache_root=tmp_path, allow_network=True)
         pkg = json.loads((cache / "package.json").read_text())
         assert pkg["dependencies"][FULL_OPTIMIZER_PACKAGE] == FULL_OPTIMIZER_VERSION
         assert pkg.get("private") is True
@@ -48,7 +54,7 @@ class TestLockedCacheStructure:
     def test_ensure_cache_creates_lockfile(self, tmp_path: Path) -> None:
         from kpress.publish.optimize import ensure_tool_cache
 
-        cache = ensure_tool_cache(cache_root=tmp_path)
+        cache = ensure_tool_cache(cache_root=tmp_path, allow_network=True)
         assert (cache / "package-lock.json").exists()
         lock = json.loads((cache / "package-lock.json").read_text())
         assert lock["lockfileVersion"] >= 2
@@ -61,20 +67,108 @@ class TestLockedCacheStructure:
     def test_ensure_cache_idempotent(self, tmp_path: Path) -> None:
         from kpress.publish.optimize import ensure_tool_cache
 
-        first = ensure_tool_cache(cache_root=tmp_path)
+        first = ensure_tool_cache(cache_root=tmp_path, allow_network=True)
         second = ensure_tool_cache(cache_root=tmp_path)
         assert first == second
         pkg = json.loads((first / "package.json").read_text())
         assert pkg["dependencies"][FULL_OPTIMIZER_PACKAGE] == FULL_OPTIMIZER_VERSION
 
+    def test_reviewed_lock_is_shipped_with_integrity_pins(self) -> None:
+        from importlib import resources
+
+        lock_path = resources.files("kpress.publish").joinpath(
+            "optimizer_tool", "package-lock.json"
+        )
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        packages = lock["packages"]
+        root = packages[""]
+        dependency = packages[f"node_modules/{FULL_OPTIMIZER_PACKAGE}"]
+        assert root["dependencies"] == {FULL_OPTIMIZER_PACKAGE: FULL_OPTIMIZER_VERSION}
+        assert dependency["version"] == FULL_OPTIMIZER_VERSION
+        assert dependency["resolved"].startswith("https://registry.npmjs.org/")
+        assert dependency["integrity"].startswith("sha512-")
+
+    def test_cold_bootstrap_uses_npm_ci_only(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from kpress.publish.optimize import ensure_tool_cache
+
+        monkeypatch.setattr(shutil, "which", _fake_tool_path)
+        commands: list[list[str]] = []
+        environments: list[dict[str, str]] = []
+
+        def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            commands.append(command)
+            environments.append(cast("dict[str, str]", kwargs["env"]))
+            cwd = Path(str(kwargs["cwd"]))
+            binary = cwd / "node_modules" / ".bin" / FULL_OPTIMIZER_PACKAGE
+            binary.parent.mkdir(parents=True)
+            binary.touch()
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(subprocess, "run", run)
+
+        cache = ensure_tool_cache(cache_root=tmp_path, allow_network=True)
+
+        assert cache.is_dir()
+        assert (cache / ".kpress-lock-sha256").is_file()
+        assert commands == [["/usr/bin/npm", "ci", "--ignore-scripts"]]
+        assert environments[0]["NPM_CONFIG_MIN_RELEASE_AGE"] == "14"
+        assert "NPM_CONFIG_MINIMUM_RELEASE_AGE" not in environments[0]
+
+    def test_cold_bootstrap_without_network_fails_before_npm(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from kpress.publish.optimize import ensure_tool_cache
+
+        monkeypatch.setattr(shutil, "which", _fake_tool_path)
+
+        def unexpected_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            raise AssertionError(f"npm called: {args!r} {kwargs!r}")
+
+        monkeypatch.setattr(subprocess, "run", unexpected_run)
+
+        with pytest.raises(KPressMissingOptionalDependencyError, match="allow-network"):
+            ensure_tool_cache(cache_root=tmp_path)
+
+    def test_cold_bootstrap_requires_installed_binary(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from kpress.publish.optimize import ensure_tool_cache
+
+        monkeypatch.setattr(shutil, "which", _fake_tool_path)
+
+        def success(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        monkeypatch.setattr(subprocess, "run", success)
+
+        with pytest.raises(KPressOptimizerError, match="did not install"):
+            ensure_tool_cache(cache_root=tmp_path, allow_network=True)
+
+    def test_cold_bootstrap_wraps_npm_timeout(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from kpress.publish.optimize import ensure_tool_cache
+
+        monkeypatch.setattr(shutil, "which", _fake_tool_path)
+
+        def timeout(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            raise subprocess.TimeoutExpired(command, 120)
+
+        monkeypatch.setattr(subprocess, "run", timeout)
+
+        with pytest.raises(KPressOptimizerError, match="timed out"):
+            ensure_tool_cache(cache_root=tmp_path, allow_network=True)
+
 
 class TestLockedCacheMissingTool:
-    """Missing Node/npx raises KPressMissingOptionalDependencyError."""
+    """Missing Node/npm raises KPressMissingOptionalDependencyError."""
 
-    def test_optimize_raises_when_npx_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_optimize_raises_when_node_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(shutil, "which", _stub_which)
         optimizer = FullOptimizer()
-        with pytest.raises(KPressMissingOptionalDependencyError, match=r"html-minifier-next|npx"):
+        with pytest.raises(KPressMissingOptionalDependencyError, match=r"html-minifier-next|Node"):
             optimizer.optimize("<p>  x  </p>", kind="html")
 
     def test_optimize_raises_when_npm_missing(
@@ -88,11 +182,12 @@ class TestLockedCacheMissingTool:
             return real_which(name)
 
         monkeypatch.setattr(shutil, "which", which_no_npm)
-        optimizer = FullOptimizer(cache_root=tmp_path)
+        from kpress.publish.optimize import ensure_tool_cache
+
         with pytest.raises(
-            KPressMissingOptionalDependencyError, match=r"html-minifier-next|npx|npm"
+            KPressMissingOptionalDependencyError, match=r"html-minifier-next|Node|npm"
         ):
-            optimizer.optimize("<p>  x  </p>", kind="html")
+            ensure_tool_cache(cache_root=tmp_path, allow_network=True)
 
 
 class TestDeterministicOutput:
@@ -102,8 +197,10 @@ class TestDeterministicOutput:
     def test_deterministic_html_across_builds(self, tmp_path: Path) -> None:
         cache_a = tmp_path / "cache_a"
         cache_b = tmp_path / "cache_b"
-        from kpress.publish.optimize import FullOptimizer
+        from kpress.publish.optimize import FullOptimizer, ensure_tool_cache
 
+        _ = ensure_tool_cache(cache_root=cache_a, allow_network=True)
+        _ = ensure_tool_cache(cache_root=cache_b, allow_network=True)
         opt_a = FullOptimizer(cache_root=cache_a)
         opt_b = FullOptimizer(cache_root=cache_b)
         html = "<main>\n  <p>hello world</p>\n</main>\n"
@@ -115,8 +212,10 @@ class TestDeterministicOutput:
     def test_deterministic_css_across_builds(self, tmp_path: Path) -> None:
         cache_a = tmp_path / "cache_a"
         cache_b = tmp_path / "cache_b"
-        from kpress.publish.optimize import FullOptimizer
+        from kpress.publish.optimize import FullOptimizer, ensure_tool_cache
 
+        _ = ensure_tool_cache(cache_root=cache_a, allow_network=True)
+        _ = ensure_tool_cache(cache_root=cache_b, allow_network=True)
         opt_a = FullOptimizer(cache_root=cache_a)
         opt_b = FullOptimizer(cache_root=cache_b)
         css = ".x {\n  color: red;\n  margin: 0;\n}\n"
@@ -132,8 +231,9 @@ class TestConcurrentInstall:
     def test_concurrent_installs_do_not_corrupt(self, tmp_path: Path) -> None:
         """Two FullOptimizer instances sharing the same cache produce valid output."""
         shared_cache = tmp_path / "shared"
-        from kpress.publish.optimize import FullOptimizer
+        from kpress.publish.optimize import FullOptimizer, ensure_tool_cache
 
+        _ = ensure_tool_cache(cache_root=shared_cache, allow_network=True)
         opt_1 = FullOptimizer(cache_root=shared_cache)
         opt_2 = FullOptimizer(cache_root=shared_cache)
 
@@ -148,7 +248,7 @@ class TestConcurrentInstall:
         """The lock file is created in the cache directory."""
         from kpress.publish.optimize import ensure_tool_cache
 
-        cache = ensure_tool_cache(cache_root=tmp_path)
+        cache = ensure_tool_cache(cache_root=tmp_path, allow_network=True)
         assert (cache / ".install.lock").exists() or cache.exists()
 
 
@@ -159,7 +259,7 @@ class TestNpmPolicyIntegration:
     def test_cache_respects_npmrc_age_gate(self, tmp_path: Path) -> None:
         from kpress.publish.optimize import ensure_tool_cache
 
-        cache = ensure_tool_cache(cache_root=tmp_path)
+        cache = ensure_tool_cache(cache_root=tmp_path, allow_network=True)
         pkg = json.loads((cache / "package.json").read_text())
         assert pkg["dependencies"][FULL_OPTIMIZER_PACKAGE] == FULL_OPTIMIZER_VERSION
 

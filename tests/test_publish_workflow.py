@@ -9,31 +9,31 @@ from kpress.publish import BuildOptions, build_site
 from kpress.workflow import export_document, format_document
 
 
-def test_sealed_build_has_no_eager_external_asset_refs(tmp_path: Path) -> None:
-    """A sealed build must not load external assets at page load. Author hyperlinks
-    (`<a href>`) to external sites are content, not eager loads, and stay allowed."""
+def test_hashed_video_fixture_has_no_eager_external_asset_refs(tmp_path: Path) -> None:
+    """The remote-video placeholder is lazy even though hashed mode itself makes no
+    general external-asset guarantee. Author hyperlinks remain content."""
     docs = tmp_path / "docs"
     docs.mkdir()
     (docs / "index.md").write_text(
-        "# Sealed\n\nAn [external link](https://example.com) stays a link.\n\n"
+        "# Hashed\n\nAn [external link](https://example.com) stays a link.\n\n"
         "A video: [watch](https://www.youtube.com/watch?v=dQw4w9WgXcQ).\n",
         encoding="utf-8",
     )
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "site:\n  title: Sealed\n\nsources:\n  - path: docs\n\npublish:\n"
-        "  output_dir: public\n  asset_mode: sealed\n",
+        "site:\n\nsources:\n  - path: docs\n\npublish:\n"
+        "  output_dir: public\n  asset_mode: hashed\n",
         encoding="utf-8",
     )
 
-    build_site(config, BuildOptions(asset_mode="sealed"))
+    build_site(config, BuildOptions(asset_mode="hashed"))
 
     html = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
     # No eager external ASSET refs: src/href to http(s) on script/link/img/iframe.
     eager_external = re.findall(
         r'<(?:script|link|img|iframe)\b[^>]*\b(?:src|href)="https?://[^"]+"', html
     )
-    assert eager_external == [], f"sealed build loads external assets: {eager_external}"
+    assert eager_external == [], f"hashed build loads external assets: {eager_external}"
     # The author hyperlink is preserved (content, not an asset load).
     assert 'href="https://example.com"' in html
 
@@ -44,7 +44,6 @@ def test_build_site_writes_static_tree(tmp_path: Path) -> None:
     config = tmp_path / "kpress.yml"
     config.write_text(
         """site:
-  title: Test
 
 sources:
   - path: docs
@@ -77,7 +76,7 @@ def test_build_site_collects_document_image_assets(tmp_path: Path) -> None:
     )
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "site:\n  title: Test\n\nsources:\n  - path: docs\n\npublish:\n  output_dir: public\n",
+        "site:\n\nsources:\n  - path: docs\n\npublish:\n  output_dir: public\n",
         encoding="utf-8",
     )
 
@@ -99,7 +98,6 @@ def test_build_site_routes_multiple_source_roots_independently(tmp_path: Path) -
     config = tmp_path / "kpress.yml"
     config.write_text(
         """site:
-  title: Test
 
 sources:
   - path: docs
@@ -131,7 +129,7 @@ def test_production_has_no_implicit_optimizer_or_precompression(tmp_path: Path) 
 
     # No implicit behavior: production neither minifies nor emits sidecars
     # unless explicitly asked. Optimizer mode defaults to "none".
-    assert report.as_dict().get("optimizer_backend") is None
+    assert report.as_dict()["pipeline"] == []
     assert not any(f.path.endswith((".gz", ".br")) for f in report.files)
 
 
@@ -165,7 +163,7 @@ publish:
 
 
 def test_build_site_inline_asset_mode_inlines_package_css_and_js(tmp_path: Path) -> None:
-    # `inline` is config-rejected until truly self-contained (orig-7ehk);
+    # `inline` is config-rejected until truly self-contained;
     # the programmatic BuildOptions override remains for the equivalence
     # harness and the future single-file work, exercised here.
     (tmp_path / "docs").mkdir()
@@ -260,7 +258,7 @@ publish:
     ) == normalize_document_surface(dynamic_html).count("Intro with")
 
 
-def test_workflow_format_and_export_html_pdf(tmp_path: Path) -> None:
+def test_workflow_format_and_export_html(tmp_path: Path) -> None:
     source = tmp_path / "doc.md"
     source.write_text("# Doc\n\nBody\n", encoding="utf-8")
     work_root = tmp_path / ".kpress"
@@ -269,13 +267,11 @@ def test_workflow_format_and_export_html_pdf(tmp_path: Path) -> None:
     exported = export_document(
         source,
         html=tmp_path / "out" / "doc.html",
-        pdf=tmp_path / "out" / "doc.pdf",
         work_root=work_root,
     )
 
     assert any(path.name == "doc.html" for path in formatted.outputs)
     assert (tmp_path / "out" / "doc.html").exists()
-    assert (tmp_path / "out" / "doc.pdf").read_bytes().startswith(b"%PDF")
     assert exported.diagnostics == []
 
     # The formatted/exported HTML references ./_kpress/assets; that bundle must
@@ -293,7 +289,7 @@ def test_workflow_format_and_export_html_pdf(tmp_path: Path) -> None:
 def test_workflow_format_export_have_no_dangling_kpress_refs(tmp_path: Path) -> None:
     """Every ./_kpress/assets URL the formatted and exported HTML references
     must resolve to a real file beside the HTML, so a single-doc format/export
-    opens offline with zero dangling assets (orig-quj4).
+    opens offline with zero dangling assets.
     """
     source = tmp_path / "doc.md"
     source.write_text("# Doc\n\nBody with `code` and a [link](https://x.test).\n", encoding="utf-8")
@@ -327,7 +323,7 @@ def test_workflow_format_export_have_no_dangling_kpress_refs(tmp_path: Path) -> 
     )
 
 
-# --- invalid config values must raise, not silently downgrade (orig-1tkb) -
+# --- invalid config values must raise, not silently downgrade --------------
 
 
 def test_invalid_publish_asset_mode_raises(tmp_path: Path) -> None:
@@ -495,7 +491,6 @@ def test_build_site_threads_color_mode_and_diagrams(tmp_path: Path) -> None:
     def _build(out: str, **fmt: object) -> str:
         build_site(
             KPressConfig(
-                title="Test",
                 base_dir=tmp_path,
                 sources=[SourceConfig(path=docs)],
                 format=FormatConfig(**fmt),  # pyright: ignore[reportArgumentType]
@@ -580,27 +575,41 @@ def test_invalid_format_diagrams_and_color_mode_raise(tmp_path: Path) -> None:
         load_config(config)
 
 
-def test_format_palette_and_theme_stay_open_strings(tmp_path: Path) -> None:
-    """Palette and theme are open sets: a host can ship its own preset CSS
-    (`.kpress[data-kpress-palette="..."]`), so arbitrary names must load."""
+def test_format_palette_stays_open_but_retired_theme_fails_loudly(tmp_path: Path) -> None:
+    """Palette remains an open host CSS seam; the unused theme key is rejected."""
 
+    from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config
 
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "sources:\n  - path: .\nformat:\n  palette: my-brand\n  theme: custom\n",
+        "sources:\n  - path: .\nformat:\n  palette: my-brand\n",
         encoding="utf-8",
     )
     cfg = load_config(config)
     assert cfg.format.palette == "my-brand"
-    assert cfg.format.theme == "custom"
+
+    config.write_text("format:\n  theme: custom\n", encoding="utf-8")
+    with pytest.raises(KPressPublishError, match="Unknown KPress config key.*theme"):
+        load_config(config)
+
+
+def test_retired_site_title_fails_loudly(tmp_path: Path) -> None:
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    config.write_text("site:\n  title: unused\n", encoding="utf-8")
+
+    with pytest.raises(KPressPublishError, match="Unknown KPress config key.*title"):
+        load_config(config)
 
 
 def test_external_and_local_refs_pass_through_verbatim(tmp_path: Path) -> None:
     """Spec acceptance: post-seal-removal, document-local and external asset
     URLs are emitted into the rendered HTML verbatim; the deploy layer
     owns delivery. Only KPress's own package assets land in ``_kpress/``.
-    See ``docs/project/specs/active/plan-2026-05-21-kpress-remove-sealing-for-v1.md``.
+    This regression pins the public removal of the retired sealed-build dialect.
 
     Uses ``<img>`` tags (which survive the publish sanitizer) for both
     local and external refs — the point of this test is the *fetch/seal*
@@ -623,7 +632,7 @@ def test_external_and_local_refs_pass_through_verbatim(tmp_path: Path) -> None:
     build_site(tmp_path / "kpress.yml", BuildOptions())
 
     rendered = (tmp_path / "public" / "index.html").read_text(encoding="utf-8")
-    # Document-local ref: emitted verbatim, NOT rewritten to a sealed path.
+    # Document-local ref: emitted verbatim, NOT rewritten to a hashed path.
     assert 'src="./local-image.png"' in rendered
     # External ref: emitted verbatim, NOT fetched or hashed into _kpress/.
     assert 'src="https://cdn.example.com/photo.png"' in rendered
@@ -681,7 +690,6 @@ def test_chrome_slots_resolve_inline_and_file_variants(tmp_path: Path) -> None:
     config = tmp_path / "kpress.yml"
     config.write_text(
         "site:\n"
-        "  title: Slots\n"
         "  header_html_file: _includes/header.html\n"
         '  footer_html: "<p>Published with kpress</p>"\n'
         '  head_extra_html: \'<link rel="icon" href="/favicon.svg">\'\n'
@@ -719,7 +727,6 @@ def test_build_site_emits_chrome_slots_in_every_page(tmp_path: Path) -> None:
     config = tmp_path / "kpress.yml"
     config.write_text(
         "site:\n"
-        "  title: Slots\n"
         '  head_extra_html: \'<link rel="icon" href="/favicon.svg">\'\n'
         "  header_html: '<nav><a href=\"/\">Guide</a></nav>'\n"
         '  footer_html: "<p>Published with kpress</p>"\n'
@@ -817,7 +824,7 @@ def test_static_passthrough_rejects_reserved_and_colliding_paths(tmp_path: Path)
 
 
 def test_inline_asset_mode_and_single_file_export_are_gated(tmp_path: Path) -> None:
-    """Until single-file output is truly self-contained (orig-7ehk), the
+    """Until single-file output is truly self-contained, the
     config surface and the single-file export refuse loudly instead of
     emitting pages whose ES-module imports would 404 after relocation.
     """
@@ -829,7 +836,7 @@ def test_inline_asset_mode_and_single_file_export_are_gated(tmp_path: Path) -> N
 
     config = tmp_path / "kpress.yml"
     config.write_text("sources:\n  - path: .\npublish:\n  asset_mode: inline\n", encoding="utf-8")
-    with pytest.raises(KPressPublishError, match=r"not yet supported.*sealed"):
+    with pytest.raises(KPressPublishError, match=r"not yet supported.*hashed"):
         load_config(config)
 
     (tmp_path / "doc.md").write_text("# Doc\n", encoding="utf-8")
@@ -927,7 +934,6 @@ def test_build_site_accepts_a_programmatic_config(tmp_path: Path) -> None:
 
     report = build_site(
         KPressConfig(
-            title="Programmatic Site",
             header_html='<a href="/">home</a>',
             head_extra_html="<style>:root { --demo-marker: 1; }</style>",
             sources=[SourceConfig(path=content)],
@@ -964,7 +970,6 @@ def test_programmatic_config_base_dir_anchors_document_assets(tmp_path: Path) ->
 
     build_site(
         KPressConfig(
-            title="Anchored",
             base_dir=tmp_path,
             sources=[SourceConfig(path=content)],
             publish=PublishConfig(output_dir=tmp_path / "public"),
@@ -1039,13 +1044,13 @@ def test_programmatic_config_fails_as_loudly_as_yaml(tmp_path: Path) -> None:
         )
         return dataclasses.replace(base, **overrides)  # type: ignore[arg-type]
 
-    # inline asset mode: type-legal, semantically rejected (orig-7ehk).
+    # inline asset mode: type-legal, semantically rejected.
     with pytest.raises(KPressPublishError, match="not yet supported"):
         build_site(
             config(publish=PublishConfig(output_dir=tmp_path / "public", asset_mode="inline"))
         )
 
-    # widget-value typo: fails loudly (orig-1tkb)...
+    # Widget-value typo: fails loudly.
     with pytest.raises(KPressPublishError, match="format.widgets"):
         build_site(config(format=FormatConfig(widgets={"settings": "Off"})))
 
@@ -1094,7 +1099,7 @@ def test_programmatic_enum_typos_fail_as_loudly_as_yaml() -> None:
 
 def test_unknown_programmatic_optimizer_mode_fails_the_build(tmp_path: Path) -> None:
     """A typo'd optimizer mode must never silently run the FULL optimizer
-    (any unknown mode used to fall through to the `kpress:full` stage)."""
+    (any unknown mode used to fall through to the `full` stage)."""
 
     from typing import cast
 
@@ -1235,7 +1240,6 @@ def test_programmatic_title_staging_survives_astral_plane_characters(tmp_path: P
 
     build_site(
         KPressConfig(
-            title=title,
             base_dir=tmp_path,
             sources=[SourceConfig(path=content)],
             publish=PublishConfig(output_dir=tmp_path / "public"),

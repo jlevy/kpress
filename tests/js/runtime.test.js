@@ -109,15 +109,15 @@ describe("kpress client runtime", () => {
     expect(calls.filter((name) => name === "builtin").length).toBeLessThanOrEqual(1);
   });
 
-  it("passes configure() config to behavior binds", async () => {
+  it("configure() merges and immediately rebinds a behavior", async () => {
     const { behaviors } = await importFresh("runtime.js");
 
     const seen = [];
     behaviors.register("configurable", { bind: (_root, config) => seen.push(config) });
     behaviors.configure("configurable", { visible: true });
-    behaviors.rebind("configurable");
+    behaviors.configure("configurable", { placement: "margin" });
 
-    expect(seen.at(-1)).toEqual({ visible: true });
+    expect(seen.at(-1)).toEqual({ visible: true, placement: "margin" });
   });
 
   it("mounts widgets into server mounts with page-model config under configure()", async () => {
@@ -138,9 +138,8 @@ describe("kpress client runtime", () => {
     expect(mounts[0].config).toEqual({ choosers: ["theme"], extra: "model" });
     expect(mounts[0].model).toBe(getModel());
 
-    // configure() overrides page-model config keys on the next mount.
+    // configure() merges over page-model config and remounts immediately.
     widgets.configure("settings", { extra: "host" });
-    widgets.mount("settings", document.querySelector("[data-kpress-widget]"));
     expect(mounts.at(-1).config).toEqual({ choosers: ["theme"], extra: "host" });
   });
 
@@ -364,9 +363,95 @@ describe("explicit mounts set the bound guard", () => {
     expect(mounts).toEqual([el]);
     expect(el.getAttribute("data-kpress-widget-bound")).toBe("true");
 
-    // Re-registering re-runs the mount pass over server mounts — the explicit
-    // mount's guard keeps the element from being mounted a second time.
-    widgets.register("panel", { mount: (mountEl) => mounts.push(mountEl) });
-    expect(mounts).toEqual([el]);
+    // The loading-state lifecycle suite pins that this guard survives the
+    // later ready pass; this already-ready suite pins only the marker itself.
+  });
+});
+
+describe("post-ready widget mutation", () => {
+  it("re-registering a mounted widget disposes and remounts it", async () => {
+    document.body.innerHTML = '<div data-kpress-widget="panel"></div>';
+    const { widgets } = await importFresh("runtime.js");
+    const calls = [];
+
+    widgets.register("panel", {
+      mount: () => {
+        calls.push("first");
+        return () => calls.push("dispose");
+      },
+    });
+    widgets.register("panel", { mount: () => calls.push("second") });
+
+    expect(calls).toEqual(["first", "dispose", "second"]);
+  });
+
+  it("an explicit mount config replaces merged config across remounts", async () => {
+    const { widgets } = await importFresh("runtime.js");
+    const configs = [];
+    widgets.register("panel", { mount: (_el, config) => configs.push(config) });
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    widgets.configure("panel", { merged: true });
+    widgets.mount("panel", el, { replacement: true });
+    widgets.register("panel", { mount: (_el, config) => configs.push(config) });
+
+    expect(configs.at(-1)).toEqual({ replacement: true });
+  });
+
+  it("reapplies widgets and behaviors after theme or palette changes", async () => {
+    document.body.innerHTML = '<div data-kpress-widget="panel"></div>';
+    const { behaviors, emit, widgets } = await importFresh("runtime.js");
+    const calls = [];
+    widgets.register("panel", { mount: () => calls.push("widget") });
+    behaviors.register("presentation", { bind: () => calls.push("behavior") });
+    calls.length = 0;
+
+    emit("theme:change", { resolved: "dark" });
+    expect(calls).toEqual(["widget", "behavior"]);
+    calls.length = 0;
+    emit("palette:change", { palette: "warm" });
+    expect(calls).toEqual(["widget", "behavior"]);
+  });
+
+  it("does not recurse when a presentation behavior emits another change", async () => {
+    const { behaviors, emit } = await importFresh("runtime.js");
+    let binds = 0;
+    let emitDuringBind = false;
+    behaviors.register("emitter", {
+      bind: () => {
+        binds += 1;
+        if (emitDuringBind) {
+          emit("theme:change", { resolved: "dark" });
+        }
+      },
+    });
+    binds = 0;
+    emitDuringBind = true;
+
+    emit("theme:change", { resolved: "dark" });
+
+    expect(binds).toBe(1);
+  });
+
+  it("disposes and prunes detached widget mounts during presentation changes", async () => {
+    const { emit, widgets } = await importFresh("runtime.js");
+    const calls = [];
+    widgets.register("temporary", {
+      mount: () => {
+        calls.push("mount");
+        return () => calls.push("dispose");
+      },
+    });
+    const el = document.createElement("div");
+    el.setAttribute("data-kpress-widget", "temporary");
+    document.body.appendChild(el);
+    widgets.mount("temporary", el);
+    calls.length = 0;
+    el.remove();
+
+    emit("palette:change", { palette: "warm" });
+
+    expect(calls).toEqual(["dispose"]);
   });
 });

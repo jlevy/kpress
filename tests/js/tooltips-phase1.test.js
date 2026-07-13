@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // reading column (.kpress-prose, not the absent #main-content), first-class
 // suppression (TOC/chrome + data-kpress-no-tooltip), and the small placement /
 // show-delay behavior flags. See
-// docs/project/specs/active/plan-2026-06-12-kpress-tooltips.md.
+// Public behavior is pinned by the tooltip contracts below.
 
 let importCounter = 1000;
 

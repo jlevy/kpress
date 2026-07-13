@@ -29,7 +29,7 @@ from kpress.format.model import AssetMode
 from kpress.output import write_bytes_atomic
 from kpress.publish.manifest import ManifestAsset, OutputFile
 
-AssetOptimizer = Callable[[str, str], str]
+AssetOptimizer = Callable[[str, str], tuple[str, list[str]]]
 
 
 def _guess_media_type(path: str) -> str:
@@ -49,17 +49,17 @@ def text_asset_kind(media_type: str) -> str | None:
 
 def maybe_optimize_asset(
     data: bytes, *, media_type: str, optimizer: AssetOptimizer | None
-) -> bytes:
+) -> tuple[bytes, list[str]]:
     kind = text_asset_kind(media_type)
     if optimizer is None or kind is None:
-        return data
-    optimized = optimizer(data.decode("utf-8"), kind)
-    return optimized.encode("utf-8")
+        return data, []
+    optimized, applied = optimizer(data.decode("utf-8"), kind)
+    return optimized.encode("utf-8"), applied
 
 
 def _package_output_path_for_data(rel_path: str, *, mode: AssetMode, data: bytes) -> str:
     rel = rel_path.strip("/")
-    if mode not in {"hashed", "sealed"} or rel.startswith("fonts/"):
+    if mode != "hashed" or rel.startswith("fonts/"):
         return rel
     posix = PurePosixPath(rel)
     return str(posix.with_name(f"{posix.stem}.{content_hash(data)}{posix.suffix}"))
@@ -75,17 +75,15 @@ def copy_package_assets(
     manifest_assets = package_asset_manifest(mode=asset_mode).assets
 
     # Optimize every asset once up front so the hashed filename reflects the final bytes.
-    optimized: dict[str, tuple[bytes, str]] = {}
+    optimized: dict[str, tuple[bytes, str, list[str]]] = {}
     for asset in manifest_assets:
         raw = read_package_bytes(asset.path)
         media_type = asset.media_type or _guess_media_type(asset.path)
-        optimized[asset.path] = (
-            maybe_optimize_asset(raw, media_type=media_type, optimizer=optimizer),
-            media_type,
-        )
+        data, applied = maybe_optimize_asset(raw, media_type=media_type, optimizer=optimizer)
+        optimized[asset.path] = (data, media_type, applied)
 
     for asset in manifest_assets:
-        data, media_type = optimized[asset.path]
+        data, media_type, applied = optimized[asset.path]
         if asset_mode == "inline" and text_asset_kind(media_type) in {"css", "js"}:
             assets.append(
                 ManifestAsset(
@@ -95,7 +93,6 @@ def copy_package_assets(
                     output_path=f"inline:{asset.path}",
                     content_hash=content_hash(data),
                     media_type=media_type,
-                    sealed=True,
                 )
             )
             continue
@@ -112,6 +109,7 @@ def copy_package_assets(
                 kind=destination.suffix.lstrip("."),
                 content_hash=content_hash(data),
                 size=len(data),
+                applied_pipeline=applied,
             )
         )
         assets.append(
@@ -122,7 +120,6 @@ def copy_package_assets(
                 output_path=rel,
                 content_hash=content_hash(data),
                 media_type=media_type,
-                sealed=True,
             )
         )
     return files, assets
@@ -162,7 +159,6 @@ def copy_katex_assets(
                 output_path=rel,
                 content_hash=content_hash(data),
                 media_type=media_type,
-                sealed=True,
             )
         )
     return files, assets

@@ -1,9 +1,9 @@
-"""Clean-room wheel gate: the built wheel must work outside the monorepo.
+"""Clean-room wheel gate: the built wheel must work outside the source checkout.
 
 Builds the kpress wheel, installs it into a fresh venv, and renders/builds in
 a scratch directory with no repo imports — proving package data (CSS, JS,
 fonts, icon sprite, KaTeX, templates) ships in the wheel and resolves via
-``importlib.resources``. This is the v0.1 publishability gate (orig-wp8v).
+``importlib.resources``. This is the v0.1 publishability gate.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ needs_uv = pytest.mark.skipif(shutil.which("uv") is None, reason="clean-room gat
 
 _CLEAN_ROOM_SCRIPT = """
 import sys
+from importlib import resources
 from pathlib import Path
 
 import kpress
@@ -28,6 +29,11 @@ import kpress
 # The interpreter must resolve kpress from the venv, never the repo checkout.
 location = Path(kpress.__file__).resolve()
 assert "site-packages" in str(location), f"kpress resolved outside the venv: {location}"
+
+license_root = resources.files("kpress").joinpath("licenses")
+for name in ("lucide.txt", "katex.txt", "pt-serif.txt", "source-sans-3.txt"):
+    text = license_root.joinpath(name).read_text(encoding="utf-8")
+    assert "Copyright" in text, f"third-party license missing or incomplete: {name}"
 
 from kpress.format import DocumentInput, RenderOptions, render_page
 
@@ -88,7 +94,7 @@ def test_wheel_installs_and_builds_in_clean_venv(tmp_path: Path) -> None:
     site.mkdir()
     (site / "index.md").write_text("# Clean Room\n\nProse with `code`.\n", encoding="utf-8")
     (site / "kpress.yml").write_text(
-        "sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: sealed\n",
+        "sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: hashed\n",
         encoding="utf-8",
     )
     env = {
@@ -105,3 +111,37 @@ def test_wheel_installs_and_builds_in_clean_venv(tmp_path: Path) -> None:
     )
     assert run.returncode == 0, f"clean-room script failed:\n{run.stdout}\n{run.stderr}"
     assert "clean-room-ok" in run.stdout
+
+    executable = venv_dir / ("Scripts/kpress.exe" if os.name == "nt" else "bin/kpress")
+    for args in (["--version"], ["--help"], ["doctor"]):
+        smoke = subprocess.run(
+            [str(executable), *args],
+            cwd=site,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=300,
+            env=env,
+        )
+        assert smoke.returncode == 0, (
+            f"kpress {' '.join(args)} failed:\n{smoke.stdout}\n{smoke.stderr}"
+        )
+
+    # Copy and execute every documented integration shape from outside the checkout.
+    examples = tmp_path / "examples"
+    shutil.copytree(_KPRESS_DIR / "examples", examples)
+    for name in ("static-site", "wrapped-site", "single-doc"):
+        output = tmp_path / f"{name}-output"
+        example = subprocess.run(
+            [str(python), "build.py", str(output)],
+            cwd=examples / name,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=300,
+            env=env,
+        )
+        assert example.returncode == 0, (
+            f"{name} wheel example failed:\n{example.stdout}\n{example.stderr}"
+        )
+        assert list(output.rglob("*.html")), f"{name} emitted no HTML"

@@ -214,8 +214,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   popover with a `system`/`light`/`dark` icon chooser (ported from the original host
   app’s design); embedded hosts own the control instead.
 - **Font model.** A global `font_mode` selects vendored reader faces (`custom`) or the
-  platform stack (`system`); reader fonts, when used, are vendored and sealed offline
-  (no CDN at publish).
+  platform stack (`system`); reader fonts are vendored package assets rather than CDN
+  dependencies.
 
 ### Interactions
 
@@ -237,7 +237,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   labels, and print suppression.
 - **Video popovers.** YouTube link and raw-embed interception into a no-network
   placeholder that opens a focus-trapped dialog with maximize/restore, mobile body lock,
-  and TOC coexistence; sealed output makes no eager network calls.
+  and TOC coexistence.
+  Remote video is loaded only after the reader activates it.
 - **Tabbed content.** Markdown-authored tab containers hydrate into ARIA tablists with
   keyboard support; print shows every panel with its title.
 
@@ -245,9 +246,9 @@ feature guarantees); the sections named in the table carry the architecture deta
 
 - **Images and figures.** Standalone images emit semantic `<figure>/<figcaption>`; raw
   HTML figures receive the same hooks; a document thumbnail renders when provided.
-- **Offline sealed assets.** Local assets, and approved external assets, are
-  fetched/sealed into the output with manifest provenance; published output is
-  verifiably free of unexpected network references.
+- **Explicit asset ownership.** KPress copies and fingerprints its packaged reader
+  assets. Site-owned static files are opt-in through `sources[].static`; other local and
+  external references remain the consuming project’s responsibility.
 
 ### Print and PDF
 
@@ -257,11 +258,9 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Browser-backed PDF.** An optional browser backend renders the print profile to PDF;
   absence of the optional dependency produces a clear error, never a silent downgrade.
 
-Implementation status, milestones, beads, and the reference-migration record live in
-[`kpress-completion-plan.md`](kpress-completion-plan.md), with [`TODO.md`](../TODO.md)
-as the fine-grained ledger.
-This design doc is architecture and public contract only and carries no status ledger or
-reference-system comparisons.
+This document describes the alpha architecture and public contract.
+Open implementation work and current capability status are indexed in
+[`TODO.md`](../TODO.md).
 
 ## Dependency Rules
 
@@ -284,8 +283,7 @@ The package must keep dynamic viewing lightweight.
 
 The optional extras that exist today: `kpress[pdf]` (browser-backed PDF generation) and
 `kpress[optimize]` (Brotli precompression sidecars).
-Future packaging tiers are tracked in
-[`kpress-completion-plan.md`](kpress-completion-plan.md).
+Future packaging tiers require a public design update and issue before implementation.
 
 ## Package Layout
 
@@ -319,9 +317,7 @@ kpress/
       assets.py
       pdf.py
       templates/
-        fragment.html.jinja
         page.html.jinja
-        components/
       static/
         css/
         js/
@@ -332,7 +328,8 @@ kpress/
       routes.py
       build.py
       cache.py
-      seal.py
+      assets/
+        copy.py
       optimize.py
       manifest.py
       site_files.py
@@ -648,15 +645,13 @@ video-gallery
 video-item
 ```
 
-All KPress HTML is authored in the packaged Jinja templates under
-`src/kpress/format/templates` and rendered through the single strict environment in
-`format/templating.py` (`StrictUndefined` + autoescape; a missing variable is an
-immediate hard failure, markup rides `| safe`). HTML is never assembled with Python
-f-strings or string concatenation (see AGENTS.md → Conventions).
-Each template’s public variables are listed in
-`kpress.contract.PUBLIC_TEMPLATE_VARIABLES`; the tests assert both that each declared
-variable exists in the template **and** that the template is actually rendered by the
-code, so the templates and the renderer cannot diverge.
+`page.html.jinja` is the one live packaged template.
+It owns the standalone page shell and renders through `format/templating.py`
+(`StrictUndefined` + autoescape).
+Fragment and component markup currently remains in `format/render.py` and
+`format/markdown.py`. Moving that markup into templates is a later migration, not a
+claim about the alpha.
+`kpress.contract.PUBLIC_TEMPLATE_VARIABLES` therefore pins only the live page template.
 
 The contract module also declares:
 
@@ -667,7 +662,7 @@ The contract module also declares:
   `BuildReport`, `OptimizerOptions`, `PublishConfig`, `get_optimizer`, and
   `optimize_text`
 - `BUILD_MANIFEST_REQUIRED_KEYS`: `schema_version`, `output_dir`, `files`, `assets`,
-  `routes`, `diagnostics`
+  `routes`, `diagnostics`, `pipeline`
 - `OptimizerMode = Literal["none", "full"]` (defined in `format.model`, used by publish)
 - `full_optimizer_available()` in `publish.optimize`
 - `PUBLIC_DATA_ATTRIBUTES`: the stable per-cell table `data-*` hooks kpress emits for
@@ -697,8 +692,8 @@ The contract module also declares:
 
 There is no `BuildMode` type.
 The former `publish.mode` / `BuildReport.mode` / manifest `"mode"` key have been
-removed; the independent axes (`asset_mode`, `strict`, `optimizer`, `precompress`)
-replaced them.
+removed. The active axes are `asset_mode`, `optimizer`, and `precompress`; there is no
+implemented `strict` publishing axis.
 
 ### Page model block and widget mounts
 
@@ -770,6 +765,15 @@ See `kpress-icons.md` for the KPress↔host glyph map.
 
 It must not reference host-shell selectors such as `.tree-pane`, `.preview-pane`,
 `.file-header`, or `.tab-bar`.
+
+Foundation tokens are declared on `:root` as well as KPress document and overlay scopes.
+The root declaration gives standalone page chrome and body-level fixed UI a complete
+namespaced default token set; it does not make unlisted internal tokens stable.
+Embedding hosts may rely on the variables in `contract.py::PUBLIC_CSS_VARIABLES` being
+initialized at the root for root-inheriting chrome.
+Document scopes redeclare their defaults, so a host customizes document tokens on
+`.kpress` (or through the documented `--kpress-host-*` hooks), not by assuming every
+root override crosses that scope.
 
 Current public variables (from `contract.py::PUBLIC_CSS_VARIABLES`):
 
@@ -1079,8 +1083,8 @@ Required document components:
   fetch CDN assets, or include math dependencies in static output.
   Documents with math use KaTeX as the only active renderer, rendered **client-side**.
   The server emits, per expression, a hidden TeX source node and a semantic MathML node;
-  a vendored, sealed KaTeX bundle (pinned `katex.min.js` + `auto-render` + a small init
-  shim, loaded as deferred classic scripts) replaces the TeX node in place on
+  a vendored, self-hosted KaTeX bundle (pinned `katex.min.js` + `auto-render` + a small
+  init shim, loaded as deferred classic scripts) replaces the TeX node in place on
   `DOMContentLoaded`, after the rest of the document has painted.
   This is deliberate progressive enhancement: prose is never blocked on math, and math
   is filled in once document layout is stable.
@@ -1095,7 +1099,7 @@ Required document components:
   demand by the browser**, per face, only when a glyph that needs them is painted.
   A trivial `$x^2$` pulls only the Main/Math faces;
   Fraktur/Script/Caligraphic/SansSerif/Typewriter are never fetched unless used.
-  All twenty faces are vendored (sealed bundle size, not client transfer); codepoint
+  All twenty faces are vendored (package size, not client transfer); codepoint
   subsetting is intentionally avoided because needed glyphs are content- and not
   vendor-time-determined, and the per-face native lazy load already bounds client bytes.
   KaTeX’s `@font-face` rules carry `font-display: swap` so the late face arrival is a
@@ -1124,13 +1128,12 @@ The end-to-end validation flow is maintained in `docs/kpress-validation.runbook.
 ### Component Authoring Contract
 
 These conventions are binding for every interactive document component.
-They keep the reader hand-rolled, zero-build, and sealable, which is the reviewed and
-accepted architecture (no component kit, no platform-only widgets, no positioning
-library yet).
+They keep the reader hand-rolled, zero-build, and self-hostable (no component kit, no
+platform-only widgets, no positioning library yet).
 
 1. **No JavaScript runtime dependency.** Components are native ESM modules under
    `src/kpress/format/static/js/`. No bundler, no framework, no CDN import.
-   They must run from sealed static output with no network access and must progressively
+   They must run from the complete self-hosted package-asset tree and progressively
    enhance server-rendered HTML (the document is readable with JavaScript disabled).
 2. **Init function shape + registration.** Each component exports a single
    `initKpress<Name>(root = document)` entry point.
@@ -1263,6 +1266,21 @@ kpress.behaviors.override("footnote-preview", myHoverBinding);
 kpress.behaviors.register("glossary", { bind: bindGloss });
 ```
 
+Runtime mutation semantics are uniform:
+
+| Operation | Alpha behavior |
+| --- | --- |
+| `mount(id, element, config)` | Replaces resolved config for that explicit mount. |
+| `configure(id, config)` | Merges config and reapplies immediately after ready. |
+| `register(id, implementation)` | Replaces the implementation and remounts/rebinds existing targets after ready. |
+| Explicit mount before ready | The ready pass sees the bound marker and does not mount twice. |
+| `theme:change` / `palette:change` | Reapplies presentation widgets and behaviors, except a widget containing keyboard focus is preserved mid-interaction. The theme behavior is excluded and nested presentation changes are ignored to prevent recursion. |
+
+Widget mounts may return a disposer; KPress calls it before remounting.
+Behavior binds have the same disposer contract.
+A host changing palette state directly should emit `palette:change` after updating its
+attributes.
+
 Built-ins go through the same registries (dogfood rule) and are **assembled from
 exported ES-module parts**: KPress JS already ships as ES modules behind an import map,
 so the sub-portions are real exports (the TOC behavior’s visibility policy, the tooltip
@@ -1299,15 +1317,15 @@ server-rendered document components keep their own format switches (`format.toc`
 
 ```python
 build_site(config, extensions=BuildExtensions(
-    pipeline=[my_js_preprocessor, "kpress:full"],   # pre-stage before the built-in compressor
+    pipeline=[my_js_preprocessor, "full"],          # pre-stage before the built-in compressor
     transform_tree=add_section_anchors,             # document-tree transform
     transform_page_html=stamp_build_info,           # final-HTML transform
 ))
 ```
 
 Stages share the optimizer backend shape (`name` + `optimize(content, *, kind)`),
-resolved by name (`kpress:none`, `kpress:full`) or passed as objects, and run in list
-order. See [Optimizer and Precompression](#optimizer-and-precompression).
+resolved by name (`none`, `full`) or passed as objects, and run in list order.
+See [Optimizer and Precompression](#optimizer-and-precompression).
 
 ### The tiers (simple → complex, purpose-agnostic)
 
@@ -1411,10 +1429,13 @@ KPress documents the conventions; the tag vocabularies are the plugins’ busine
 - **Attributes.** Plugin tags carry clean inert attributes.
   A plugin declares its semantic attribute names (`kind`, `term`, …) through
   `format.html.extra_attributes` and they survive `sanitized` on whitelisted tags, so
-  `<k-block kind="epigram">` is the idiomatic form; `class` stays available and `data-*`
+  `<x-block kind="epigram">` is the idiomatic form; `class` stays available and `data-*`
   remains the open-ended escape hatch for arbitrary payload (no declaration needed).
   `id` and ARIA survive only under `trusted`; `on*`, `style`, and unsafe-URL attributes
   are always stripped.
+  Sanitization does not prove that surviving tags, classes, or data values came from a
+  trusted plugin. Hosts must not use content-authored values as authorization or
+  unforgeable identity signals.
 - **No pinned vocabulary.** KPress does not freeze a closed dialect.
   Codifying one is deliberately deferred: pinning today’s tags would lock current shape
   into a contract before the design has settled.
@@ -1520,33 +1541,30 @@ the application chooses what it needs.
 
 | Axis | Config / option | Default | Choices |
 | --- | --- | --- | --- |
-| Asset shaping | `publish.asset_mode` / `--asset-mode` | `linked` (readable) | `linked`, `hashed`, `inline`, `sealed`, `hosted` |
-| Offline strictness | `publish.strict` / `--strict` | `false` | `true` rejects any unexpected remote reference |
+| Asset shaping | `publish.asset_mode` / `--asset-mode` | `linked` (readable) | `hosted`, `linked`, `hashed` |
 | Optimizer | `optimizer.mode` / `--optimizer` | `none` | `none`, `full` |
 | Precompression | `optimizer.precompress` / `--precompress` | none | `gzip`, `br` |
 
 Every axis is independent.
-Readable linked output, content-hashed sealed output, and inline single-file output are
-all valid; a local embedded file browser and a public CDN deployment differ only in
-which axes they set, not in a coarse mode.
-Selecting `full` without the Node toolchain, `br` without `kpress[optimize]`, or
-`strict` with an unexpected remote reference is a clear error, never a silent downgrade.
+`linked` keeps readable package-asset names; `hashed` fingerprints KPress-owned assets
+for production caching; `hosted` delegates package-asset serving to an embedding host.
+Selecting `full` without the Node toolchain or `br` without `kpress[optimize]` is a
+clear error, never a silent downgrade.
+`inline` is rejected for site builds until it is genuinely self-contained.
 
 ### Named output modes
 
-The independent axes (`asset_mode`, `strict`, `optimizer`, `precompress`) cover both
-dynamic per-request rendering and static publishing.
+The independent axes (`asset_mode`, `optimizer`, `precompress`) cover both dynamic
+per-request rendering and static publishing.
 The following named modes are the canonical combinations consumers ask for; they are
 conveniences over the underlying axes, not coarse build modes that hide them.
 
-| Mode | Layer | `asset_mode` | `strict` | `optimizer` | `precompress` | Entry point | Status |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| **Dynamic multifile dev** | Runtime | host-served package assets, unmodified | n/a | n/a | n/a | `runtime.render_view` + `/kpress-static/...` | Stable; current host-app default |
-| **Dynamic multifile (production embed)** | Runtime | host-served, optionally hashed/optimized package variants | n/a | host-side, if any | host-side (CDN/edge) | `runtime.render_view` from an embedding host | Same code path as dev; no pre-optimized package variants ship today |
-| **Static build dev** | `kpress build` | `linked` | n/a | `none` | none | `kpress build` | Stable; readable multi-file tree. Document-local and external asset URLs pass through verbatim; the deploy layer owns them. |
-| **Static build prod** | `kpress build` | `hashed` | n/a | `full` | `gzip` (`br` with `kpress[optimize]`) | `kpress build` | Stable; content-hashed package assets, immutable cache, minified. Document-local and external asset URLs pass through verbatim. |
-| **Static build sealed** | `kpress build` | `sealed` + `strict=true` | yes | `full` (typical) | optional | `kpress build` | **Deferred to v2.** See “Asset Model and Sealing: deferred for v1” below. |
-| **Self-contained single file** | `kpress format` / `render` | `inline` + classic (non-module) reader JS + inline fonts + inline KaTeX | n/a | `full` (typical) | n/a | `kpress format`/`render` with `--asset-mode inline` (lever gap) | **Deferred.** See “Self-contained single file: deferred” below. |
+| Mode | Layer | `asset_mode` | `optimizer` | `precompress` | Entry point | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Dynamic multifile** | Runtime | `hosted` | host-side, if any | host-side | `render_fragment` + host asset route | Supported |
+| **Static build dev** | Publisher | `linked` | `none` | none | `kpress build` | Supported; readable multi-file tree |
+| **Static build production** | Publisher | `hashed` | `full` when desired | optional | `kpress build` | Supported; content-hashed KPress assets |
+| **Self-contained single file** | Publisher | `inline` | optional | n/a | format/render/export | Deferred |
 
 For a “share one HTML file by link” workflow, prefer **Static build prod** deployed to a
 CDN (or **Dynamic multifile (production embed)** with a CDN-hosted reader bundle) rather
@@ -1554,8 +1572,8 @@ than self-contained inline.
 The artifact-size math (see deferred notes) makes inline a poor default for most
 documents.
 
-For air-gapped or offline-verified static publish, sealing is on the v2 roadmap; see
-“Asset Model and Sealing: deferred for v1” below.
+Verified offline publishing requires a future asset-graph design; see “Asset sealing:
+deferred for v1” below.
 The deploy layer (CDN, S3, GitHub Pages, etc.)
 is the right place to handle external-asset integrity, fetching, and hashing in v1.
 
@@ -1597,8 +1615,8 @@ self-contained:
   Reader modules are 11 files, ~1,930 LOC, with a shallow single-root import graph (3
   modules import from `overlay.js`; nothing else has imports).
   A topological concat and strip of `import`/`export` statements is ~30 lines of Python
-  or one `npx esbuild` call (same pattern as `html-minifier-next`). Then plumb
-  `--asset-mode` through `format`/`render` and switch inline JS emission from
+  or one managed Node/esbuild call.
+  Then plumb `--asset-mode` through `format`/`render` and switch inline JS emission from
   `<script type="module">` to classic `<script>`. This alone unblocks `file://` for
   documents with system-font fallback acceptable.
 - **Tier 2 (~half day):** inline reader fonts.
@@ -1608,11 +1626,11 @@ self-contained:
   Same data-URI rewrite for the 20 KaTeX woff2 fonts plus literal-inline the KaTeX UMD
   JS (already classic).
 - **Tier 4 (deferred-within-deferred):** document images.
-  The asset-sealing infrastructure in `publish/seal.py` already handles size caps,
-  integrity, MIME validation, and HTML/CSS rewriting.
-  Extending it to base64-inline local images is ~50 lines plus a
+  A future asset-graph implementation would need size caps, integrity, MIME validation,
+  and HTML/CSS rewriting.
+  Extending that to base64-inline local images would also need a
   `--max-inline-image-bytes` policy.
-  External-image fetching would reuse the existing sealed-asset path.
+  External-image fetching would reuse that future verified-asset path.
   Skip video; emit poster and link.
 
 Surface as one composable lever (`reader_js=module|classic`, kept independent of
@@ -1673,8 +1691,8 @@ Package asset modes (`asset_mode` in `publish` config):
   Fonts stay on disk; KaTeX (when present) stays linked because its stylesheet uses
   relative font URLs.
 
-The `sealed` mode (external assets fetched + integrity-pinned + offline- verified) is
-**deferred to v2**; see the section below.
+Fetching, integrity-pinning, and offline-verifying external assets is deferred; there is
+no alpha asset-mode name that implies those guarantees.
 
 ### Static asset caching
 
@@ -1710,13 +1728,13 @@ The build manifest records source files, routes, output files, hashes, optimizer
 settings, diagnostics, and warnings.
 Build and asset manifests include explicit current schema markers:
 
-- `kpress-build-manifest-v1`
+- `kpress-build-manifest-v2`
 - `kpress-asset-manifest-v1`
 
 ### Asset sealing: deferred for v1
 
 Sealing the document-local and external-URL asset graph (downloading remote refs,
-content-hashing every file, rewriting every URL in HTML + CSS + JS to its sealed local
+content-hashing every file, rewriting every URL in HTML + CSS + JS to its verified local
 path, then verifying the tree is free of remote refs) is **on the v2 roadmap**, not in
 v1.
 
@@ -1747,8 +1765,8 @@ What v1 does instead:
 - External refs (`https://...`) are emitted verbatim.
   The browser fetches at view time, same as any normal site.
 
-The v2 sealing roadmap is tracked in
-[`kpress-completion-plan.md`](kpress-completion-plan.md).
+Verified external-asset publishing remains a future design problem; the alpha makes no
+such guarantee.
 
 ## Optimizer and Precompression
 
@@ -1766,20 +1784,20 @@ canonical instance of the **build pipeline**: an ordered list of named stage plu
 (see [Extension and Injection Model](#extension-and-injection-model), layer E). There is
 no built-in regex pseudo-minifier and no silent fallback.
 
-- `none` (default; stage name `kpress:none`): published HTML/CSS/JS is byte-for-byte the
+- `none` (default; stage name `none`): published HTML/CSS/JS is byte-for-byte the
   rendered output. No Node toolchain is required.
   This is a fully supported output; a static build with `none` is correct, readable, and
   deployable.
-- `full` (stage name `kpress:full`): opt in to Node-backed minification/optimization.
-  KPress runs `html-minifier-next@6.2.3` through `npx --package`, so callers keep no
-  project `package.json` and npm manages the fetch and cache.
-  This mode requires Node.js with `npx` on `PATH`.
+- `full` (stage name `full`): opt in to Node-backed minification/optimization.
+  KPress ships a reviewed `package-lock.json` for `html-minifier-next@6.2.3`, copies it
+  into a file-locked user cache, and installs only with `npm ci --ignore-scripts`.
+  Callers keep no project `package.json`. This mode requires Node.js with npm on `PATH`.
 
 Selection is explicit: `optimizer.mode` in `kpress.yml`, `--optimizer`, or
-`BuildOptions.optimizer`. If `full` is selected and `npx` is unavailable, optimization
-raises `KPressMissingOptionalDependencyError` with an actionable message.
-It never downgrades to `none` silently, and an unknown mode is an error.
-If optimization is not requested, `npx` is not required.
+`BuildOptions.optimizer`. If `full` is selected and Node, npm, or the locked package is
+unavailable, optimization raises `KPressMissingOptionalDependencyError` with an
+actionable message. It never downgrades to `none` silently, and an unknown mode is an
+error. If optimization is not requested, Node and npm are not required.
 
 **Pipeline plugins.** A host generalizes the single mode into an ordered stage list via
 `build_site(config, extensions=BuildExtensions(...))`:
@@ -1787,12 +1805,12 @@ If optimization is not requested, `npx` is not required.
 - `pipeline`: a sequence of stages run in list order over each deployable text artifact.
   A stage is the existing optimizer-backend shape—`name: str` plus
   `optimize(content, *, kind) -> OptimizerResult` (`kind` ∈ html/css/js/other)—given
-  either as a built-in stage name (`"kpress:none"`, `"kpress:full"`, pinned by
+  either as a built-in stage name (`"none"`, `"full"`, pinned by
   `contract.py::PUBLIC_PIPELINE_STAGES`) or as a stage object.
   An unknown stage name is an error (never a silent skip).
   `pipeline=None` derives the list from `optimizer.mode`, providing full back-compat.
-  Example: `[my_js_preprocessor, "kpress:full"]` runs a host preprocessing layer before
-  the built-in compressor.
+  Example: `[my_js_preprocessor, "full"]` runs a host preprocessing layer before the
+  built-in compressor.
 - `transform_tree`: an optional `DocumentTree -> DocumentTree` callable applied after
   parsing and before TOC/rendering, for document-level build transforms (e.g. injecting
   section anchors) that should be reflected in the TOC and page model.
@@ -1802,24 +1820,17 @@ If optimization is not requested, `npx` is not required.
 These are callables and stage objects, not config-file values: the pipeline is the
 Python-side extension seam (the build-step exception to the front-end-first rule), and
 it stays an explicit ordered list: no priorities, no hook lifecycle.
-The manifest records the joined stage names per file (see below).
+The manifest records the configured stages in `pipeline` and the stages that changed
+each file in `applied_pipeline` (see below).
 
-The current public contract is deliberately simpler than a full JavaScript package
-setup: if callers ask for optimization, they need `npx`; if they do not ask for
-optimization, they do not need it.
-The `npx --package` implementation pins the top-level minifier package while letting npm
-own package installation and cache layout.
-That is acceptable for the current KPress publishing slice.
-
-A future hardening layer can improve dependency reproducibility without changing that
-public contract.
-The cleaner long-term shape is modeled on the useful parts of `tminify`:
-Python API, tiny JavaScript wrapper, committed lockfile, `npm ci`, file-locked
-user-cache installation, and structured subprocess errors.
-
-`full` should be preflighted at the start of a publish operation, before writing or
-copying outputs. If `npx` or the optimizer package is unavailable, the publish command
-should fail conspicuously with no partial success status and no fallback to `none`.
+The full optimizer is preflighted at the start of a publish operation, before creating,
+purging, writing, or copying outputs.
+The preflight is network-free: a cold cache fails with instructions to run
+`kpress doctor --profile optimize --allow-network` once.
+That explicit doctor command installs from the shipped lock; subsequent builds consume
+only the warm cache.
+If Node or the locked optimizer package is unavailable, the publish command fails
+conspicuously with no partial success status and no fallback to `none`.
 
 ### Precompression
 
@@ -1843,10 +1854,10 @@ Enable it only when the deploy origin actually serves sidecars:
 
 ### Manifest and equivalence
 
-- The build manifest records the resolved stage list per optimized file
-  (`optimizer_backend` is the joined stage names, e.g. `full` or `my-preprocessor+full`;
-  absent for `none`/no-op), `original_size` when a file was rewritten, and the
-  compression method and sizes for each sidecar.
+- The build manifest records the ordered configured stage names in `pipeline` and each
+  file’s ordered changed-stage names in `applied_pipeline`. It also records
+  `original_size` when a file was rewritten and the compression method and sizes for
+  each sidecar.
 - `none` plus optional precompression preserves the rendered document surface exactly.
   `full` must preserve functional equivalence with `none`: the only accepted differences
   are minification, hashing, URL shape, and compression.
@@ -1861,27 +1872,21 @@ Commands:
 ```bash
 kpress init
 kpress convert INPUT --output OUTPUT.md
-kpress format INPUT --output-dir DIR --show
-kpress render INPUT.md --output OUTPUT.html --show
-kpress paste --title TITLE --plaintext --show
-kpress files --all
-kpress export INPUT.md --html OUT.html --pdf OUT.pdf --docx OUT.docx
+kpress format INPUT --output-dir DIR
+kpress render INPUT.md --output OUTPUT.html
+kpress paste --title TITLE
+kpress files
+kpress export INPUT.md --html OUT.html --pdf OUT.pdf
 kpress build --config kpress.yml
 kpress build --config kpress.yml --asset-mode hashed --optimizer full --precompress gzip
-kpress check --config kpress.yml
-kpress seal --config kpress.yml
-kpress optimize public/
-kpress pdf INPUT.md --output OUT.pdf
+kpress doctor --config kpress.yml
+kpress optimize INPUT --output OUTPUT
 ```
 
 Global workflow flags:
 
 - `--work-root`
-- `--rerun`
-- `--refetch`
-- `--show`
-- `--strict`
-- `--asset-mode`
+- `--asset-mode` on commands that shape package assets
 
 The workflow layer owns workspace paths, cache semantics, output names, local reports,
 paired Markdown/HTML output, sidematter copying, and image URL rewriting.
@@ -1908,15 +1913,16 @@ source of truth, shared with the `optimizer=full` preflight in
   There is no `dev`/`production` mode; doctor reads the resolved explicit axes and fails
   only when a capability the config actually requires (optimizer `full`, `br`
   precompression, or PDF enabled) is unavailable.
-- `--allow-network`: only gate for the optimizer cold-cache smoke; the `npx` presence
-  check is always no-network.
+- `--allow-network`: the only gate that bootstraps a cold optimizer cache with the
+  shipped lock. It is accepted by `doctor`; build and direct optimizer paths remain
+  network-free. Warm-cache and Node/npm presence checks are always no-network.
 - `--json`: stable `{kpress_version, platform, capabilities}` with the closed status
   set.
 
-Capability semantics mirror the runtime contract: `optimizer=none` with no `npx` is OK;
+Capability semantics mirror the runtime contract: `optimizer=none` without Node is OK;
 `optimizer=full` without the toolchain, `br` without `brotli`, or PDF without Playwright
-are failures only when that path is requested, otherwise reported
-`unavailable`/`skipped`.
+are failures only when that path is requested, otherwise reported as unavailable or
+skipped.
 
 ## Browser Asset Quality Gate
 
@@ -2101,8 +2107,8 @@ Render response shape:
   "html": "<!-- HTML fragment to inject into the document body -->",
   "profile": "document" | "source" | "table" | "tree" | "plain",
   "printable": true,
-  "assets": { "css": ["<asset_url_prefix>v0.0.1/css/document.css", ...],
-               "js":  ["<asset_url_prefix>v0.0.1/js/theme.js", ...] },
+  "assets": { "css": ["<asset_url_prefix>v0.1.0/css/document.css", ...],
+               "js":  ["<asset_url_prefix>v0.1.0/js/theme.js", ...] },
   "widgets": { "settings": { "choosers": ["theme"] } },  // normalized presence + opaque config
   "model": { "version": 1, "title": "...", "route": "", "profile": "document",
              "headings": [...], "widgets": { ... } },    // same keys as #kpress-page-model
@@ -2122,13 +2128,13 @@ as `type="module"`. There is no per-request mutation of global state.
 ### Asset serving
 
 KPress package assets live at `/kpress-static/<v>/<rel_path>` where `<v>` is the package
-version segment (`v0.0.1`). The host mounts a route that calls
+version segment (`v0.1.0`). The host mounts a route that calls
 `kpress.runtime.get_static_asset(rel_path)` and returns the resulting `KPressAsset`
 (`content`, `media_type`, `etag`, `cache_control`). The runtime guarantees:
 
 - Path traversal is rejected (paths with `..` or absolute prefixes raise
   `KPressAssetNotFoundError`).
-- Versioned URLs (`/kpress-static/v0.0.1/...`) return
+- Versioned URLs (`/kpress-static/v0.1.0/...`) return
   `cache-control: public, max-age=31536000` (long-lived, but **not** `immutable`);
   unversioned URLs return `no-cache`. The version segment is only a coarse fingerprint,
   so the host can revalidate against the ETag rather than being locked to stale bytes;
@@ -2200,8 +2206,8 @@ publisher-side levers:
 | `KPressExportRequest` field | Choices | Meaning |
 | --- | --- | --- |
 | `print_profile` | `document`/`source`/`table`/`tree`/`plain` | Same as the render contract |
-| `export_mode` | `page` (default), `single-file`, `static-hosted`, `sealed-static-hosted`, `pdf` | Which output shape to produce. `single-file` is deferred per “Self-contained single file: deferred”. |
-| `asset_mode` | `linked` (default), `inline`, `sealed` | Underlying asset-shaping axis from the build levers |
+| `export_mode` | `page` (default), `single-file`, `static-hosted`, `hashed-static-hosted`, `pdf` | Which output shape to produce. `single-file` is deferred per “Self-contained single file: deferred”. |
+| `asset_mode` | `linked` (default), `inline`, `hashed` | Underlying asset-shaping axis from the build levers |
 | `optimize` | bool | Maps to `optimizer=full` when true |
 | `destination` | path | Where to write the artifact; KPress derives a default from `path` if omitted |
 
@@ -2218,19 +2224,18 @@ into a request, then surfaces the returned build report (or `KPressRenderError` 
 | `KPressRenderError` | Render pipeline raised | 502 with diagnostics |
 | `KPressAssetNotFoundError` | Asset path rejected as unsafe or missing | 404 |
 | `KPressUnavailableError` | KPress package not importable | 503; degrade to a host-side fallback if any |
-| `KPressMissingOptionalDependencyError` | Static-export with `optimizer=full` and no npx, or `pdf` with no Playwright | 503 (or surface to the user as a setup error) |
+| `KPressMissingOptionalDependencyError` | Static export with `optimizer=full` and a cold cache or no Node, or PDF with no Playwright | 503 (or surface to the user as a setup error) |
 
 `KPressInvalidRequestError` is a `ValueError` subclass for ergonomic catching, but hosts
 should catch it specifically rather than catching all `ValueError`s.
 
-### Reference adapter
+### Embedding adapter guidance
 
-The original host app’s `kpress_adapter.py` is the canonical embedding reference:
-optional import (`try: from kpress import runtime`), translated exceptions (every KPress
-exception type is re-wrapped into a host-side type so callers never need to import
-kpress), and an explicit `kpress_available()` probe for graceful degradation.
-Other embedding hosts (Electron viewers, hosted web deployments, custom web apps) should
-follow the same pattern.
+An embedding adapter should import `kpress.runtime` as a required dependency, translate
+KPress exceptions only at an application boundary that needs application-specific error
+types, serve the full asset closure, and keep host chrome outside the KPress fragment.
+If an application deliberately makes KPress optional, its availability probe and
+fallback are application-owned; KPress itself does not provide a fail-quiet adapter.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

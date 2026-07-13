@@ -1,5 +1,4 @@
 site:
-  title: Fixture
 
 sources:
   - path: docs

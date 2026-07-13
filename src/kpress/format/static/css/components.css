@@ -35,12 +35,6 @@
    whole window is themed (the embedded host owns its own pane background, so
    this targets the standalone-only `.kpress-page-main`, not `.kpress-viewport`). */
 .kpress-page-main {
-  /* Standalone-only gutters (the embedded fragment uses the host's pane, so
-     these never affect embedding hosts). Tunable; a couple ems of breathing room so
-     the reading column does not run to the window edges, plus a little more
-     above so the title is not jammed against the top of the window. */
-  --kpress-page-margin-inline: 2rem;
-  --kpress-page-margin-block-start: 2.5rem;
   background: var(--kpress-doc-bg);
   color: var(--kpress-doc-text);
   padding-inline: var(--kpress-page-margin-inline);
@@ -1241,7 +1235,7 @@
 }
 
 /* Inline YouTube player. The server emits a safe placeholder (no iframe, so
-   sanitized + sealed output stay network-free); video-popover.js swaps in this
+   sanitized + hashed output stay network-free); video-popover.js swaps in this
    responsive 16:9 frame on load. */
 .kpress-video {
   margin: 1.5rem 0;

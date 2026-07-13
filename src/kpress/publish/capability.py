@@ -15,10 +15,14 @@ import importlib.util
 import platform
 import shutil
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal, cast
 
 from kpress._version import __version__
-from kpress.errors import KPressMissingOptionalDependencyError
+from kpress.errors import (
+    KPressMissingOptionalDependencyError,
+    KPressOptimizerError,
+)
 
 CapabilityStatus = Literal["ok", "unavailable", "skipped", "fail"]
 
@@ -65,16 +69,15 @@ def probe_capability(name: str, *, allow_network: bool = False) -> ProbeResult:
 def preflight_optimizer_full() -> None:
     """Preflight the full optimizer toolchain.
 
-    Raises ``KPressMissingOptionalDependencyError`` if npx is not on PATH.
-    This is called at the start of build operations with optimizer=full,
-    before any output is written.
+    This requires a warm deterministic locked cache. It is called at the start of
+    build operations with optimizer=full, before any output is created, purged, or
+    written. Only ``kpress doctor --profile optimize --allow-network`` may bootstrap
+    a cold cache.
     """
 
-    result = probe_capability("optimizer_full")
-    if result.status not in {"ok", "skipped"}:
-        from kpress.publish.optimize import MISSING_FULL_OPTIMIZER_MESSAGE
+    from kpress.publish.optimize import ensure_tool_cache
 
-        raise KPressMissingOptionalDependencyError(MISSING_FULL_OPTIMIZER_MESSAGE)
+    _ = ensure_tool_cache(allow_network=False)
 
 
 def probe_all(*, allow_network: bool = False) -> dict[str, ProbeResult]:
@@ -123,18 +126,28 @@ def _probe_publish() -> ProbeResult:
 
 
 def _probe_optimizer_full(*, allow_network: bool = False) -> ProbeResult:
-    """Check whether the full optimizer toolchain (npx + html-minifier-next) is present.
+    """Check whether Node and the locked html-minifier-next cache are ready.
 
-    The npx presence check is always no-network. The cold-cache package smoke
-    (which may fetch html-minifier-next via npx) runs only when *allow_network*
-    is True; otherwise the package-level check is skipped with reason
-    ``fetch_blocked``.
+    A warm-cache check never accesses the network. A cold cache is reported as skipped
+    unless *allow_network* is true, in which case this probe performs the same reviewed
+    ``npm ci`` bootstrap used by the build preflight.
     """
 
-    _ = allow_network  # reserved for the cold-cache smoke in doctor
-    if shutil.which("npx") is None:
-        return ProbeResult(status="unavailable", reason="npx_not_found")
-    return ProbeResult(status="ok")
+    from kpress.publish.optimize import ensure_tool_cache, optimizer_cache_ready
+
+    if shutil.which("node") is None:
+        return ProbeResult(status="unavailable", reason="node_not_found")
+    if optimizer_cache_ready():
+        return ProbeResult(status="ok")
+    if shutil.which("npm") is None:
+        return ProbeResult(status="unavailable", reason="npm_not_found")
+    if not allow_network:
+        return ProbeResult(status="skipped", reason="fetch_blocked")
+    try:
+        _ = ensure_tool_cache(allow_network=True)
+        return ProbeResult(status="ok")
+    except (KPressMissingOptionalDependencyError, KPressOptimizerError) as exc:
+        return ProbeResult(status="fail", reason=f"bootstrap_failed: {exc}")
 
 
 def _probe_precompress_brotli() -> ProbeResult:
@@ -161,7 +174,12 @@ def _probe_pdf_browser() -> ProbeResult:
     try:
         sync_api = cast(Any, importlib.import_module("playwright.sync_api"))
         with sync_api.sync_playwright() as player:
-            _ = player.chromium.executable_path
+            executable = Path(player.chromium.executable_path)
+            if not executable.is_file():
+                return ProbeResult(
+                    status="unavailable",
+                    reason="chromium_not_installed: run playwright install chromium",
+                )
             return ProbeResult(status="ok")
     except Exception as exc:
         # Do not eat the failure: surface why Chromium could not load so

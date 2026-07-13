@@ -1,80 +1,75 @@
-# KPress Static Publish (SSG) Runbook
+# KPress Static Publish Runbook
 
-How to build and ship a static site with kpress, and where kpress’s responsibility ends.
+KPress owns the build through a correct output directory: discovery, routes, rendering,
+KPress-owned assets, sitemap/robots/redirects, optimization, precompression, and the
+build manifest. The consuming project owns deployment, credentials, cache headers, and
+rollout policy. KPress intentionally has no deploy command.
 
-## Ownership
-
-kpress owns everything up to a correct output directory: discovery, routes, rendering,
-assets, sitemap/robots/redirects, optimization, precompression, and the build manifest.
-**Deployment and sync are owned by the site repository’s pipeline**, not by kpress: the
-deploy target (Render, Pages, rsync to a host) and its credentials, cache headers, and
-rollout policy live in the site repo (Makefile, CI job, `render.yaml`). kpress never
-ships a deploy command.
-
-## The workflow
+## Build workflow
 
 ```bash
-kpress init                  # once: starter kpress.yml
-kpress build                 # render to publish.output_dir (default public/)
-kpress build --asset-mode sealed --optimizer full --precompress br
-kpress clean                 # remove output dir (manifest-guarded) + .kpress/
-kpress doctor --config kpress.yml   # verify required capabilities before CI use
+kpress init
+kpress build
+kpress doctor --profile optimize --allow-network
+kpress build --asset-mode hashed --optimizer full --precompress gzip
+kpress doctor --config kpress.yml
+kpress clean
 ```
 
-`kpress.yml` controls the site.
-A fuller example:
+A representative config is:
 
 ```yaml
 site:
-  title: My Site
   base_url: https://example.com
-  # Page chrome slots: opaque HTML owned by the site; kpress styles the
-  # wrappers (.kpress-site-header / .kpress-site-footer) but never interprets
-  # the content. Each slot also accepts a *_file variant read relative to
-  # this config file.
   header_html_file: _includes/header.html
-  footer_html: '<p>Published with <a href="https://github.com/jlevy/kpress">kpress</a></p>'
+  footer_html: '<p>Published with KPress</p>'
   head_extra_html: '<link rel="icon" href="/favicon.svg">'
 
 sources:
   - path: content
     include: ["**/*.md"]
-    # Verbatim-copy files (logos, favicons, images): copied to the output at
-    # their source-relative paths, collision-checked against rendered pages.
+    exclude: ["public/**", ".kpress/**"]
     static: ["favicon.svg", "img/**/*.png"]
 
 publish:
   output_dir: public
-  asset_mode: hashed     # hosted | linked | hashed | sealed
+  asset_mode: hashed
 
 optimizer:
-  mode: none             # or "full" (requires Node; never a silent fallback)
+  mode: none
+  precompress: []
 ```
 
-Pick the asset mode by hosting model:
+`site.base_url` is required to emit `sitemap.xml` and advertise it from `robots.txt`.
+Without it, KPress still builds a usable local site and omits the sitemap.
 
-| Mode | Use when |
+## Asset modes
+
+| Mode | Use |
 | --- | --- |
-| `hosted` | a long-running host serves package assets itself |
-| `linked` | local preview; stable, readable asset names |
-| `hashed` | production hosting with far-future caching (import map resolves JS) |
-| `sealed` | fully offline artifact; no external loads at page load |
+| `hosted` | An embedding application serves package assets at its own URL prefix. |
+| `linked` | Local review with stable, readable package-asset names. |
+| `hashed` | Production multi-file hosting with content-hashed KPress assets. |
 
-`inline` (single-file) is rejected until it is truly self-contained; use `sealed`.
+These modes shape KPress-owned assets only.
+Document-relative files and external URLs remain the consuming project’s responsibility.
+`hashed` is not an offline-verification or external-asset-fetching guarantee.
+`inline` is rejected for site builds until the reader modules and fonts can form a
+genuinely self-contained file.
 
-The optimizer (`full`, html-minifier-next) and Brotli precompression need their
-toolchains present; selection without a toolchain is a hard error, never a silent
-downgrade. `kpress doctor` preflights both.
+The optional `full` optimizer needs Node with npm.
+Bootstrap its reviewed, locked toolchain once with
+`kpress doctor --profile optimize --allow-network`; builds never fetch implicitly.
+Brotli needs `kpress[optimize]`. Selecting a missing toolchain is a hard error; KPress
+never silently downgrades the build.
 
-## Pipelines wrap kpress
+## Wrap KPress in a site pipeline
 
-Generated content (directory pages from data files, API-derived markdown) is produced by
-site-owned scripts *before* `kpress build`; kpress only sees Markdown sources plus
-`sources[].static` passthrough files.
-The canonical pattern:
+Generate site-owned Markdown before calling KPress, then deploy the complete output
+directory with the site’s tooling:
 
 ```makefile
-KPRESS := uvx kpress@0.0.1   # pin the version
+KPRESS := uv run kpress
 
 build:
 	python scripts/generate_pages.py
@@ -84,20 +79,21 @@ clean:
 	$(KPRESS) clean
 ```
 
-CI should run the same `make build` on every PR so site breakage is caught before
-deploy; the deploy step then publishes `public/` with the site’s own tooling.
+For Python-only orchestration, construct `KPressConfig` and pass a
+`BuildExtensions.pipeline`. Built-in stage names are `none` and `full`; custom stages
+use their own unprefixed names.
 
-## Verifying a build
+## Verify the result
 
-- The build manifest (`_kpress/kpress-manifest.json`) lists every emitted file with
-  content hashes; rebuilds purge previously-manifested files first, so the output is a
-  pure function of current inputs.
-- `tests/test_optimized_build_assets.py` pins that optimized hashed/sealed builds emit
-  resolvable asset references (import map included); `tests/test_clean_room_wheel.py`
-  pins that all of this works from the installed wheel outside the repo.
-- For a manual offline check, build `--asset-mode sealed`, open the output over
-  `file://` or a local server with the network disabled, and confirm reader features
-  (TOC, tooltips, code copy) work.
+- Serve the complete output directory over HTTP and crawl every route and asset.
+- Inspect `_kpress/kpress-manifest.json`. Its `pipeline` records configured stages; each
+  file’s `applied_pipeline` records the stages that changed that file.
+- Confirm content-local assets were copied through `sources[].static` or another
+  site-owned step.
+- Run `kpress doctor --config kpress.yml` in CI before a build that requests optional
+  capabilities.
+- Exercise the tagged wheel outside the source checkout; the clean-room package test
+  does this for KPress itself.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

@@ -50,17 +50,15 @@ is the architecture and public-contract reference.
 
 ## Conventions & Patterns
 
-- **Rendering: all HTML lives in `src/kpress/format/templates/*.jinja`, never in
-  Python.** Build markup by adding/editing a template and rendering it through the one
-  strict environment in [`format/templating.py`](src/kpress/format/templating.py)
-  (`render_template`); never assemble HTML with Python f-strings or string
-  concatenation. The environment is `StrictUndefined` + autoescape, so a missing/typo’d
-  variable is an immediate hard failure and plain values are escaped by default.
-  Mark trusted markup with `| safe` in the template.
-  Every template’s public variables are pinned in `contract.PUBLIC_TEMPLATE_VARIABLES`
-  and the template must actually be rendered by the code (tests enforce both).
-  This rule exists because the kash→kpress extraction once left the templates orphaned
-  while rendering happened in f-strings; do not reintroduce that split.
+- **Rendering truth:** `page.html.jinja` is the one live packaged template and owns the
+  standalone page shell.
+  Its public variables are pinned in `contract.PUBLIC_TEMPLATE_VARIABLES` and it renders
+  through the strict environment in
+  [`format/templating.py`](src/kpress/format/templating.py).
+  Fragment and component markup currently lives in `format/render.py` and
+  `format/markdown.py`; keep changes local to the existing owner.
+  Moving that markup into templates is a separate migration and must switch code and
+  tests in the same patch—never add an unused template.
 - The public surface (Python names, CSS classes/variables, template variables, data
   attributes, manifest markers) is pinned in `kpress.contract` and enforced by tests.
   Change it only with contract, docs, tests, and goldens updated in the same patch,

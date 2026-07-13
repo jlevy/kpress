@@ -84,10 +84,10 @@ def test_convert_document_renames_txt_to_md_and_passes_through(tmp_path: Path) -
     assert out.read_text(encoding="utf-8") == "paragraph one\n\nparagraph two\n"
 
 
-def test_convert_document_html_emits_clear_extra_diagnostic(tmp_path: Path) -> None:
+def test_convert_document_html_emits_clear_unsupported_diagnostic(tmp_path: Path) -> None:
     """The earlier behavior of replacing <br> with \\n in HTML was a near-empty
-    pseudo-conversion that silently misled users. Now we surface the missing
-    optional extra by name, write no output, and let the caller decide."""
+    pseudo-conversion that silently misled users. Now we state the public support
+    boundary, write no output, and let the caller choose an external converter."""
 
     src = tmp_path / "page.html"
     src.write_text(
@@ -99,7 +99,8 @@ def test_convert_document_html_emits_clear_extra_diagnostic(tmp_path: Path) -> N
 
     assert result.outputs == []
     assert len(result.diagnostics) == 1
-    assert "kpress[convert-html]" in result.diagnostics[0]
+    assert "not supported by KPress 0.1.0" in result.diagnostics[0]
+    assert "external tool" in result.diagnostics[0]
     # No fake "converted" output left behind.
     assert not (tmp_path / ".kpress" / "workspace" / "page.md").exists()
 
@@ -114,7 +115,8 @@ def test_convert_document_unknown_extension_lists_supported_inputs(tmp_path: Pat
     assert len(result.diagnostics) == 1
     diag = result.diagnostics[0]
     assert ".xyz" in diag
-    assert ".md" in diag and ".html" in diag
+    assert ".md" in diag
+    assert ".html" not in diag
 
 
 def test_convert_document_honors_explicit_output_path(tmp_path: Path) -> None:

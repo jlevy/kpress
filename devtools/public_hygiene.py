@@ -24,6 +24,7 @@ TEXT_SUFFIXES: Final = {
 }
 
 PUBLIC_ROOT_FILES: Final = (
+    "AGENTS.md",
     "CONTRIBUTING.md",
     "NOTICE.md",
     "README.md",
@@ -38,7 +39,7 @@ PUBLIC_ROOT_FILES: Final = (
     "tsconfig.json",
 )
 
-PUBLIC_DIRS: Final = ("docs", "src/kpress")
+PUBLIC_DIRS: Final = (".agents", ".claude", "docs", "examples", "src/kpress", "tests")
 
 RULE_PATTERNS: Final = (
     (

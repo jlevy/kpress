@@ -95,6 +95,29 @@ describe("ready-pass fault isolation", () => {
   });
 });
 
+describe("host lifecycle", () => {
+  it("registers at import and retains teardown through the behavior disposer", async () => {
+    const runtime = await importJs("runtime.js");
+    const host = await importJs("host.js");
+    expect(host.HOST_BEHAVIOR_ID).toBe("host");
+    expect(typeof host.initKpressHost).toBe("function");
+
+    const calls = [];
+    runtime.behaviors.override("host", {
+      bind: () => {
+        calls.push("bind");
+        return () => calls.push("dispose");
+      },
+    });
+    expect(calls).toEqual([]);
+
+    fireReady();
+    expect(calls).toEqual(["bind"]);
+    runtime.behaviors.rebind("host");
+    expect(calls).toEqual(["bind", "dispose", "bind"]);
+  });
+});
+
 describe("pre-apply overrides really replace built-ins", () => {
   it('override("video") suppresses built-in embedding of late-injected placeholders', async () => {
     const { behaviors } = await importJs("runtime.js");
