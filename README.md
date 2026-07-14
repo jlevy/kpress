@@ -103,9 +103,8 @@ maintained fork, but should treat that as a separate, faster-moving consumption 
 record the pin.
 
 ```bash
-uv sync --all-extras
-make lint-check
-uv run pytest
+make install
+make verify
 ```
 
 Architecture and stability contracts live in

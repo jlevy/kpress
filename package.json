@@ -3,14 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "description": "Pinned JS toolchain for KPress: git hooks (lefthook) and the lint gate's Biome/tsc/vitest checks. The Python package lives under src/kpress/.",
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "npm": ">=11.10.0 <12"
+  },
   "scripts": {
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.14",
-    "happy-dom": "20.9.0",
-    "lefthook": "2.1.6",
+    "@biomejs/biome": "2.5.1",
+    "happy-dom": "20.10.6",
+    "lefthook": "2.1.9",
     "typescript": "6.0.3",
-    "vitest": "4.1.5"
+    "vitest": "4.1.9"
   }
 }

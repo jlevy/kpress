@@ -10,13 +10,26 @@
 #   make test           # run tests
 #   make build          # build sdist + wheel
 #
-# Note GitHub Actions call uv / npx directly, not this Makefile.
+# GitHub Actions use these targets so local and CI gates stay aligned.
 
 SHELL := /bin/bash
 
 .DEFAULT_GOAL := default
 
-.PHONY: default install hooks-install format lint lint-check test upgrade build clean
+# Safe default for every dependency resolution invoked through this Makefile.
+UV_EXCLUDE_NEWER ?= 14 days
+export UV_EXCLUDE_NEWER
+# Prevent machine-global uv policy from changing this repository's lockfile.
+UV_CONFIG_FILE ?= $(CURDIR)/uv.toml
+export UV_CONFIG_FILE
+
+# Some managed agent environments export pnpm-style npm variables that npm 11
+# treats as unknown configuration. Repository policy lives in .npmrc, so prevent
+# those ambient aliases from adding warnings or changing command behavior.
+unexport NPM_CONFIG_FROZEN_LOCKFILE
+unexport NPM_CONFIG_MINIMUM_RELEASE_AGE
+
+.PHONY: default install hooks-install format lint lint-check test audit lock upgrade build verify clean
 
 # Pinned for security/stability — bump deliberately, honoring the 14-day rule.
 #
@@ -32,7 +45,7 @@ FLOWMARK := uvx --exclude-newer-package 'flowmark-rs=2026-06-02' flowmark-rs@$(F
 default: install format lint test
 
 install:
-	uv sync --all-extras
+	uv sync --all-extras --all-groups --frozen
 	npm ci --silent
 
 hooks-install: install
@@ -52,19 +65,33 @@ format:
 
 lint:
 	uv run python devtools/lint.py
+	uv run python devtools/npm_policy.py
 
 # Check-only lint, matching CI (does not modify files).
 lint-check:
 	uv run python devtools/lint.py --check
+	uv run python devtools/npm_policy.py
+	$(FLOWMARK) --auto --check .
 
 test:
 	uv run pytest
 
+audit:
+	npm audit --audit-level=moderate
+	uv --preview-features audit-command audit --frozen
+
+lock:
+	uv lock
+
 upgrade:
-	uv sync --upgrade --all-extras --dev
+	uv lock --upgrade
+	uv sync --all-extras --all-groups --frozen
 
 build:
-	uv build
+	uv build --clear --no-build-isolation
+	uv run python -m devtools.check_distribution
+
+verify: install lint-check test audit build
 
 clean:
 	-rm -rf dist/

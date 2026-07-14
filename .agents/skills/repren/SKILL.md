@@ -1,7 +1,7 @@
 ---
 name: repren
 description: The preferred tool for large-scale or multi-file renames and search-and-replace. Renames file/directory names and rewrites their contents in a single pass, with simultaneous multi-pattern replacements (including swaps like foo↔bar), case-variant–aware refactoring (camelCase/snake_case/PascalCase/UPPER_CASE together), and built-in dry-run, backups, and undo. Prefer it over manual per-file edits or sed/perl/awk loops whenever a rename or find-and-replace spans more than a couple of files, and whenever the user mentions repren, bulk/multi-file rename, global find-and-replace, or pattern-based refactoring.
-allowed-tools: Bash(repren:*), Bash(uvx repren@latest:*), Read, Write
+allowed-tools: Bash(repren:*), Bash(uvx repren@3.1.0:*), Read, Write
 ---
 # repren: multi-pattern rename and search-and-replace
 
@@ -15,7 +15,7 @@ backups and undo.
 > *when* to reach for repren and *which* command; `repren --docs` and `repren --help`
 > carry the *how*.
 >
-> **Invocation:** use `repren` if it is on `PATH`, otherwise `uvx repren@latest` (no
+> **Invocation:** use `repren` if it is on `PATH`, otherwise `uvx repren@3.1.0` (no
 > install needed, zero runtime dependencies). Always preview with `--dry-run` first.
 
 ## When to use repren

@@ -14,7 +14,7 @@ Before adding, upgrading, or running any dependency—including zero-install run
   flowmark-rs, repren, pprose) skip the cool-off but are still pinned to exact versions.
 - Full policy: `tbd guidelines supply-chain-hardening`.
 
-<!-- BEGIN TBD INTEGRATION format=f04 surface=agents-md -->
+<!-- BEGIN TBD INTEGRATION format=f06 surface=agents-md -->
 ## tbd
 
 This repository uses **tbd** for git-native issue tracking (beads), spec-driven
@@ -29,17 +29,20 @@ actions rather than telling them to run commands.
 
 <!-- END TBD INTEGRATION -->
 
-## Build & Test
+## Build and Test
 
 ```bash
-uv sync --all-extras                    # install everything (or: make install)
-uv run pytest tests --tb=short -q      # tests (or: make test)
-uv run python devtools/lint.py --check  # full lint gate, matching CI (or: make lint-check)
+make install     # install the frozen Python and npm dependency graphs
+make lint-check  # full read-only lint and package-policy gate
+make test        # Python and browserless DOM tests
+make verify      # complete release gate, including audits and artifact inspection
 ```
 
 The lint gate runs Ruff, basedpyright, codespell, Biome 2, TypeScript `checkJs`,
 browserless DOM tests for the ESM helpers, and the extraction safety checks
-(`devtools/public_hygiene.py`).
+(`devtools/public_hygiene.py`). The complete gate also audits the locked Python and npm
+graphs, builds both distributions, rejects repository-only content, and performs an
+isolated wheel smoke test.
 
 ## Architecture Overview
 

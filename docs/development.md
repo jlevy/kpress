@@ -2,19 +2,19 @@
 
 ## Prerequisites
 
-Install a supported Python and uv as described in [Installation](installation.md).
-Development also requires [Node.js](https://nodejs.org/) with npm.
-The lint gate uses the exact versions in `package.json` and `package-lock.json` for
-Biome, TypeScript `checkJs`, and browserless Vitest tests over the native ESM assets
-shipped in the wheel.
+Install a supported Python and uv 0.11.21 or newer as described in
+[Installation](installation.md).
+Development also requires Node.js 24.18.x and npm 11.10.x or newer within the major
+versions permitted by `package.json`. The lint gate uses the exact versions in
+`package.json` and `package-lock.json` for Biome, TypeScript `checkJs`, and browserless
+Vitest tests over the native ESM assets shipped in the wheel.
 
 Fork and clone [jlevy/kpress](https://github.com/jlevy/kpress).
 Run all commands below from the repository root.
 
 ## Common Workflows
 
-The `Makefile` provides local shortcuts.
-GitHub Actions invoke the underlying uv and npm commands directly.
+The `Makefile` owns the local and GitHub Actions workflows.
 
 ```shell
 # Synchronize the Python and JavaScript environments from the repository locks.
@@ -43,18 +43,25 @@ make lint-check
 # Run Python tests.
 make test
 
+# Audit the frozen Python and npm dependency graphs.
+make audit
+
+# Run the complete read-only release gate: install, lint, tests, audits, and builds.
+make verify
+
 # Delete local build artifacts and installed environments.
 make clean
 ```
 
-Direct equivalents used by CI and focused local work:
+Focused equivalents used while diagnosing an individual gate:
 
 ```shell
-UV_EXCLUDE_NEWER="14 days" uv sync --all-extras --frozen
+UV_CONFIG_FILE=uv.toml uv sync --all-extras --all-groups --frozen
 npm ci
 uv run pytest tests --tb=short -q
 uv run python devtools/lint.py --check
-uv build
+make audit
+make build
 ```
 
 Install the repository hooks after the first environment sync:
@@ -73,6 +80,11 @@ Every change must have a concrete reason, respect the 14-day cool-off unless a
 documented exception applies, preserve exact lockfile resolution, disable install
 scripts by default, and include a review of the lockfile diff and vulnerability-audit
 results.
+
+`uv.toml` applies the repository-wide uv version and cool-off policy.
+`package.json`, `.npmrc`, and the npm lock enforce the corresponding Node, npm,
+install-script, and release-age policy.
+`devtools/npm_policy.py` prevents CI or release workflows from bypassing those controls.
 
 `make upgrade` exists for a deliberate, reviewed re-resolution.
 Do not run it as routine maintenance or use an unpinned `@latest` or zero-install

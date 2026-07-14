@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+ROOT = Path(__file__).resolve().parents[1]
+
 TEXT_SUFFIXES: Final = {
     ".css",
     ".html",
@@ -29,17 +31,30 @@ PUBLIC_ROOT_FILES: Final = (
     "NOTICE.md",
     "README.md",
     "SECURITY.md",
+    "SUPPLY-CHAIN-SECURITY.md",
     "TODO.md",
     # docs/*.md files are covered by the "docs" entry in PUBLIC_DIRS; listing
     # them here too would scan them twice and duplicate findings.
-    "pyproject.toml",
+    ".copier-answers.yml",
     "package.json",
+    "pyproject.toml",
     "lefthook.yml",
     "biome.json",
     "tsconfig.json",
+    "uv.toml",
 )
 
-PUBLIC_DIRS: Final = (".agents", ".claude", "docs", "examples", "src/kpress", "tests")
+PUBLIC_DIRS: Final = (
+    ".agents",
+    ".claude",
+    ".codex",
+    ".github",
+    "devtools",
+    "docs",
+    "examples",
+    "src/kpress",
+    "tests",
+)
 
 RULE_PATTERNS: Final = (
     (
@@ -131,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    root = Path(__file__).resolve().parents[1]
+    root = ROOT
     paths = args.paths or public_package_paths(root)
     findings = find_violations(paths)
     if not findings:
