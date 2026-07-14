@@ -38,6 +38,10 @@ SOURCE_PREVIEW_MAX_BYTES = 512 * 1024
 # lands in class/id/data attributes (a config key is host data, not trusted markup).
 _WIDGET_ID_RE = re.compile(r"[a-z][a-z0-9-]*")
 _CLASS_ATTRIBUTE_RE = re.compile(r"class=(?P<quote>['\"])(?P<classes>.*?)(?P=quote)")
+_SAME_DOCUMENT_LINK_RE = re.compile(
+    r"<a\b[^>]*\bhref=(?P<quote>['\"])#[^'\"]+(?P=quote)",
+    re.IGNORECASE,
+)
 
 
 @lru_cache(maxsize=1)
@@ -382,7 +386,7 @@ def _render_asset_manifest(
         entry_points.add("js/settings-widget.js")
     if tree is not None and _should_include_toc(tree, options):
         entry_points.add("js/toc.js")
-    if "kpress-footnote-ref" in html:
+    if tree is not None and _SAME_DOCUMENT_LINK_RE.search(tree.html):
         entry_points.add("js/tooltips.js")
     if _has_css_class(html, "kpress-code"):
         entry_points.add("js/code-copy.js")

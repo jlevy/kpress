@@ -341,6 +341,28 @@ def test_auto_policy_rich_fragment_loads_only_feature_modules_and_dependencies()
     assert "js/viewport.js" not in assets
 
 
+def test_auto_policy_includes_tooltips_for_same_document_links() -> None:
+    markdown = "# Overview\n\n[Jump to details](#details)\n\n## Details\n"
+    rendered = render_fragment(
+        DocumentInput(
+            title="Overview",
+            source_text=markdown,
+            source_path="overview.md",
+            body_markdown=markdown,
+        ),
+        RenderOptions(
+            include_toc="off",
+            theme_mode="light",
+            widgets={"settings": "off"},
+        ),
+    )
+    assets = rendered.assets.by_id()
+
+    assert assets["js/tooltips.js"].entry_point is True
+    assert assets["js/runtime.js"].entry_point is False
+    assert assets["js/viewport.js"].entry_point is False
+
+
 @pytest.mark.parametrize(
     ("body_html", "expected_module"),
     [
