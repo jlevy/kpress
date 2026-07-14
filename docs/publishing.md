@@ -26,14 +26,17 @@ release.
 2. Run the complete local gate:
 
    ```bash
-   make lint-check
-   uv run pytest
-   uv build
+   make verify
    ```
 
-3. Inspect both distributions and install the wheel into a disposable environment.
-   Run `kpress --version`, `kpress --help`, `kpress doctor`, the README quickstart, and
-   all bundled examples outside the checkout.
+   This installs only from the locks, runs the Python and browser quality gates, audits
+   both dependency graphs, builds the source distribution and wheel, rejects repository
+   internals from either artifact, and installs the wheel into an isolated environment
+   for import, resource, and CLI smokes.
+
+3. Inspect both distributions.
+   Run the README quickstart and all bundled examples outside the checkout when a
+   release changes public behavior or packaged assets.
 
 4. Update `docs/releases/X.Y.Z.md` and confirm the README install command names the new
    release.

@@ -71,14 +71,18 @@ pdf = [
 # ---- Dev dependencies ----
 
 [dependency-groups]
+build = [
+    "hatchling==1.30.1",
+    "uv-dynamic-versioning==0.14.0",
+]
 dev = [
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-sugar>=1.1.1",
-    "pytest-timeout>=2.3.1",
-    "ruff>=0.15.12",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.15.20",
     "codespell>=2.4.2",
     "rich>=15.0.0",
-    "basedpyright>=1.39.3",
+    "basedpyright>=1.39.9",
     "funlog>=0.2.1",
 ]
 
@@ -92,7 +96,7 @@ kpress = "kpress.cli:main"
 # https://github.com/ninoseki/uv-dynamic-versioning/
 
 [build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
+requires = ["hatchling==1.30.1", "uv-dynamic-versioning==0.14.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
@@ -105,6 +109,21 @@ source = "uv-dynamic-versioning"
 vcs = "git"
 style = "pep440"
 bump = true
+
+[tool.hatch.build]
+exclude = [
+    "/.agents/",
+    "/.claude/",
+    "/.codex/",
+    "/.github/",
+    "/.tbd/",
+    "/.venv/",
+    "/.copier-answers.yml",
+    "/dist/",
+    "/node_modules/",
+    "/AGENTS.md",
+    "/CLAUDE.md",
+]
 
 [tool.hatch.build.targets.wheel]
 # The source location for the package. Hatchling ships everything under it,
