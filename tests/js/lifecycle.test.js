@@ -11,8 +11,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * modules and the test share one runtime instance per test.
  */
 
+const moduleImports = Object.freeze({
+  "host.js": () => import("../../src/kpress/format/static/js/host.js"),
+  "runtime.js": () => import("../../src/kpress/format/static/js/runtime.js"),
+  "tables.js": () => import("../../src/kpress/format/static/js/tables.js"),
+  "theme.js": () => import("../../src/kpress/format/static/js/theme.js"),
+  "tooltips.js": () => import("../../src/kpress/format/static/js/tooltips.js"),
+  "video-popover.js": () => import("../../src/kpress/format/static/js/video-popover.js"),
+});
+
 /** Import a module fresh within this test's reset module graph. */
-const importJs = (name) => import(`../../src/kpress/format/static/js/${name}`);
+const importJs = (/** @type {keyof typeof moduleImports} */ name) => moduleImports[name]();
 
 function forceLoadingState() {
   Object.defineProperty(document, "readyState", {

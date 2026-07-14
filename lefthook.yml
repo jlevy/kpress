@@ -55,6 +55,8 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
+    package-policy:
+      run: uv run python devtools/npm_policy.py
     public-hygiene:
       run: uv run python devtools/public_hygiene.py
     tests:

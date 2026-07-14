@@ -33,6 +33,13 @@ Completed release gates:
 | Deterministic full optimizer | `kpr-4cds` | Closed; a reviewed lock ships, cold-cache bootstrap uses `npm ci`, doctor’s network flag is real, and preflight precedes output mutation. |
 | Vendored-asset licensing | `kpr-6xq2` | Closed; complete Lucide/Feather, KaTeX, PT Serif, and Source Sans 3 texts ship in the wheel. |
 
+Completed maintenance gates:
+
+| Gate | Bead | Result |
+| --- | --- | --- |
+| Dependency vulnerability monitoring | `kpr-nev3` | GitHub dependency alerts and automated security fixes are enabled; the release gate audits the frozen Python and npm dependency graphs. |
+| Node runner readiness | `kpr-gkj6` | CI uses the full-SHA-pinned Node setup action with the current Node 24.18 and npm 11 tooling floor. |
+
 ## Capability Matrix
 
 “Automated” means a current test or quality gate exercises the capability.
@@ -50,8 +57,8 @@ not count as visual acceptance.
 | Optimizer | `none` and optional `full` stages work; a reviewed npm lock ships, cold-cache bootstrap uses `npm ci`, and preflight runs before output mutation | Optimizer, pipeline, manifest, doctor network-semantics, cold/offline/error, and preflight tests | Warm and cold cache paths are verified on the supported platforms | — |
 | CLI and local workflows | `init`, `convert`, `format`, `render`, `paste`, `files`, `export`, `clean`, `build`, `optimize`, and `doctor` have tested supported paths; unsupported source conversion is explicit | CLI, workflow, clean-room, and wheel smoke tests | HTML paths are verified; PDF delegates to the real browser-print pipeline | `kpr-qmii` for full visual acceptance |
 | Print and PDF | Print CSS and a Playwright/Chromium browser-PDF backend exist; no placeholder PDF path is exposed | Print-contract, missing-dependency, and browser-backend unit tests | Full print-preview/PDF artifact acceptance remains open | `kpr-qmii` |
-| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | PyPI Trusted Publishing and external `kpress==0.2.0` version, help, doctor, and minimal static-site build are verified | — |
-| Platforms and maintenance | Python 3.12–3.14 on Linux/macOS is the declared and verified implementation boundary | CI covers supported Python versions on Ubuntu; local macOS gates pass | Native Windows support is not verified or claimed | `kpr-isp2`, `kpr-nev3`, `kpr-gkj6` |
+| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, locked-graph vulnerability audits, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | PyPI Trusted Publishing and external `kpress==0.2.0` version, help, doctor, and minimal static-site build are verified | — |
+| Platforms and maintenance | Python 3.12–3.14 on Linux/macOS is the declared and verified implementation boundary; dependency alerts, automated security fixes, and current Node runner support are enabled | CI covers supported Python versions on Ubuntu; local macOS gates pass | Native Windows support is not verified or claimed | `kpr-isp2` |
 
 ## Prioritized Backlog
 
@@ -61,7 +68,6 @@ No P1 release gates remain open.
 
 ### P2: Stabilization After the First Alpha
 
-- `kpr-nev3`: enable public dependency vulnerability monitoring
 - `kpr-qmii`: complete the real-browser and print acceptance matrix
 - `kpr-1zxy`: expand representative document and provider fixtures
 - `kpr-vxy5`: audit accessibility and keyboard behavior
@@ -73,7 +79,6 @@ No P1 release gates remain open.
 
 ### P3: Deferred Evolution
 
-- `kpr-gkj6`: update CI’s Node setup action before its runner deadline
 - `kpr-isp2`: restore and verify native Windows support
 - `kpr-xsog`: design verified offline assets and truly self-contained output
 - `kpr-ef65`: evaluate schema-checked simple CSS-variable configuration
