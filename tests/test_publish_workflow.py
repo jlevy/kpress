@@ -59,6 +59,12 @@ publish:
     assert (tmp_path / "public" / "index.html").exists()
     assert (tmp_path / "public" / "_kpress" / "kpress-manifest.json").exists()
     assert report.routes == {"/": "index.html"}
+    emitted_assets = {asset.path for asset in report.assets}
+    assert "js/settings-widget.js" in emitted_assets
+    assert "js/runtime.js" in emitted_assets
+    assert "js/tables.js" not in emitted_assets
+    assert "js/toc.js" not in emitted_assets
+    assert "js/video-popover.js" not in emitted_assets
 
 
 def test_build_site_collects_document_image_assets(tmp_path: Path) -> None:

@@ -11,11 +11,8 @@ The wrapper's job, in order:
 1. Render each Markdown document to an HTML *fragment* with
    :func:`kpress.format.render_fragment`. The fragment is a fully-styled,
    self-contained ``<article>`` with no page chrome.
-2. Collect the asset references the fragments declare, and copy that asset
-   bundle out of the KPress package with :func:`kpress.get_static_asset`,
-   following both CSS ``url(...)`` references (fonts, KaTeX) and JS ``import``
-   statements so the transitive module graph (e.g. ``overlay.js`` ->
-   ``viewport.js``) is served too, not just the injected top-level scripts.
+2. Merge the complete per-render asset manifests and copy that package closure
+   with :func:`kpress.format.materialize_package_assets`.
 3. Drop each fragment into the outer ``templates/layout.html`` shell, wiring up
    the asset ``<link>`` / ``<script>`` tags the same way KPress itself would.
 4. Write each page to the URL the outer site map assigns it.
@@ -31,14 +28,18 @@ End to end means source -> built site -> navigable / uploadable::
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from dataclasses import dataclass
 from html import escape
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
-from kpress import get_static_asset
-from kpress.format import DocumentInput, RenderOptions, render_fragment
+from kpress.format import (
+    AssetManifest,
+    DocumentInput,
+    RenderOptions,
+    materialize_package_assets,
+    render_fragment,
+)
 
 HERE = Path(__file__).resolve().parent
 # Make the example's own modules (sitemap) and the shared runner importable
@@ -58,20 +59,12 @@ TEMPLATE = HERE / "templates" / "layout.html"
 # are served from the site root, so these are root-absolute URLs.
 ASSET_PREFIX = "/assets/kpress"
 
-_CSS_URL_RE = re.compile(r"""url\(\s*['"]?([^'")]+)['"]?\s*\)""")
-# Static/dynamic ESM specifiers: `... from "./x.js"`, `import "./x.js"`,
-# `import("./x.js")`. The reader modules import transitive deps (overlay.js,
-# viewport.js) that are NOT in the injected top-level list, so the wrapper must
-# walk this graph too or the browser 404s on the imports.
-_JS_IMPORT_RE = re.compile(r"""(?:\bfrom\b|\bimport\b)\s*\(?\s*['"]([^'"]+)['"]""")
-
 
 @dataclass
 class RenderedFragment:
     page: Page
     html: str
-    css: list[str]
-    js: list[str]
+    assets: AssetManifest
 
 
 def _render_all() -> list[RenderedFragment]:
@@ -92,104 +85,42 @@ def _render_all() -> list[RenderedFragment]:
             # matching what kpress's own static publisher does.
             trust_mode="sanitized",
         )
-        fragment = render_fragment(document, RenderOptions(asset_mode="linked"))
+        fragment = render_fragment(
+            document,
+            RenderOptions(
+                asset_mode="linked",
+                asset_url_prefix=ASSET_PREFIX + "/",
+            ),
+        )
         rendered.append(
             RenderedFragment(
                 page=page,
                 html=fragment.html,
-                css=list(fragment.assets.get("css", [])),
-                js=list(fragment.assets.get("js", [])),
+                assets=fragment.assets,
             )
         )
     return rendered
 
 
-def _copy_asset(ref: str, output_root: Path, copied: set[str]) -> None:
-    """Copy one packaged KPress asset, following the files it references.
-
-    ``ref`` is a package-relative path such as ``css/style-tokens.css`` or
-    ``js/toc.js``. Copying preserves that layout under
-    ``<output>/assets/kpress/`` so relative references keep resolving, and
-    recurses into them: CSS ``url("../fonts/x.woff2")`` and JS
-    ``import "./viewport.js"`` both point at files the browser will fetch, so a
-    wrapper that serves the declared assets must serve their dependencies too.
-    """
-
-    ref = ref.lstrip("/")
-    if ref in copied:
-        return
-    copied.add(ref)
-
-    asset = get_static_asset(ref)
-    dest = output_root.joinpath(*PurePosixPath(ref).parts)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(asset.content)
-
-    base = PurePosixPath(ref).parent
-    for target in _referenced_paths(ref, asset.content):
-        # Resolve "./" and "../" segments against the package asset root.
-        normalized = _normalize_relative(base, target)
-        if normalized is not None:
-            _copy_asset(normalized, output_root, copied)
-
-
-def _referenced_paths(ref: str, content: bytes) -> list[str]:
-    """Same-bundle relative paths a CSS/JS file references (to copy alongside it).
-
-    Returns CSS ``url(...)`` targets and JS ``import`` specifiers, skipping
-    absolute, remote, and ``data:`` URLs. KaTeX's vendored bundle is classic
-    (non-module) UMD whose deps come in via its own CSS ``url()`` refs, so its
-    JS is not import-scanned.
-    """
-
-    text = content.decode("utf-8", errors="replace")
-    if ref.endswith(".css"):
-        raw_refs = _CSS_URL_RE.findall(text)
-    elif ref.endswith(".js") and not ref.startswith("katex/"):
-        raw_refs = _JS_IMPORT_RE.findall(text)
-    else:
-        return []
-
-    out: list[str] = []
-    for raw in raw_refs:
-        target = raw.strip()
-        if not target or target.startswith(("data:", "http://", "https://", "/", "#")):
-            continue
-        out.append(target)
-    return out
-
-
-def _normalize_relative(base: PurePosixPath, target: str) -> str | None:
-    """Resolve ``target`` (a url() ref) relative to ``base`` into a clean ref."""
-
-    parts: list[str] = list(base.parts)
-    for segment in PurePosixPath(target).parts:
-        if segment == "..":
-            if parts:
-                parts.pop()
-            else:
-                return None  # escapes the asset root; ignore
-        elif segment == ".":
-            continue
-        else:
-            parts.append(segment)
-    return "/".join(parts) if parts else None
-
-
-def _link_tags(css: list[str], js: list[str]) -> tuple[str, str]:
+def _link_tags(manifest: AssetManifest) -> tuple[str, str]:
     """Build <link>/<script> tags the way KPress itself does."""
 
     style_tags = "\n  ".join(
-        f'<link rel="stylesheet" href="{escape(ASSET_PREFIX + "/" + path)}">' for path in css
+        f'<link rel="stylesheet" href="{escape(asset.url)}">'
+        for asset in manifest.browser_entry_points()
+        if asset.loading == "stylesheet"
     )
-    script_tags = "\n  ".join(_script_tag(path) for path in js)
+    script_tags = "\n  ".join(
+        _script_tag(asset.url, loading=asset.loading)
+        for asset in manifest.browser_entry_points()
+        if asset.loading in {"module", "classic"}
+    )
     return style_tags, script_tags
 
 
-def _script_tag(path: str) -> str:
-    src = escape(ASSET_PREFIX + "/" + path)
-    # Vendored KaTeX is classic UMD; KPress reader modules are native ESM.
-    if path.startswith("katex/"):
+def _script_tag(url: str, *, loading: str) -> str:
+    src = escape(url)
+    if loading == "classic":
         return f'<script defer src="{src}"></script>'
     return f'<script type="module" src="{src}"></script>'
 
@@ -218,14 +149,14 @@ def build(output_dir: Path | None = None) -> dict[str, str]:
 
     # Copy the union of every page's asset bundle once, into /assets/kpress.
     asset_root = output_root / "assets" / "kpress"
-    copied: set[str] = set()
+    site_assets = AssetManifest()
     for fragment in fragments:
-        for ref in (*fragment.css, *fragment.js):
-            _copy_asset(ref, asset_root, copied)
+        site_assets = site_assets.merged(fragment.assets)
+    materialize_package_assets(site_assets, asset_root)
 
     routes: dict[str, str] = {}
     for fragment in fragments:
-        styles, scripts = _link_tags(fragment.css, fragment.js)
+        styles, scripts = _link_tags(fragment.assets)
         page_html = (
             template.replace("{{title}}", escape(fragment.page.nav_title))
             .replace("{{nav}}", _nav_html(fragment.page))

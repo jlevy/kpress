@@ -8,7 +8,7 @@ this contract, docs, tests, and accepted goldens in the same patch.
 from __future__ import annotations
 
 CONTRACT_VERSION = "kpress-contract-v1"
-ASSET_MANIFEST_SCHEMA_VERSION = "kpress-asset-manifest-v1"
+ASSET_MANIFEST_SCHEMA_VERSION = "kpress-asset-manifest-v2"
 BUILD_MANIFEST_SCHEMA_VERSION = "kpress-build-manifest-v2"
 
 PUBLIC_PACKAGE_API = (
@@ -37,6 +37,7 @@ PUBLIC_PACKAGE_API = (
 PUBLIC_FORMAT_API = (
     "AssetManifest",
     "AssetMode",
+    "AssetPolicy",
     "AssetRef",
     "Diagnostic",
     "DiagramMode",
@@ -56,6 +57,7 @@ PUBLIC_FORMAT_API = (
     "TocEntry",
     "TocMode",
     "TrustMode",
+    "materialize_package_assets",
     "normalize_theme_mode",
     "parse_markdown",
     "read_package_text",
@@ -112,6 +114,8 @@ PUBLIC_CSS_CLASSES = (
     "kpress-doc-header",
     "kpress-doc-layout",
     "kpress-footnotes",
+    "kpress-figcaption",
+    "kpress-figure",
     "kpress-frontmatter-error",
     "kpress-frontmatter",
     "kpress-diagram",
@@ -120,6 +124,7 @@ PUBLIC_CSS_CLASSES = (
     "kpress-header-actions",
     "kpress-header-grow",
     "kpress-header-row",
+    "kpress-image",
     "kpress-long-list",
     "kpress-long-text",
     "kpress-math",
@@ -181,8 +186,10 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-doc-bg",
     "--kpress-doc-border",
     "--kpress-doc-code-bg",
+    "--kpress-doc-danger",
     "--kpress-doc-link",
     "--kpress-doc-muted",
+    "--kpress-doc-success",
     "--kpress-doc-surface-bg",
     "--kpress-doc-surface-hover",
     "--kpress-doc-surface-selected",
@@ -219,6 +226,55 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-card-shadow",
     "--kpress-settings-inset-block",
     "--kpress-settings-inset-inline",
+    "--kpress-print-font-size",
+    "--kpress-print-footer",
+    "--kpress-print-page-margin",
+)
+
+# The deliberately narrow fragment-hosting seam. PUBLIC_CSS_CLASSES and
+# PUBLIC_CSS_VARIABLES pin the complete reader contract; embedding applications
+# should prefer these subsets so they do not couple their shell to KPress chrome
+# or component internals. The data attributes on public tables are pinned
+# separately by PUBLIC_DATA_ATTRIBUTES.
+PUBLIC_FRAGMENT_CSS_CLASSES = (
+    "kpress",
+    "kpress-content-with-toc",
+    "kpress-doc",
+    "kpress-doc-layout",
+    "kpress-figcaption",
+    "kpress-figure",
+    "kpress-image",
+    "kpress-long-text",
+    "kpress-no-print",
+    "kpress-print-only",
+    "kpress-print-surface",
+    "kpress-prose",
+    "kpress-table",
+    "kpress-table-wrap",
+)
+
+PUBLIC_FRAGMENT_CSS_VARIABLES = (
+    "--kpress-doc-accent",
+    "--kpress-doc-bg",
+    "--kpress-doc-border",
+    "--kpress-doc-code-bg",
+    "--kpress-doc-danger",
+    "--kpress-doc-link",
+    "--kpress-doc-muted",
+    "--kpress-doc-success",
+    "--kpress-doc-surface-bg",
+    "--kpress-doc-surface-hover",
+    "--kpress-doc-surface-selected",
+    "--kpress-doc-text",
+    "--kpress-font-body",
+    "--kpress-font-footnote",
+    "--kpress-font-mono",
+    "--kpress-font-prose",
+    "--kpress-font-sans",
+    "--kpress-font-table",
+    "--kpress-measure",
+    "--kpress-page-margin-block-start",
+    "--kpress-page-margin-inline",
     "--kpress-print-font-size",
     "--kpress-print-footer",
     "--kpress-print-page-margin",
@@ -369,7 +425,7 @@ BUILD_MANIFEST_REQUIRED_KEYS = (
     "pipeline",
 )
 
-ASSET_MANIFEST_REQUIRED_KEYS = ("schema_version", "assets")
+ASSET_MANIFEST_REQUIRED_KEYS = ("schema_version", "assets", "import_map")
 
 __all__ = [
     "ASSET_MANIFEST_REQUIRED_KEYS",
@@ -382,6 +438,8 @@ __all__ = [
     "PUBLIC_CSS_VARIABLES",
     "PUBLIC_DATA_ATTRIBUTES",
     "PUBLIC_FORMAT_API",
+    "PUBLIC_FRAGMENT_CSS_CLASSES",
+    "PUBLIC_FRAGMENT_CSS_VARIABLES",
     "PUBLIC_HOST_CSS_VARIABLES",
     "PUBLIC_JS_EXPORTS",
     "PUBLIC_PACKAGE_API",

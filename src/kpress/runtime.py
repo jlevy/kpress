@@ -165,36 +165,6 @@ def _jsonable(value: Any) -> Any:
     return repr(value)
 
 
-def _asset_ref_to_url(ref: Any, *, prefix: str) -> str | None:
-    if ref is None:
-        return None
-    if isinstance(ref, str):
-        raw = ref
-    elif isinstance(ref, dict):
-        mapping = cast(Mapping[str, object], ref)
-        raw = str(
-            mapping.get("url")
-            or mapping.get("href")
-            or mapping.get("path")
-            or mapping.get("id")
-            or ""
-        )
-    else:
-        raw = str(
-            getattr(ref, "url", None)
-            or getattr(ref, "href", None)
-            or getattr(ref, "path", None)
-            or getattr(ref, "id", None)
-            or ""
-        )
-    raw = raw.strip()
-    if not raw:
-        return None
-    if raw.startswith(("http://", "https://", "/", "data:")):
-        return raw
-    return prefix.rstrip("/") + "/" + _ASSET_VERSION_SEGMENT + "/" + quote(raw.lstrip("/"))
-
-
 def static_asset_url(rel_path: str, *, prefix: str = "/kpress-static/") -> str:
     """Version-keyed URL for a packaged static asset.
 
@@ -207,23 +177,10 @@ def static_asset_url(rel_path: str, *, prefix: str = "/kpress-static/") -> str:
     return prefix.rstrip("/") + "/" + _ASSET_VERSION_SEGMENT + "/" + quote(rel_path.lstrip("/"))
 
 
-def _normalize_assets(result: RenderResult, *, prefix: str) -> dict[str, list[str]]:
-    out: dict[str, list[str]] = {"css": [], "js": []}
-    css_refs = result.assets.get("css") or result.assets.get("styles") or []
-    js_refs = result.assets.get("js") or result.assets.get("scripts") or []
-    for bucket, refs in (("css", css_refs), ("js", js_refs)):
-        for ref in refs:
-            url = _asset_ref_to_url(ref, prefix=prefix)
-            if url and url not in out[bucket]:
-                out[bucket].append(url)
-    return out
-
-
 def _normalize_render_result(
     result: RenderResult,
     *,
     profile: PrintProfile,
-    asset_url_prefix: str,
 ) -> dict[str, Any]:
     diagnostics = _jsonable(result.diagnostics)
     if diagnostics is None:
@@ -235,7 +192,7 @@ def _normalize_render_result(
         "html": result.html,
         "profile": result.profile or profile,
         "printable": bool(result.printable),
-        "assets": _normalize_assets(result, prefix=asset_url_prefix),
+        "assets": result.assets.as_dict(),
         "diagnostics": diagnostics,
     }
 
@@ -259,6 +216,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         __version__,
         request.theme_mode,
         request.resolved_theme,
+        request.asset_url_prefix,
         source_digest,
         # Widgets affect the echoed payload (and any widget-dependent render),
         # so they are part of the identity. Stable-stringified: dicts are not
@@ -318,8 +276,9 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         host=request.host,
         theme_mode=request.theme_mode,
         resolved_theme=request.resolved_theme,
-        asset_url_prefix=request.asset_url_prefix,
-        include_assets=True,
+        asset_url_prefix=(
+            request.asset_url_prefix.rstrip("/") + "/" + _ASSET_VERSION_SEGMENT + "/"
+        ),
         show_doc_header=request.show_doc_header,
         widgets=widgets,
         extra_tags=tuple(request.extra_tags),
@@ -341,7 +300,6 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
     normalized = _normalize_render_result(
         result,
         profile=profile,
-        asset_url_prefix=request.asset_url_prefix,
     )
     # Echo the resolved widget map (defaults merged, "off" removed, config
     # verbatim) so host-mounted widgets read the same data the standalone

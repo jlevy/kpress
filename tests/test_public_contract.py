@@ -20,6 +20,8 @@ from kpress.contract import (
     PUBLIC_CSS_VARIABLES,
     PUBLIC_DATA_ATTRIBUTES,
     PUBLIC_FORMAT_API,
+    PUBLIC_FRAGMENT_CSS_CLASSES,
+    PUBLIC_FRAGMENT_CSS_VARIABLES,
     PUBLIC_HOST_CSS_VARIABLES,
     PUBLIC_JS_EXPORTS,
     PUBLIC_PACKAGE_API,
@@ -145,6 +147,91 @@ def test_host_css_variable_seam_matches_shipped_css() -> None:
     assert consumed == set(PUBLIC_HOST_CSS_VARIABLES)
 
 
+def test_public_fragment_contract_is_a_stable_subset_of_the_reader_surface() -> None:
+    assert set(PUBLIC_FRAGMENT_CSS_CLASSES) <= set(PUBLIC_CSS_CLASSES)
+    assert set(PUBLIC_FRAGMENT_CSS_VARIABLES) <= set(PUBLIC_CSS_VARIABLES)
+    assert {
+        "kpress",
+        "kpress-doc",
+        "kpress-figure",
+        "kpress-figcaption",
+        "kpress-image",
+        "kpress-prose",
+        "kpress-table-wrap",
+        "kpress-table",
+        "kpress-print-surface",
+        "kpress-no-print",
+        "kpress-print-only",
+    } <= set(PUBLIC_FRAGMENT_CSS_CLASSES)
+    assert {
+        "--kpress-doc-bg",
+        "--kpress-doc-text",
+        "--kpress-doc-link",
+        "--kpress-doc-success",
+        "--kpress-doc-danger",
+        "--kpress-font-prose",
+        "--kpress-font-sans",
+        "--kpress-font-mono",
+        "--kpress-measure",
+        "--kpress-page-margin-inline",
+        "--kpress-page-margin-block-start",
+        "--kpress-print-page-margin",
+    } <= set(PUBLIC_FRAGMENT_CSS_VARIABLES)
+
+    design = (_KPRESS_ROOT / "docs/kpress-design.md").read_text(encoding="utf-8")
+    for hook in (
+        *PUBLIC_FRAGMENT_CSS_CLASSES,
+        *PUBLIC_FRAGMENT_CSS_VARIABLES,
+        *PUBLIC_DATA_ATTRIBUTES,
+    ):
+        assert f"`{hook}`" in design, f"undocumented public fragment hook: {hook}"
+
+
+def test_host_fragment_fixture_uses_only_pinned_structure_and_disables_settings() -> None:
+    markdown = """# Results
+
+| Ticker | Amount |
+| --- | ---: |
+| ACME | 12.5 |
+
+![Revenue chart](assets/revenue.svg "Quarterly revenue")
+"""
+    rendered = kpress_format.render_fragment(
+        kpress_format.DocumentInput(
+            title="Results",
+            source_text=markdown,
+            source_path="results.md",
+            body_markdown=markdown,
+            trust_mode="sanitized",
+        ),
+        kpress_format.RenderOptions(
+            include_toc="off",
+            theme_mode="dark",
+            resolved_theme="dark",
+            widgets={"settings": "off"},
+        ),
+    )
+
+    for css_class in (
+        "kpress",
+        "kpress-doc",
+        "kpress-figure",
+        "kpress-figcaption",
+        "kpress-image",
+        "kpress-prose",
+        "kpress-table-wrap",
+        "kpress-table",
+        "kpress-print-surface",
+    ):
+        assert css_class in PUBLIC_FRAGMENT_CSS_CLASSES
+        assert re.search(rf'class="[^"]*\b{re.escape(css_class)}\b', rendered.html)
+    for attribute in PUBLIC_DATA_ATTRIBUTES:
+        assert attribute in rendered.html
+    assert 'data-kpress-widget="settings"' not in rendered.html
+    assert "js/settings-widget.js" not in rendered.assets.by_id()
+    assert "js/theme.js" not in rendered.assets.by_id()
+
+
 def test_public_data_attributes_are_emitted_on_rendered_tables() -> None:
     tree = kpress_format.parse_markdown(
         "| Ticker | Amount |\n| --- | ---: |\n| ACME | 12.5 |",
@@ -247,7 +334,8 @@ def test_render_view_returns_jsonable_contract_payload_with_opaque_host() -> Non
         "widgets",
         "model",
     }
-    assert set(payload["assets"]) == {"css", "js"}
+    assert tuple(payload["assets"]) == ASSET_MANIFEST_REQUIRED_KEYS
+    assert payload["assets"]["schema_version"] == ASSET_MANIFEST_SCHEMA_VERSION
     # Embeds get the full page model in the payload — same pinned keys as the
     # static #kpress-page-model block.
     assert set(payload["model"]) == set(PUBLIC_PAGE_MODEL_KEYS)

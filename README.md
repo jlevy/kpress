@@ -4,12 +4,12 @@ KPress is a Python library and CLI that turns Markdown into polished HTML docume
 static sites. It owns document rendering, typography, reader interactions, and the build
 pipeline while leaving site semantics and deployment to the consuming project.
 
-KPress `0.1.0` is the first alpha for developers evaluating it in real projects.
+KPress `0.2.0` is an alpha for developers evaluating it in real projects.
 The document and publishing paths are usable and tested, but public seams may change by
 hard cut before a stable release.
 
 KPress requires Python 3.12 or newer.
-KPress `0.1.0` supports macOS and Linux; native Windows support is tracked for a later
+KPress `0.2.0` supports macOS and Linux; native Windows support is tracked for a later
 alpha (`kpr-isp2`).
 
 ## Install and Build a Site
@@ -17,7 +17,7 @@ alpha (`kpr-isp2`).
 Install the released package into a project:
 
 ```bash
-uv add kpress==0.1.0
+uv add kpress==0.2.0
 ```
 
 Create this minimal `kpress.yml`:
@@ -49,7 +49,7 @@ KPress copies eligible project-local media without rewriting its authored URLs a
 not fetch or verify external assets or seal a complete asset graph.
 Use `linked` for readable local asset names and `hosted` when an embedding application
 serves KPress assets itself.
-Truly self-contained single-file and verified offline output are not part of `0.1.0`.
+Truly self-contained single-file and verified offline output are not part of `0.2.0`.
 
 ## Use KPress as a Library
 
@@ -64,7 +64,10 @@ print(report.routes)
 
 Python hosts can instead construct a typed `KPressConfig`, render a standalone page with
 `kpress.format.render_page`, or render an embeddable fragment with
-`kpress.format.render_fragment`.
+`kpress.format.render_fragment`. Each render returns a typed, complete asset manifest;
+hosts can materialize its package closure with
+`kpress.format.materialize_package_assets` and emit tags only for its browser entry
+points.
 
 The three runnable examples cover the supported integration shapes:
 

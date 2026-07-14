@@ -6,12 +6,13 @@ import json
 import re
 import shutil
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlparse
 
 from kpress.errors import KPressPublishError
-from kpress.format import DocumentInput, RenderedPage, RenderOptions, render_page
+from kpress.format import AssetManifest, DocumentInput, RenderedPage, RenderOptions, render_page
 from kpress.format.assets import content_hash, package_asset_output_path
 from kpress.format.model import AssetMode, DiagramMode, OptimizerMode, ThemeMode
 from kpress.models import KPressExportRequest
@@ -48,6 +49,14 @@ def _base_dir(config: KPressConfig) -> Path:
     # One resolver for all three anchors (sources, output, asset boundary):
     # discovery and the build must never disagree on where the project tree is.
     return config_base_dir(config)
+
+
+@dataclass(frozen=True)
+class _PendingPage:
+    """Rendered page held until the union asset closure has been materialized."""
+
+    entry: RoutePlanEntry
+    page: RenderedPage
 
 
 def package_asset_prefix(base_url: str) -> str:
@@ -478,14 +487,6 @@ def build_site(
     assets: list[ManifestAsset] = []
     routes: dict[str, str] = {}
     copied_assets: set[Path] = set()
-    any_math = False
-    package_files, package_assets = copy_package_assets(
-        output_dir, asset_mode=asset_mode, optimizer=asset_optimizer
-    )
-    package_rewrites = _package_asset_rewrites(package_assets, asset_mode=asset_mode)
-    files.extend(package_files)
-    assets.extend(package_assets)
-
     source_roots = [
         (source, _source_root_for(config, base, source)) for source in discover_sources(config)
     ]
@@ -505,6 +506,8 @@ def build_site(
         {entry.route: config.build_date for entry in route_plan} if config.build_date else {}
     )
     output_dir_resolved = output_dir.resolve()
+    pending_pages: list[_PendingPage] = []
+    render_assets = AssetManifest()
     for entry in route_plan:
         source = entry.source
         route = entry.route
@@ -558,7 +561,39 @@ def build_site(
                 footer_html=config.footer_html,
             ),
         )
-        any_math = any_math or page.has_math
+        render_assets = render_assets.merged(page.assets)
+        pending_pages.append(_PendingPage(entry=entry, page=page))
+
+    package_render_assets = AssetManifest(
+        assets=[asset for asset in render_assets.assets if not asset.path.startswith("katex/")],
+        import_map=render_assets.import_map,
+    )
+    katex_render_assets = AssetManifest(
+        assets=[asset for asset in render_assets.assets if asset.path.startswith("katex/")]
+    )
+    package_files, package_assets = copy_package_assets(
+        output_dir,
+        asset_mode=asset_mode,
+        optimizer=asset_optimizer,
+        manifest=package_render_assets,
+    )
+    files.extend(package_files)
+    assets.extend(package_assets)
+    if katex_render_assets.assets:
+        katex_files, katex_assets = copy_katex_assets(
+            output_dir,
+            manifest=katex_render_assets,
+        )
+        files.extend(katex_files)
+        assets.extend(katex_assets)
+    package_rewrites = _package_asset_rewrites(package_assets, asset_mode=asset_mode)
+
+    for pending in pending_pages:
+        entry = pending.entry
+        page = pending.page
+        source = entry.source
+        route = entry.route
+        out_path = output_dir / entry.output_path
         rendered_html = _rewrite_package_asset_urls(page.html, package_rewrites)
         # Whole-page host transform (BuildExtensions.transform_page_html),
         # applied before the pipeline stages so stages see the final page.
@@ -586,11 +621,6 @@ def build_site(
             copied=copied_assets,
         ):
             files.append(_output_file(asset_path, output_dir))
-
-    if any_math:
-        katex_files, katex_assets = copy_katex_assets(output_dir)
-        files.extend(katex_files)
-        assets.extend(katex_assets)
 
     for path in write_site_files(
         output_dir,
@@ -692,10 +722,27 @@ def emit_standalone_assets(
 
     if asset_mode == "inline":
         return []
-    files, _assets = copy_package_assets(dest_html.parent, asset_mode=asset_mode)
+    package_manifest = None
+    katex_manifest = None
+    if page is not None:
+        package_manifest = AssetManifest(
+            assets=[asset for asset in page.assets.assets if not asset.path.startswith("katex/")],
+            import_map=page.assets.import_map,
+        )
+        katex_manifest = AssetManifest(
+            assets=[asset for asset in page.assets.assets if asset.path.startswith("katex/")]
+        )
+    files, _assets = copy_package_assets(
+        dest_html.parent,
+        asset_mode=asset_mode,
+        manifest=package_manifest,
+    )
     emitted = [dest_html.parent / file.path for file in files]
-    if page is not None and page.has_math:
-        katex_files, _katex_assets = copy_katex_assets(dest_html.parent)
+    if katex_manifest is not None and katex_manifest.assets:
+        katex_files, _katex_assets = copy_katex_assets(
+            dest_html.parent,
+            manifest=katex_manifest,
+        )
         emitted.extend(dest_html.parent / file.path for file in katex_files)
     if page is not None and source is not None:
         emitted.extend(
