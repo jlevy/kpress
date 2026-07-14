@@ -1,6 +1,6 @@
 # Installing uv and Python
 
-The KPress `0.1.0` target supports macOS and Linux with Python 3.12 or newer.
+KPress `0.2.0` supports macOS and Linux with Python 3.12 or newer.
 The current full optimizer uses a POSIX file lock, so Windows is not yet a supported
 runtime platform; native Windows support is tracked by `kpr-isp2`.
 

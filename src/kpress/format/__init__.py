@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
-from kpress.format.assets import AssetManifest, AssetRef, read_package_text
+from kpress.format.assets import (
+    AssetManifest,
+    AssetRef,
+    materialize_package_assets,
+    read_package_text,
+)
 from kpress.format.markdown import parse_markdown
 from kpress.format.model import (
     AssetMode,
+    AssetPolicy,
     Diagnostic,
     DiagramMode,
     DocumentInput,
@@ -28,6 +34,7 @@ from kpress.format.theme import FontSpec, ResolvedTheme, ThemeSpec, normalize_th
 __all__ = [
     "AssetManifest",
     "AssetMode",
+    "AssetPolicy",
     "AssetRef",
     "Diagnostic",
     "DiagramMode",
@@ -47,6 +54,7 @@ __all__ = [
     "TocEntry",
     "TocMode",
     "TrustMode",
+    "materialize_package_assets",
     "normalize_theme_mode",
     "parse_markdown",
     "read_package_text",

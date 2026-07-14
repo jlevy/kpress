@@ -47,8 +47,10 @@ def test_runtime_renders_and_caches_document() -> None:
     assert first == second
     assert first["type"] == "kpress-rendered-document"
     assert 'class="kpress kpress-doc kpress-print-surface"' in first["html"]
-    assert f"/kpress-static/{_VSEG}/css/document.css" in first["assets"]["css"]
-    assert f"/kpress-static/{_VSEG}/js/theme.js" in first["assets"]["js"]
+    assets = {row["id"]: row for row in first["assets"]["assets"]}
+    assert assets["css/document.css"]["public_url"] == (f"/kpress-static/{_VSEG}/css/document.css")
+    assert assets["js/theme.js"]["public_url"] == f"/kpress-static/{_VSEG}/js/theme.js"
+    assert first["assets"]["import_map"] == {}
 
 
 def test_runtime_renders_source_profile() -> None:

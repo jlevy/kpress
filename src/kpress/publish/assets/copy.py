@@ -20,8 +20,10 @@ from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
 from kpress.format.assets import (
+    AssetManifest,
     content_hash,
     katex_asset_manifest,
+    materialize_package_assets,
     package_asset_manifest,
     read_package_bytes,
 )
@@ -66,13 +68,48 @@ def _package_output_path_for_data(rel_path: str, *, mode: AssetMode, data: bytes
 
 
 def copy_package_assets(
-    output_dir: Path, *, asset_mode: AssetMode, optimizer: AssetOptimizer | None = None
+    output_dir: Path,
+    *,
+    asset_mode: AssetMode,
+    optimizer: AssetOptimizer | None = None,
+    manifest: AssetManifest | None = None,
 ) -> tuple[list[OutputFile], list[ManifestAsset]]:
     """Copy package-owned KPress assets into the static output tree."""
 
     files: list[OutputFile] = []
     assets: list[ManifestAsset] = []
-    manifest_assets = package_asset_manifest(mode=asset_mode).assets
+    resolved_manifest = manifest or package_asset_manifest(mode=asset_mode)
+    manifest_assets = resolved_manifest.assets
+
+    if optimizer is None and asset_mode != "inline":
+        asset_root = output_dir / "_kpress" / "assets"
+        for asset in materialize_package_assets(resolved_manifest, asset_root):
+            data = read_package_bytes(asset.path)
+            media_type = asset.media_type or _guess_media_type(asset.path)
+            if asset.output_path is None:
+                msg = f"KPress asset has no output path: {asset.id}"
+                raise ValueError(msg)
+            destination = asset_root / asset.output_path
+            rel = destination.relative_to(output_dir).as_posix()
+            files.append(
+                OutputFile(
+                    path=rel,
+                    kind=destination.suffix.lstrip("."),
+                    content_hash=content_hash(data),
+                    size=len(data),
+                )
+            )
+            assets.append(
+                ManifestAsset(
+                    path=asset.path,
+                    kind=asset.kind,
+                    source="package",
+                    output_path=rel,
+                    content_hash=content_hash(data),
+                    media_type=media_type,
+                )
+            )
+        return files, assets
 
     # Optimize every asset once up front so the hashed filename reflects the final bytes.
     optimized: dict[str, tuple[bytes, str, list[str]]] = {}
@@ -127,6 +164,8 @@ def copy_package_assets(
 
 def copy_katex_assets(
     output_dir: Path,
+    *,
+    manifest: AssetManifest | None = None,
 ) -> tuple[list[OutputFile], list[ManifestAsset]]:
     """Copy the vendored KaTeX bundle into the static output tree.
 
@@ -137,11 +176,15 @@ def copy_katex_assets(
 
     files: list[OutputFile] = []
     assets: list[ManifestAsset] = []
-    for asset in katex_asset_manifest().assets:
+    asset_root = output_dir / "_kpress" / "assets"
+    resolved_manifest = manifest or katex_asset_manifest(mode="linked")
+    for asset in materialize_package_assets(resolved_manifest, asset_root):
         data = read_package_bytes(asset.path)
         media_type = asset.media_type or _guess_media_type(asset.path)
-        destination = output_dir / "_kpress" / "assets" / asset.path
-        write_bytes_atomic(destination, data)
+        if asset.output_path is None:
+            msg = f"KPress asset has no output path: {asset.id}"
+            raise ValueError(msg)
+        destination = asset_root / asset.output_path
         rel = destination.relative_to(output_dir).as_posix()
         files.append(
             OutputFile(

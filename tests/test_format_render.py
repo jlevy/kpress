@@ -450,7 +450,7 @@ def test_source_profile_truncates_large_source_with_visible_warning() -> None:
             source_path="large.log",
             metadata={"size": len(source_text.encode("utf-8"))},
         ),
-        RenderOptions(print_profile="source", include_assets=False),
+        RenderOptions(print_profile="source", asset_policy="none"),
     )
 
     assert 'class="kpress-source-truncation-warning"' in fragment.html
