@@ -117,12 +117,12 @@ def test_wrapped_site_example_embeds_fragments(tmp_path: Path) -> None:
         for ref in re.findall(r'(?:href|src)="(/assets/kpress/[^"]+)"', html.read_text()):
             assert (tmp_path / ref.lstrip("/")).is_file(), f"broken asset link {ref}"
 
-    # The injected <script type="module"> entry points import transitive
-    # modules (overlay.js, viewport.js) that are NOT in the injected list. The
-    # wrapper must serve the whole import graph or the browser 404s on them.
+    # The injected settings entry point imports dependency-only modules. The
+    # wrapper serves that exact closure without also shipping unrelated modules.
     js_dir = tmp_path / "assets" / "kpress" / "js"
-    assert (js_dir / "overlay.js").is_file(), "transitive module overlay.js not copied"
-    assert (js_dir / "viewport.js").is_file(), "transitive module viewport.js not copied"
+    assert (js_dir / "icons.js").is_file(), "transitive module icons.js not copied"
+    assert (js_dir / "menu.js").is_file(), "transitive module menu.js not copied"
+    assert not (js_dir / "overlay.js").exists(), "unused overlay.js was copied"
     for module in js_dir.glob("*.js"):
         for spec in _ESM_IMPORT_RE.findall(module.read_text(encoding="utf-8")):
             if spec.startswith((".", "/")) and not spec.startswith(("http", "data:")):
@@ -144,9 +144,10 @@ def test_wrapped_site_zip_bundles_transitive_assets(tmp_path: Path) -> None:
     with zipfile.ZipFile(archive) as zf:
         names = set(zf.namelist())
     # Transitive ESM modules and fonts must ride along in the archive.
-    assert "assets/kpress/js/overlay.js" in names
-    assert "assets/kpress/js/viewport.js" in names
-    assert "assets/kpress/js/toc.js" in names
+    assert "assets/kpress/js/icons.js" in names
+    assert "assets/kpress/js/menu.js" in names
+    assert "assets/kpress/js/overlay.js" not in names
+    assert "assets/kpress/js/toc.js" not in names
     assert any(n.startswith("assets/kpress/fonts/") and n.endswith(".woff2") for n in names)
     # Every relative import inside a bundled module must also be in the archive.
     js_modules = [n for n in names if n.startswith("assets/kpress/js/") and n.endswith(".js")]

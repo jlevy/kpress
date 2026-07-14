@@ -5,10 +5,13 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from kpress.errors import KPressPublishError
 from kpress.models import PrintProfile, ThemeMode
+
+if TYPE_CHECKING:
+    from kpress.format.assets import AssetManifest
 
 DocumentProfile = PrintProfile
 # Trust modes: do we trust the person who wrote the content? See "The Document
@@ -21,6 +24,7 @@ DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
 ProseFont = Literal["serif", "sans"]
 AssetMode = Literal["hosted", "linked", "hashed", "inline"]
+AssetPolicy = Literal["none", "auto", "all"]
 OptimizerMode = Literal["none", "full"]
 
 
@@ -122,7 +126,12 @@ class RenderOptions:
     resolved_theme: Literal["light", "dark"] = "light"
     asset_url_prefix: str = "/kpress-static/"
     asset_mode: AssetMode = "hosted"
-    include_assets: bool = True
+    # Asset-selection policy for the returned typed manifest. "auto" includes
+    # the base styles/fonts plus only browser modules required by the rendered
+    # features; "none" returns an empty manifest; "all" returns the complete
+    # reader closure. Hosts that own theme resolution and chrome can produce a
+    # CSS-only plain fragment with theme_mode light/dark and settings disabled.
+    asset_policy: AssetPolicy = "auto"
     include_toc: TocMode = "auto"
     toc_min_headings: int = 4
     # The document profile renders an <h1> doc header from the title. Hosts
@@ -244,8 +253,8 @@ class RenderedDocument:
 
     html: str
     profile: PrintProfile
+    assets: AssetManifest
     printable: bool = True
-    assets: dict[str, list[str]] = field(default_factory=dict)
     diagnostics: list[Any] = field(default_factory=list)
     toc: list[TocEntry] = field(default_factory=list)
     has_math: bool = False
@@ -258,7 +267,7 @@ class RenderedPage:
     html: str
     profile: PrintProfile
     title: str
-    assets: dict[str, list[str]] = field(default_factory=dict)
+    assets: AssetManifest
     diagnostics: list[Any] = field(default_factory=list)
     has_math: bool = False
 

@@ -9,11 +9,14 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
+from kpress.errors import KPressPublishError
 from kpress.format.assets import (
-    katex_asset_refs,
-    package_asset_refs,
-    package_js_import_map,
+    AssetManifest,
+    AssetRef,
+    katex_asset_manifest,
+    package_asset_manifest,
     read_package_text,
+    resolve_package_asset_manifest,
 )
 from kpress.format.markdown import parse_markdown
 from kpress.format.model import (
@@ -34,6 +37,7 @@ SOURCE_PREVIEW_MAX_BYTES = 512 * 1024
 # Widget ids that get a mount element: plain kebab-case slugs only, since the id
 # lands in class/id/data attributes (a config key is host data, not trusted markup).
 _WIDGET_ID_RE = re.compile(r"[a-z][a-z0-9-]*")
+_CLASS_ATTRIBUTE_RE = re.compile(r"class=(?P<quote>['\"])(?P<classes>.*?)(?P=quote)")
 
 
 @lru_cache(maxsize=1)
@@ -74,6 +78,14 @@ def _should_include_toc(tree: DocumentTree, options: RenderOptions) -> bool:
     if options.include_toc == "on":
         return bool(tree.toc)
     return len(tree.toc) >= options.toc_min_headings
+
+
+def _has_css_class(html: str, css_class: str) -> bool:
+    """Return whether rendered HTML has a class token, independent of token order."""
+
+    return any(
+        css_class in match.group("classes").split() for match in _CLASS_ATTRIBUTE_RE.finditer(html)
+    )
 
 
 def _render_toc(tree: DocumentTree, options: RenderOptions) -> str:
@@ -319,17 +331,12 @@ def render_fragment(
     html = _icon_sprite() + html
 
     has_math = bool(tree and tree.has_math)
-    assets: dict[str, list[str]] = {"css": [], "js": []}
-    if options.include_assets:
-        assets = package_asset_refs(mode=options.asset_mode)
-        if has_math:
-            # Lazy `auto`: KaTeX assets are emitted only for documents that
-            # actually contain math, keeping no-math output math-asset-free.
-            katex = katex_asset_refs()
-            assets = {
-                "css": [*assets["css"], *katex["css"]],
-                "js": [*assets["js"], *katex["js"]],
-            }
+    assets = _render_asset_manifest(
+        html=html,
+        tree=tree,
+        options=options,
+        has_math=has_math,
+    )
     return RenderedDocument(
         html=html,
         profile=profile,
@@ -339,6 +346,68 @@ def render_fragment(
         toc=tree.toc if tree else [],
         has_math=has_math,
     )
+
+
+def _render_asset_manifest(
+    *,
+    html: str,
+    tree: DocumentTree | None,
+    options: RenderOptions,
+    has_math: bool,
+) -> AssetManifest:
+    if options.asset_policy == "none":
+        return AssetManifest()
+    if options.asset_policy == "all":
+        return package_asset_manifest(
+            mode=options.asset_mode,
+            prefix=options.asset_url_prefix,
+        ).merged(
+            katex_asset_manifest(
+                mode=options.asset_mode,
+                prefix=options.asset_url_prefix,
+            )
+        )
+    if options.asset_policy != "auto":
+        msg = (
+            f"Invalid KPress asset policy {options.asset_policy!r}; "
+            "expected 'none', 'auto', or 'all'"
+        )
+        raise KPressPublishError(msg)
+
+    entry_points: set[str] = set()
+    enabled_widgets = resolve_widgets(options.widgets)
+    if options.theme_mode == "system":
+        entry_points.add("js/theme.js")
+    if "settings" in enabled_widgets:
+        entry_points.add("js/settings-widget.js")
+    if tree is not None and _should_include_toc(tree, options):
+        entry_points.add("js/toc.js")
+    if "kpress-footnote-ref" in html:
+        entry_points.add("js/tooltips.js")
+    if _has_css_class(html, "kpress-code"):
+        entry_points.add("js/code-copy.js")
+    if _has_css_class(html, "kpress-table"):
+        entry_points.add("js/tables.js")
+    if "data-kpress-tabs" in html:
+        entry_points.add("js/tabs.js")
+    if 'data-kpress-diagram="mermaid"' in html:
+        entry_points.add("js/diagrams.js")
+    if "data-kpress-video-id" in html:
+        entry_points.add("js/video-popover.js")
+
+    assets = resolve_package_asset_manifest(
+        entry_points,
+        mode=options.asset_mode,
+        prefix=options.asset_url_prefix,
+    )
+    if has_math:
+        assets = assets.merged(
+            katex_asset_manifest(
+                mode=options.asset_mode,
+                prefix=options.asset_url_prefix,
+            )
+        )
+    return assets
 
 
 _INLINE_FONT_URL_RE = re.compile(
@@ -368,16 +437,13 @@ def _is_katex_asset(path: str) -> bool:
     return path.startswith("katex/")
 
 
-def _link_css(prefix: str, path: str) -> str:
-    return f'<link rel="stylesheet" href="{escape(prefix.rstrip("/") + "/" + path.lstrip("/"))}">'
+def _link_css(asset: AssetRef) -> str:
+    return f'<link rel="stylesheet" href="{escape(asset.url)}">'
 
 
-def _link_js(prefix: str, path: str) -> str:
-    src = escape(prefix.rstrip("/") + "/" + path.lstrip("/"))
-    # Vendored KaTeX (katex.min.js / auto-render) is UMD, not native ESM, and
-    # its init shim is a classic IIFE: load them as ordered, deferred classic
-    # scripts. KPress reader modules stay native ESM.
-    if _is_katex_asset(path):
+def _link_js(asset: AssetRef) -> str:
+    src = escape(asset.url)
+    if asset.loading == "classic":
         return f'<script defer src="{src}"></script>'
     return f'<script type="module" src="{src}"></script>'
 
@@ -390,28 +456,30 @@ def _import_map_tag(import_map: dict[str, str]) -> str:
     return f'<script type="importmap">{payload}</script>'
 
 
-def _asset_tags(assets: dict[str, list[str]], prefix: str, *, asset_mode: AssetMode) -> str:
-    css_paths = assets.get("css", [])
-    js_paths = assets.get("js", [])
-    import_map = package_js_import_map(mode=asset_mode, prefix=prefix)
-    map_tag = _import_map_tag(import_map) if import_map else ""
+def _asset_tags(assets: AssetManifest, prefix: str, *, asset_mode: AssetMode) -> str:
+    entry_points = assets.browser_entry_points()
+    css_assets = [asset for asset in entry_points if asset.loading == "stylesheet"]
+    js_assets = [asset for asset in entry_points if asset.loading in {"module", "classic"}]
+    map_tag = _import_map_tag(assets.import_map) if assets.import_map else ""
     if asset_mode == "inline":
         css = "\n".join(
-            _link_css(prefix, path)
-            if _is_katex_asset(path)
-            else f'<style data-kpress-asset="{escape(path)}">\n{_inline_css_text(path, prefix)}</style>'
-            for path in css_paths
+            _link_css(asset)
+            if _is_katex_asset(asset.path)
+            else f'<style data-kpress-asset="{escape(asset.path)}">\n'
+            f"{_inline_css_text(asset.path, prefix)}</style>"
+            for asset in css_assets
         )
         js = "\n".join(
-            _link_js(prefix, path)
-            if _is_katex_asset(path)
-            else f'<script type="module" data-kpress-asset="{escape(path)}">\n{_inline_js_text(path)}</script>'
-            for path in js_paths
+            _link_js(asset)
+            if asset.loading == "classic"
+            else f'<script type="module" data-kpress-asset="{escape(asset.path)}">\n'
+            f"{_inline_js_text(asset.path)}</script>"
+            for asset in js_assets
         )
         return "\n".join(part for part in (map_tag, css, js) if part)
 
-    css = "\n".join(_link_css(prefix, path) for path in css_paths)
-    js = "\n".join(_link_js(prefix, path) for path in js_paths)
+    css = "\n".join(_link_css(asset) for asset in css_assets)
+    js = "\n".join(_link_js(asset) for asset in js_assets)
     return "\n".join(part for part in (map_tag, css, js) if part)
 
 

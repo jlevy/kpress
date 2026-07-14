@@ -1,9 +1,10 @@
 # KPress Examples
 
 Three runnable examples cover full static generation, host-wrapped fragments, and a
-typed programmatic build. The two site examples take a folder of Markdown documents to a
-built site you can browse or upload. Each site example’s `build.py` builds the site, can
-serve it locally, and can package it as an uploadable `.zip`:
+typed programmatic build.
+The two site examples take a folder of Markdown documents to a built site you can browse
+or upload. Each site example’s `build.py` builds the site, can serve it locally, and can
+package it as an uploadable `.zip`:
 
 ```bash
 python build.py            # build ./public
@@ -59,14 +60,11 @@ through KPress’s **public API**:
 1. **Render to a fragment:** call `kpress.format.render_fragment(...)`. The result is a
    document `<article>` plus a manifest of the CSS and JavaScript it needs, with no page
    chrome.
-2. **Self-host the assets:** copy them out of the package with
-   `kpress.get_static_asset(...)`. The manifest lists the *declared* top-level CSS and
-   JS, but those files have dependencies the browser also fetches: CSS `url(...)`
-   references (fonts and KaTeX) and JS `import` statements.
-   The reader’s entry-point modules import transitive modules such as `overlay.js` and
-   `viewport.js` that are deliberately not in the inject list, so the wrapper walks both
-   reference graphs and copies the full closure.
-   Copy only the declared list and the served site returns 404 on those imports.
+2. **Self-host the assets:** merge the complete typed manifests and pass the result to
+   `kpress.format.materialize_package_assets(...)`. The manifest distinguishes browser
+   entry points from dependency-only files and already includes stylesheet fonts,
+   transitive modules, and conditional math assets, so the wrapper never parses CSS or
+   JavaScript to discover the closure.
 3. **Embed:** place each fragment in its own `templates/layout.html` shell and wire up
    the `<link>` and `<script>` tags the same way KPress itself would.
 4. **Route:** map each page to a URL from its own site map (`sitemap.py`).
@@ -86,11 +84,9 @@ The wrapper depends only on KPress’s public surface:
 
 Everything else (the Markdown pipeline, theming internals, asset hashing) stays private.
 Because the contract is this fragment-plus-assets seam, an outer tool can wrap KPress
-without forking it.
-One sharp edge to respect: the asset manifest names what to *inject*,
-not the complete set of files to *serve*. A wrapper must serve the transitive closure
-(the CSS `url()` and JS `import` graphs), which the example resolves with
-`get_static_asset` in `build.py`.
+without forking it. The asset manifest is fully resolved from `RenderOptions.asset_mode`
+and `asset_url_prefix`. A wrapper emits HTML tags for ordered browser entry points and
+materializes every manifest file at its declared output path.
 
 ## End-to-End Deployment Boundary
 
@@ -110,22 +106,22 @@ the final “copy `public/` somewhere” step becomes a real upload.
 
 `single-doc/` is the exemplary *programmatic* integration: one Markdown document
 published by constructing a typed `KPressConfig` in Python and calling
-`build_site(config)`—no `kpress.yml`, no YAML strings, chrome slots as plain
-strings, widget selection as a dict. A Python host calling a Python library
-writes Python; the YAML file is the veneer for file-based setups, not the API.
-(Production site builders follow this same pattern.)
+`build_site(config)`—no `kpress.yml`, no YAML strings, chrome slots as plain strings,
+widget selection as a dict.
+A Python host calling a Python library writes Python; the YAML file is the veneer for
+file-based setups, not the API. (Production site builders follow this same pattern.)
 
 ## Extension-Model Tour (`static-site/`)
 
 `static-site/content/extensions.md` and `static-site/content/demo/extensions.js` are a
 working tour of the
 [Extension and Injection Model](../docs/kpress-design.md#extension-and-injection-model):
-a **minimap widget** built from the page model, a **bare theme toggle** over the built-in
-theme engine, a **TOC toggle tweak** (custom icon + always-visible policy via callback
-config), a **footnote-handling override** over unchanged markup, and a **glossary
-behavior** binding the page's own injected HTML.
-Every one is site code injected through `head_extra_html`—zero KPress edits—and the
-widget selection is plain config (`format.widgets`).
+a **minimap widget** built from the page model, a **bare theme toggle** over the
+built-in theme engine, a **TOC toggle tweak** (custom icon + always-visible policy via
+callback config), a **footnote-handling override** over unchanged markup, and a
+**glossary behavior** binding the page’s own injected HTML. Every one is site code
+injected through `head_extra_html`—zero KPress edits—and the widget selection is plain
+config (`format.widgets`).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

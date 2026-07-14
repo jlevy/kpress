@@ -8,7 +8,9 @@ Use this index for implementation, maintenance, and release work.
 ## Architecture and Public Contracts
 
 - [KPress Design](kpress-design.md): architecture, public contracts, extension seams,
-  static publishing, assets, icons, optimization, and host integration
+  static publishing, assets, icons, and optimization
+- [Operations and Host Integration](kpress-operations-and-host-integration.md): local
+  runtime probes, browser quality gates, acceptance, accessibility, and dynamic embeds
 - [Backlog and Status](../TODO.md): current capability evidence, release gates, and
   tracked follow-up work
 
@@ -32,8 +34,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
-- [Release Notes](releases/0.1.0.md): supported paths and limits for the KPress 0.1.0
-  alpha
+- [KPress 0.2.0](releases/0.2.0.md): current host-rendering and asset-contract release
+- [KPress 0.1.0](releases/0.1.0.md): first public alpha
 
 ## Examples
 
