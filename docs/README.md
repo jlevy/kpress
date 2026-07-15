@@ -34,7 +34,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
-- [KPress 0.2.0](releases/0.2.0.md): current host-rendering and asset-contract release
+- [KPress 0.2.1](releases/0.2.1.md): current maintenance release
+- [KPress 0.2.0](releases/0.2.0.md): host-rendering and asset-contract release
 - [KPress 0.1.0](releases/0.1.0.md): first public alpha
 
 ## Examples
