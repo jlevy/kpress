@@ -762,11 +762,15 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
     """Export one document through the static page path."""
 
     source = Path(request.path)
-    if not source.exists():
+    if request.source_text is None and not source.exists():
         msg = f"Cannot export missing KPress document: {source}"
         raise FileNotFoundError(msg)
     destination = Path(request.destination) if request.destination else source.with_suffix(".html")
-    source_text = source.read_text(encoding="utf-8")
+    source_text = (
+        request.source_text
+        if request.source_text is not None
+        else source.read_text(encoding="utf-8")
+    )
     # `single-file` is not yet truly self-contained: inlined ES modules still
     # import sibling `./x.js` files and fonts stay external, so
     # a relocated single file would silently lose its reader features. Refuse

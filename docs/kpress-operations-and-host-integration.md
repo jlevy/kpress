@@ -384,7 +384,8 @@ current implementation supports the single-page export path.
 
 | `KPressExportRequest` field | Choices | Meaning |
 | --- | --- | --- |
-| `path` | source path | Existing UTF-8 document to export |
+| `path` | logical source path | Document identity and base directory for relative assets |
+| `source_text` | text or `None` | Host-decoded document text; when omitted, KPress reads `path` as UTF-8 |
 | `print_profile` | `document`/`source`/`table`/`tree`/`plain` | Same as the render contract |
 | `export_mode` | `page` | Supported output shape. `single-file` fails explicitly; the other declared literals are reserved and do not yet select distinct implementations. |
 | `asset_mode` | `linked` (default), `hashed` | Package-asset shape. The declared low-level `inline` mode is not self-contained and is not a supported portable export. |
