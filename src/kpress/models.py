@@ -64,6 +64,7 @@ class KPressExportRequest:
     path: str
     kind: str
     view: str
+    source_text: str | None = None
     print_profile: PrintProfile = "document"
     theme_mode: ThemeMode = "system"
     export_mode: Literal["page", "single-file", "static-hosted", "hashed-static-hosted", "pdf"] = (

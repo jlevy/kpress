@@ -881,6 +881,29 @@ def test_export_document_threads_extra_tags(tmp_path: Path) -> None:
     assert '<x-callout class="tip" data-k="v">' in html
 
 
+def test_export_document_accepts_host_supplied_source_text(tmp_path: Path) -> None:
+    from kpress.models import KPressExportRequest
+    from kpress.publish.build import export_document
+
+    source = tmp_path / "docs" / "compressed.md"
+    source.parent.mkdir()
+    (source.parent / "diagram.svg").write_text("<svg></svg>\n", encoding="utf-8")
+    destination = tmp_path / "public" / "compressed.html"
+
+    export_document(
+        KPressExportRequest(
+            path=str(source),
+            source_text="# Supplied by host\n\n![Diagram](diagram.svg)\n",
+            kind="markdown",
+            view="document",
+            destination=destination,
+        )
+    )
+
+    assert "Supplied by host" in destination.read_text(encoding="utf-8")
+    assert (destination.parent / "diagram.svg").read_text(encoding="utf-8") == "<svg></svg>\n"
+
+
 def test_static_passthrough_rejects_symlink_escaping_source_root(tmp_path: Path) -> None:
     """A static glob matching a symlink must not publish bytes from outside
     the source root (PR #175 review finding 2).
