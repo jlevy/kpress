@@ -3,15 +3,17 @@ type: is
 id: is-01kxnva5ze7700avc1cknzazq0
 title: Converge eligible dependency and tool floors
 kind: task
-status: in_progress
+status: closed
 priority: 2
-version: 3
+version: 4
 spec_path: TODO.md
 labels: []
 dependencies: []
 parent_id: is-01kxcpnre3k47pw88htva8xt0d
 created_at: 2026-07-16T16:14:18.093Z
-updated_at: 2026-07-16T16:39:53.753Z
+updated_at: 2026-07-16T16:42:08.688Z
+closed_at: 2026-07-16T16:42:08.688Z
+close_reason: Implemented and validated the complete KPress tooling-floor convergence; all acceptance evidence is recorded in bead notes.
 ---
 Raise the first-party strif floor and align eligible exact tool pins with MetaBrowser only after supply-chain age and lockfile validation.
 

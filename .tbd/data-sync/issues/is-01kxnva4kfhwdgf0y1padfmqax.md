@@ -3,15 +3,17 @@ type: is
 id: is-01kxnva4kfhwdgf0y1padfmqax
 title: Make the Makefile dependency graph parallel-safe
 kind: task
-status: in_progress
+status: closed
 priority: 2
-version: 4
+version: 5
 spec_path: TODO.md
 labels: []
 dependencies: []
 parent_id: is-01kxcpnre3k47pw88htva8xt0d
 created_at: 2026-07-16T16:14:16.686Z
-updated_at: 2026-07-16T16:40:18.879Z
+updated_at: 2026-07-16T16:42:08.656Z
+closed_at: 2026-07-16T16:42:08.656Z
+close_reason: Implemented and validated the complete KPress tooling-floor convergence; all acceptance evidence is recorded in bead notes.
 ---
 Declare target prerequisites so parallel make invocations preserve install-before-tooling and build-before-distribution validation ordering.
 

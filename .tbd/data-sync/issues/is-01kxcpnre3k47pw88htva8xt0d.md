@@ -5,7 +5,7 @@ title: KPress public roadmap and release readiness
 kind: epic
 status: open
 priority: 1
-version: 34
+version: 35
 spec_path: TODO.md
 labels: []
 dependencies: []
@@ -39,10 +39,10 @@ child_order_hints:
   - is-01kxnva5hvwg73e953xeb08423
   - is-01kxnva5ze7700avc1cknzazq0
 created_at: 2026-07-13T03:00:04.675Z
-updated_at: 2026-07-16T16:14:18.093Z
+updated_at: 2026-07-16T16:42:21.769Z
 ---
 Maintain the public two-dimensional KPress backlog: capability implementation and automated coverage on one axis; browser/print acceptance, release readiness, and deferred evolution on the other. TODO.md is the public status index and every active row maps to a child bead.
 
 ## Notes
 
-Public TODO.md remains the governing capability and backlog ledger. KPress 0.1.0 was published through PyPI Trusted Publishing and externally verified on 2026-07-13; all P1 release children are closed. Active child inventory is 9 P2 stabilization items and 7 P3 evolution or maintenance items.
+Public TODO.md remains the governing capability and backlog ledger. KPress 0.1.0 was published through PyPI Trusted Publishing and externally verified on 2026-07-13; all P1 release children are closed. The 2026-07-16 tooling-floor convergence closed the Node runtime, hermetic workflow, parallel Make, publish hygiene, installed-wheel validation, dependency floor, setup-node readiness, and vulnerability-monitoring beads. Active child inventory is now 8 P2 stabilization items and 6 P3 evolution or maintenance items.

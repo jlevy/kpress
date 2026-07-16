@@ -3,15 +3,17 @@ type: is
 id: is-01kxnva3jx23ktja7yncssbm63
 title: Pin and enforce the Node toolchain across local and CI workflows
 kind: task
-status: in_progress
+status: closed
 priority: 2
-version: 4
+version: 5
 spec_path: TODO.md
 labels: []
 dependencies: []
 parent_id: is-01kxcpnre3k47pw88htva8xt0d
 created_at: 2026-07-16T16:14:15.645Z
-updated_at: 2026-07-16T16:40:17.158Z
+updated_at: 2026-07-16T16:42:08.594Z
+closed_at: 2026-07-16T16:42:08.592Z
+close_reason: Implemented and validated the complete KPress tooling-floor convergence; all acceptance evidence is recorded in bead notes.
 ---
 Add .nvmrc and .node-version at Node 24.18.0, enforce exact parity in package policy, and document nvm/fnm-compatible setup.
 
