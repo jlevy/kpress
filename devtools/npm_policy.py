@@ -74,7 +74,7 @@ def verify_repo_package_policy(root: Path = ROOT) -> None:
     if not PYTHON_TOOL_FLOORS.issubset(pyproject["dependency-groups"].get("dev", [])):
         raise RuntimeError("the development group must preserve the reviewed Python tool floors")
     uv_toml = tomllib.loads((root / "uv.toml").read_text(encoding="utf-8"))
-    if uv_toml != {"required-version": ">=0.11.21", "exclude-newer": "14 days"}:
+    if uv_toml != {"required-version": f">={UV_VERSION}", "exclude-newer": "14 days"}:
         raise RuntimeError("uv.toml must contain only the reviewed uv policy")
 
     answers = (root / ".copier-answers.yml").read_text(encoding="utf-8")

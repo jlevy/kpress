@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Install a supported Python and uv 0.11.21 or newer as described in
+Install a supported Python and uv 0.11.26 or newer as described in
 [Installation](installation.md).
 Development pins Node.js 24.18.0 and requires npm 11.10.0 or newer within npm 11, as
 declared in `package.json`. Both nvm (`nvm use`) and fnm (`fnm use`) read the repository
