@@ -16,7 +16,7 @@ def npx_no_install(root: Path, tool: str, *args: str) -> list[str]:
     """Build an `npx --no-install` command, failing clearly if deps are absent."""
     if not (root / "node_modules" / ".bin").is_dir():
         print(
-            "node_modules is missing; run `make install` (or `npm ci`) first.",
+            "node_modules is missing; run `make install` first.",
             file=sys.stderr,
         )
         raise SystemExit(1)

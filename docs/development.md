@@ -4,8 +4,9 @@
 
 Install a supported Python and uv 0.11.21 or newer as described in
 [Installation](installation.md).
-Development also requires Node.js 24.18.x and npm 11.10.x or newer within the major
-versions permitted by `package.json`. The lint gate uses the exact versions in
+Development pins Node.js 24.18.0 and requires npm 11.10.0 or newer within npm 11, as
+declared in `package.json`. Both nvm (`nvm use`) and fnm (`fnm use`) read the repository
+pins in `.nvmrc` and `.node-version`. The lint gate uses the exact versions in
 `package.json` and `package-lock.json` for Biome, TypeScript `checkJs`, and browserless
 Vitest tests over the native ESM assets shipped in the wheel.
 
@@ -56,10 +57,9 @@ make clean
 Focused equivalents used while diagnosing an individual gate:
 
 ```shell
-UV_CONFIG_FILE=uv.toml uv sync --all-extras --all-groups --frozen
-npm ci
-uv run pytest tests --tb=short -q
-uv run python devtools/lint.py --check
+make install
+uv --config-file uv.toml run --frozen pytest tests --tb=short -q
+uv --config-file uv.toml run --frozen python devtools/lint.py --check
 make audit
 make build
 ```

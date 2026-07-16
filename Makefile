@@ -1,7 +1,7 @@
 # Makefile for easy development workflows.
 # See docs/development.md for docs.
 #
-#   make install        # one-time: uv sync + npm ci (pinned JS toolchain)
+#   make install        # one-time: install the locked Python and npm environments
 #   make hooks-install  # install git hooks (lefthook)
 #   make                # default: install + format + lint + test
 #   make format         # auto-format Markdown with flowmark-rs (pinned)
@@ -19,15 +19,21 @@ SHELL := /bin/bash
 # Safe default for every dependency resolution invoked through this Makefile.
 UV_EXCLUDE_NEWER ?= 14 days
 export UV_EXCLUDE_NEWER
-# Prevent machine-global uv policy from changing this repository's lockfile.
-UV_CONFIG_FILE ?= $(CURDIR)/uv.toml
-export UV_CONFIG_FILE
+# Prevent machine-global uv policy from changing the repository lock. Pass the
+# checked-in configuration explicitly so every command is self-contained and
+# reviewable instead of depending on an inherited UV_CONFIG_FILE setting.
+UV := uv --config-file $(CURDIR)/uv.toml
+UVX := uvx --config-file $(CURDIR)/uv.toml
+UV_RUN := $(UV) run --frozen
 
 # Some managed agent environments export pnpm-style npm variables that npm 11
 # treats as unknown configuration. Repository policy lives in .npmrc, so prevent
 # those ambient aliases from adding warnings or changing command behavior.
 unexport NPM_CONFIG_FROZEN_LOCKFILE
 unexport NPM_CONFIG_MINIMUM_RELEASE_AGE
+# A host-level publication cutoff conflicts with the repository's release-age gate in
+# npm 11. Repository installs must use the reviewed .npmrc policy instead.
+unexport NPM_CONFIG_BEFORE
 
 .PHONY: default install hooks-install format lint lint-check test audit lock upgrade build verify clean
 
@@ -38,18 +44,31 @@ unexport NPM_CONFIG_MINIMUM_RELEASE_AGE
 # exempt from the cool-off. The --exclude-newer-package override is surgical
 # and per-invocation — it never relaxes any global cool-off — and scoped to
 # this one package so an ambient UV_EXCLUDE_NEWER cannot block it.
-#   flowmark-rs@0.3.1 published 2026-05-30; cutoff 2026-06-02 admits it.
-FLOWMARK_VERSION := 0.3.1
-FLOWMARK := uvx --exclude-newer-package 'flowmark-rs=2026-06-02' flowmark-rs@$(FLOWMARK_VERSION)
+#   flowmark-rs@0.3.2 published 2026-07-15; cutoff 2026-07-16 admits it.
+FLOWMARK_VERSION := 0.3.2
+FLOWMARK := $(UVX) --exclude-newer-package 'flowmark-rs=2026-07-16T00:00:00Z' flowmark-rs@$(FLOWMARK_VERSION)
 
-default: install format lint test
+default: install
+	$(MAKE) SKIP_INSTALL=1 format
+	$(MAKE) SKIP_INSTALL=1 lint
+	$(MAKE) SKIP_INSTALL=1 test
 
 install:
-	uv sync --all-extras --all-groups --frozen
-	npm ci --silent
+	# --locked also asserts uv.lock matches pyproject.toml and uv.toml, so a
+	# stale or locally contaminated lock fails here instead of shipping.
+	$(UV) sync --all-extras --all-groups --locked
+	npm ci
 
 hooks-install: install
 	npx --no-install lefthook install
+
+# Top-level quality gates cannot start until both environments are installed
+# from their locks. The default target invokes its mutating format/lint/test
+# stages serially and tells those recursive makes that installation is complete.
+ifeq ($(SKIP_INSTALL),)
+format lint: | install
+lint-check test audit build: | install
+endif
 
 # Auto-format all Markdown with flowmark-rs (semantic line breaks, smart
 # quotes, safe cleanups). Pass `.` as the sole target so flowmark traverses
@@ -61,35 +80,35 @@ hooks-install: install
 # target. There must be exactly one flowmark invocation across the repo —
 # do not add per-directory variants or pass staged files to flowmark.
 format:
-	$(FLOWMARK) --auto .
+	$(FLOWMARK) --auto --inplace --nobackup .
 
 lint:
-	uv run python devtools/lint.py
-	uv run python devtools/npm_policy.py
+	$(UV_RUN) python devtools/lint.py
+	$(UV_RUN) python devtools/npm_policy.py
 
 # Check-only lint, matching CI (does not modify files).
 lint-check:
-	uv run python devtools/lint.py --check
-	uv run python devtools/npm_policy.py
+	$(UV_RUN) python devtools/lint.py --check
+	$(UV_RUN) python devtools/npm_policy.py
 	$(FLOWMARK) --auto --check .
 
 test:
-	uv run pytest
+	$(UV_RUN) pytest
 
 audit:
 	npm audit --audit-level=moderate
-	uv --preview-features audit-command audit --frozen
+	$(UV) --preview-features audit-command audit --frozen
 
 lock:
-	uv lock
+	$(UV) lock
 
 upgrade:
-	uv lock --upgrade
-	uv sync --all-extras --all-groups --frozen
+	$(UV) lock --upgrade
+	$(UV) sync --all-extras --all-groups --frozen
 
 build:
-	uv build --clear --no-build-isolation
-	uv run python -m devtools.check_distribution
+	$(UV) build --clear --no-build-isolation
+	$(UV_RUN) python -m devtools.check_distribution
 
 verify: install lint-check test audit build
 

@@ -50,7 +50,7 @@ Before anything else, probe whether this machine can run the surfaces you are ab
 validate. This is a runtime probe, not a dev quality gate.
 
 ```bash
-uv run kpress doctor
+uv --config-file uv.toml run --frozen kpress doctor
 ```
 
 `doctor` never hits the network by default and never fails on bare discovery;
@@ -63,9 +63,9 @@ Run the config-aware probe in Part 4 after that part creates its fixture config.
 These are the required package gates for ordinary KPress changes.
 
 ```bash
-uv run pytest tests --tb=short -q
-uv run python devtools/lint.py --check
-uv run python devtools/js_dom_tests.py
+uv --config-file uv.toml run --frozen pytest tests --tb=short -q
+uv --config-file uv.toml run --frozen python devtools/lint.py --check
+uv --config-file uv.toml run --frozen python devtools/js_dom_tests.py
 git diff --check
 ```
 
@@ -82,15 +82,15 @@ When JavaScript, CSS, or JSON needs automated formatting, run the package-owned 
 fix pass intentionally and review its diff:
 
 ```bash
-uv run python devtools/biome.py check --write src tests biome.json
+uv --config-file uv.toml run --frozen python devtools/biome.py check --write src tests biome.json
 git diff -- src tests biome.json
 ```
 
 Focused JavaScript validation:
 
 ```bash
-uv run python devtools/tsc_check.py
-uv run python devtools/js_dom_tests.py
+uv --config-file uv.toml run --frozen python devtools/tsc_check.py
+uv --config-file uv.toml run --frozen python devtools/js_dom_tests.py
 ```
 
 When validating a pull request, also run the PR CI gate after pushing:
@@ -120,13 +120,13 @@ Run these when changing KPress runtime APIs, package assets, print metadata, sta
 export seams, or embedding behavior:
 
 ```bash
-uv run pytest \
+uv --config-file uv.toml run --frozen pytest \
   tests/test_runtime.py \
   tests/test_asset_contract.py \
   tests/test_document_contract.py \
   --tb=short -q
 
-uv run python examples/wrapped-site/build.py
+uv --config-file uv.toml run --frozen python examples/wrapped-site/build.py
 ```
 
 Expected result:
@@ -145,7 +145,7 @@ fixtures may have changed.
 First check whether existing goldens still match:
 
 ```bash
-uv run pytest \
+uv --config-file uv.toml run --frozen pytest \
   tests/test_golden_render.py \
   tests/test_golden_publish.py \
   --tb=short -q
@@ -154,7 +154,7 @@ uv run pytest \
 If the change intentionally alters output, regenerate the package-owned goldens:
 
 ```bash
-KPRESS_UPDATE_GOLDENS=1 uv run pytest \
+KPRESS_UPDATE_GOLDENS=1 uv --config-file uv.toml run --frozen pytest \
   tests/test_golden_render.py \
   tests/test_golden_publish.py \
   --tb=short -q
@@ -203,23 +203,23 @@ cp tests/fixtures/documents/rich-components.md \
   "$KPRESS_VALIDATION_ROOT/rich-components.md"
 cp -R tests/fixtures/sites/basic "$KPRESS_VALIDATION_ROOT/site"
 
-uv run kpress doctor \
+uv --config-file uv.toml run --frozen kpress doctor \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" --json
 ```
 
 Run local document workflows:
 
 ```bash
-uv run kpress \
+uv --config-file uv.toml run --frozen kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   init --config "$KPRESS_VALIDATION_ROOT/kpress.yml"
 
-uv run kpress \
+uv --config-file uv.toml run --frozen kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   format "$KPRESS_VALIDATION_ROOT/rich-components.md" \
   --output-dir "$KPRESS_VALIDATION_ROOT/formatted"
 
-uv run kpress \
+uv --config-file uv.toml run --frozen kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   export "$KPRESS_VALIDATION_ROOT/rich-components.md" \
   --html "$KPRESS_VALIDATION_ROOT/export/rich-components.html"
@@ -228,11 +228,11 @@ uv run kpress \
 Run static publishing in both modes:
 
 ```bash
-uv run kpress build \
+uv --config-file uv.toml run --frozen kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-readable"
 
-uv run kpress build \
+uv --config-file uv.toml run --frozen kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed" \
@@ -247,9 +247,9 @@ It is a manual acceptance path, not a prerequisite for the ordinary CLI and publ
 smoke above:
 
 ```bash
-UV_EXCLUDE_NEWER="14 days" uv sync --frozen --extra pdf
-uv run --frozen playwright install chromium
-uv run --frozen kpress export \
+UV_EXCLUDE_NEWER="14 days" uv --config-file uv.toml sync --locked --extra pdf
+uv --config-file uv.toml run --frozen playwright install chromium
+uv --config-file uv.toml run --frozen kpress export \
   "$KPRESS_VALIDATION_ROOT/rich-components.md" \
   --pdf "$KPRESS_VALIDATION_ROOT/export/rich-components.pdf"
 ```
@@ -262,14 +262,14 @@ clear optional-dependency diagnostic and no placeholder output.
 
 `gzip` precompression is in the stdlib and runs in every install.
 `br` (Brotli) is gated behind the `kpress[optimize]` extra so the base wheel stays lean.
-The default `uv sync` does NOT install it, which is why the unit test
+The default locked installation does NOT install it, which is why the unit test
 `tests/test_optimize.py::test_precompress_brotli_records_compression_method` skips (CI
 installs `--all-extras`, so its `test` jobs exercise it).
 Re-run with the extra locally to exercise the path:
 
 ```bash
-UV_EXCLUDE_NEWER="14 days" uv sync --frozen --extra optimize
-uv run pytest \
+UV_EXCLUDE_NEWER="14 days" uv --config-file uv.toml sync --locked --extra optimize
+uv --config-file uv.toml run --frozen pytest \
   tests/test_optimize.py::test_precompress_brotli_records_compression_method \
   --tb=short -q
 ```
@@ -277,7 +277,7 @@ uv run pytest \
 End-to-end brotli build smoke (the extra must already be installed):
 
 ```bash
-uv run kpress build \
+uv --config-file uv.toml run --frozen kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --asset-mode hashed \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed-br" \
@@ -292,7 +292,7 @@ output:
 
 ```bash
 # Run this from a venv that does NOT have the optimize extra.
-if uv run kpress build \
+if uv --config-file uv.toml run --frozen kpress build \
   --config "$KPRESS_VALIDATION_ROOT/site/kpress.yml" \
   --output-dir "$KPRESS_VALIDATION_ROOT/site/public-hashed-br-fail" \
   --precompress br; then
@@ -306,8 +306,8 @@ fi
 Run optimizer and expected missing-extra checks:
 
 ```bash
-uv run kpress doctor --profile optimize --allow-network
-uv run kpress optimize \
+uv --config-file uv.toml run --frozen kpress doctor --profile optimize --allow-network
+uv --config-file uv.toml run --frozen kpress optimize \
   "$KPRESS_VALIDATION_ROOT/export/rich-components.html" \
   --output "$KPRESS_VALIDATION_ROOT/export/rich-components.min.html" \
   --backend full
@@ -317,7 +317,7 @@ The clipboard extra is intentionally absent in the base package.
 This command should return exit code `2` with a clear JSON diagnostic:
 
 ```bash
-if uv run kpress \
+if uv --config-file uv.toml run --frozen kpress \
   --work-root "$KPRESS_VALIDATION_ROOT/.kpress" \
   paste --title ClipboardSmoke; then
   echo "expected paste to report missing clipboard extra"

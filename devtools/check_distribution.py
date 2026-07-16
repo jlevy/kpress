@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
+import sys
 import tarfile
+import tempfile
 import zipfile
 from pathlib import Path
 
-from devtools.public_hygiene import RULE_PATTERNS
+from devtools.public_hygiene import COMMON_DOC_FOOTER, RULE_PATTERNS
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
@@ -44,6 +47,8 @@ def check_text_member(name: str, payload: bytes) -> None:
                 findings.append(f"{name}:{line_number}: {rule}")
     if findings:
         raise RuntimeError(f"artifact hygiene failed: {findings[:10]}")
+    if Path(name).name == "README.md" and COMMON_DOC_FOOTER not in text:
+        raise RuntimeError(f"artifact documentation footer is missing: {name}")
 
 
 def _inspect_wheel(wheel: Path) -> None:
@@ -95,32 +100,77 @@ def _inspect_sdist(sdist: Path) -> None:
                 check_text_member(member.name, extracted.read())
 
 
+def _run_smoke_command(command: list[str], *, cwd: Path, env: dict[str, str]) -> None:
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"installed wheel command failed: {shlex.join(command)}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
 def _smoke_install(wheel: Path) -> None:
     env = os.environ.copy()
     env.setdefault("UV_EXCLUDE_NEWER", "14 days")
-    import_command = [
-        "uv",
-        "run",
-        "--isolated",
-        "--no-project",
-        "--with",
-        str(wheel),
-        "python",
-        "-c",
-        (
-            "from importlib.resources import files; import kpress; "
-            "assert kpress.__version__; "
-            "assert files('kpress').joinpath('format/static/js/runtime.js').is_file(); "
-            "assert files('kpress').joinpath('format/templates/page.html.jinja').is_file()"
-        ),
-    ]
-    subprocess.run(import_command, cwd=ROOT, env=env, check=True)
-    subprocess.run(
-        ["uv", "run", "--isolated", "--no-project", "--with", str(wheel), "kpress", "--help"],
-        cwd=ROOT,
-        env=env,
-        check=True,
-    )
+    env.pop("PYTHONPATH", None)
+    env.pop("VIRTUAL_ENV", None)
+    uv = ["uv", "--config-file", str(ROOT / "uv.toml")]
+    with tempfile.TemporaryDirectory(prefix="kpress-wheel-") as temp_dir:
+        temp = Path(temp_dir)
+        venv = temp / "venv"
+        subprocess.run([*uv, "venv", str(venv), "--python", sys.executable], env=env, check=True)
+        python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        executable = venv / ("Scripts/kpress.exe" if os.name == "nt" else "bin/kpress")
+        subprocess.run(
+            [*uv, "pip", "install", "--python", str(python), str(wheel)],
+            env=env,
+            check=True,
+        )
+
+        site = temp / "site"
+        site.mkdir()
+        (site / "index.md").write_text(
+            "# Wheel smoke\n\nBuilt outside the checkout.\n", encoding="utf-8"
+        )
+        (site / "kpress.yml").write_text(
+            "sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: hashed\n",
+            encoding="utf-8",
+        )
+        _run_smoke_command(
+            [
+                str(python),
+                "-c",
+                (
+                    "from importlib.resources import files; import kpress; "
+                    "assert kpress.__version__; "
+                    "assert files('kpress').joinpath('format/static/js/runtime.js').is_file(); "
+                    "assert files('kpress').joinpath('format/templates/page.html.jinja').is_file()"
+                ),
+            ],
+            cwd=site,
+            env=env,
+        )
+        for args in (["--version"], ["--help"], ["doctor"], ["build"]):
+            _run_smoke_command([str(executable), *args], cwd=site, env=env)
+
+        public = site / "public"
+        required_outputs = (
+            public / "index.html",
+            public / "_kpress" / "kpress-manifest.json",
+            public / "_kpress" / "assets" / "css",
+            public / "_kpress" / "assets" / "js",
+            public / "_kpress" / "assets" / "fonts",
+        )
+        missing = [str(path.relative_to(site)) for path in required_outputs if not path.exists()]
+        if missing:
+            raise RuntimeError(f"installed wheel smoke is missing outputs: {missing}")
 
 
 def main() -> int:

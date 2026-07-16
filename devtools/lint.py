@@ -14,13 +14,16 @@ from rich import print as rprint
 # Update as needed.
 SRC_PATHS = ["src", "tests", "devtools"]
 DOC_PATHS = [
+    "AGENTS.md",
     "README.md",
     "CONTRIBUTING.md",
     "NOTICE.md",
     "SECURITY.md",
-    "docs/kpress-design.md",
-    "docs/kpress-icons.md",
+    "SUPPLY-CHAIN-SECURITY.md",
+    "TODO.md",
     "docs",
+    "examples/README.md",
+    "tests/golden/README.md",
 ]
 
 # JS gates run via `npx --no-install` against the pinned, locked toolchain

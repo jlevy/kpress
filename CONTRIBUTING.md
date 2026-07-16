@@ -9,8 +9,8 @@ installing or upgrading a dependency.
 Run these checks from the repository root before submitting changes:
 
 ```bash
-uv run pytest tests --tb=short -q
-uv run python devtools/lint.py --check
+uv --config-file uv.toml run --frozen pytest tests --tb=short -q
+uv --config-file uv.toml run --frozen python devtools/lint.py --check
 ```
 
 For documentation-only changes, format the maintained Markdown tree and run the same
@@ -18,7 +18,7 @@ check-only gate:
 
 ```bash
 make format
-uv run python devtools/lint.py --check
+uv --config-file uv.toml run --frozen python devtools/lint.py --check
 git diff --check
 ```
 

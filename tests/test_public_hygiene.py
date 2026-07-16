@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from devtools.public_hygiene import ROOT, find_violations, public_package_paths
+from devtools.public_hygiene import (
+    COMMON_DOC_FOOTER,
+    ROOT,
+    find_documentation_findings,
+    find_violations,
+    public_package_paths,
+)
 
 
 def test_public_hygiene_flags_private_path(tmp_path: Path) -> None:
@@ -58,6 +64,26 @@ def test_public_package_paths_scan_both_skill_trees(tmp_path: Path) -> None:
         (".agents", "private-path"),
         (".claude", "private-path"),
     ]
+
+
+def test_project_markdown_requires_common_document_footer() -> None:
+    project_doc = ROOT / "docs" / "example.md"
+
+    assert find_documentation_findings(project_doc, "# Example\n") == [
+        "docs/example.md: missing common-doc-guidelines footer"
+    ]
+    assert find_documentation_findings(project_doc, COMMON_DOC_FOOTER) == []
+    assert find_documentation_findings(ROOT / "src" / "example.py", "") == []
+
+
+def test_generated_and_rendering_documents_are_footer_exempt() -> None:
+    generated = ROOT / ".agents" / "skills" / "tbd" / "SKILL.md"
+    rendering_fixture = ROOT / "tests" / "fixtures" / "documents" / "minimal.md"
+    rendering_example = ROOT / "examples" / "static-site" / "content" / "index.md"
+
+    assert find_documentation_findings(generated, "") == []
+    assert find_documentation_findings(rendering_fixture, "") == []
+    assert find_documentation_findings(rendering_example, "") == []
 
 
 def test_codex_hook_commands_anchor_to_repository_root() -> None:

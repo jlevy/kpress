@@ -38,13 +38,13 @@ jobs:
         # Bump the action, uv version, and Linux checksum together.
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
-          version: "0.11.25"
-          checksum: "1db18b5e76fa645a7f3865773139bdec8e2d46adbdbb35e7410b34fa8015ccd2"
+          version: "0.11.26"
+          checksum: "6426a73c3837e6e2483ee344cbc00f36394d179afcba6183cb77437e67db4af0"
           enable-cache: true
           python-version: "3.13"
 
       - name: Set up Python (using uv)
-        run: uv python install
+        run: uv --config-file uv.toml python install
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -86,21 +86,21 @@ jobs:
       - name: Install uv (official Astral action)
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
-          version: "0.11.25"
-          checksum: "1db18b5e76fa645a7f3865773139bdec8e2d46adbdbb35e7410b34fa8015ccd2"
+          version: "0.11.26"
+          checksum: "6426a73c3837e6e2483ee344cbc00f36394d179afcba6183cb77437e67db4af0"
           enable-cache: true
           python-version: ${{ matrix.python-version }}
 
       - name: Set up Python (using uv)
-        run: uv python install
+        run: uv --config-file uv.toml python install
 
       - name: Install all dependencies
-        # --frozen: install exactly from the committed uv.lock, never re-resolving
-        # (UV_EXCLUDE_NEWER, set above, governs any resolution that does happen).
-        run: uv sync --all-extras --all-groups --frozen
+        # --locked: install exactly from the committed uv.lock and fail if project
+        # metadata would require re-resolution.
+        run: uv --config-file uv.toml sync --all-extras --all-groups --locked
 
       - name: Run tests
-        run: uv run pytest
+        run: uv --config-file uv.toml run --frozen pytest
 
   # Build the wheel and exercise it from a clean, isolated install — catches
   # data-file packaging regressions (fonts, KaTeX, CSS, JS, templates) before
@@ -118,13 +118,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
-          version: "0.11.25"
-          checksum: "1db18b5e76fa645a7f3865773139bdec8e2d46adbdbb35e7410b34fa8015ccd2"
+          version: "0.11.26"
+          checksum: "6426a73c3837e6e2483ee344cbc00f36394d179afcba6183cb77437e67db4af0"
           enable-cache: true
           python-version: "3.13"
 
       - name: Set up Python
-        run: uv python install
+        run: uv --config-file uv.toml python install
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -140,8 +140,8 @@ jobs:
 
       - name: Install the built wheel into a clean venv
         run: |
-          uv venv /tmp/wheeltest --python 3.13
-          uv pip install --python /tmp/wheeltest dist/kpress-*.whl
+          uv --config-file uv.toml venv /tmp/wheeltest --python 3.13
+          uv --config-file uv.toml pip install --python /tmp/wheeltest dist/kpress-*.whl
 
       - name: Smoke-test the installed CLI (bundled assets resolve)
         run: |
