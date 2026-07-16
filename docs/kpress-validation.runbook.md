@@ -63,17 +63,16 @@ Run the config-aware probe in Part 4 after that part creates its fixture config.
 These are the required package gates for ordinary KPress changes.
 
 ```bash
-uv --config-file uv.toml run --frozen pytest tests --tb=short -q
-uv --config-file uv.toml run --frozen python devtools/lint.py --check
-uv --config-file uv.toml run --frozen python devtools/js_dom_tests.py
+make lint-check
+make test
 git diff --check
 ```
 
 Expected result:
 
-- KPress tests pass.
-- KPress lint passes, including Ruff, Ruff format check, basedpyright, codespell, npm
-  supply-chain policy, Biome, `tsc --checkJs`, and browserless DOM tests.
+- KPress lint passes, including Ruff, Ruff format check, basedpyright, codespell,
+  supply-chain checks, Biome, and `tsc --checkJs`.
+- Pytest and browserless DOM tests pass.
 - Browserless DOM tests cover native ESM reader behavior for theme, TOC, tooltips,
   tables, code-copy, video popovers, and tabs.
 - `git diff --check` has no whitespace errors.
@@ -82,15 +81,16 @@ When JavaScript, CSS, or JSON needs automated formatting, run the package-owned 
 fix pass intentionally and review its diff:
 
 ```bash
-uv --config-file uv.toml run --frozen python devtools/biome.py check --write src tests biome.json
-git diff -- src tests biome.json
+npx --no-install biome check --write --unsafe \
+  src tests biome.json package.json tsconfig.json
+git diff -- src tests biome.json package.json tsconfig.json
 ```
 
 Focused JavaScript validation:
 
 ```bash
-uv --config-file uv.toml run --frozen python devtools/tsc_check.py
-uv --config-file uv.toml run --frozen python devtools/js_dom_tests.py
+npx --no-install tsc --noEmit -p tsconfig.json
+npx --no-install vitest run --config tests/js/vitest.config.mjs
 ```
 
 When validating a pull request, also run the PR CI gate after pushing:
@@ -103,7 +103,7 @@ Expected PR checks:
 
 - `lint` (full quality gate including the JS checks)
 - `test` (one job per supported Python version)
-- `wheel-smoke` (build the wheel, install into a clean venv, exercise the CLI)
+- `distribution` (build both artifacts, inspect them, and exercise an isolated wheel)
 
 Before committing, stage only the intended files and let the repo hook run normally.
 To run the same staged-file hook explicitly:

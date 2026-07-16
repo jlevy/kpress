@@ -1,20 +1,10 @@
 # Makefile for easy development workflows.
 # See docs/development.md for docs.
-#
-#   make install        # one-time: install the locked Python and npm environments
-#   make hooks-install  # install git hooks (lefthook)
-#   make                # default: install + format + lint + test
-#   make format         # auto-format Markdown with flowmark-rs (pinned)
-#   make lint           # quality gate, auto-fixing what can be fixed
-#   make lint-check     # CI-mode gate: read-only, fails on any drift
-#   make test           # run tests
-#   make build          # build sdist + wheel
-#
 # GitHub Actions use these targets so local and CI gates stay aligned.
 
-SHELL := /bin/bash
-
 .DEFAULT_GOAL := default
+# Keep install and quality stages ordered even when callers pass `-j`.
+.NOTPARALLEL:
 
 # Safe default for every dependency resolution invoked through this Makefile.
 UV_EXCLUDE_NEWER ?= 14 days
@@ -25,6 +15,11 @@ export UV_EXCLUDE_NEWER
 UV := uv --config-file $(CURDIR)/uv.toml
 UVX := uvx --config-file $(CURDIR)/uv.toml
 UV_RUN := $(UV) run --frozen
+# First-party exception reviewed in SUPPLY-CHAIN-SECURITY.md. The cutoff is
+# package-scoped and only admits the exact formatter release pinned here.
+FLOWMARK_VERSION := 0.3.2
+FLOWMARK_EXCEPTION := 2026-07-16T00:00:00Z
+FLOWMARK := $(UVX) --exclude-newer-package 'flowmark-rs=$(FLOWMARK_EXCEPTION)' flowmark-rs@$(FLOWMARK_VERSION)
 
 # Some managed agent environments export pnpm-style npm variables that npm 11
 # treats as unknown configuration. Repository policy lives in .npmrc, so prevent
@@ -35,23 +30,9 @@ unexport NPM_CONFIG_MINIMUM_RELEASE_AGE
 # npm 11. Repository installs must use the reviewed .npmrc policy instead.
 unexport NPM_CONFIG_BEFORE
 
-.PHONY: default install hooks-install format lint lint-check test audit lock upgrade build verify clean
+.PHONY: default install hooks-install biome-fix browser-types format format-markdown lint lint-check test audit lock upgrade build verify clean
 
-# Pinned for security/stability — bump deliberately, honoring the 14-day rule.
-#
-# Supply-chain exception (see SUPPLY-CHAIN-SECURITY.md): flowmark-rs is a
-# first-party package (github.com/jlevy/flowmark-rs) by this repo's author,
-# exempt from the cool-off. The --exclude-newer-package override is surgical
-# and per-invocation — it never relaxes any global cool-off — and scoped to
-# this one package so an ambient UV_EXCLUDE_NEWER cannot block it.
-#   flowmark-rs@0.3.2 published 2026-07-15; cutoff 2026-07-16 admits it.
-FLOWMARK_VERSION := 0.3.2
-FLOWMARK := $(UVX) --exclude-newer-package 'flowmark-rs=2026-07-16T00:00:00Z' flowmark-rs@$(FLOWMARK_VERSION)
-
-default: install
-	$(MAKE) SKIP_INSTALL=1 format
-	$(MAKE) SKIP_INSTALL=1 lint
-	$(MAKE) SKIP_INSTALL=1 test
+default: install format lint test
 
 install:
 	# --locked also asserts uv.lock matches pyproject.toml and uv.toml, so a
@@ -62,38 +43,37 @@ install:
 hooks-install: install
 	npx --no-install lefthook install
 
-# Top-level quality gates cannot start until both environments are installed
-# from their locks. The default target invokes its mutating format/lint/test
-# stages serially and tells those recursive makes that installation is complete.
-ifeq ($(SKIP_INSTALL),)
-format lint: | install
-lint-check test audit build: | install
-endif
+biome-fix:
+	npx --no-install biome check --write --unsafe --no-errors-on-unmatched $(STAGED_FILES)
 
-# Auto-format all Markdown with flowmark-rs (semantic line breaks, smart
-# quotes, safe cleanups). Pass `.` as the sole target so flowmark traverses
-# the repo and honors .flowmarkignore + .gitignore. Flowmark-rs only reads
-# .flowmarkignore relative to its target arg, so passing subdirs or globs
-# bypasses it.
-#
-# INVARIANT: lefthook's `format-markdown` pre-commit hook delegates to this
-# target. There must be exactly one flowmark invocation across the repo —
-# do not add per-directory variants or pass staged files to flowmark.
+browser-types:
+	npx --no-install tsc --noEmit -p tsconfig.json
+
+format lint lint-check test audit build: | install
+
 format:
+	$(MAKE) format-markdown
+	$(UV_RUN) ruff format src tests devtools
+	npx --no-install biome format --write src tests biome.json package.json tsconfig.json
+
+format-markdown:
 	$(FLOWMARK) --auto --inplace --nobackup .
 
 lint:
-	$(UV_RUN) python devtools/lint.py
-	$(UV_RUN) python devtools/npm_policy.py
+	$(UV_RUN) python -m devtools.lint
+	$(UV_RUN) python -m devtools.check_supply_chain
+	$(UV_RUN) python -m devtools.public_hygiene
 
 # Check-only lint, matching CI (does not modify files).
 lint-check:
-	$(UV_RUN) python devtools/lint.py --check
-	$(UV_RUN) python devtools/npm_policy.py
+	$(UV_RUN) python -m devtools.lint --check
+	$(UV_RUN) python -m devtools.check_supply_chain
+	$(UV_RUN) python -m devtools.public_hygiene
 	$(FLOWMARK) --auto --check .
 
 test:
 	$(UV_RUN) pytest
+	npx --no-install vitest run --config tests/js/vitest.config.mjs
 
 audit:
 	npm audit --audit-level=moderate

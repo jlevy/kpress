@@ -1,5 +1,4 @@
-"""Hygiene scan over the public package files: no private filesystem paths,
-no secret tokens. Runs in the lint gate and pre-commit."""
+"""Scan public package files for private filesystem paths and secret tokens."""
 
 from __future__ import annotations
 
@@ -129,23 +128,27 @@ def _iter_text_files(paths: list[Path]) -> list[Path]:
     return sorted(files)
 
 
+def find_text_findings(path: Path, text: str) -> list[Finding]:
+    findings: list[Finding] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        for rule, pattern in RULE_PATTERNS:
+            if pattern.search(line) is None:
+                continue
+            findings.append(
+                Finding(
+                    path=path,
+                    line=line_number,
+                    rule=rule,
+                    excerpt=line.strip(),
+                )
+            )
+    return findings
+
+
 def find_violations(paths: list[Path]) -> list[Finding]:
     findings: list[Finding] = []
     for path in _iter_text_files(paths):
-        text = path.read_text(encoding="utf-8")
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            for rule, pattern in RULE_PATTERNS:
-                match = pattern.search(line)
-                if match is None:
-                    continue
-                findings.append(
-                    Finding(
-                        path=path,
-                        line=line_number,
-                        rule=rule,
-                        excerpt=line.strip(),
-                    )
-                )
+        findings.extend(find_text_findings(path, path.read_text(encoding="utf-8")))
     return findings
 
 

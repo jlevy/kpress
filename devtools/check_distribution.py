@@ -11,7 +11,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from devtools.public_hygiene import COMMON_DOC_FOOTER, RULE_PATTERNS
+from devtools.public_hygiene import find_documentation_findings, find_text_findings
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
@@ -40,14 +40,12 @@ def check_text_member(name: str, payload: bytes) -> None:
         text = payload.decode("utf-8")
     except UnicodeDecodeError:
         return
-    findings: list[str] = []
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        for rule, pattern in RULE_PATTERNS:
-            if pattern.search(line) is not None:
-                findings.append(f"{name}:{line_number}: {rule}")
+    path = Path(name)
+    findings = find_text_findings(path, text)
     if findings:
-        raise RuntimeError(f"artifact hygiene failed: {findings[:10]}")
-    if Path(name).name == "README.md" and COMMON_DOC_FOOTER not in text:
+        summaries = [f"{name}:{finding.line}: {finding.rule}" for finding in findings]
+        raise RuntimeError(f"artifact hygiene failed: {summaries[:10]}")
+    if path.name == "README.md" and find_documentation_findings(path, text):
         raise RuntimeError(f"artifact documentation footer is missing: {name}")
 
 

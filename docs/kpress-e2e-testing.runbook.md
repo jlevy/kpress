@@ -26,7 +26,7 @@ Each step is tagged:
 - **Browserless DOM tests** (`tests/js/*.test.js`, Vitest and happy-dom) pin theme
   switching, gear open/close, TOC scroll and drawer behavior, tooltip positioning,
   code-copy states, video popovers, and tabs.
-  Run `uv --config-file uv.toml run --frozen python devtools/js_dom_tests.py`.
+  Run `npx --no-install vitest run --config tests/js/vitest.config.mjs`.
 - **Asset/contract tests** pin the public CSS classes, CSS variables, and required
   selectors.
 

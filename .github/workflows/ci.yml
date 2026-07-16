@@ -22,8 +22,8 @@ env:
 
 jobs:
   # Full quality gate: ruff, basedpyright, codespell, extraction safety check,
-  # and the JS gates (Biome, tsc checkJs, vitest DOM tests) against the pinned,
-  # locked npm toolchain. Runs once — it is not Python-version-sensitive.
+  # and the JS lint/type gates (Biome and tsc checkJs) against the pinned,
+  # locked npm toolchain. Runs once because it is not Python-version-sensitive.
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -52,14 +52,8 @@ jobs:
           node-version: "24.18.0"
           cache: "npm"
 
-      - name: Install locked dependencies
-        run: make install
-
-      - name: Run the quality gate (check-only)
-        run: make lint-check
-
-      - name: Audit locked dependencies
-        run: make audit
+      - name: Run quality gates and audits
+        run: make lint-check audit
 
   test:
     strategy:
@@ -94,19 +88,18 @@ jobs:
       - name: Set up Python (using uv)
         run: uv --config-file uv.toml python install
 
-      - name: Install all dependencies
-        # --locked: install exactly from the committed uv.lock and fail if project
-        # metadata would require re-resolution.
-        run: uv --config-file uv.toml sync --all-extras --all-groups --locked
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24.18.0"
+          cache: "npm"
 
       - name: Run tests
-        run: uv --config-file uv.toml run --frozen pytest
+        run: make test
 
-  # Build the wheel and exercise it from a clean, isolated install — catches
-  # data-file packaging regressions (fonts, KaTeX, CSS, JS, templates) before
-  # they reach a real release. Complements the in-suite clean-room test with an
-  # explicit CLI smoke run.
-  wheel-smoke:
+  # Build both distributions and run the shared artifact inspection plus
+  # isolated installed-wheel smoke test owned by make build.
+  distribution:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -132,25 +125,5 @@ jobs:
           node-version: "24.18.0"
           cache: "npm"
 
-      - name: Install locked dependencies
-        run: make install
-
       - name: Build sdist + wheel
         run: make build
-
-      - name: Install the built wheel into a clean venv
-        run: |
-          uv --config-file uv.toml venv /tmp/wheeltest --python 3.13
-          uv --config-file uv.toml pip install --python /tmp/wheeltest dist/kpress-*.whl
-
-      - name: Smoke-test the installed CLI (bundled assets resolve)
-        run: |
-          /tmp/wheeltest/bin/kpress --version
-          /tmp/wheeltest/bin/kpress --help
-          /tmp/wheeltest/bin/kpress doctor
-          mkdir /tmp/site && cd /tmp/site
-          printf '# Hello\n\nSmoke test.\n' > index.md
-          printf 'sources:\n  - path: .\npublish:\n  output_dir: public\n  asset_mode: hashed\n' > kpress.yml
-          /tmp/wheeltest/bin/kpress build
-          test -f public/index.html
-          ls public/_kpress/assets/css public/_kpress/assets/js public/_kpress/assets/fonts

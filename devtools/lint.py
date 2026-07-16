@@ -1,9 +1,6 @@
-"""Quality gate for KPress: Python lint/format/typecheck, codespell, public-hygiene
-safety check, and the JS gates (Biome, tsc, vitest DOM tests) for the browser
-assets shipped in the wheel."""
+"""Run KPress source formatting, linting, spelling, and type checks."""
 
 import argparse
-import shutil
 import subprocess
 import sys
 
@@ -25,15 +22,7 @@ DOC_PATHS = [
     "examples/README.md",
     "tests/golden/README.md",
 ]
-
-# JS gates run via `npx --no-install` against the pinned, locked toolchain
-# in package.json (`make install` / `npm ci` sets it up).
-JS_GATES: list[list[str]] = [
-    [sys.executable, "devtools/biome.py", "ci", "src", "tests", "biome.json"],
-    [sys.executable, "devtools/tsc_check.py"],
-    [sys.executable, "devtools/js_dom_tests.py"],
-]
-
+BIOME_PATHS = ["src", "tests", "biome.json", "package.json", "tsconfig.json"]
 
 reconfigure(emoji=not get_console().options.legacy_windows)  # No emojis on legacy windows.
 
@@ -57,16 +46,15 @@ def main() -> int:
         errcount += run(["ruff", "check", "--fix", *SRC_PATHS])
         errcount += run(["ruff", "format", *SRC_PATHS])
     errcount += run(["basedpyright", "--stats", *SRC_PATHS])
-    errcount += run([sys.executable, "devtools/public_hygiene.py"])
 
-    if shutil.which("npx"):
-        for cmd in JS_GATES:
-            errcount += run(cmd)
+    biome_args = ["npx", "--no-install", "biome"]
+    if args.check:
+        biome_args.append("ci")
     else:
-        rprint(
-            "[bold red]Error: npx not found; the JS gates (Biome, tsc, vitest) require Node.[/bold red]"
-        )
-        errcount += 1
+        biome_args.extend(["check", "--write", "--unsafe"])
+    biome_args.extend(BIOME_PATHS)
+    errcount += run(biome_args)
+    errcount += run(["npx", "--no-install", "tsc", "--noEmit", "-p", "tsconfig.json"])
 
     rprint()
 
