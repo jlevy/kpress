@@ -30,19 +30,18 @@ jobs:
       - name: Install uv (official Astral action)
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
-          version: "0.11.25"
-          checksum: "1db18b5e76fa645a7f3865773139bdec8e2d46adbdbb35e7410b34fa8015ccd2"
-          enable-cache: true
+          version: "0.11.26"
+          checksum: "6426a73c3837e6e2483ee344cbc00f36394d179afcba6183cb77437e67db4af0"
+          enable-cache: false
           python-version: "3.13"
 
       - name: Set up Python (using uv)
-        run: uv python install
+        run: uv --config-file uv.toml python install
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "24.18.0"
-          cache: "npm"
 
       - name: Run the complete release gate
         run: make verify
@@ -56,7 +55,7 @@ jobs:
             exit 1
           fi
           expected="${RELEASE_TAG#v}"
-          actual="$(uv run python -c 'import kpress; print(kpress.__version__)')"
+          actual="$(uv --config-file uv.toml run --frozen python -c 'import kpress; print(kpress.__version__)')"
           if [ "$actual" != "$expected" ]; then
             printf 'Release version mismatch: expected %s from tag %s, got %s\n' \
               "$expected" "$RELEASE_TAG" "$actual" >&2
@@ -64,4 +63,4 @@ jobs:
           fi
 
       - name: Publish to PyPI
-        run: uv publish --trusted-publishing always
+        run: uv --config-file uv.toml publish --trusted-publishing always

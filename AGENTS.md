@@ -33,16 +33,17 @@ actions rather than telling them to run commands.
 
 ```bash
 make install     # install the frozen Python and npm dependency graphs
-make lint-check  # full read-only lint and package-policy gate
+make lint-check  # full read-only lint and supply-chain gate
 make test        # Python and browserless DOM tests
 make verify      # complete release gate, including audits and artifact inspection
 ```
 
-The lint gate runs Ruff, basedpyright, codespell, Biome 2, TypeScript `checkJs`,
-browserless DOM tests for the ESM helpers, and the extraction safety checks
-(`devtools/public_hygiene.py`). The complete gate also audits the locked Python and npm
-graphs, builds both distributions, rejects repository-only content, and performs an
-isolated wheel smoke test.
+The lint gate runs Ruff, basedpyright, codespell, Biome 2, TypeScript `checkJs`, and the
+extraction safety checks (`devtools/public_hygiene.py`). The test gate runs pytest and
+browserless Vitest coverage for the ESM helpers.
+The complete gate also audits the locked Python and npm graphs, builds both
+distributions, rejects repository-only content, and performs an isolated wheel smoke
+test.
 
 ## Architecture Overview
 
@@ -78,7 +79,7 @@ Auto-format Markdown with `flowmark` for clean, semantic git diffs.
 - Run `flowmark --auto <files>` on Markdown you create or edit.
 - Run `flowmark --docs` for full usage and `flowmark --skill` for the skill.
 - If `flowmark` is not on `PATH`, use a pinned `uvx` runner (never `@latest`).
-- Fast Rust port (recommended): `uvx --from flowmark-rs==0.3.1 flowmark`.
+- Fast Rust port (recommended): `uvx --from flowmark-rs==0.3.2 flowmark`.
 - Python build (library / newest patch): `uvx --from flowmark==0.7.2 flowmark`.
 
 <!-- END FLOWMARK INTEGRATION -->

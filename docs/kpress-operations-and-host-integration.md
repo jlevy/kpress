@@ -41,10 +41,10 @@ Hosted login, upload, accounts, and public service URLs stay outside KPress core
 ## Doctor
 
 `kpress doctor` is a runtime-capability readiness probe, not a development quality gate
-(it never runs Biome, `tsc --checkJs`, Vitest, Ruff, basedpyright, package-policy, or
-formatting; those stay in `devtools/lint.py`). It answers whether the installed package
-can render, publish, optimize, precompress, or export PDF on this machine with the
-dependencies currently present.
+(it never runs Biome, `tsc --checkJs`, Vitest, Ruff, basedpyright, supply-chain checks,
+or formatting; those stay in the repository tooling).
+It answers whether the installed package can render, publish, optimize, precompress, or
+export PDF on this machine with the dependencies currently present.
 
 `kpress.publish.probe_capability`/`probe_all` and the dataclass `ProbeResult` (status
 one of `ok`/`unavailable`/`skipped`/`fail`, optional snake_case `reason`) are the single
@@ -76,10 +76,9 @@ KPress browser JavaScript and CSS are first-class package source.
 
 Required tooling:
 
-- repository package supply-chain policy for exact npm/PyPI tool pins and the two-week
-  new-release cooldown
-- Biome 2 for JS/CSS/JSON formatting and linting, run through the package-owned
-  exact-version wrapper
+- repository supply-chain checks for exact npm pins, lock integrity, release cool-offs,
+  and safe publishing workflows
+- Biome 2 for JS/CSS/JSON formatting and linting, run from the locked package toolchain
 - `tsc --checkJs` for native JavaScript type checking with JSDoc
 - Vitest with `happy-dom` for browserless DOM behavior tests
 - Ruff and basedpyright for Python

@@ -1,5 +1,5 @@
 # Git hooks managed by lefthook (https://lefthook.dev).
-# Install once: `make hooks-install` (or `npm ci && npm run prepare`).
+# Install once: `make hooks-install`.
 # Bypass for an emergency commit: `git commit --no-verify` (avoid in PRs).
 
 # Run pre-commit commands sequentially (not parallel). Several commands stage
@@ -11,37 +11,36 @@ pre-commit:
   commands:
     ruff-format:
       glob: "*.py"
-      run: uv run ruff format {staged_files}
+      run: uv --config-file uv.toml run --frozen ruff format {staged_files}
       stage_fixed: true
 
     ruff-check:
       glob: "*.py"
-      run: uv run ruff check --fix {staged_files}
+      run: uv --config-file uv.toml run --frozen ruff check --fix {staged_files}
       stage_fixed: true
 
     # --unsafe auto-applies Biome's unsafe-class fixes (e.g. brace wrapping);
-    # CI stays verify-only via `biome ci` in devtools/lint.py.
+    # CI stays verify-only via `biome ci` in `devtools.lint`.
     # --no-errors-on-unmatched so staging only biome-ignored vendored assets
     # (e.g. katex/*.min.css) does not fail the commit.
     biome:
       glob: "*.{js,css,json}"
-      run: uv run python devtools/biome.py check --write --unsafe --no-errors-on-unmatched {staged_files}
+      run: make biome-fix STAGED_FILES="{staged_files}"
       stage_fixed: true
 
-    js-check:
+    browser-types:
       glob: "*.js"
-      run: uv run python devtools/tsc_check.py && uv run python devtools/js_dom_tests.py
+      run: make browser-types
 
     # NOTE: when files are passed as explicit args, codespell bypasses the
     # [tool.codespell] skip list in pyproject.toml, so the skip patterns must
     # be repeated here — keep the two in sync.
     codespell:
       glob: "*.{py,md}"
-      run: uv run codespell --write-changes --skip='tests/fixtures/*,tests/golden/accepted/*,tests/e2e/docs/*,*/static/katex/*,*/static/icons/*' {staged_files}
+      run: uv --config-file uv.toml run --frozen codespell --write-changes --skip='tests/fixtures/*,tests/golden/accepted/*,tests/e2e/docs/*,*/static/katex/*,*/static/icons/*' {staged_files}
       stage_fixed: true
 
-    # Markdown formatting with flowmark-rs, delegating to `make format` (the
-    # same command developers run locally). Whole-repo, not {staged_files}:
+    # Markdown formatting with flowmark-rs. Whole-repo, not {staged_files}:
     # flowmark-rs only reads .flowmarkignore relative to its target arg, so
     # passing subsets bypasses the exclusion list and damages fixtures and
     # e2e showcase docs. The `glob: '*.md'` filter just means the hook only
@@ -49,15 +48,10 @@ pre-commit:
     # fast (well under a second).
     format-markdown:
       glob: "*.md"
-      run: make format
+      run: make format-markdown
       stage_fixed: true
 
 pre-push:
-  parallel: true
   commands:
-    package-policy:
-      run: uv run python devtools/npm_policy.py
-    public-hygiene:
-      run: uv run python devtools/public_hygiene.py
-    tests:
-      run: uv run pytest -q
+    quality:
+      run: make lint-check test

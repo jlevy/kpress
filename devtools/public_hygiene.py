@@ -1,5 +1,4 @@
-"""Hygiene scan over the public package files: no private filesystem paths,
-no secret tokens. Runs in the lint gate and pre-commit."""
+"""Scan public package files for private filesystem paths and secret tokens."""
 
 from __future__ import annotations
 
@@ -11,6 +10,17 @@ from pathlib import Path
 from typing import Final
 
 ROOT = Path(__file__).resolve().parents[1]
+COMMON_DOC_FOOTER = "This document follows common-doc-guidelines.md."
+COMMON_DOC_EXEMPT_ROOTS = (
+    ROOT / ".agents" / "skills",
+    ROOT / ".claude" / "skills",
+    ROOT / "examples" / "single-doc",
+    ROOT / "examples" / "static-site" / "content",
+    ROOT / "examples" / "wrapped-site" / "content",
+    ROOT / "tests" / "e2e" / "docs",
+    ROOT / "tests" / "fixtures",
+)
+COMMON_DOC_EXEMPT_FILES = {ROOT / "CLAUDE.md"}
 
 TEXT_SUFFIXES: Final = {
     ".css",
@@ -26,16 +36,22 @@ TEXT_SUFFIXES: Final = {
 }
 
 PUBLIC_ROOT_FILES: Final = (
+    ".copier-answers.yml",
+    ".flowmarkignore",
+    ".gitignore",
+    ".node-version",
+    ".npmrc",
+    ".nvmrc",
     "AGENTS.md",
+    "CLAUDE.md",
     "CONTRIBUTING.md",
+    "Makefile",
     "NOTICE.md",
     "README.md",
     "SECURITY.md",
     "SUPPLY-CHAIN-SECURITY.md",
     "TODO.md",
-    # docs/*.md files are covered by the "docs" entry in PUBLIC_DIRS; listing
-    # them here too would scan them twice and duplicate findings.
-    ".copier-answers.yml",
+    "package-lock.json",
     "package.json",
     "pyproject.toml",
     "lefthook.yml",
@@ -100,8 +116,11 @@ def _iter_text_files(paths: list[Path]) -> list[Path]:
     files: list[Path] = []
     for path in paths:
         if path.is_file():
-            if path.suffix in TEXT_SUFFIXES:
-                files.append(path)
+            try:
+                path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            files.append(path)
             continue
         for child in path.rglob("*"):
             if child.is_file() and child.suffix in TEXT_SUFFIXES:
@@ -109,24 +128,41 @@ def _iter_text_files(paths: list[Path]) -> list[Path]:
     return sorted(files)
 
 
+def find_text_findings(path: Path, text: str) -> list[Finding]:
+    findings: list[Finding] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        for rule, pattern in RULE_PATTERNS:
+            if pattern.search(line) is None:
+                continue
+            findings.append(
+                Finding(
+                    path=path,
+                    line=line_number,
+                    rule=rule,
+                    excerpt=line.strip(),
+                )
+            )
+    return findings
+
+
 def find_violations(paths: list[Path]) -> list[Finding]:
     findings: list[Finding] = []
     for path in _iter_text_files(paths):
-        text = path.read_text(encoding="utf-8")
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            for rule, pattern in RULE_PATTERNS:
-                match = pattern.search(line)
-                if match is None:
-                    continue
-                findings.append(
-                    Finding(
-                        path=path,
-                        line=line_number,
-                        rule=rule,
-                        excerpt=line.strip(),
-                    )
-                )
+        findings.extend(find_text_findings(path, path.read_text(encoding="utf-8")))
     return findings
+
+
+def find_documentation_findings(path: Path, text: str) -> list[str]:
+    """Return common-document-policy findings for a repository file."""
+    if path.suffix.lower() != ".md":
+        return []
+    if path in COMMON_DOC_EXEMPT_FILES:
+        return []
+    if any(path.is_relative_to(root) for root in COMMON_DOC_EXEMPT_ROOTS):
+        return []
+    if COMMON_DOC_FOOTER not in text:
+        return [f"{_display_path(path, root=ROOT)}: missing common-doc-guidelines footer"]
+    return []
 
 
 def _display_path(path: Path, *, root: Path) -> str:
@@ -149,7 +185,12 @@ def main(argv: list[str] | None = None) -> int:
     root = ROOT
     paths = args.paths or public_package_paths(root)
     findings = find_violations(paths)
-    if not findings:
+    documentation_findings: list[str] = []
+    for path in _iter_text_files(paths):
+        documentation_findings.extend(
+            find_documentation_findings(path, path.read_text(encoding="utf-8"))
+        )
+    if not findings and not documentation_findings:
         return 0
 
     for finding in findings:
@@ -158,6 +199,8 @@ def main(argv: list[str] | None = None) -> int:
             f"{finding.rule}: {finding.excerpt}",
             file=sys.stderr,
         )
+    for finding in documentation_findings:
+        print(finding, file=sys.stderr)
     return 1
 
 

@@ -2,12 +2,13 @@
 
 ## Prerequisites
 
-Install a supported Python and uv 0.11.21 or newer as described in
+Install a supported Python and uv 0.11.26 or newer as described in
 [Installation](installation.md).
-Development also requires Node.js 24.18.x and npm 11.10.x or newer within the major
-versions permitted by `package.json`. The lint gate uses the exact versions in
+Development pins Node.js 24.18.0 and requires npm 11.10.0 or newer within npm 11, as
+declared in `package.json`. Both nvm (`nvm use`) and fnm (`fnm use`) read the repository
+pins in `.nvmrc` and `.node-version`. The repository gates use the exact versions in
 `package.json` and `package-lock.json` for Biome, TypeScript `checkJs`, and browserless
-Vitest tests over the native ESM assets shipped in the wheel.
+Vitest coverage over the native ESM assets shipped in the wheel.
 
 Fork and clone [jlevy/kpress](https://github.com/jlevy/kpress).
 Run all commands below from the repository root.
@@ -22,13 +23,13 @@ make install
 
 # Install the git hooks (lefthook; see lefthook.yml). Pre-commit hooks
 # auto-format staged Python (ruff), JS/CSS/JSON (Biome), Markdown (flowmark),
-# and fix spelling; pre-push runs the tests and the extraction safety check.
+# and fix spelling; pre-push runs the read-only lint and test gates.
 make hooks-install
 
 # Install, format, lint, and test.
 make
 
-# Auto-format maintained Markdown.
+# Auto-format maintained Python, JavaScript, CSS, JSON, and Markdown.
 make format
 
 # Build the source distribution and wheel.
@@ -40,7 +41,7 @@ make lint
 # Run the read-only quality gate used by CI.
 make lint-check
 
-# Run Python tests.
+# Run Python and browserless DOM tests.
 make test
 
 # Audit the frozen Python and npm dependency graphs.
@@ -56,10 +57,9 @@ make clean
 Focused equivalents used while diagnosing an individual gate:
 
 ```shell
-UV_CONFIG_FILE=uv.toml uv sync --all-extras --all-groups --frozen
-npm ci
-uv run pytest tests --tb=short -q
-uv run python devtools/lint.py --check
+make install
+uv --config-file uv.toml run --frozen pytest tests --tb=short -q
+npx --no-install vitest run --config tests/js/vitest.config.mjs
 make audit
 make build
 ```
@@ -71,7 +71,7 @@ make hooks-install
 ```
 
 The pre-commit hook formats staged Python, JavaScript, CSS, JSON, and Markdown, then
-checks spelling. The pre-push hook runs tests and extraction-safety checks.
+checks spelling. The pre-push hook runs the read-only lint and test gates.
 
 ## Dependency Changes
 
@@ -84,7 +84,8 @@ results.
 `uv.toml` applies the repository-wide uv version and cool-off policy.
 `package.json`, `.npmrc`, and the npm lock enforce the corresponding Node, npm,
 install-script, and release-age policy.
-`devtools/npm_policy.py` prevents CI or release workflows from bypassing those controls.
+`devtools/check_supply_chain.py` checks the few cross-file safety rules that package
+managers and standard linters do not enforce.
 
 `make upgrade` exists for a deliberate, reviewed re-resolution.
 Do not run it as routine maintenance or use an unpinned `@latest` or zero-install
@@ -97,9 +98,9 @@ Documentation follows `tbd guidelines common-doc-guidelines`. Keep the
 duplicating contract lists owned by `kpress.contract`, and retain the exact footer at
 the end of every maintained Markdown document.
 
-Run `make format` after editing Markdown.
-It applies the pinned flowmark formatter to the maintained tree and respects
-`.flowmarkignore`; files intentionally excluded as fixtures or example content remain
+Run `make format` after editing maintained source or documentation.
+For a focused documentation pass, `make format-markdown` applies the pinned Flowmark
+formatter and respects `.flowmarkignore`; excluded fixtures and example content remain
 byte-stable.
 
 ## IDE Setup

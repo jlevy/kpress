@@ -2,16 +2,13 @@
   "name": "kpress-devtools",
   "version": "0.0.0",
   "private": true,
-  "description": "Pinned JS toolchain for KPress: git hooks (lefthook) and the lint gate's Biome/tsc/vitest checks. The Python package lives under src/kpress/.",
+  "description": "Pinned JavaScript toolchain for KPress browser linting, type checking, tests, and git hooks.",
   "engines": {
     "node": ">=24.18.0 <25",
     "npm": ">=11.10.0 <12"
   },
-  "scripts": {
-    "prepare": "lefthook install"
-  },
   "devDependencies": {
-    "@biomejs/biome": "2.5.1",
+    "@biomejs/biome": "2.5.2",
     "happy-dom": "20.10.6",
     "lefthook": "2.1.9",
     "typescript": "6.0.3",

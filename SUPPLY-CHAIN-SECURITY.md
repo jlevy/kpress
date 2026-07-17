@@ -68,6 +68,11 @@ cool-off.
    `pnpm dlx` / `bunx` and review the resolved `package@version`.
 6. **No `curl | sh` from untrusted sources.** Verify the installer URL and checksums.
 
+`devtools/check_supply_chain.py` checks the repository controls that span npm, uv, and
+GitHub Actions.
+The normal lint, test, audit, and build commands enforce everything owned
+by their standard configuration files.
+
 ## Exception Process for Third-Party Packages
 
 When a third-party version inside the window is genuinely needed (e.g. a same-day CVE

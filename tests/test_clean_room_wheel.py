@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 _KPRESS_DIR = Path(__file__).resolve().parents[1]
+_UV = ["uv", "--config-file", str(_KPRESS_DIR / "uv.toml")]
 
 needs_uv = pytest.mark.skipif(shutil.which("uv") is None, reason="clean-room gate requires uv")
 
@@ -67,7 +68,7 @@ print("clean-room-ok")
 def test_wheel_installs_and_builds_in_clean_venv(tmp_path: Path) -> None:
     dist = tmp_path / "dist"
     build = subprocess.run(
-        ["uv", "build", "--wheel", "--out-dir", str(dist)],
+        [*_UV, "build", "--wheel", "--out-dir", str(dist)],
         cwd=_KPRESS_DIR,
         capture_output=True,
         text=True,
@@ -79,10 +80,10 @@ def test_wheel_installs_and_builds_in_clean_venv(tmp_path: Path) -> None:
     assert len(wheels) == 1, f"expected one wheel, got {wheels}"
 
     venv_dir = tmp_path / "venv"
-    subprocess.run(["uv", "venv", str(venv_dir)], capture_output=True, check=True, timeout=120)
+    subprocess.run([*_UV, "venv", str(venv_dir)], capture_output=True, check=True, timeout=120)
     python = venv_dir / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     install = subprocess.run(
-        ["uv", "pip", "install", "--python", str(python), str(wheels[0])],
+        [*_UV, "pip", "install", "--python", str(python), str(wheels[0])],
         capture_output=True,
         text=True,
         check=False,

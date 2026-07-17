@@ -22,11 +22,11 @@ Each step is tagged:
 
 - **Golden HTML** (`tests/golden/accepted/*/page.html`) pins the rendered markup,
   including the settings menu, footnote, and table structure.
-  Run `pytest tests/test_golden_render.py`.
+  Run `uv --config-file uv.toml run --frozen pytest tests/test_golden_render.py`.
 - **Browserless DOM tests** (`tests/js/*.test.js`, Vitest and happy-dom) pin theme
   switching, gear open/close, TOC scroll and drawer behavior, tooltip positioning,
   code-copy states, video popovers, and tabs.
-  Run `uv run python devtools/js_dom_tests.py`.
+  Run `npx --no-install vitest run --config tests/js/vitest.config.mjs`.
 - **Asset/contract tests** pin the public CSS classes, CSS variables, and required
   selectors.
 
@@ -51,19 +51,19 @@ rm -rf /tmp/kpress-e2e && mkdir -p /tmp/kpress-e2e
 
 # 1) Single standalone document. Its complete output directory contains the HTML,
 #    package assets, any required KaTeX files, and eligible local document images.
-uv run kpress render \
+uv --config-file uv.toml run --frozen kpress render \
   tests/e2e/docs/index.md \
   --output /tmp/kpress-e2e/showcase.html --asset-mode hashed
 
 # 2) Readable static site with linked assets. The fixture declares its document images
 #    through sources[].static, so figures resolve from the output root.
-uv run kpress build \
+uv --config-file uv.toml run --frozen kpress build \
   --config tests/e2e/kpress.yml \
   --output-dir /tmp/kpress-e2e/site-readable --asset-mode linked
 
 # 3) Production-style static site with hashed assets and the optional full optimizer.
-uv run kpress doctor --profile optimize --allow-network
-uv run kpress build \
+uv --config-file uv.toml run --frozen kpress doctor --profile optimize --allow-network
+uv --config-file uv.toml run --frozen kpress build \
   --config tests/e2e/kpress.yml \
   --output-dir /tmp/kpress-e2e/site-hashed --asset-mode hashed --optimizer full
 ```
@@ -195,9 +195,10 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
   video popovers, and copy controls are suppressed; tables and source blocks are not
   clipped; footnotes simplify; sensible page breaks.
 - **[Human]** Optional real PDF (requires the locked `kpress[pdf]` extra and a reviewed
-  Chromium download): `uv run --frozen playwright install chromium`, then
-  `uv run --frozen kpress export <doc>.md --pdf /tmp/out.pdf`. Inspect content, fonts,
-  tables, and page breaks.
+  Chromium download):
+  `uv --config-file uv.toml run --frozen playwright install chromium`, then
+  `uv --config-file uv.toml run --frozen kpress export <doc>.md --pdf /tmp/out.pdf`.
+  Inspect content, fonts, tables, and page breaks.
   Absence of Playwright must give a clear error, never a silent downgrade.
 
 ## Static Site Checks
