@@ -89,6 +89,9 @@ No P1 release gates remain open.
 
 ### P3: Deferred Evolution
 
+- `kpr-lrfg`: add optional
+  [content-size indicators](docs/content-size-indicators.plan.md) (document and
+  top-section word counts plus reading time) behind a flexdoc `metrics` extra
 - `kpr-isp2`: restore and verify native Windows support
 - `kpr-xsog`: design verified offline assets and truly self-contained output
 - `kpr-ef65`: evaluate schema-checked simple CSS-variable configuration
