@@ -909,13 +909,13 @@ def _toc_entries(headings: list[Heading]) -> list[TocEntry]:
     if headings and headings[0].level == 1 and sum(item.level == 1 for item in headings) == 1:
         toc_headings = headings[1:]
     # Normalize nesting so the TOC is always a proper tree with no gaps. Each entry's
-    # depth is one more than its structural parent's — the nearest preceding heading
-    # with a smaller tag level — so a document whose headings skip a level (an H2 then
+    # depth is one more than its structural parent's, the nearest preceding heading
+    # with a smaller tag level. A document whose headings skip a level (an H2 then
     # an H4 with no H3 between) never over-indents, and a heading with no enclosing
     # ancestor (an H3 before the first H2) sits at the top level instead of appearing
     # indented before shallower entries. Depth is positional, not a document-wide rank
     # of the distinct levels present: the same tag can map to different TOC depths in
-    # different sections. This is a TOC concern only — the rendered heading tags
+    # different sections. This is a TOC concern only; the rendered heading tags
     # (<h3> etc.) are unchanged.
     entries: list[TocEntry] = []
     open_sections: list[tuple[int, int]] = []  # (tag level, TOC depth) of open ancestors

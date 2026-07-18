@@ -354,9 +354,10 @@
 }
 
 /* Two-level weight hierarchy, matching textpress (toc-h2=550 medium, toc-h3=370
-   light). kpress normalizes TOC levels to contiguous ranks, so the top content
-   level is level-1 (the document's h2): it gets medium; everything deeper gets
-   light. (textpress keys the same two weights off raw h2/h3.) */
+   light). kpress normalizes TOC levels to structural tree depths, so the top
+   content level is level-1 (typically the document's h2): it gets medium;
+   everything deeper gets light. (textpress keys the same two weights off raw
+   h2/h3.) */
 .kpress-toc-level-1 > a {
   font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: 0.007em;

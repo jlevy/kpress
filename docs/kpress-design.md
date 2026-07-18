@@ -160,7 +160,12 @@ feature guarantees); the sections named in the table carry the architecture deta
   links and autolinks, strikethrough, task lists, hard/soft breaks, and code fences.
 - **Stable heading anchors and TOC metadata.** Deterministic, de-duplicated heading ids
   with plain inline titles; broken-anchor diagnostics; a single leading H1 is excluded
-  from the TOC.
+  from the TOC. TOC entry levels are structural depths, not raw tag levels: each entry
+  nests one level under its nearest preceding shallower heading, so the TOC always forms
+  a proper tree. A heading with no enclosing ancestor (an H3 before the first H2) lists
+  at the top level rather than indenting ahead of shallower entries, and skipped levels
+  (an H4 directly inside an H2) compress to one step.
+  Rendered heading tags are unchanged; this normalization is TOC-only.
 - **Raw HTML trust modes.** `trusted` (no sanitization, for your own files) and
   `sanitized` (for anyone else’s content: embeds, publishing, exports) with a defined
   safe/unsafe policy and diagnostics; see
@@ -550,9 +555,10 @@ Two further pieces of the page HTML are contract (see
   `title`, `route`, `profile`, `headings`, `widgets` (the enabled widget map with each
   widget’s opaque config passed through verbatim).
   `headings` carries the **TOC entries, post-processing included**: a lone leading H1 is
-  stripped and levels are renormalized to contiguous ranks, not raw document heading
-  levels. This is the published data client widgets compute from: a minimap reads
-  `headings`; the settings widget reads its own `widgets.settings` config.
+  stripped and each level is the entry’s structural TOC depth (one level under its
+  nearest preceding shallower heading), not the raw document heading level.
+  This is the published data client widgets compute from: a minimap reads `headings`;
+  the settings widget reads its own `widgets.settings` config.
   Keys are added as widgets need them; each addition is a contract change.
   The *fragment* path does not emit the block; embedding hosts get the same data in the
   `render_view` payload and may mount widgets anywhere.
