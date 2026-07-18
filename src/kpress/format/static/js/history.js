@@ -9,10 +9,16 @@ import { resolveKpressViewport, viewportScrollContext } from "./viewport.js";
  * browsers persist/restore only the *document* scroller's position across
  * same-document history traversal — the pane is invisible to native scroll
  * restoration, so Back after a section-link jump would revert the URL but
- * leave the reader where they were. This behavior closes that gap without
- * taking over navigation: hash clicks stay native (the browser writes the
- * hash and pushes the entry); the behavior only records the pane offset in
- * the session-history entry state and replays it on traversal.
+ * leave the reader where they were. This behavior records the pane offset
+ * in the session-history entry state and replays it on traversal.
+ *
+ * It also owns plain in-document section navigation: Chromium performs
+ * fragment navigation with an instant scroll when the scroller is a
+ * non-root pane (the pane's CSS `scroll-behavior: smooth` is not
+ * consulted), so native hash clicks jump while explicit UI scrolls (the
+ * TOC title) glide. Plain section links are therefore handled here — push
+ * the entry, then glide to the target — while footnote references keep
+ * their popover owner and modified/prevented clicks stay native.
  */
 
 /**
@@ -172,6 +178,49 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
     document.getElementById(id)?.scrollIntoView({ behavior: "instant", block: "start" });
   };
 
+  /**
+   * Glide plain section links inside the pane. Listens on `window` — the
+   * end of the bubble path — so every document-level owner that claims the
+   * click first (the footnote popover, a host's own interceptor) has
+   * already spoken, and `defaultPrevented` defers to all of them
+   * regardless of registration order. pushState writes the entry the
+   * browser would have pushed; the new entry starts unstamped and picks up
+   * its offset from the debounced scroll stamp, so traversal behaves
+   * exactly as with native navigation.
+   *
+   * @param {MouseEvent} event
+   */
+  const onNavClick = (event) => {
+    if (event.defaultPrevented || event.button !== 0) {
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    const target = /** @type {{ closest?: (selector: string) => Element | null }} */ (event.target);
+    const anchor = typeof target?.closest === "function" ? target.closest('a[href^="#"]') : null;
+    const href = anchor?.getAttribute("href") ?? "";
+    if (!anchor || href.length <= 1) {
+      return;
+    }
+    if (href.startsWith("#fn-") || anchor.closest(".kpress-footnote-ref, .footnote-ref")) {
+      return;
+    }
+    const dest = document.getElementById(decodeURIComponent(href.slice(1)));
+    if (!dest || !viewport.contains(dest)) {
+      return;
+    }
+    try {
+      history.pushState(null, "", href);
+    } catch {
+      // Embedders that reject pushState keep fully native navigation.
+      return;
+    }
+    event.preventDefault();
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    dest.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth", block: "start" });
+  };
+
   let stampTimer = 0;
   const onScroll = () => {
     clearTimeout(stampTimer);
@@ -179,11 +228,13 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
   };
 
   document.addEventListener("click", onClick, true);
+  window.addEventListener("click", onNavClick);
   window.addEventListener("popstate", onPopState);
   ctx.onScroll(onScroll);
 
   return () => {
     document.removeEventListener("click", onClick, true);
+    window.removeEventListener("click", onNavClick);
     window.removeEventListener("popstate", onPopState);
     ctx.offScroll(onScroll);
     clearTimeout(stampTimer);

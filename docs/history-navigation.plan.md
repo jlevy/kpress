@@ -28,9 +28,13 @@ traversal. Two reader-visible gaps followed:
    restores only the window scroller — the pane stayed where it was, so Back reverted
    the URL without moving the view.
 
-This feature closes both gaps without taking over navigation: hash clicks stay native,
-and a new registered `history` behavior records and replays the pane offset through
-session-history entry state.
+This feature closes both gaps with a registered `history` behavior that records and
+replays the pane offset through session-history entry state.
+The behavior also owns plain section-link navigation: Chromium scrolls a non-root pane
+instantly on fragment navigation (the pane’s CSS `scroll-behavior` is not consulted), so
+the behavior pushes the entry itself and glides to the target.
+Footnote references keep their popover owner, and modified or already-handled clicks
+stay native.
 
 ## Goals
 
@@ -101,8 +105,8 @@ dependency map (`runtime.js`, `viewport.js`).
 - Browserless Vitest: stamp-on-click (state preserved additively), non-hash and bare-`#`
   anchors ignored, popstate restore, fragment fallback, debounced re-stamp, disposer
   teardown, and registry binding.
-  The TOC suite asserts native navigation (no `preventDefault`, no JS scroll call) with
-  the drawer still closing.
+  The TOC suite asserts the drawer still closes on link clicks; section-link navigation
+  is owned by the `history` behavior (pushState + smooth in-pane scroll).
 - Python goldens: the new script entry on TOC/tooltip pages and the changed asset hashes
   are reviewed and accepted.
 - Real-browser QA (host-side): section-link click → Back restores the pane position; TOC

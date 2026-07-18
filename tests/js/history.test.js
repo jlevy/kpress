@@ -70,9 +70,48 @@ describe("history behavior", () => {
     viewport.scrollTop = 1234;
     clickSectionLink();
 
-    // Navigation itself stays native; the behavior only records where the
-    // reader left from, so Back can return there.
+    // A suppressed click (an owner claimed it) leaves navigation alone; the
+    // behavior only records where the reader left from, so Back can return
+    // there.
     expect(history.state?.kpressScroll).toBe(1234);
+    dispose();
+  });
+
+  it("owns plain section-link navigation: pushes the entry and glides the pane", async () => {
+    documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    const scrollIntoView = vi.fn();
+    document.getElementById("sec").scrollIntoView = scrollIntoView;
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("section-link")?.dispatchEvent(click);
+
+    // The behavior claims the click (Chromium would scroll the pane
+    // instantly), pushes the entry the browser would have pushed (new entry,
+    // unstamped), and glides to the target.
+    expect(click.defaultPrevented).toBe(true);
+    expect(location.hash).toBe("#sec");
+    expect(history.state).toBe(null);
+    expect(scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: "smooth", block: "start" }),
+    );
+    dispose();
+  });
+
+  it("leaves footnote references to their popover owner", async () => {
+    documentMarkup();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<main data-note><a id="fn-ref" class="kpress-footnote-ref" href="#fn-1">1</a></main>',
+    );
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("fn-ref")?.dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(false);
     dispose();
   });
 

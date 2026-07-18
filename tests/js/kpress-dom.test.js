@@ -394,9 +394,9 @@ A--&gt;B</code></pre>
     const event = new MouseEvent("click", { bubbles: true, cancelable: true });
     link?.dispatchEvent(event);
 
-    // The browser owns the navigation: it writes the hash, pushes the history
-    // entry (Back/Forward, shareable URLs), and scrolls the viewport — the
-    // glide comes from CSS scroll-behavior, not a JS scrollIntoView call.
+    // toc.js itself never claims the click — section-link navigation is
+    // owned by the history behavior (not loaded here), which pushes the
+    // entry and glides the pane.
     expect(event.defaultPrevented).toBe(false);
     expect(scrollIntoView).not.toHaveBeenCalled();
     expect(link?.getAttribute("data-active")).toBe("true");
