@@ -55,7 +55,12 @@ class Heading:
 
 @dataclass(frozen=True)
 class TocEntry:
-    """TOC entry emitted for a heading."""
+    """TOC entry emitted for a heading.
+
+    ``level`` is the entry's structural TOC depth (from 1), not the heading's tag
+    level: each entry sits one level under its nearest preceding shallower heading,
+    so the TOC always forms a proper tree.
+    """
 
     level: int
     title: str

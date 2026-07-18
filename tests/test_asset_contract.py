@@ -206,6 +206,23 @@ def test_standalone_settings_menu_has_reader_css_states() -> None:
         assert required in css
 
 
+def test_toc_and_footnote_transitions_are_property_scoped() -> None:
+    css = get_static_asset("css/components.css").content.decode("utf-8")
+
+    assert "transition: all" not in css
+    toc_rule = css.partition(".kpress-toc a {")[2].partition("}")[0]
+    footnote_rule = css.partition(".kpress-footnote-ref a,\n.kpress-footnote-backref {")[
+        2
+    ].partition("}")[0]
+    assert toc_rule
+    assert footnote_rule
+    for rule in [toc_rule, footnote_rule]:
+        assert "color var(--kpress-transition-fast)" in rule
+        assert "background-color var(--kpress-transition-fast)" in rule
+        assert "background var(--kpress-transition-fast)" not in rule
+    assert "border-color var(--kpress-transition-fast)" in toc_rule
+
+
 def test_table_css_contract_covers_responsive_reader_parity() -> None:
     css = get_static_asset("css/components.css").content.decode("utf-8")
 
@@ -317,6 +334,13 @@ def test_source_ported_reader_css_keeps_kash_semantic_surfaces() -> None:
 def test_print_css_contract_covers_reader_parity_surfaces() -> None:
     css = get_static_asset("css/print.css").content.decode("utf-8")
 
+    assert (
+        """.kpress-doc,
+  .kpress-page-main {
+    padding-inline: 0;
+  }"""
+        in css
+    )
     for required in [
         "orphans: 3;",
         "widows: 3;",

@@ -596,9 +596,10 @@ def build_page_model(
     dynamic payload so embeds read the same data (docs/kpress-design.md "Page model
     block and widget mounts").
 
-    ``headings`` carries the post-processed TOC entries — a lone leading H1 is
-    stripped and levels renormalized to contiguous ranks — not raw document
-    heading levels.
+    ``headings`` carries the post-processed TOC entries, not raw document heading
+    levels: a lone leading H1 is stripped, and each level is the entry's
+    structural TOC depth (one level under its nearest preceding shallower
+    heading).
     """
 
     return {

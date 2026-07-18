@@ -160,7 +160,12 @@ feature guarantees); the sections named in the table carry the architecture deta
   links and autolinks, strikethrough, task lists, hard/soft breaks, and code fences.
 - **Stable heading anchors and TOC metadata.** Deterministic, de-duplicated heading ids
   with plain inline titles; broken-anchor diagnostics; a single leading H1 is excluded
-  from the TOC.
+  from the TOC. TOC entry levels are structural depths, not raw tag levels: each entry
+  nests one level under its nearest preceding shallower heading, so the TOC always forms
+  a proper tree. A heading with no enclosing ancestor (an H3 before the first H2) lists
+  at the top level rather than indenting ahead of shallower entries, and skipped levels
+  (an H4 directly inside an H2) compress to one step.
+  Rendered heading tags are unchanged; this normalization is TOC-only.
 - **Raw HTML trust modes.** `trusted` (no sanitization, for your own files) and
   `sanitized` (for anyone else’s content: embeds, publishing, exports) with a defined
   safe/unsafe policy and diagnostics; see
@@ -225,6 +230,10 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Footnote tooltips.** Hover, focus, and touch previews with truncation, a navigation
   link, delayed hide, and a trigger-to-tooltip hover bridge; accidental footnote
   navigation is prevented.
+  The proposed replacement for this current alpha behavior is specified in
+  [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): transient
+  previews remain descriptive, while deliberate activation pins an accessible surface
+  whose links can be used reliably.
 - **Internal-link tooltips.** Previews for headings (with nearby text), figures, tables,
   code, and details, with viewport-aware placement, arrow positioning, touch fallback,
   and Escape close.
@@ -254,8 +263,9 @@ feature guarantees); the sections named in the table carry the architecture deta
 ### Print and PDF
 
 - **Print CSS.** Page rules, paper palette, no-print/print-only, TOC and video
-  suppression, heading/table break control, repeated table headers, footnote
-  simplification, code wrapping, and orphans/widows.
+  suppression, page-margin alignment for standalone and fragment shells, heading/table
+  break control, repeated table headers, footnote simplification, code wrapping, and
+  orphans/widows.
 - **Browser-backed PDF.** An optional browser backend renders the print profile to PDF;
   absence of the optional dependency produces a clear error, never a silent downgrade.
 
@@ -550,9 +560,10 @@ Two further pieces of the page HTML are contract (see
   `title`, `route`, `profile`, `headings`, `widgets` (the enabled widget map with each
   widget’s opaque config passed through verbatim).
   `headings` carries the **TOC entries, post-processing included**: a lone leading H1 is
-  stripped and levels are renormalized to contiguous ranks, not raw document heading
-  levels. This is the published data client widgets compute from: a minimap reads
-  `headings`; the settings widget reads its own `widgets.settings` config.
+  stripped and each level is the entry’s structural TOC depth (one level under its
+  nearest preceding shallower heading), not the raw document heading level.
+  This is the published data client widgets compute from: a minimap reads `headings`;
+  the settings widget reads its own `widgets.settings` config.
   Keys are added as widgets need them; each addition is a contract change.
   The *fragment* path does not emit the block; embedding hosts get the same data in the
   `render_view` payload and may mount widgets anywhere.
