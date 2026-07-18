@@ -3,13 +3,15 @@ type: is
 id: is-01kxvqmm4nt009pa0wnfway5ed
 title: "Table numeric alignment: column-scoped detection + typographic minus"
 kind: bug
-status: open
+status: closed
 priority: 1
-version: 1
+version: 2
 labels: []
 dependencies: []
 created_at: 2026-07-18T23:05:32.564Z
-updated_at: 2026-07-18T23:05:32.564Z
+updated_at: 2026-07-18T23:16:50.924Z
+closed_at: 2026-07-18T23:16:50.924Z
+close_reason: "Fixed in 6684cfd: column-scoped numeric marking in both renderer and JS runtime, typographic-minus support, unified patterns, tests and design doc updated."
 ---
 Two defects in numeric table-cell alignment (data-kpress-numeric), reported from finterm-site rendering:
 
