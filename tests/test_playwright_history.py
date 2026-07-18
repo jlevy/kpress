@@ -73,10 +73,19 @@ def test_hash_history_and_viewport_restoration_in_real_browser(tmp_path: Path) -
 
                 assert pane.count() == 1
 
-                # Native section-link click: hash entry pushed, pane scrolled.
+                # Section-link click: the history behavior pushes the hash
+                # entry and glides the pane, so wait for the scroll to settle
+                # (equal across two polls past the threshold) before sampling
+                # the landed offset.
                 page.locator('.kpress-prose a[href="#details"]').first.click()
                 page.wait_for_function(
-                    "document.querySelector('[data-kpress-viewport]').scrollTop > 200"
+                    """(() => {
+                      const pane = document.querySelector('[data-kpress-viewport]');
+                      if (pane.scrollTop <= 200) { window.__kpSettled = undefined; return false; }
+                      if (window.__kpSettled === pane.scrollTop) return true;
+                      window.__kpSettled = pane.scrollTop;
+                      return false;
+                    })()"""
                 )
                 assert page.url.endswith("#details")
                 jumped = pane_top()
