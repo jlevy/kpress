@@ -388,6 +388,10 @@ def _render_asset_manifest(
         entry_points.add("js/toc.js")
     if tree is not None and _SAME_DOCUMENT_LINK_RE.search(tree.html):
         entry_points.add("js/tooltips.js")
+    # Any in-document hash navigation (TOC or same-document links) gets the
+    # history behavior: viewport-aware scroll restoration on Back/Forward.
+    if entry_points & {"js/toc.js", "js/tooltips.js"}:
+        entry_points.add("js/history.js")
     if _has_css_class(html, "kpress-code"):
         entry_points.add("js/code-copy.js")
     if _has_css_class(html, "kpress-table"):

@@ -16,6 +16,10 @@
   block-size: 100dvh;
   overflow-y: auto;
   container: kpress-doc / inline-size;
+  /* In-document hash navigation (TOC and section links) is native browser
+     navigation; the glide lives here so it also honors the reduced-motion
+     override below. */
+  scroll-behavior: smooth;
 }
 
 /* The document frame: a non-scrolling wrapper of the viewport that pins the
@@ -1789,7 +1793,10 @@
   .kpress summary::before,
   .kpress details::details-content,
   .kpress-toc-backdrop,
-  .kpress-video-backdrop {
+  .kpress-video-backdrop,
+  /* The viewport pane sits above .kpress, so the smooth hash-navigation
+     glide needs its own reduced-motion opt-out. */
+  .kpress-viewport {
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
     scroll-behavior: auto;

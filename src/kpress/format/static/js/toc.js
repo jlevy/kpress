@@ -200,13 +200,14 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
   };
 
   for (const link of links) {
-    on(link, "click", (event) => {
-      event.preventDefault();
+    // Native hash navigation stays in charge: the browser writes the hash,
+    // pushes the history entry (Back/Forward, shareable URLs), and scrolls the
+    // viewport — smoothness comes from `scroll-behavior` on .kpress-viewport,
+    // which also respects prefers-reduced-motion. The handler only closes the
+    // drawer and syncs the highlight.
+    on(link, "click", () => {
       setActiveLink(link);
       setExpanded(false);
-      const id = tocLinkId(link);
-      const heading = id ? document.getElementById(id) : null;
-      heading?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
