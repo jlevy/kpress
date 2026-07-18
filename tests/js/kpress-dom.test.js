@@ -863,6 +863,62 @@ A--&gt;B</code></pre>
     expect(cells[1]?.hasAttribute("data-kpress-numeric")).toBe(false);
   });
 
+  it("scopes numeric marking to whole columns, accepting the typographic minus", async () => {
+    document.body.innerHTML = `
+      <article class="kpress-prose">
+        <table>
+          <thead><tr><th>Metric</th><th>Change</th><th>Mixed</th></tr></thead>
+          <tbody>
+            <tr><td>Revenue</td><td>−35%</td><td>12</td></tr>
+            <tr><td>Margin</td><td>+45%</td><td>n/a</td></tr>
+          </tbody>
+        </table>
+      </article>
+    `;
+
+    const { initKpressTables } = await importFresh("tables.js");
+    initKpressTables();
+
+    const marked = [...document.querySelectorAll("[data-kpress-numeric='true']")].map(
+      (cell) => cell.textContent,
+    );
+    // The Change column aligns as one unit, header included; the Mixed column
+    // (numbers and text) gets no marks at all.
+    expect(marked).toEqual(["Change", "−35%", "+45%"]);
+  });
+
+  it("clears stale numeric marks and skips tables with row or column spans", async () => {
+    document.body.innerHTML = `
+      <article class="kpress-prose">
+        <table>
+          <tbody>
+            <tr><td data-kpress-numeric="true">stale text</td><td>1</td></tr>
+            <tr><td>more text</td><td></td></tr>
+          </tbody>
+        </table>
+        <table id="span">
+          <tbody>
+            <tr><td rowspan="2">42</td><td>7</td></tr>
+            <tr><td>8</td></tr>
+          </tbody>
+        </table>
+      </article>
+    `;
+
+    const { initKpressTables } = await importFresh("tables.js");
+    initKpressTables();
+
+    const [first, span] = document.querySelectorAll("table");
+    // Re-running converges: the stale mark on a text cell is removed, the numeric
+    // column is marked, and its empty cell is marked with the column.
+    const firstMarks = [...first.querySelectorAll("td")].map((cell) =>
+      cell.hasAttribute("data-kpress-numeric"),
+    );
+    expect(firstMarks).toEqual([false, true, false, true]);
+    // Spans shift cell positions, so span tables get no numeric marks.
+    expect(span.querySelector("[data-kpress-numeric]")).toBeNull();
+  });
+
   it("switches tab panels through ARIA-selected tabs", async () => {
     document.body.innerHTML = `
       <section data-kpress-tabs>

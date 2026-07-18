@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
-from html import escape
+from html import escape, unescape
 from html.parser import HTMLParser
 from typing import Any, Literal, cast
 from urllib.parse import parse_qs, unquote, urlparse
@@ -35,11 +35,12 @@ from kpress.format.model import (
 from kpress.format.sanitize import sanitize_generated_svg, sanitize_raw_html
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
-# Optional leading sign and major currency symbol; _is_numeric_cell_text strips
-# whitespace first, so "$ 12.45" is matched as "$12.45".
+# Optional leading sign (ASCII or typographic minus U+2212) and major currency
+# symbol; _is_numeric_cell_text strips whitespace first, so "$ 12.45" is matched
+# as "$12.45".
 # Currency symbols (8): $ € ¥ £ ₹ ₩ ¢ ₽
 #   ¥ covers both Japanese yen (JPY) and Chinese yuan/renminbi (CNY).
-_NUMERIC_CELL_RE = re.compile(r"^[-+]?[$€¥£₹₩¢₽]?((\d{1,3}(,\d{3})+|\d+)(\.\d+)?|\.\d+)%?$")
+_NUMERIC_CELL_RE = re.compile(r"^[-+−]?[$€¥£₹₩¢₽]?((\d{1,3}(,\d{3})+|\d+)(\.\d+)?|\.\d+)%?$")
 _INLINE_CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 _FOOTNOTE_REF_RE = re.compile(r"(?<!\\)\[\^([^\]\s]+)\]")
 # Module-level singleton is safe to share across threads: Pygments'
@@ -569,7 +570,9 @@ def _apply_external_link_attrs(attrs: list[tuple[str, str | None]]) -> list[tupl
 
 
 def _is_numeric_cell_text(value: str) -> bool:
-    text = re.sub(r"\s+", "", value)
+    # Cell text is collected with entity refs unresolved; unescape first so a
+    # minus written as an entity (e.g. &#8722;) is judged as its character.
+    text = re.sub(r"\s+", "", unescape(value))
     return bool(_NUMERIC_CELL_RE.fullmatch(text))
 
 
@@ -592,6 +595,32 @@ class _BufferedCell:
         return "".join(self.text_parts)
 
 
+class _TableCellRecord:
+    """A flushed top-level-table cell awaiting the column-scoped numeric decision
+    at ``</table>``: where its opening tag sits in the output, the attrs to rebuild
+    it from, and the facts (column, body/header, text class) the decision needs."""
+
+    def __init__(
+        self,
+        parts_index: int,
+        tag: str,
+        base_attrs: list[tuple[str, str | None]],
+        slug: str,
+        column: int,
+        is_body: bool,
+        is_empty: bool,
+        is_numeric: bool,
+    ) -> None:
+        self.parts_index = parts_index
+        self.tag = tag
+        self.base_attrs = base_attrs
+        self.slug = slug
+        self.column = column
+        self.is_body = is_body
+        self.is_empty = is_empty
+        self.is_numeric = is_numeric
+
+
 class _KpressHtmlPostprocessor(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=False)
@@ -604,6 +633,10 @@ class _KpressHtmlPostprocessor(HTMLParser):
         # tracked, matching the fact that only its cells are buffered.
         self._table_columns: list[str] = []
         self._table_col_index = 0
+        # Flushed cells of the current top-level table, kept until </table> so the
+        # numeric-column decision can be made over whole columns rather than per cell.
+        self._table_cells: list[_TableCellRecord] = []
+        self._table_has_span = False
 
     def _append(self, value: str) -> None:
         if self._cell:
@@ -676,17 +709,62 @@ class _KpressHtmlPostprocessor(HTMLParser):
         cell = self._cell
         if not cell:
             return
-        attrs = cell.attrs
-        if _is_numeric_cell_text(cell.text()):
-            attrs = _set_attr(attrs, "data-kpress-numeric", "true")
+        if _attr_value(cell.attrs, "colspan") not in (None, "1") or _attr_value(
+            cell.attrs, "rowspan"
+        ) not in (None, "1"):
+            self._table_has_span = True
         slug = self._column_slug_for_cell(cell)
-        if slug:
-            attrs = _set_attr(attrs, "data-col", slug)
-        self._table_col_index += 1
+        attrs = _set_attr(cell.attrs, "data-col", slug) if slug else cell.attrs
+        text = cell.text()
         self._cell = None
+        self._table_cells.append(
+            _TableCellRecord(
+                parts_index=len(self.parts),
+                tag=cell.tag,
+                base_attrs=cell.attrs,
+                slug=slug,
+                column=self._table_col_index,
+                is_body=cell.tag.lower() == "td",
+                is_empty=not re.sub(r"\s+", "", unescape(text)),
+                is_numeric=_is_numeric_cell_text(text),
+            )
+        )
+        self._table_col_index += 1
         self._append(f"<{cell.tag}{_render_attrs(attrs)}>")
         self.parts.extend(cell.parts)
         self._append(f"</{cell.tag}>")
+
+    def _finalize_table_numeric_columns(self) -> None:
+        """Column-scoped numeric marking, decided once the whole top-level table has
+        been seen: a column is numeric when at least one non-empty body (td) cell
+        matches the numeric pattern and no non-empty body cell mismatches (empty
+        cells neither qualify nor disqualify). Every cell of a numeric column —
+        header included, matching how explicit ``---:`` alignment spans header and
+        body — gets ``data-kpress-numeric``; mixed columns get no marks at all and
+        keep the default start alignment. Tables using rowspan/colspan are left
+        unmarked: spans shift cell positions, so positional column identity is
+        unreliable."""
+        records = self._table_cells
+        self._table_cells = []
+        if self._table_has_span:
+            return
+        has_numeric: set[int] = set()
+        disqualified: set[int] = set()
+        for record in records:
+            if not record.is_body or record.is_empty:
+                continue
+            if record.is_numeric:
+                has_numeric.add(record.column)
+            else:
+                disqualified.add(record.column)
+        numeric_columns = has_numeric - disqualified
+        for record in records:
+            if record.column not in numeric_columns:
+                continue
+            attrs = _set_attr(record.base_attrs, "data-kpress-numeric", "true")
+            if record.slug:
+                attrs = _set_attr(attrs, "data-col", record.slug)
+            self.parts[record.parts_index] = f"<{record.tag}{_render_attrs(attrs)}>"
 
     def _column_slug_for_cell(self, cell: _BufferedCell) -> str:
         """Header cells (`th`) define the column slug positionally; body cells (`td`) map
@@ -721,6 +799,8 @@ class _KpressHtmlPostprocessor(HTMLParser):
             if self._table_depth == 0:
                 self._table_columns = []
                 self._table_col_index = 0
+                self._table_cells = []
+                self._table_has_span = False
             self._append('<div class="kpress-table-wrap">')
             self._table_depth += 1
         elif normalized_tag == "tr" and self._table_depth >= 1 and self._cell is None:
@@ -757,6 +837,8 @@ class _KpressHtmlPostprocessor(HTMLParser):
         if normalized_tag == "table" and self._table_depth > 0:
             self._table_depth -= 1
             self._append("</div>")
+            if self._table_depth == 0:
+                self._finalize_table_numeric_columns()
 
     def handle_data(self, data: str) -> None:
         if self._skip_iframe_depth:

@@ -237,11 +237,15 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Internal-link tooltips.** Previews for headings (with nearby text), figures, tables,
   code, and details, with viewport-aware placement, arrow positioning, touch fallback,
   and Escape close.
-- **Tables.** Responsive wrapping, numeric-cell alignment hooks, small-caps headers,
+- **Tables.** Responsive wrapping, numeric-column alignment hooks, small-caps headers,
   zebra rows, TOC-aware desktop breakout, mobile font reduction, and print flattening.
-  Each cell also carries a `data-col="<header-slug>"` enrichment hook (and numeric cells
-  a `data-kpress-numeric` hook) so downstream decorators can select columns by name
-  without kpress depending on them.
+  Numeric detection is column-scoped: a column is numeric when at least one non-empty
+  body cell matches the numeric pattern (sign — ASCII or typographic minus — currency,
+  grouped digits, decimals, percent) and none mismatches; then every cell of the column,
+  header included, carries `data-kpress-numeric`, while mixed columns keep the default
+  start alignment with no marks.
+  Each cell also carries a `data-col="<header-slug>"` enrichment hook so downstream
+  decorators can select columns by name without kpress depending on them.
 - **Code copy.** A per-block copy control with success/error/idle states, accessibility
   labels, and print suppression.
 - **Video popovers.** YouTube link and raw-embed interception into a no-network
@@ -522,8 +526,10 @@ The contract module also declares:
 - `OptimizerMode = Literal["none", "full"]` in `format.model`
 - `PUBLIC_DATA_ATTRIBUTES`: the stable per-cell table `data-*` hooks kpress emits for
   downstream enrichment: `data-col` (the column slug derived from the header row) and
-  `data-kpress-numeric`. This is the renderer-agnostic seam a downstream decorator
-  consumes to select a column by name or detect numeric columns.
+  `data-kpress-numeric` (set on every cell of a numeric column — decided over the whole
+  column, not per cell).
+  This is the renderer-agnostic seam a downstream decorator consumes to select a column
+  by name or detect numeric columns.
   kpress emits them and never consumes them; it never imports a decorator and never
   knows any table plugin exists.
 - `PUBLIC_PASS_THROUGH_TAGS` / `PUBLIC_PASS_THROUGH_ATTRIBUTES` /
