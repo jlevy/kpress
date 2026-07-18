@@ -364,6 +364,7 @@ PUBLIC_BEHAVIORS = (
     "toc",
     "tooltip",
     "footnote-preview",
+    "history",
     "code-copy",
     "video",
     "tables",
@@ -397,6 +398,7 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
         "TOOLTIP_SHOW_DELAY_MS",
     ),
     "js/settings-widget.js": ("mountSettings",),
+    "js/history.js": ("initKpressHistory",),
     "js/host.js": ("HOST_BEHAVIOR_ID", "initKpressHost"),
     "js/icons.js": ("icon",),
     "js/overlay.js": (

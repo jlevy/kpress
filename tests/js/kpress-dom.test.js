@@ -366,7 +366,7 @@ A--&gt;B</code></pre>
     expect(viewport?.style.overflow).toBe("");
   });
 
-  it("smooth-scrolls to a heading and closes the drawer on TOC navigation", async () => {
+  it("leaves TOC link activation to native hash navigation and closes the drawer", async () => {
     document.body.innerHTML = `
       <main data-kpress-viewport>
         <div class="kpress-content-with-toc">
@@ -394,10 +394,44 @@ A--&gt;B</code></pre>
     const event = new MouseEvent("click", { bubbles: true, cancelable: true });
     link?.dispatchEvent(event);
 
-    expect(event.defaultPrevented).toBe(true);
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+    // The browser owns the navigation: it writes the hash, pushes the history
+    // entry (Back/Forward, shareable URLs), and scrolls the viewport — the
+    // glide comes from CSS scroll-behavior, not a JS scrollIntoView call.
+    expect(event.defaultPrevented).toBe(false);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(link?.getAttribute("data-active")).toBe("true");
     // Selecting a link closes the drawer and releases the viewport lock.
     expect(viewport?.style.overflow).toBe("");
+  });
+
+  it("leaves the Contents (top) link to native bare-# navigation and scrolls the pane", async () => {
+    document.body.innerHTML = `
+      <main data-kpress-viewport>
+        <div class="kpress-content-with-toc">
+          <button class="kpress-toc-toggle" data-kpress-toc-toggle aria-expanded="false">Contents</button>
+          <nav data-kpress-toc>
+            <a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a>
+            <ol hidden><li><a href="#intro">Intro</a></li></ol>
+          </nav>
+        </div>
+        <h2 id="intro">Intro</h2>
+      </main>
+    `;
+
+    await importFresh("toc.js");
+
+    const viewport = document.querySelector("[data-kpress-viewport]");
+    viewport.scrollTop = 1500;
+    const top = document.querySelector("[data-kpress-toc-top]");
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+    top?.dispatchEvent(event);
+
+    // Native bare-"#" navigation owns the URL (clears any section hash) and the
+    // history entry; the browser only scrolls the *document* for an empty
+    // fragment, so the handler still scrolls the pane itself (smoothly, hence
+    // the wait).
+    expect(event.defaultPrevented).toBe(false);
+    await vi.waitFor(() => expect(viewport?.scrollTop).toBe(0));
   });
 
   it("initKpressToc returns a disposer that unbinds and tears down the TOC", async () => {

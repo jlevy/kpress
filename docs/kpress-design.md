@@ -1013,10 +1013,12 @@ keeps each new feature on the right seam:
   tabs panels, footnotes, the TOC markup and links, code blocks.
   These are the components listed below.
 - **Behaviors:** JS bindings over that markup, each a registered, overridable id: `toc`
-  (scroll-spy / drawer / toggle), `tooltip`, `footnote-preview`, `code-copy`, `video`,
-  `tables`, `tabs`, `diagrams`, and `theme` (engine init over the root element).
-  The markup is the binding surface; a host can rebind an id over the same markup, or
-  register a new behavior over its own injected HTML.
+  (scroll-spy / drawer / toggle; link clicks stay native hash navigation), `tooltip`,
+  `footnote-preview`, `history` (viewport-aware scroll restoration across hash history —
+  the scroll pane is invisible to the browser’s own Back/Forward restore), `code-copy`,
+  `video`, `tables`, `tabs`, `diagrams`, and `theme` (engine init over the root
+  element). The markup is the binding surface; a host can rebind an id over the same
+  markup, or register a new behavior over its own injected HTML.
 - **Chrome widgets:** client-rendered, JS-only chrome (`settings`; host-defined ids like
   a minimap), rendering into server-emitted mounts.
 

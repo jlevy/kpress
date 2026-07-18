@@ -180,8 +180,11 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
 
   const titleTop = toc.querySelector("[data-kpress-toc-top]");
   if (titleTop) {
-    on(titleTop, "click", (event) => {
-      event.preventDefault();
+    // Native bare-"#" navigation owns the URL (clearing any section hash) and
+    // the history entry, so the pre-click position stays reachable via Back.
+    // The browser only scrolls the *document* for an empty fragment, so the
+    // pane's own top scroll stays here.
+    on(titleTop, "click", () => {
       setExpanded(false);
       ctx.scrollToTop(true);
     });
@@ -200,13 +203,14 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
   };
 
   for (const link of links) {
-    on(link, "click", (event) => {
-      event.preventDefault();
+    // Native hash navigation stays in charge: the browser writes the hash,
+    // pushes the history entry (Back/Forward, shareable URLs), and scrolls the
+    // viewport — smoothness comes from `scroll-behavior` on .kpress-viewport,
+    // which also respects prefers-reduced-motion. The handler only closes the
+    // drawer and syncs the highlight.
+    on(link, "click", () => {
       setActiveLink(link);
       setExpanded(false);
-      const id = tocLinkId(link);
-      const heading = id ? document.getElementById(id) : null;
-      heading?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 

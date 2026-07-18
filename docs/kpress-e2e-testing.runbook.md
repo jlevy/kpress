@@ -138,6 +138,13 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 
 - **[Human]/[Agent]** Desktop: a sticky TOC rail; the active entry highlights as you
   scroll; clicking an entry smooth-scrolls to the heading.
+- **[Human]/[Agent]** Clicking a TOC entry (or any in-document section link) **updates
+  the URL hash** and pushes a history entry; the address bar is a shareable deep link.
+  **Back** returns to the pre-click scroll position; **Forward** returns to the section.
+  With OS reduced-motion enabled, the section jump is instant, not animated.
+- **[Human]/[Agent]** Clicking the TOC **Contents** (top) link **clears the section hash
+  from the URL** and pushes a history entry while the pane scrolls to the top; **Back**
+  returns to the position (and hash) from before the top jump.
 - **[Human]/[Agent]** Narrow the window → the TOC collapses to a drawer toggle.
   Open it → body scroll **locks** behind it; a backdrop appears; **Escape**,
   outside-click, or the toggle closes it and scroll position is preserved.

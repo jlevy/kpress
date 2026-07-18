@@ -11,6 +11,26 @@ const VIEWPORT_SELECTOR = "[data-kpress-viewport]";
 let warnedMissingViewport = false;
 
 /**
+ * Realm-safe node kind checks: an embedding host may hand over a node from
+ * another frame (or a DOM emulation), whose classes are not this realm's
+ * `Element`/`Document`, so `instanceof` is the wrong test.
+ *
+ * @param {unknown} node
+ * @returns {node is Element}
+ */
+function isElementNode(node) {
+  return Boolean(node) && /** @type {Node} */ (node).nodeType === 1;
+}
+
+/**
+ * @param {unknown} node
+ * @returns {node is Document}
+ */
+function isDocumentNode(node) {
+  return Boolean(node) && /** @type {Node} */ (node).nodeType === 9;
+}
+
+/**
  * @typedef {{ top: number; bottom: number; left: number; right: number; width: number; height: number }} ViewportRect
  * @typedef {object} ViewportScrollContext
  * @property {HTMLElement} el
@@ -28,17 +48,17 @@ let warnedMissingViewport = false;
  * @returns {HTMLElement}
  */
 export function resolveKpressViewport(node = document) {
-  if (node instanceof Element) {
+  if (isElementNode(node)) {
     const marked = node.matches(VIEWPORT_SELECTOR) ? node : node.closest(VIEWPORT_SELECTOR);
-    if (marked instanceof HTMLElement) {
-      return marked;
+    if (isElementNode(marked)) {
+      return /** @type {HTMLElement} */ (marked);
     }
   }
 
-  if (node instanceof Document) {
+  if (isDocumentNode(node)) {
     const marked = node.querySelector(VIEWPORT_SELECTOR);
-    if (marked instanceof HTMLElement) {
-      return marked;
+    if (isElementNode(marked)) {
+      return /** @type {HTMLElement} */ (marked);
     }
   }
 

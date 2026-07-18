@@ -220,6 +220,19 @@ that owns theme resolution disables it before apply:
 `kpress.behaviors.override("theme", () => {})`, and the engine API (`kpress.theme.set`,
 …) stays callable.
 
+In-document hash navigation is covered by the registered `history` behavior: because the
+document scrolls in the `[data-kpress-viewport]` pane (which browsers exclude from
+native Back/Forward scroll restoration), it stamps the pane offset into session-history
+entry state and restores it on `popstate`, falling back to the fragment target (document
+top for a fragmentless entry).
+The stamp is written only when the entry’s state is `null` or a plain record without a
+conflicting non-numeric `kpressScroll` key; any other host state shape (a `Date`, `Map`,
+array, class instance, or a host-owned `kpressScroll`) is left exactly as the host
+stored it, and traversal for those entries uses the fragment fallback.
+A host that swaps documents per view must call the bind’s disposer on unmount (as with
+every behavior), and an SPA host that owns history/router state overrides the id before
+apply: `kpress.behaviors.override("history", () => {})`.
+
 ### Dynamic Render Contract
 
 The host calls `kpress.runtime.render_view(KPressRenderRequest)` and receives a
