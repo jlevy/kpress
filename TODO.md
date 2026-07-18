@@ -11,7 +11,7 @@ tbd is authoritative for issue status and dependencies.
 This file is the maintained view across both.
 Update all three together when a public capability changes.
 
-Last reconciled: 2026-07-16.
+Last reconciled: 2026-07-18.
 
 ## Release Status
 
@@ -64,6 +64,13 @@ not count as visual acceptance.
 | Platforms and maintenance | Python 3.12–3.14 on Linux/macOS is the declared and verified implementation boundary; dependency alerts, automated security fixes, and current Node runner support are enabled | CI covers supported Python versions on Ubuntu; local macOS gates pass | Native Windows support is not verified or claimed | `kpr-isp2` |
 
 ## Prioritized Backlog
+
+### Active Feature Plan
+
+- `kpr-4q0a`: implement
+  [interactive footnote popovers](docs/interactive-footnote-popovers.plan.md) with
+  distinct transient and pinned states, native anchor fallback, complete ESM closure,
+  and real-browser evidence; phase epics are `kpr-pw7v`, `kpr-ipqy`, and `kpr-x23v`
 
 ### P1: Release Gates
 
