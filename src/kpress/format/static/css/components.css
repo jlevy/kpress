@@ -1617,7 +1617,7 @@
      that add their own pane inset shrink the reservation through the
      clearance variable (their inset already contributes to the gutter). */
   .kpress-doc {
-    padding-inline: max(1rem, var(--kpress-toc-toggle-clearance, 2.75rem));
+    padding-inline: max(1rem, var(--kpress-toc-toggle-clearance));
   }
 
   .kpress-toc-backdrop {
