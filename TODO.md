@@ -71,6 +71,9 @@ not count as visual acceptance.
   [interactive footnote popovers](docs/interactive-footnote-popovers.plan.md) with
   distinct transient and pinned states, native anchor fallback, complete ESM closure,
   and real-browser evidence; phase epics are `kpr-pw7v`, `kpr-ipqy`, and `kpr-x23v`
+- `kpr-vuaw`: implement the [collapsible TOC](docs/toc-collapse.plan.md) — entries below
+  a configurable depth start collapsed, an expand/collapse-all toggle sits beside the
+  Contents header, and the active section auto-expands via the scroll-spy
 
 ### P1: Release Gates
 
@@ -98,6 +101,8 @@ No P1 release gates remain open.
 - `kpr-ej80`: add declared plugin-prefix admission without weakening sanitization
 - `kpr-e48f`: support optional icon sprite overrides without weakening the built-in icon
   contract
+- `kpr-gjm8`: design one uniform per-document frontmatter override policy for format
+  settings, instead of one-off keys added feature by feature
 - `kpr-6nvi`: rename the `video-popover.js` asset to match its current inline-embed
   behavior
 
