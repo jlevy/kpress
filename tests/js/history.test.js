@@ -90,25 +90,128 @@ describe("history behavior", () => {
     dispose();
   });
 
-  it("ignores clicks on non-hash links and bare-# anchors", async () => {
+  it("ignores clicks on non-hash links", async () => {
     const viewport = documentMarkup();
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      '<a id="external" href="/elsewhere">x</a><a id="bare" href="#">top</a>',
-    );
+    document.body.insertAdjacentHTML("beforeend", '<a id="external" href="/elsewhere">x</a>');
     const { initKpressHistory } = await freshHistoryModule();
     const dispose = initKpressHistory();
 
     viewport.scrollTop = 60;
-    for (const id of ["external", "bare"]) {
-      suppressNavigation();
-      document
-        .getElementById(id)
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-    }
+    suppressNavigation();
+    document
+      .getElementById("external")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(history.state?.kpressScroll).toBeUndefined();
     dispose();
+  });
+
+  it("stamps bare-# clicks (the TOC Contents link) so Back can return", async () => {
+    const viewport = documentMarkup();
+    document.body.insertAdjacentHTML("beforeend", '<a id="bare" href="#">top</a>');
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    viewport.scrollTop = 1872;
+    suppressNavigation();
+    document
+      .getElementById("bare")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(history.state?.kpressScroll).toBe(1872);
+    dispose();
+  });
+
+  it("restores the pane top for an unstamped fragmentless entry", async () => {
+    const viewport = documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    viewport.scrollTop = 900;
+    window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
+
+    // Document-top semantics: traversing to an entry with no fragment and no
+    // stamp lands at the top, as the browser does for a document scroller.
+    expect(viewport.scrollTop).toBe(0);
+    dispose();
+  });
+
+  it("leaves non-plain host history state untouched (Date)", async () => {
+    const viewport = documentMarkup();
+    const hostState = new Date("2020-01-02T03:04:05Z");
+    history.replaceState(hostState, "");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    viewport.scrollTop = 226;
+    clickSectionLink();
+
+    expect(history.state instanceof Date || typeof history.state?.getTime === "function").toBe(
+      true,
+    );
+    expect(history.state?.kpressScroll).toBeUndefined();
+    dispose();
+  });
+
+  it("leaves array host history state untouched", async () => {
+    const viewport = documentMarkup();
+    history.replaceState([1, 2, 3], "");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    viewport.scrollTop = 50;
+    clickSectionLink();
+
+    expect(Array.isArray(history.state)).toBe(true);
+    expect(history.state?.kpressScroll).toBeUndefined();
+    dispose();
+  });
+
+  it("leaves a host-owned non-numeric kpressScroll key untouched", async () => {
+    const viewport = documentMarkup();
+    history.replaceState({ kpressScroll: "host-token" }, "");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    viewport.scrollTop = 50;
+    clickSectionLink();
+
+    expect(history.state?.kpressScroll).toBe("host-token");
+    dispose();
+  });
+
+  it("ignores a non-finite stamped offset and falls back to the fragment target", async () => {
+    documentMarkup();
+    const target = /** @type {HTMLElement} */ (document.getElementById("sec"));
+    const scrollIntoView = vi.fn();
+    target.scrollIntoView = scrollIntoView;
+    location.hash = "#sec";
+
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    window.dispatchEvent(new PopStateEvent("popstate", { state: { kpressScroll: Number.NaN } }));
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    dispose();
+    location.hash = "";
+  });
+
+  it("survives a malformed percent-encoded fragment during popstate", async () => {
+    const viewport = documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    const happyWindow = /** @type {{ happyDOM?: { setURL?: (url: string) => void } }} */ (window);
+    happyWindow.happyDOM?.setURL?.("http://localhost/page#%");
+    viewport.scrollTop = 40;
+
+    expect(() =>
+      window.dispatchEvent(new PopStateEvent("popstate", { state: null })),
+    ).not.toThrow();
+
+    dispose();
+    happyWindow.happyDOM?.setURL?.("http://localhost/");
   });
 
   it("restores the stamped pane offset on popstate", async () => {

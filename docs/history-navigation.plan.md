@@ -54,6 +54,9 @@ session-history entry state.
 **TOC navigation goes native (`toc.js`).** The link-click handler keeps the drawer-close
 and active-highlight logic and drops `preventDefault`/`scrollIntoView`: the browser
 writes the hash, pushes the entry, and scrolls the pane.
+The “Contents” (top) link is native too: its bare-`#` navigation owns the URL and the
+history entry, and the handler only closes the drawer and scrolls the pane (the browser
+scrolls just the *document* for an empty fragment).
 The glide moves to CSS — `scroll-behavior: smooth` on `.kpress-viewport` — with the
 existing `prefers-reduced-motion: reduce` block opting it back out (an accessibility
 improvement over the previous unconditional smooth scroll).
@@ -61,17 +64,25 @@ improvement over the previous unconditional smooth scroll).
 **A `history` behavior (`history.js`).** Registered as `history` in `kpress.behaviors`
 (bind returns a disposer), it owns viewport scroll restoration:
 
-- A capture-phase click listener on hash anchors stamps the pane’s `scrollTop` into the
-  *current* entry via `history.replaceState({...state, kpressScroll})` just before
-  native navigation pushes the next entry.
-  Stamping is additive over host state and harmless when a later handler cancels the
-  navigation.
+- A capture-phase click listener on hash anchors (bare `#` included, for the Contents
+  link) stamps the pane’s `scrollTop` into the *current* entry via
+  `history.replaceState` just before native navigation pushes the next entry.
+  Stamping is harmless when a later handler cancels the navigation.
+- The stamp respects host-owned entry state: it writes only when the state is `null` or
+  a plain record without a conflicting non-numeric `kpressScroll` key.
+  Any other shape (`Date`, `Map`, array, class instance, or a host-owned `kpressScroll`)
+  is left exactly as stored — spreading it would change its type and discard data — and
+  traversal for that entry uses the fragment fallback.
 - A debounced scroll listener (`HISTORY_STAMP_DEBOUNCE_MS`) keeps the current entry’s
   stamp fresh, so Forward restores too, without hammering `replaceState`.
-- On `popstate`, a stamped offset is replayed instantly (explicit `behavior: "instant"`,
-  bypassing the pane’s CSS smooth scroll, matching the browser’s own restore semantics).
+- On `popstate`, a finite stamped offset is replayed instantly (explicit
+  `behavior: "instant"`, bypassing the pane’s CSS smooth scroll, matching the browser’s
+  own restore semantics).
   Without a stamp — first forward visit into a hash entry, or an entry predating the
-  behavior — it falls back to scrolling the fragment target into view.
+  behavior — it falls back to scrolling the fragment target into view; a fragmentless or
+  bare-`#` entry gets document-top semantics.
+  Fragment decoding never throws: a malformed percent-encoding falls back to the raw
+  fragment text.
 - The window’s `history.scrollRestoration` is untouched; the window never scrolls on
   these pages.
 

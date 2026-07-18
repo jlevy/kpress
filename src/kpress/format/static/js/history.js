@@ -29,25 +29,77 @@ export const HISTORY_SCROLL_STATE_KEY = "kpressScroll";
 export const HISTORY_STAMP_DEBOUNCE_MS = 200;
 
 /**
+ * A plain record is the only state shape the behavior will write into.
+ * Spreading a Date, Map, Set, array, or class instance would change its type
+ * and discard its data, so anything else is left exactly as the host stored it.
+ *
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isPlainRecord(value) {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
+ * Compute the stamped state for the current entry, or `null` when the entry's
+ * state must not be touched: a non-plain host value, or a plain record whose
+ * `kpressScroll` key the host owns (non-numeric). Traversal then relies on the
+ * fragment-target fallback.
+ *
  * @param {unknown} state
  * @param {number} scrollTop
- * @returns {Record<string, unknown>}
+ * @returns {Record<string, unknown> | null}
  */
 function stampedState(state, scrollTop) {
-  const base = typeof state === "object" && state !== null ? state : {};
-  return { ...base, [HISTORY_SCROLL_STATE_KEY]: scrollTop };
+  if (state === null || state === undefined) {
+    return { [HISTORY_SCROLL_STATE_KEY]: scrollTop };
+  }
+  if (
+    isPlainRecord(state) &&
+    (!(HISTORY_SCROLL_STATE_KEY in state) || typeof state[HISTORY_SCROLL_STATE_KEY] === "number")
+  ) {
+    return { ...state, [HISTORY_SCROLL_STATE_KEY]: scrollTop };
+  }
+  return null;
 }
 
 /**
  * @param {{ scrollTop(): number }} ctx viewport scroll context
  */
 function stampScroll(ctx) {
+  const next = stampedState(history.state, ctx.scrollTop());
+  if (next === null) {
+    return;
+  }
   try {
-    history.replaceState(stampedState(history.state, ctx.scrollTop()), "");
+    history.replaceState(next, "");
   } catch {
     // Some embedders (sandboxed frames, exotic URL schemes) reject
     // replaceState; the behavior then degrades to the fragment-target
     // fallback on traversal.
+  }
+}
+
+/**
+ * Decode a location fragment without throwing: a malformed percent-encoding
+ * (e.g. `#%`) falls back to the raw fragment text.
+ *
+ * @param {string} hash
+ * @returns {string}
+ */
+function fragmentId(hash) {
+  if (hash.length <= 1) {
+    return "";
+  }
+  const raw = hash.slice(1);
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
   }
 }
 
@@ -90,7 +142,9 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
   const onClick = (event) => {
     const target = /** @type {{ closest?: (selector: string) => Element | null }} */ (event.target);
     const anchor = typeof target?.closest === "function" ? target.closest('a[href^="#"]') : null;
-    if (!anchor || (anchor.getAttribute("href")?.length ?? 0) <= 1) {
+    // Bare "#" is included deliberately: the TOC "Contents" link navigates to
+    // the empty fragment, and Back from it must return to the stamped offset.
+    if (!anchor) {
       return;
     }
     stampScroll(ctx);
@@ -100,19 +154,22 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
    * @param {PopStateEvent} event
    */
   const onPopState = (event) => {
-    const state = /** @type {Record<string, unknown> | null} */ (event.state);
-    const top = state ? state[HISTORY_SCROLL_STATE_KEY] : undefined;
-    if (typeof top === "number") {
+    const state = event.state;
+    const top = isPlainRecord(state) ? state[HISTORY_SCROLL_STATE_KEY] : undefined;
+    if (typeof top === "number" && Number.isFinite(top)) {
       restorePaneScroll(viewport, top);
       return;
     }
     // No stamped offset (first forward visit into a hash entry, or an entry
     // predating this behavior): land on the fragment target, matching what
-    // the browser does for a document-scrolled page.
-    const hash = location.hash;
-    const id = hash.length > 1 ? decodeURIComponent(hash.slice(1)) : "";
-    const target = id ? document.getElementById(id) : null;
-    target?.scrollIntoView({ behavior: "instant", block: "start" });
+    // the browser does for a document-scrolled page. A fragmentless (or
+    // bare-#) entry gets document-top semantics.
+    const id = fragmentId(location.hash);
+    if (!id) {
+      restorePaneScroll(viewport, 0);
+      return;
+    }
+    document.getElementById(id)?.scrollIntoView({ behavior: "instant", block: "start" });
   };
 
   let stampTimer = 0;

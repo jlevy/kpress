@@ -180,8 +180,11 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
 
   const titleTop = toc.querySelector("[data-kpress-toc-top]");
   if (titleTop) {
-    on(titleTop, "click", (event) => {
-      event.preventDefault();
+    // Native bare-"#" navigation owns the URL (clearing any section hash) and
+    // the history entry, so the pre-click position stays reachable via Back.
+    // The browser only scrolls the *document* for an empty fragment, so the
+    // pane's own top scroll stays here.
+    on(titleTop, "click", () => {
       setExpanded(false);
       ctx.scrollToTop(true);
     });

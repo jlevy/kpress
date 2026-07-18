@@ -12,6 +12,8 @@ Use this index for implementation, maintenance, and release work.
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
   interaction, accessibility, asset, and verification contract for pinnable evidence
   previews
+- [History-Aware Section Navigation](history-navigation.plan.md): native hash history
+  for TOC links and viewport-aware scroll restoration on Back/Forward
 - [Operations and Host Integration](kpress-operations-and-host-integration.md): local
   runtime probes, browser quality gates, acceptance, accessibility, and dynamic embeds
 - [Backlog and Status](../TODO.md): current capability evidence, release gates, and
