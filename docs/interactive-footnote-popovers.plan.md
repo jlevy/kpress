@@ -178,12 +178,10 @@ Browserless results do not substitute for the real-browser evidence recorded in
 
 ## Rollout Plan
 
-Develop on `codex/interactive-footnote-popovers`, currently stacked on the pending
-`toc-tree-normalization` branch.
-After that branch merges, rebase or retarget this work to `main`, run the complete
-verification gate, and review it as an independent KPress pull request.
-Embedding projects consume the reviewed commit through their normal exact source pin; a
-package release can follow the KPress release process separately.
+Implement the accepted plan on a dedicated feature branch from current `main`. Run the
+complete verification gate and review the delivered behavior as an independent KPress
+pull request. Embedding projects consume the reviewed commit through their normal exact
+source pin; a package release can follow the KPress release process separately.
 
 ## Resolved Decisions
 

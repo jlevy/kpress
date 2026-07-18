@@ -321,7 +321,7 @@
      visibly animate every property. */
   transition:
     color var(--kpress-transition-fast),
-    background var(--kpress-transition-fast),
+    background-color var(--kpress-transition-fast),
     border-color var(--kpress-transition-fast);
 }
 
@@ -491,7 +491,7 @@
   /* Hover properties only, never `all` (late-applied styles must not animate). */
   transition:
     color var(--kpress-transition-fast),
-    background var(--kpress-transition-fast);
+    background-color var(--kpress-transition-fast);
 }
 
 /* `a.…backref` qualifier: the generic `.kpress a:hover` underline is specificity

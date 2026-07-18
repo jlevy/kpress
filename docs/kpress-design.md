@@ -263,8 +263,9 @@ feature guarantees); the sections named in the table carry the architecture deta
 ### Print and PDF
 
 - **Print CSS.** Page rules, paper palette, no-print/print-only, TOC and video
-  suppression, heading/table break control, repeated table headers, footnote
-  simplification, code wrapping, and orphans/widows.
+  suppression, page-margin alignment for standalone and fragment shells, heading/table
+  break control, repeated table headers, footnote simplification, code wrapping, and
+  orphans/widows.
 - **Browser-backed PDF.** An optional browser backend renders the print profile to PDF;
   absence of the optional dependency produces a clear error, never a silent downgrade.
 
