@@ -58,7 +58,10 @@ function clickSectionLink() {
 
 beforeEach(() => {
   document.body.innerHTML = "";
-  history.replaceState(null, "");
+  // Reset the URL fragment too: tests that let the behavior own navigation
+  // really push a "#sec" entry, and a leaked fragment changes what popstate
+  // handling does in later tests.
+  history.replaceState(null, "", location.pathname + location.search);
 });
 
 describe("history behavior", () => {
