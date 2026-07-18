@@ -229,6 +229,7 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-print-font-size",
     "--kpress-print-footer",
     "--kpress-print-page-margin",
+    "--kpress-toc-toggle-clearance",
 )
 
 # The deliberately narrow fragment-hosting seam. PUBLIC_CSS_CLASSES and
@@ -278,6 +279,7 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
     "--kpress-print-font-size",
     "--kpress-print-footer",
     "--kpress-print-page-margin",
+    "--kpress-toc-toggle-clearance",
 )
 
 # The host-override seam: tokens KPress CSS *consumes* (never declares) via

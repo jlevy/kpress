@@ -763,8 +763,10 @@ The supported fragment variables are:
   `--kpress-doc-surface-selected`
 - typography: `--kpress-font-body`, `--kpress-font-prose`, `--kpress-font-sans`,
   `--kpress-font-mono`, `--kpress-font-footnote`, and `--kpress-font-table`
-- measure and host spacing: `--kpress-measure`, `--kpress-page-margin-inline`, and
-  `--kpress-page-margin-block-start`
+- measure and host spacing: `--kpress-measure`, `--kpress-page-margin-inline`,
+  `--kpress-page-margin-block-start`, and `--kpress-toc-toggle-clearance` (the inline
+  gutter the document reserves for the floating TOC toggle in the narrow band; a host
+  whose pane inset already contributes to that gutter shrinks it accordingly)
 - print: `--kpress-print-page-margin`, `--kpress-print-font-size`, and
   `--kpress-print-footer`
 
