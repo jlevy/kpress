@@ -114,6 +114,16 @@
     padding: 0;
   }
 
+  /* The @page margin is the reading margin on paper: the margin boxes
+     (@bottom-left footer, @bottom-right page number) sit exactly at it, so
+     the shells drop their screen-side inline gutters to align the text
+     column with them. Without this the text sits 1rem (embedded) to 3rem
+     (standalone) inside the margin boxes. */
+  .kpress-doc,
+  .kpress-page-main {
+    padding-inline: 0;
+  }
+
   .kpress blockquote,
   .kpress pre,
   .kpress table,

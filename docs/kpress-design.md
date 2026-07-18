@@ -230,6 +230,10 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Footnote tooltips.** Hover, focus, and touch previews with truncation, a navigation
   link, delayed hide, and a trigger-to-tooltip hover bridge; accidental footnote
   navigation is prevented.
+  The proposed replacement for this current alpha behavior is specified in
+  [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): transient
+  previews remain descriptive, while deliberate activation pins an accessible surface
+  whose links can be used reliably.
 - **Internal-link tooltips.** Previews for headings (with nearby text), figures, tables,
   code, and details, with viewport-aware placement, arrow positioning, touch fallback,
   and Escape close.
