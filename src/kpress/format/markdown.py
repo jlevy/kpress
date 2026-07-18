@@ -908,16 +908,24 @@ def _toc_entries(headings: list[Heading]) -> list[TocEntry]:
     toc_headings = headings
     if headings and headings[0].level == 1 and sum(item.level == 1 for item in headings) == 1:
         toc_headings = headings[1:]
-    # Normalize nesting so the TOC has no gaps. A document whose headings skip a level
-    # (only H3s, or an H1 then H3 with no H2 between) would otherwise indent the TOC as
-    # if the missing ancestor levels existed. Map each heading's level to its rank among
-    # the distinct levels present, so nesting is contiguous from the top. This is a TOC
-    # concern only — the rendered heading tags (<h3> etc.) are unchanged.
-    rank_of = {level: rank for rank, level in enumerate(sorted({h.level for h in toc_headings}), 1)}
-    return [
-        TocEntry(level=rank_of[item.level], title=item.title, href=f"#{item.id}")
-        for item in toc_headings
-    ]
+    # Normalize nesting so the TOC is always a proper tree with no gaps. Each entry's
+    # depth is one more than its structural parent's — the nearest preceding heading
+    # with a smaller tag level — so a document whose headings skip a level (an H2 then
+    # an H4 with no H3 between) never over-indents, and a heading with no enclosing
+    # ancestor (an H3 before the first H2) sits at the top level instead of appearing
+    # indented before shallower entries. Depth is positional, not a document-wide rank
+    # of the distinct levels present: the same tag can map to different TOC depths in
+    # different sections. This is a TOC concern only — the rendered heading tags
+    # (<h3> etc.) are unchanged.
+    entries: list[TocEntry] = []
+    open_sections: list[tuple[int, int]] = []  # (tag level, TOC depth) of open ancestors
+    for item in toc_headings:
+        while open_sections and open_sections[-1][0] >= item.level:
+            open_sections.pop()
+        depth = open_sections[-1][1] + 1 if open_sections else 1
+        open_sections.append((item.level, depth))
+        entries.append(TocEntry(level=depth, title=item.title, href=f"#{item.id}"))
+    return entries
 
 
 def _collect_footnotes(md: MarkdownIt, tokens: list[Token], env: dict[str, Any]) -> list[Footnote]:

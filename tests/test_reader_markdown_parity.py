@@ -244,6 +244,37 @@ def test_toc_normalizes_levels_when_top_levels_are_absent() -> None:
     ]
 
 
+def test_toc_promotes_headings_that_precede_their_ancestor_level() -> None:
+    # An H3 that appears before the first H2 has no enclosing section, so it lists at
+    # the TOC top level; H3s that sit inside an H2 still nest under it. Depth comes
+    # from the heading's position in the tree (nearest preceding shallower heading),
+    # not from a document-wide level rank, so an indented entry never precedes its
+    # would-be ancestors.
+    tree = parse_markdown(
+        dedent(
+            """
+            ### Synopsis
+
+            ## Chapter One
+
+            ### Inside
+
+            #### Deep
+
+            ## Chapter Two
+            """
+        ).strip(),
+        title="Doc",
+    )
+    assert [(item.level, item.title) for item in tree.toc] == [
+        (1, "Synopsis"),
+        (1, "Chapter One"),
+        (2, "Inside"),
+        (3, "Deep"),
+        (1, "Chapter Two"),
+    ]
+
+
 def test_toc_compresses_an_interior_level_gap() -> None:
     # H2 then H4 with no H3 between: the H4 nests one level under the H2, not two.
     tree = parse_markdown(
