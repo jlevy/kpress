@@ -263,9 +263,9 @@ Ships off by default in the next release — no host sees any change until it se
 - `src/kpress/format/render.py` (`_render_toc`), `format/markdown.py` (`_toc_entries`),
   `format/static/js/toc.js`, `format/static/css/components.css`,
   `src/kpress/contract.py` — the code seams.
-- [`history-navigation.plan.md`](history-navigation.plan.md) — the adjacent TOC behavior
-  change this design builds on (native hash navigation, `setActiveLink` as the single
-  active-entry path).
+- [`history-navigation.plan.md`](done/history-navigation.plan.md) — the adjacent TOC
+  behavior change this design builds on (native hash navigation, `setActiveLink` as the
+  single active-entry path).
 - [`content-size-indicators.plan.md`](content-size-indicators.plan.md) — the
   config-plumbing and contract-registration conventions this plan mirrors.
 - [`kpress-design.md`](kpress-design.md) — behaviors/component contract and the

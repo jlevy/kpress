@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-The supported release line is `0.1.x` alpha.
+The supported release line is `0.2.x` alpha.
 Reports should reproduce on the most recent published patch or an exact source commit.
 
 ## Report a Vulnerability
