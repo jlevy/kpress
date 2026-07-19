@@ -460,6 +460,32 @@ def test_numeric_columns_tolerate_empty_cells_and_skip_span_tables() -> None:
     assert "data-kpress-numeric" not in tree.html.split('id="span"', 1)[1]
 
 
+def test_numeric_finalize_strips_stale_authored_markers() -> None:
+    """Server output converges exactly like the client runtime: an authored
+    data-kpress-numeric on a mixed column or a span table is stripped, and only
+    the column decision re-adds markers."""
+    tree = parse_markdown(
+        dedent(
+            """
+            <table id="mixed"><tr><td data-kpress-numeric="true">stale text</td><td>1</td></tr><tr><td>more text</td><td>2</td></tr></table>
+
+            <table id="span2"><tr><td rowspan="2" data-kpress-numeric="true">42</td><td>7</td></tr><tr><td>8</td></tr></table>
+            """
+        ).strip(),
+        title="Stale markers",
+    )
+
+    mixed = tree.html.split('id="mixed"', 1)[1].split("</table>", 1)[0]
+    assert "<td>stale text</td>" in mixed
+    # Only the two cells of the all-numeric second column carry the marker.
+    assert mixed.count('data-kpress-numeric="true"') == 2
+    assert '<td data-kpress-numeric="true">1</td>' in mixed
+    assert '<td data-kpress-numeric="true">2</td>' in mixed
+
+    span = tree.html.split('id="span2"', 1)[1].split("</table>", 1)[0]
+    assert "data-kpress-numeric" not in span
+
+
 def test_tabbed_content_authoring_generates_stable_reader_panels() -> None:
     tree = parse_markdown(
         dedent(

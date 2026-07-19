@@ -121,6 +121,17 @@ def test_hash_history_and_viewport_restoration_in_real_browser(tmp_path: Path) -
                     f".scrollTop - {before_top}) < 200"
                 )
                 assert page.url.endswith("#details")
+
+                # Re-activating the current fragment matches native history:
+                # no duplicate entry is pushed, the pane just scrolls.
+                length_before = page.evaluate("history.length")
+                page.locator('.kpress-prose a[href="#details"]').first.click()
+                page.wait_for_function(
+                    f"Math.abs(document.querySelector('[data-kpress-viewport]')"
+                    f".scrollTop - {jumped}) < 200"
+                )
+                assert page.url.endswith("#details")
+                assert page.evaluate("history.length") == length_before
             finally:
                 browser.close()
     finally:

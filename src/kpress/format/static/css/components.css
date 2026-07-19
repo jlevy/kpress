@@ -1710,9 +1710,11 @@
   /* Narrow screens get a tighter frame: the wide-screen gutters stack up to several
      rem per side, which is dead space on a phone (kash used 1.5rem total). The doc
      and long-text pads shrink here; the standalone page gutter shrinks in the
-     media rule by .kpress-page-main below. */
+     media rule by .kpress-page-main below. The floating TOC toggle is present in
+     this whole band, so the shrink must still respect its clearance reservation
+     (this rule ties with the clearance rule above and wins by order). */
   .kpress-doc {
-    padding-inline: 0.5rem;
+    padding-inline: max(0.5rem, var(--kpress-toc-toggle-clearance));
   }
 
   .kpress-long-text {

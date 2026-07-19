@@ -102,6 +102,115 @@ describe("history behavior", () => {
     dispose();
   });
 
+  it("does not push a duplicate entry when re-activating the current fragment", async () => {
+    documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    const dest = /** @type {HTMLElement} */ (document.getElementById("sec"));
+    const scrollIntoView = vi.fn();
+    dest.scrollIntoView = scrollIntoView;
+
+    document
+      .getElementById("section-link")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    expect(location.hash).toBe("#sec");
+
+    // Native history pushes no entry when the destination URL is already
+    // current; re-activation performs only the scroll.
+    const pushes = vi.spyOn(history, "pushState");
+    const second = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("section-link")?.dispatchEvent(second);
+
+    expect(second.defaultPrevented).toBe(true);
+    expect(pushes).not.toHaveBeenCalled();
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+    pushes.mockRestore();
+    dispose();
+  });
+
+  it("leaves download and non-_self target anchors fully native", async () => {
+    documentMarkup();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<a id="blank" href="#sec" target="_blank">b</a>' +
+        '<a id="named" href="#sec" target="popup">n</a>' +
+        '<a id="dl" href="#sec" download>d</a>' +
+        '<a id="self" href="#sec" target="_self">s</a>',
+    );
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    const pushes = vi.spyOn(history, "pushState");
+
+    for (const id of ["blank", "named", "dl"]) {
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+      document.getElementById(id)?.dispatchEvent(click);
+      // Requesting another browsing context (or a download) keeps default
+      // anchor semantics: the behavior must not claim the click or touch
+      // this tab's history.
+      expect(click.defaultPrevented).toBe(false);
+      expect(pushes).not.toHaveBeenCalled();
+    }
+
+    const selfClick = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("self")?.dispatchEvent(selfClick);
+    expect(selfClick.defaultPrevented).toBe(true);
+    pushes.mockRestore();
+    dispose();
+  });
+
+  it("moves the focus-navigation origin to the section target", async () => {
+    documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    const dest = /** @type {HTMLElement} */ (document.getElementById("sec"));
+    dest.scrollIntoView = vi.fn();
+
+    document
+      .getElementById("section-link")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    // Native fragment navigation continues keyboard traversal from the
+    // target; the owned path reproduces that with a temporary tabindex that
+    // is dropped again on blur.
+    expect(document.activeElement).toBe(dest);
+    expect(dest.getAttribute("tabindex")).toBe("-1");
+    dest.dispatchEvent(new Event("blur"));
+    expect(dest.hasAttribute("tabindex")).toBe(false);
+    dispose();
+  });
+
+  it("preserves an authored tabindex on the section target", async () => {
+    documentMarkup();
+    const dest = /** @type {HTMLElement} */ (document.getElementById("sec"));
+    dest.setAttribute("tabindex", "0");
+    dest.scrollIntoView = vi.fn();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    document
+      .getElementById("section-link")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(document.activeElement).toBe(dest);
+    expect(dest.getAttribute("tabindex")).toBe("0");
+    dest.dispatchEvent(new Event("blur"));
+    expect(dest.getAttribute("tabindex")).toBe("0");
+    dispose();
+  });
+
+  it("handles malformed fragment hrefs without throwing and leaves them native", async () => {
+    documentMarkup();
+    document.body.insertAdjacentHTML("beforeend", '<a id="bad" href="#%">bad</a>');
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    expect(() => document.getElementById("bad")?.dispatchEvent(click)).not.toThrow();
+    // No element matches the raw "%" id, so the click stays native.
+    expect(click.defaultPrevented).toBe(false);
+    dispose();
+  });
+
   it("leaves footnote references to their popover owner", async () => {
     documentMarkup();
     document.body.insertAdjacentHTML(

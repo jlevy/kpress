@@ -513,6 +513,13 @@ def _attr_value(attrs: list[tuple[str, str | None]], attr_name: str) -> str | No
     return next((value for name, value in attrs if name.lower() == normalized_attr), None)
 
 
+def _remove_attr(
+    attrs: list[tuple[str, str | None]], attr_name: str
+) -> list[tuple[str, str | None]]:
+    normalized_attr = attr_name.lower()
+    return [(name, value) for name, value in attrs if name.lower() != normalized_attr]
+
+
 def _set_attr(
     attrs: list[tuple[str, str | None]], attr_name: str, attr_value: str
 ) -> list[tuple[str, str | None]]:
@@ -743,25 +750,31 @@ class _KpressHtmlPostprocessor(HTMLParser):
         body — gets ``data-kpress-numeric``; mixed columns get no marks at all and
         keep the default start alignment. Tables using rowspan/colspan are left
         unmarked: spans shift cell positions, so positional column identity is
-        unreliable."""
+        unreliable. Every cell is normalized against the decision — an authored
+        ``data-kpress-numeric`` on a mixed column or a span table is stripped —
+        so the static output matches what the client runtime converges to."""
         records = self._table_cells
         self._table_cells = []
-        if self._table_has_span:
-            return
-        has_numeric: set[int] = set()
-        disqualified: set[int] = set()
+        numeric_columns: set[int] = set()
+        if not self._table_has_span:
+            disqualified: set[int] = set()
+            for record in records:
+                if not record.is_body or record.is_empty:
+                    continue
+                if record.is_numeric:
+                    numeric_columns.add(record.column)
+                else:
+                    disqualified.add(record.column)
+            numeric_columns -= disqualified
         for record in records:
-            if not record.is_body or record.is_empty:
+            attrs = _remove_attr(record.base_attrs, "data-kpress-numeric")
+            stripped = len(attrs) != len(record.base_attrs)
+            numeric = record.column in numeric_columns
+            if not numeric and not stripped:
+                # The emitted opening tag is already correct.
                 continue
-            if record.is_numeric:
-                has_numeric.add(record.column)
-            else:
-                disqualified.add(record.column)
-        numeric_columns = has_numeric - disqualified
-        for record in records:
-            if record.column not in numeric_columns:
-                continue
-            attrs = _set_attr(record.base_attrs, "data-kpress-numeric", "true")
+            if numeric:
+                attrs = _set_attr(attrs, "data-kpress-numeric", "true")
             if record.slug:
                 attrs = _set_attr(attrs, "data-col", record.slug)
             self.parts[record.parts_index] = f"<{record.tag}{_render_attrs(attrs)}>"
