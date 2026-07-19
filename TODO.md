@@ -11,15 +11,16 @@ tbd is authoritative for issue status and dependencies.
 This file is the maintained view across both.
 Update all three together when a public capability changes.
 
-Last reconciled: 2026-07-18.
+Last reconciled: 2026-07-19.
 
 ## Release Status
 
-KPress `0.2.2` is published on PyPI as the current public alpha.
-It preserves the complete typed host asset and fragment contract from `0.2.0`, fixes
-tooltip asset selection for same-document links, lets hosts export already-decoded
-source text without losing logical-path asset resolution, and retains the raised release
-tooling floor. KPress `0.1.0` remains the first public alpha.
+KPress `0.2.3` is published on PyPI as the current public alpha.
+It preserves the complete typed host asset and fragment contract from `0.2.0`, adds
+history-aware section navigation with viewport scroll restoration, normalizes TOC
+nesting to structural tree depth, scopes numeric table alignment to whole columns, keeps
+the document clear of the floating TOC toggle, and consolidates the supply-chain gate
+tooling. KPress `0.1.0` remains the first public alpha.
 All P1 release and stabilization gates are closed.
 Alpha status is conveyed by package metadata and release notes, not by a version suffix.
 
@@ -42,6 +43,8 @@ Completed maintenance gates:
 | Dependency vulnerability monitoring | `kpr-nev3` | GitHub dependency alerts and automated security fixes are enabled; the release gate audits the frozen Python and npm dependency graphs. |
 | Node runner readiness | `kpr-gkj6` | CI uses the full-SHA-pinned Node setup action with the current Node 24.18 and npm 11 tooling floor; `.nvmrc` and `.node-version` keep nvm and fnm on that same runtime. |
 | Host-decoded document export | `kpr-csoa` | `KPressExportRequest.source_text` lets embedding hosts export decoded content while `path` remains the logical identity and relative-asset base. |
+| History-aware section navigation | `kpr-als7` | The `history` behavior gives TOC and section links native hash entries with viewport scroll restoration on Back/Forward; browserless suites plus a real-browser Playwright traversal smoke verify restore, forward, and bare-`#` Contents navigation. |
+| Column-scoped numeric table alignment | `kpr-1rke` | Numeric alignment is decided per column with header parity, span tables left unmarked, and the typographic minus accepted; server output and the client runtime converge on the same decision. |
 
 ## Capability Matrix
 
@@ -60,7 +63,7 @@ not count as visual acceptance.
 | Optimizer | `none` and optional `full` stages work; a reviewed npm lock ships, cold-cache bootstrap uses `npm ci`, and preflight runs before output mutation | Optimizer, pipeline, manifest, doctor network-semantics, cold/offline/error, and preflight tests | Warm and cold cache paths are verified on the supported platforms | — |
 | CLI and local workflows | `init`, `convert`, `format`, `render`, `paste`, `files`, `export`, `clean`, `build`, `optimize`, and `doctor` have tested supported paths; unsupported source conversion is explicit | CLI, workflow, clean-room, and wheel smoke tests | HTML paths are verified; PDF delegates to the real browser-print pipeline | `kpr-qmii` for full visual acceptance |
 | Print and PDF | Print CSS and a Playwright/Chromium browser-PDF backend exist; no placeholder PDF path is exposed | Print-contract, missing-dependency, and browser-backend unit tests | Full print-preview/PDF artifact acceptance remains open | `kpr-qmii` |
-| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, Common Doc footer checks, locked-graph vulnerability audits, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | PyPI Trusted Publishing and external `kpress==0.2.2` version, help, doctor, and minimal static-site build are verified | — |
+| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, Common Doc footer checks, locked-graph vulnerability audits, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | PyPI Trusted Publishing and external `kpress==0.2.3` version, help, doctor, and minimal static-site build are verified | — |
 | Platforms and maintenance | Python 3.12–3.14 on Linux/macOS is the declared and verified implementation boundary; dependency alerts, automated security fixes, and current Node runner support are enabled | CI covers supported Python versions on Ubuntu; local macOS gates pass | Native Windows support is not verified or claimed | `kpr-isp2` |
 
 ## Prioritized Backlog
@@ -78,9 +81,10 @@ their follow-up review work lands.
   entries below a configurable depth start collapsed, an expand/collapse-all toggle sits
   beside the Contents header, and the active section auto-expands via the scroll-spy
 - `kpr-als7` (closed):
-  [history-aware section navigation](docs/history-navigation.plan.md) is implemented and
-  merged (PR #24); PR #25 review follow-ups (`kpr-z54g`, in progress) refine the
-  owned-navigation design, and the plan moves to `docs/done/` when they land
+  [history-aware section navigation](docs/done/history-navigation.plan.md) is
+  implemented and merged (PR #24); the PR #25 review follow-ups (`kpr-z54g`, closed)
+  refined the clearance cascade, native anchor semantics, and numeric marker parity, and
+  the completed plan now lives in `docs/done/`
 - `kpr-lrfg` (deferred, P3): optional
   [content-size indicators](docs/content-size-indicators.plan.md) — see the P3 backlog
   entry below
@@ -132,7 +136,7 @@ No P1 release gates remain open.
 Useful public orientation: [README](README.md), [documentation index](docs/README.md),
 [design and public contracts](docs/kpress-design.md),
 [validation runbook](docs/kpress-validation.runbook.md), and
-[current release notes](docs/releases/0.2.2.md).
+[current release notes](docs/releases/0.2.3.md).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
