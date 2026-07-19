@@ -58,7 +58,10 @@ function clickSectionLink() {
 
 beforeEach(() => {
   document.body.innerHTML = "";
-  history.replaceState(null, "");
+  // Reset the URL fragment too: tests that let the behavior own navigation
+  // really push a "#sec" entry, and a leaked fragment changes what popstate
+  // handling does in later tests.
+  history.replaceState(null, "", location.pathname + location.search);
 });
 
 describe("history behavior", () => {
@@ -70,9 +73,157 @@ describe("history behavior", () => {
     viewport.scrollTop = 1234;
     clickSectionLink();
 
-    // Navigation itself stays native; the behavior only records where the
-    // reader left from, so Back can return there.
+    // A suppressed click (an owner claimed it) leaves navigation alone; the
+    // behavior only records where the reader left from, so Back can return
+    // there.
     expect(history.state?.kpressScroll).toBe(1234);
+    dispose();
+  });
+
+  it("owns plain section-link navigation: pushes the entry and glides the pane", async () => {
+    documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    const scrollIntoView = vi.fn();
+    document.getElementById("sec").scrollIntoView = scrollIntoView;
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("section-link")?.dispatchEvent(click);
+
+    // The behavior claims the click (Chromium would scroll the pane
+    // instantly), pushes the entry the browser would have pushed (new entry,
+    // unstamped), and glides to the target.
+    expect(click.defaultPrevented).toBe(true);
+    expect(location.hash).toBe("#sec");
+    expect(history.state).toBe(null);
+    expect(scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: "smooth", block: "start" }),
+    );
+    dispose();
+  });
+
+  it("does not push a duplicate entry when re-activating the current fragment", async () => {
+    documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    const dest = /** @type {HTMLElement} */ (document.getElementById("sec"));
+    const scrollIntoView = vi.fn();
+    dest.scrollIntoView = scrollIntoView;
+
+    document
+      .getElementById("section-link")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    expect(location.hash).toBe("#sec");
+
+    // Native history pushes no entry when the destination URL is already
+    // current; re-activation performs only the scroll.
+    const pushes = vi.spyOn(history, "pushState");
+    const second = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("section-link")?.dispatchEvent(second);
+
+    expect(second.defaultPrevented).toBe(true);
+    expect(pushes).not.toHaveBeenCalled();
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+    pushes.mockRestore();
+    dispose();
+  });
+
+  it("leaves download and non-_self target anchors fully native", async () => {
+    documentMarkup();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<a id="blank" href="#sec" target="_blank">b</a>' +
+        '<a id="named" href="#sec" target="popup">n</a>' +
+        '<a id="dl" href="#sec" download>d</a>' +
+        '<a id="self" href="#sec" target="_self">s</a>',
+    );
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    const pushes = vi.spyOn(history, "pushState");
+
+    for (const id of ["blank", "named", "dl"]) {
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+      document.getElementById(id)?.dispatchEvent(click);
+      // Requesting another browsing context (or a download) keeps default
+      // anchor semantics: the behavior must not claim the click or touch
+      // this tab's history.
+      expect(click.defaultPrevented).toBe(false);
+      expect(pushes).not.toHaveBeenCalled();
+    }
+
+    const selfClick = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("self")?.dispatchEvent(selfClick);
+    expect(selfClick.defaultPrevented).toBe(true);
+    pushes.mockRestore();
+    dispose();
+  });
+
+  it("moves the focus-navigation origin to the section target", async () => {
+    documentMarkup();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    const dest = /** @type {HTMLElement} */ (document.getElementById("sec"));
+    dest.scrollIntoView = vi.fn();
+
+    document
+      .getElementById("section-link")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    // Native fragment navigation continues keyboard traversal from the
+    // target; the owned path reproduces that with a temporary tabindex that
+    // is dropped again on blur.
+    expect(document.activeElement).toBe(dest);
+    expect(dest.getAttribute("tabindex")).toBe("-1");
+    dest.dispatchEvent(new Event("blur"));
+    expect(dest.hasAttribute("tabindex")).toBe(false);
+    dispose();
+  });
+
+  it("preserves an authored tabindex on the section target", async () => {
+    documentMarkup();
+    const dest = /** @type {HTMLElement} */ (document.getElementById("sec"));
+    dest.setAttribute("tabindex", "0");
+    dest.scrollIntoView = vi.fn();
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    document
+      .getElementById("section-link")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(document.activeElement).toBe(dest);
+    expect(dest.getAttribute("tabindex")).toBe("0");
+    dest.dispatchEvent(new Event("blur"));
+    expect(dest.getAttribute("tabindex")).toBe("0");
+    dispose();
+  });
+
+  it("handles malformed fragment hrefs without throwing and leaves them native", async () => {
+    documentMarkup();
+    document.body.insertAdjacentHTML("beforeend", '<a id="bad" href="#%">bad</a>');
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    expect(() => document.getElementById("bad")?.dispatchEvent(click)).not.toThrow();
+    // No element matches the raw "%" id, so the click stays native.
+    expect(click.defaultPrevented).toBe(false);
+    dispose();
+  });
+
+  it("leaves footnote references to their popover owner", async () => {
+    documentMarkup();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<main data-note><a id="fn-ref" class="kpress-footnote-ref" href="#fn-1">1</a></main>',
+    );
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("fn-ref")?.dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(false);
     dispose();
   });
 

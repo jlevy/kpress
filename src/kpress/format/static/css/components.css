@@ -1589,7 +1589,7 @@
    document pane, not the browser window. */
 @container kpress-doc (max-width: 74.99rem) {
   .kpress-toc-toggle {
-    left: 1rem;
+    left: 0.75rem;
     opacity: 0;
     position: fixed;
     top: 1rem;
@@ -1606,6 +1606,18 @@
   .kpress-toc-toggle.show-toggle {
     opacity: 1;
     visibility: visible;
+  }
+
+  /* The floating toggle lives in the pane's top-left gutter (fixed against
+     the frame), so the document must keep an inline gutter at least as wide
+     as the toggle's footprint (0.75rem inset + 28px button + breathing
+     room) or prose slides under the control — both at mid widths, where the
+     centered column's left edge moves inside the footprint, and on phones,
+     where the 1rem base padding leaves the first characters covered. Hosts
+     that add their own pane inset shrink the reservation through the
+     clearance variable (their inset already contributes to the gutter). */
+  .kpress-doc {
+    padding-inline: max(1rem, var(--kpress-toc-toggle-clearance));
   }
 
   .kpress-toc-backdrop {
@@ -1698,9 +1710,11 @@
   /* Narrow screens get a tighter frame: the wide-screen gutters stack up to several
      rem per side, which is dead space on a phone (kash used 1.5rem total). The doc
      and long-text pads shrink here; the standalone page gutter shrinks in the
-     media rule by .kpress-page-main below. */
+     media rule by .kpress-page-main below. The floating TOC toggle is present in
+     this whole band, so the shrink must still respect its clearance reservation
+     (this rule ties with the clearance rule above and wins by order). */
   .kpress-doc {
-    padding-inline: 0.5rem;
+    padding-inline: max(0.5rem, var(--kpress-toc-toggle-clearance));
   }
 
   .kpress-long-text {

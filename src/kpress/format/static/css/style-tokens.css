@@ -130,6 +130,11 @@
      --kpress-measure is not in scope. See kpress-design.md -> Settings menu.) */
   --kpress-settings-inset-block: var(--kpress-host-settings-inset-block, 0.75rem);
   --kpress-settings-inset-inline: var(--kpress-host-settings-inset-inline, 0.75rem);
+  /* Inline gutter the document reserves for the floating TOC toggle in the
+     narrow band (0.75rem inset + 28px button + breathing room). A host whose
+     pane inset already contributes to the gutter shrinks the reservation by
+     redeclaring this on an element scope. See components.css -> .kpress-doc. */
+  --kpress-toc-toggle-clearance: 2.75rem;
   /* Task-list checkbox size: slightly larger than body text so the check glyph
      is clearly legible at a glance and not confused with a bullet. */
   --kpress-checkbox-size: 1.15em;

@@ -366,7 +366,11 @@ def test_tables_preserve_attrs_and_get_static_reader_hooks() -> None:
     assert '<div class="kpress-table-wrap"><table class="kpress-table">' in tree.html
     # GFM header cells carry the data-col enrichment hook (column slug from the header).
     assert '<th data-col="label">Label</th>' in tree.html
-    assert '<th style="text-align:right" data-col="amount">Amount</th>' in tree.html
+    # Numeric marking is column-scoped and includes the header of a numeric column.
+    assert (
+        '<th style="text-align:right" data-kpress-numeric="true" data-col="amount">Amount</th>'
+        in tree.html
+    )
     # Body cells map to their column's slug; numeric detection and alignment still apply.
     assert '<td data-col="label">Revenue</td>' in tree.html
     assert (
@@ -395,7 +399,10 @@ def test_table_cells_emit_data_col_from_header_slug() -> None:
 
     # Header text is slugified: lowercased, non-alphanumeric runs -> a single hyphen.
     assert '<th data-col="ticker">Ticker</th>' in tree.html
-    assert '<th style="text-align:right" data-col="net-change">Net Change %</th>' in tree.html
+    assert (
+        '<th style="text-align:right" data-kpress-numeric="true" data-col="net-change">'
+        "Net Change %</th>" in tree.html
+    )
     assert '<th data-col="notes">Notes</th>' in tree.html
     # Body cells inherit their column's slug by position.
     assert '<td data-col="ticker">ACME</td>' in tree.html
@@ -404,6 +411,79 @@ def test_table_cells_emit_data_col_from_header_slug() -> None:
         in tree.html
     )
     assert '<td data-col="notes">up</td>' in tree.html
+
+
+def test_numeric_marking_is_column_scoped_and_accepts_typographic_minus() -> None:
+    tree = parse_markdown(
+        dedent(
+            """
+            | Metric | Change | Mixed |
+            | --- | --- | --- |
+            | Revenue | −35% | 12 |
+            | Margin | +45% | n/a |
+            """
+        ).strip(),
+        title="Numeric",
+    )
+
+    # Typographic minus (U+2212) counts as a sign; the whole column aligns together,
+    # header included.
+    assert '<th data-kpress-numeric="true" data-col="change">Change</th>' in tree.html
+    assert '<td data-kpress-numeric="true" data-col="change">−35%</td>' in tree.html
+    assert '<td data-kpress-numeric="true" data-col="change">+45%</td>' in tree.html
+    # A column mixing numbers and text gets no numeric marks at all: default alignment.
+    assert '<th data-col="mixed">Mixed</th>' in tree.html
+    assert '<td data-col="mixed">12</td>' in tree.html
+    assert '<td data-col="mixed">n/a</td>' in tree.html
+
+
+def test_numeric_columns_tolerate_empty_cells_and_skip_span_tables() -> None:
+    tree = parse_markdown(
+        dedent(
+            """
+            | Quarter | Value |
+            | --- | --- |
+            | Q1 | 10 |
+            | Q2 |  |
+
+            <table id="span"><tr><td rowspan="2">42</td><td>7</td></tr><tr><td>8</td></tr></table>
+            """
+        ).strip(),
+        title="Numeric edge cases",
+    )
+
+    # Empty cells neither qualify nor disqualify a column, and are marked with it.
+    assert '<th data-kpress-numeric="true" data-col="value">Value</th>' in tree.html
+    assert '<td data-kpress-numeric="true" data-col="value">10</td>' in tree.html
+    assert '<td data-kpress-numeric="true" data-col="value"></td>' in tree.html
+    # Rowspan/colspan shift cell positions, so span tables get no numeric marks.
+    assert "data-kpress-numeric" not in tree.html.split('id="span"', 1)[1]
+
+
+def test_numeric_finalize_strips_stale_authored_markers() -> None:
+    """Server output converges exactly like the client runtime: an authored
+    data-kpress-numeric on a mixed column or a span table is stripped, and only
+    the column decision re-adds markers."""
+    tree = parse_markdown(
+        dedent(
+            """
+            <table id="mixed"><tr><td data-kpress-numeric="true">stale text</td><td>1</td></tr><tr><td>more text</td><td>2</td></tr></table>
+
+            <table id="span2"><tr><td rowspan="2" data-kpress-numeric="true">42</td><td>7</td></tr><tr><td>8</td></tr></table>
+            """
+        ).strip(),
+        title="Stale markers",
+    )
+
+    mixed = tree.html.split('id="mixed"', 1)[1].split("</table>", 1)[0]
+    assert "<td>stale text</td>" in mixed
+    # Only the two cells of the all-numeric second column carry the marker.
+    assert mixed.count('data-kpress-numeric="true"') == 2
+    assert '<td data-kpress-numeric="true">1</td>' in mixed
+    assert '<td data-kpress-numeric="true">2</td>' in mixed
+
+    span = tree.html.split('id="span2"', 1)[1].split("</table>", 1)[0]
+    assert "data-kpress-numeric" not in span
 
 
 def test_tabbed_content_authoring_generates_stable_reader_panels() -> None:

@@ -9,10 +9,18 @@ import { resolveKpressViewport, viewportScrollContext } from "./viewport.js";
  * browsers persist/restore only the *document* scroller's position across
  * same-document history traversal — the pane is invisible to native scroll
  * restoration, so Back after a section-link jump would revert the URL but
- * leave the reader where they were. This behavior closes that gap without
- * taking over navigation: hash clicks stay native (the browser writes the
- * hash and pushes the entry); the behavior only records the pane offset in
- * the session-history entry state and replays it on traversal.
+ * leave the reader where they were. This behavior records the pane offset
+ * in the session-history entry state and replays it on traversal.
+ *
+ * It also owns plain in-document section navigation: Chromium performs
+ * fragment navigation with an instant scroll when the scroller is a
+ * non-root pane (the pane's CSS `scroll-behavior: smooth` is not
+ * consulted), so native hash clicks jump while explicit UI scrolls (the
+ * TOC title) glide. Plain section links are therefore handled here — push
+ * the entry, then glide to the target — while footnote references keep
+ * their popover owner, and modified/prevented clicks and anchors that
+ * request non-default anchor semantics (`download`, a non-`_self`
+ * `target`) stay native.
  */
 
 /**
@@ -172,6 +180,104 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
     document.getElementById(id)?.scrollIntoView({ behavior: "instant", block: "start" });
   };
 
+  /**
+   * The single eligibility predicate for owned section navigation: a plain,
+   * unclaimed, unmodified primary-button click on a same-document fragment
+   * link that keeps default anchor semantics (no `download`, no non-`_self`
+   * browsing target) and resolves to a target inside the pane. Footnote
+   * references keep their popover owner. Everything that fails the
+   * predicate stays fully native.
+   *
+   * @param {MouseEvent} event
+   * @returns {{ href: string, dest: HTMLElement } | null}
+   */
+  const ownedSectionTarget = (event) => {
+    if (event.defaultPrevented || event.button !== 0) {
+      return null;
+    }
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return null;
+    }
+    const target = /** @type {{ closest?: (selector: string) => Element | null }} */ (event.target);
+    const anchor = typeof target?.closest === "function" ? target.closest('a[href^="#"]') : null;
+    const href = anchor?.getAttribute("href") ?? "";
+    if (!anchor || href.length <= 1) {
+      return null;
+    }
+    if (anchor.hasAttribute("download")) {
+      return null;
+    }
+    const browsingTarget = anchor.getAttribute("target");
+    if (browsingTarget && browsingTarget.toLowerCase() !== "_self") {
+      return null;
+    }
+    if (href.startsWith("#fn-") || anchor.closest(".kpress-footnote-ref, .footnote-ref")) {
+      return null;
+    }
+    // fragmentId's guarded decoding: a malformed fragment (e.g. "#%") falls
+    // back to the raw id instead of throwing out of the listener.
+    const dest = document.getElementById(fragmentId(href));
+    if (!dest || !viewport.contains(dest)) {
+      return null;
+    }
+    return { href, dest };
+  };
+
+  /**
+   * Native fragment navigation moves the sequential focus-navigation
+   * starting point to the target; reproduce that when owning the click so
+   * keyboard activation continues from the destination. A target that is
+   * not natively focusable gets a temporary `tabindex="-1"` that is
+   * dropped again on blur; an authored tabindex is left untouched.
+   *
+   * @param {HTMLElement} dest
+   */
+  const focusDestination = (dest) => {
+    if (!dest.hasAttribute("tabindex")) {
+      dest.setAttribute("tabindex", "-1");
+      dest.addEventListener("blur", () => dest.removeAttribute("tabindex"), { once: true });
+    }
+    try {
+      dest.focus({ preventScroll: true });
+    } catch {
+      // A host element that refuses focus still gets the scroll.
+    }
+  };
+
+  /**
+   * Glide plain section links inside the pane. Listens on `window` — the
+   * end of the bubble path — so every document-level owner that claims the
+   * click first (the footnote popover, a host's own interceptor) has
+   * already spoken, and `defaultPrevented` defers to all of them
+   * regardless of registration order. pushState writes the entry the
+   * browser would have pushed; the new entry starts unstamped and picks up
+   * its offset from the debounced scroll stamp, so traversal behaves
+   * exactly as with native navigation. Re-activating the current fragment
+   * matches native history too: the browser pushes no entry when the
+   * destination URL is already current, so neither does this path — it
+   * only performs the scroll.
+   *
+   * @param {MouseEvent} event
+   */
+  const onNavClick = (event) => {
+    const owned = ownedSectionTarget(event);
+    if (!owned) {
+      return;
+    }
+    if (new URL(owned.href, location.href).href !== location.href) {
+      try {
+        history.pushState(null, "", owned.href);
+      } catch {
+        // Embedders that reject pushState keep fully native navigation.
+        return;
+      }
+    }
+    event.preventDefault();
+    focusDestination(owned.dest);
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    owned.dest.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth", block: "start" });
+  };
+
   let stampTimer = 0;
   const onScroll = () => {
     clearTimeout(stampTimer);
@@ -179,11 +285,13 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
   };
 
   document.addEventListener("click", onClick, true);
+  window.addEventListener("click", onNavClick);
   window.addEventListener("popstate", onPopState);
   ctx.onScroll(onScroll);
 
   return () => {
     document.removeEventListener("click", onClick, true);
+    window.removeEventListener("click", onNavClick);
     window.removeEventListener("popstate", onPopState);
     ctx.offScroll(onScroll);
     clearTimeout(stampTimer);
