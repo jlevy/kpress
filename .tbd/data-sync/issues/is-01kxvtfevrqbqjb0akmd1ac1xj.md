@@ -3,9 +3,9 @@ type: is
 id: is-01kxvtfevrqbqjb0akmd1ac1xj
 title: "Address review: PR #25 — clearance, owned navigation, numeric parity"
 kind: task
-status: open
+status: closed
 priority: 1
-version: 8
+version: 9
 labels: []
 dependencies: []
 child_order_hints:
@@ -17,5 +17,7 @@ child_order_hints:
   - is-01kxvtfga7q2dqt24vca0g579p
   - is-01kxvtfghg55dgfx39y9qp8gn9
 created_at: 2026-07-18T23:55:09.047Z
-updated_at: 2026-07-18T23:55:10.767Z
+updated_at: 2026-07-19T00:04:19.752Z
+closed_at: 2026-07-19T00:04:19.751Z
+close_reason: All 7 findings fixed in 0fac777; disposition map posted at https://github.com/jlevy/kpress/pull/25#issuecomment-5013437448; CI green.
 ---
