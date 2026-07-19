@@ -3,13 +3,15 @@ type: is
 id: is-01kxxmbxzyjt0gwhaaw2cjmwsf
 title: "Release v0.2.3: publish GitHub release and verify external package"
 kind: task
-status: open
+status: closed
 priority: 1
-version: 3
+version: 4
 labels: []
 dependencies: []
 created_at: 2026-07-19T16:46:50.878Z
-updated_at: 2026-07-19T17:48:19.931Z
+updated_at: 2026-07-19T18:05:46.760Z
+closed_at: 2026-07-19T18:05:46.757Z
+close_reason: "Released and verified. GitHub release v0.2.3 published at 77bfd7c (gh CLI per tbd setup-github-cli proxied-session flow); publish.yml green: full release gate, tag/version check, trusted publishing upload. External verification from the registry: kpress --version reports 0.2.3; --help and doctor healthy (optimizer/brotli/pdf show expected optional skips); README-style quickstart build succeeds and ships js/history.js + js/toc.js; PyPI metadata correct (AGPL-3.0-or-later, py3.12-3.14 classifiers, repo/issue links, wheel+sdist)."
 ---
 Patch release v0.2.3 (history-aware section navigation, structural TOC tree normalization, column-scoped numeric table alignment, TOC toggle clearance, print margin alignment, tooling consolidation). Pre-release review done, make verify green (540 pytest + 145 vitest, audits clean), release notes in docs/releases/0.2.3.md, version refs rolled. Remaining: publish the GitHub release with tag v0.2.3 (fires publish.yml trusted publishing), then verify externally per docs/publishing.md steps 7-8: uvx --from kpress==0.2.3 kpress --version / --help / doctor, README quickstart against PyPI, project page metadata.
 
