@@ -65,15 +65,25 @@ not count as visual acceptance.
 
 ## Prioritized Backlog
 
-### Active Feature Plan
+### Feature Plans
 
-- `kpr-4q0a`: implement
+Every `docs/*.plan.md` and its current state; completed plans move to `docs/done/` once
+their follow-up review work lands.
+
+- `kpr-4q0a` (open): implement
   [interactive footnote popovers](docs/interactive-footnote-popovers.plan.md) with
   distinct transient and pinned states, native anchor fallback, complete ESM closure,
   and real-browser evidence; phase epics are `kpr-pw7v`, `kpr-ipqy`, and `kpr-x23v`
-- `kpr-vuaw`: implement the [collapsible TOC](docs/toc-collapse.plan.md) — entries below
-  a configurable depth start collapsed, an expand/collapse-all toggle sits beside the
-  Contents header, and the active section auto-expands via the scroll-spy
+- `kpr-vuaw` (open): implement the [collapsible TOC](docs/toc-collapse.plan.md) —
+  entries below a configurable depth start collapsed, an expand/collapse-all toggle sits
+  beside the Contents header, and the active section auto-expands via the scroll-spy
+- `kpr-als7` (closed):
+  [history-aware section navigation](docs/history-navigation.plan.md) is implemented and
+  merged (PR #24); PR #25 review follow-ups (`kpr-z54g`, in progress) refine the
+  owned-navigation design, and the plan moves to `docs/done/` when they land
+- `kpr-lrfg` (deferred, P3): optional
+  [content-size indicators](docs/content-size-indicators.plan.md) — see the P3 backlog
+  entry below
 
 ### P1: Release Gates
 
