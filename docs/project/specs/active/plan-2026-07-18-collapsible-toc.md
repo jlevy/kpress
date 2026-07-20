@@ -5,7 +5,7 @@ author: Joshua Levy (with Claude)
 ---
 # Feature: Collapsible TOC (Depth Collapse, Expand-All, Scroll-Follow)
 
-**Date:** 2026-07-18
+**Date:** 2026-07-18 (last updated 2026-07-19)
 
 **Author:** Joshua Levy (with Claude)
 
@@ -74,8 +74,8 @@ How the TOC works today:
   items — there is no nesting; depth is expressed only through the level classes, which
   CSS maps to indentation and weight (`components.css:355-405`).
 - **Depth is structural, not tag-based.** `TocEntry.level` is a normalized TOC depth
-  from 1 (`_toc_entries`, `format/markdown.py:907`): the title H1 is dropped and level
-  gaps are closed, so the same heading tag can sit at different TOC depths.
+  from 1 (`_toc_entries`, `format/markdown.py`): the title H1 is dropped and level gaps
+  are closed, so the same heading tag can sit at different TOC depths.
   In the common one-H1-title document shape, depth 1 is H2, depth 2 is H3, depth 3 is
   H4. Settings must therefore be specified in TOC depth, documented with that
   typical-case mapping.
@@ -263,12 +263,12 @@ Ships off by default in the next release — no host sees any change until it se
 - `src/kpress/format/render.py` (`_render_toc`), `format/markdown.py` (`_toc_entries`),
   `format/static/js/toc.js`, `format/static/css/components.css`,
   `src/kpress/contract.py` — the code seams.
-- [`history-navigation.plan.md`](done/history-navigation.plan.md) — the adjacent TOC
-  behavior change this design builds on (native hash navigation, `setActiveLink` as the
-  single active-entry path).
-- [`content-size-indicators.plan.md`](content-size-indicators.plan.md) — the
+- [`history-navigation.plan.md`](../../../done/history-navigation.plan.md) — the
+  adjacent TOC behavior change this design builds on (native hash navigation,
+  `setActiveLink` as the single active-entry path).
+- [`content-size-indicators.plan.md`](../../../content-size-indicators.plan.md) — the
   config-plumbing and contract-registration conventions this plan mirrors.
-- [`kpress-design.md`](kpress-design.md) — behaviors/component contract and the
+- [`kpress-design.md`](../../../kpress-design.md) — behaviors/component contract and the
   public-surface rules.
 
 <!-- This document follows common-doc-guidelines.md.
