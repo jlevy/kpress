@@ -267,16 +267,16 @@ files:
         size: 1835
         source_path: _kpress/assets/js/theme.0df6988dde228fd2.js
       - applied_pipeline: []
-        content_hash: dec2da049be8b8b3
+        content_hash: c9a895971e366a9b
         kind: html
         path: about.html
-        size: 10304
+        size: 11024
       - applied_pipeline: []
         compression: gzip
-        content_hash: c8bfd97edc8a57d5
+        content_hash: d66ee4d036d481af
         kind: gz
         path: about.html.gz
-        size: 3369
+        size: 3454
         source_path: about.html
       - applied_pipeline: []
         content_hash: 5945811896b61c26
@@ -284,16 +284,16 @@ files:
         path: assets/logo.svg
         size: 133
       - applied_pipeline: []
-        content_hash: a72a540d921db647
+        content_hash: 21ff5aea81992cac
         kind: html
         path: index.html
-        size: 10562
+        size: 11282
       - applied_pipeline: []
         compression: gzip
-        content_hash: c1cb6443b99eb958
+        content_hash: 209acd4176dcdf42
         kind: gz
         path: index.html.gz
-        size: 3464
+        size: 3550
         source_path: index.html
       - applied_pipeline: []
         content_hash: 16ceb5ee3e0dc13a
@@ -565,6 +565,16 @@ files:
           <path d="M6 20 12 4l6 16"/>
           <path d="M8.2 14h7.6"/>
         </symbol>
+        <symbol id="kpress-icon-unfold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22v-6"/><path d="M12 8V2"/>
+          <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
+          <path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>
+        </symbol>
+        <symbol id="kpress-icon-fold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22v-6"/><path d="M12 8V2"/>
+          <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
+          <path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>
+        </symbol>
       </svg>
       <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
       <p>Static publishing fixture.</p></div></div></article>
@@ -582,8 +592,8 @@ files:
       </body>
       </html>
   about.html.gz:
-    bytes: 3369
-    sha256_16: c8bfd97edc8a57d5
+    bytes: 3454
+    sha256_16: d66ee4d036d481af
   assets/logo.svg:
     text: |
       <svg xmlns="http://www.w3.org/2000/svg" width="80" height="20" role="img" aria-label="KPress"><text x="0" y="15">KPress</text></svg>
@@ -734,6 +744,16 @@ files:
           <path d="M6 20 12 4l6 16"/>
           <path d="M8.2 14h7.6"/>
         </symbol>
+        <symbol id="kpress-icon-unfold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22v-6"/><path d="M12 8V2"/>
+          <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
+          <path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>
+        </symbol>
+        <symbol id="kpress-icon-fold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22v-6"/><path d="M12 8V2"/>
+          <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
+          <path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>
+        </symbol>
       </svg>
       <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
       <p>See the logo.</p>
@@ -754,8 +774,8 @@ files:
       </body>
       </html>
   index.html.gz:
-    bytes: 3464
-    sha256_16: c1cb6443b99eb958
+    bytes: 3550
+    sha256_16: 209acd4176dcdf42
   robots.txt:
     text: |
       User-agent: *

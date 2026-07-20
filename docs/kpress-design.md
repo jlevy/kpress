@@ -699,6 +699,8 @@ it.
 | `list` | `list` | Collapsed table-of-contents toggle |
 | `maximize` | `maximize` | Reserved media-maximize glyph |
 | `external-link` | `external-link` | Reserved external-link glyph |
+| `unfold-vertical` | `unfold-vertical` | TOC expand-all control (collapsed state) |
+| `fold-vertical` | `fold-vertical` | TOC expand-all control (expanded state) |
 
 Embedding applications can own app-chrome glyphs that KPress does not need.
 For shared reader controls, they should reference the KPress sprite so the document
