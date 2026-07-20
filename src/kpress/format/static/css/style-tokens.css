@@ -92,9 +92,10 @@
   --kpress-font-size-mono-tiny: 0.7rem;
 
   /* Prose section-heading sizes (H2-H4; H1 and H5/H6 keep their literals).
-     These narrow/medium defaults step up on wide panes only (the >=75rem
-     container band in components.css, beside the prose-size bump there), so
-     phones and embedded panes keep the tighter scale. */
+     These narrow/medium defaults step up on wide panes only (the >=64rem
+     container band in components.css); phones and embedded panes keep the
+     tighter scale. Body text does not scale with pane width — only the
+     section headings do. */
   --kpress-font-size-h2: 1.32rem;
   --kpress-font-size-h3: 1.15rem;
   --kpress-font-size-h4: 1.12rem;

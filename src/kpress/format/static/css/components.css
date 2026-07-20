@@ -1484,24 +1484,23 @@
   inline-size: 18px;
 }
 
-/* Wide document: TOC is a sticky sidebar. Widths track the document viewport
-   via `cqw` (not the window), so this is correct standalone and embedded. */
-@container kpress-doc (min-width: 75rem) {
-  /* Departure from kash (DEP-FONT-WIDE): kash only bumps prose above 1rem for
-     print; on screen it stays 1rem at every width. We nudge the on-screen
-     reading size to 1.1rem on wide panes only, because PT Serif's small
-     x-height reads smaller than the sans chrome an embedding host app puts
-     beside it. Base stays 1rem, so narrow/embedded panes keep kash parity.
-     The H2-H4 section headings step up with it, keeping their contrast over
-     the bumped body size; narrow and medium panes keep the tighter defaults
-     from style-tokens.css. */
+/* Heading step-up band: from 64rem the H2-H4 section headings take their
+   larger sizes; narrow and medium panes keep the tighter defaults from
+   style-tokens.css. Deliberately one notch below the 75rem TOC band so the
+   heading step is not swallowed by that layout reflow, and deliberately
+   headings ONLY: body text stays 1rem at every width (kash parity — kash
+   bumps prose above 1rem only for print). */
+@container kpress-doc (min-width: 64rem) {
   .kpress {
-    --kpress-font-size-normal: 1.1rem;
     --kpress-font-size-h2: 1.4rem;
     --kpress-font-size-h3: 1.2rem;
     --kpress-font-size-h4: 1.2rem;
   }
+}
 
+/* Wide document: TOC is a sticky sidebar. Widths track the document viewport
+   via `cqw` (not the window), so this is correct standalone and embedded. */
+@container kpress-doc (min-width: 75rem) {
   body.kpress-video-open .kpress-toc,
   .kpress-viewport.kpress-video-open .kpress-toc {
     display: none;
