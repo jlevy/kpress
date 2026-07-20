@@ -60,6 +60,11 @@ class FormatConfig:
     math: MathMode = "auto"
     diagrams: str = "auto"
     show_frontmatter: bool = True
+    # Wide-table cutoff (see RenderOptions.table_wide_min_columns /
+    # table_wide_min_row_chars): both axes must qualify before a table earns
+    # the wide presentation.
+    table_wide_min_columns: int = 6
+    table_wide_min_row_chars: int = 100
     # Whitelist of additional pass-through HTML/XML tag names (YAML:
     # format.html.extra_tags). Unioned with the always-on <span>/<div> defaults and
     # admitted under the sanitized trust mode, carrying class/data-* but never
@@ -349,6 +354,8 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "math",
         "diagrams",
         "show_frontmatter",
+        "table_wide_min_columns",
+        "table_wide_min_row_chars",
         "widgets",
         "html",
     }
@@ -571,6 +578,8 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             math=cast(MathMode, math),
             diagrams=diagrams,
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),
+            table_wide_min_columns=_int_value(fmt.get("table_wide_min_columns"), 6),
+            table_wide_min_row_chars=_int_value(fmt.get("table_wide_min_row_chars"), 100),
             widgets=parse_widgets(fmt.get("widgets")),
             extra_tags=_validated_extra_tags(fmt_html.get("extra_tags")),
             extra_attributes=_validated_extra_attributes(fmt_html.get("extra_attributes")),

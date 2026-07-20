@@ -535,6 +535,25 @@ function showKpressTooltip(anchor) {
 
   tooltip.querySelector("[data-kpress-footnote-nav]")?.addEventListener("click", (event) => {
     event.stopPropagation();
+    removeKpressTooltips();
+  });
+
+  // A tooltip is never a dead end. A link inside it (e.g. a section link in a
+  // footnote's text) is a real link: native navigation runs (suppression above
+  // keeps the wiring off it) and the popover dismisses instead of lingering
+  // over the destination. Tapping anywhere else on a section-preview tooltip
+  // navigates to the previewed target itself — on touch the anchor's own tap
+  // only opens the preview, so the preview must complete the journey.
+  tooltip.addEventListener("click", (event) => {
+    const link = event.target instanceof Element ? event.target.closest("a") : null;
+    if (link) {
+      removeKpressTooltips();
+      return;
+    }
+    if (!content.footnoteId) {
+      removeKpressTooltips();
+      window.location.hash = href;
+    }
   });
 
   document.body.append(tooltip);
@@ -571,12 +590,15 @@ function showKpressTooltip(anchor) {
 
 // Tooltips are suppressed inside the table of contents (the TOC already shows
 // each heading's text, so a preview just repeats it and is distracting), inside
-// site chrome (the document header and any host header/footer), and on anything
+// site chrome (the document header and any host header/footer), inside an open
+// tooltip itself (a link tapped in a footnote popover must NAVIGATE — stacking
+// a second preview over the first traps the reader, most visibly on touch,
+// where the wiring's preventDefault would swallow the tap), and on anything
 // an author opts out with `data-kpress-no-tooltip` (on the link or any
 // ancestor). Everything else in the document keeps tooltips — those point at
 // content the reader can't already see.
 const TOOLTIP_SUPPRESS_SELECTOR =
-  ".kpress-toc, .kpress-doc-header, .kpress-site-header, .kpress-site-footer, [data-kpress-no-tooltip]";
+  ".kpress-toc, .kpress-doc-header, .kpress-site-header, .kpress-site-footer, .kpress-tooltip, [data-kpress-no-tooltip]";
 
 /**
  * @param {Element} anchor

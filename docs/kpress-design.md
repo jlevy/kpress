@@ -237,8 +237,9 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Internal-link tooltips.** Previews for headings (with nearby text), figures, tables,
   code, and details, with viewport-aware placement, arrow positioning, touch fallback,
   and Escape close.
-- **Tables.** Responsive wrapping, numeric-column alignment hooks, small-caps headers,
-  zebra rows, TOC-aware desktop breakout, mobile font reduction, and print flattening.
+- **Tables.** Responsive wrapping, numeric-column alignment hooks, small-caps headers
+  (hyphenating rather than letter-breaking when narrow), zebra rows, TOC-aware desktop
+  breakout, mobile font reduction, and print flattening.
   Numeric detection is column-scoped: a column is numeric when at least one non-empty
   body cell matches the numeric pattern (sign — ASCII or typographic minus — currency,
   grouped digits, decimals, percent) and none mismatches; then every cell of the column,
@@ -246,6 +247,13 @@ feature guarantees); the sections named in the table carry the architecture deta
   start alignment with no marks.
   Each cell also carries a `data-col="<header-slug>"` enrichment hook so downstream
   decorators can select columns by name without kpress depending on them.
+  The wide presentation (bleeding past the reading column on wide panes; edge-bleed
+  scroll regions on phones) is reserved for genuinely large tables: the renderer stamps
+  `data-kpress-table-scale` (value `wide`) on the wrap only when the widest row has at
+  least 6 columns AND the average row carries at least 100 visible characters (both
+  defaults mirrored in `tables.js` and host-tunable via
+  `kpress.behaviors.configure("tables", { wideMinColumns, wideMinRowChars })`); smaller
+  tables keep the reading-column width and scroll internally.
 - **Code copy.** A per-block copy control with success/error/idle states, accessibility
   labels, and print suppression.
 - **Video popovers.** YouTube link and raw-embed interception into a no-network

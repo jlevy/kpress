@@ -194,6 +194,10 @@ def test_host_fragment_fixture_uses_only_pinned_structure_and_disables_settings(
 | --- | ---: |
 | ACME | 12.5 |
 
+| Quarterly metric name | Reported value detail | Consensus expectation | Variance explanation | Segment attribution | Forward guidance note |
+| --- | --- | --- | --- | --- | --- |
+| Total revenue growth | Nineteen percent up | Seventeen percent est | Ad pricing recovery | Family of Apps lead | Raised for next year |
+
 ![Revenue chart](assets/revenue.svg "Quarterly revenue")
 """
     rendered = kpress_format.render_fragment(
@@ -233,8 +237,16 @@ def test_host_fragment_fixture_uses_only_pinned_structure_and_disables_settings(
 
 
 def test_public_data_attributes_are_emitted_on_rendered_tables() -> None:
+    # A numeric column exercises data-col/data-kpress-numeric; the second table
+    # is large on both axes (6 columns, >100 chars per row) so it also earns
+    # the wide-table mark.
     tree = kpress_format.parse_markdown(
-        "| Ticker | Amount |\n| --- | ---: |\n| ACME | 12.5 |",
+        "| Ticker | Amount |\n| --- | ---: |\n| ACME | 12.5 |\n\n"
+        "| Quarterly metric name | Reported value detail | Consensus expectation "
+        "| Variance explanation | Segment attribution | Forward guidance note |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| Total revenue growth | Nineteen percent up | Seventeen percent est "
+        "| Ad pricing recovery | Family of Apps lead | Raised for next year |",
         title="Contract",
     )
     for attribute in PUBLIC_DATA_ATTRIBUTES:

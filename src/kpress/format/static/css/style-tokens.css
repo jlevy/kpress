@@ -91,6 +91,14 @@
   --kpress-font-size-mono-small: 0.75rem;
   --kpress-font-size-mono-tiny: 0.7rem;
 
+  /* Prose section-heading sizes (H2-H4; H1 and H5/H6 keep their literals).
+     These narrow/medium defaults step up on wide panes only (the >=75rem
+     container band in components.css, beside the prose-size bump there), so
+     phones and embedded panes keep the tighter scale. */
+  --kpress-font-size-h2: 1.32rem;
+  --kpress-font-size-h3: 1.15rem;
+  --kpress-font-size-h4: 1.12rem;
+
   /* Line heights. */
   --kpress-line-height-normal: 1.5;
   --kpress-line-height-tight: 1.2;
@@ -131,16 +139,21 @@
   --kpress-settings-inset-block: var(--kpress-host-settings-inset-block, 0.75rem);
   --kpress-settings-inset-inline: var(--kpress-host-settings-inset-inline, 0.75rem);
   /* Inline gutter the document reserves for the floating TOC toggle in the
-     narrow band (0.75rem inset + 28px button + breathing room). A host whose
-     pane inset already contributes to the gutter shrinks the reservation by
-     redeclaring this on an element scope. See components.css -> .kpress-doc. */
-  --kpress-toc-toggle-clearance: 2.75rem;
+     narrow band. Deliberately a little tighter than the toggle's full
+     footprint (0.75rem inset + 32px button): the toggle carries a translucent
+     document-background fill, so a slight overlap with the text gutter stays
+     legible while phones keep more reading width. A host whose pane inset
+     already contributes to the gutter shrinks the reservation by redeclaring
+     this on an element scope. See components.css -> .kpress-doc. */
+  --kpress-toc-toggle-clearance: 2rem;
   /* Task-list checkbox size: slightly larger than body text so the check glyph
      is clearly legible at a glance and not confused with a bullet. */
   --kpress-checkbox-size: 1.15em;
   /* Square list bullet -- one size for prose lists, claim markers, and concept
-     items, so every bulleted list matches. */
-  --kpress-bullet-size: 0.8rem;
+     items, so every bulleted list matches. Sized with the 0.1rem top offset on
+     the ::before markers so the square's center sits at the crossbar of a
+     capital F in the first line, not below it. */
+  --kpress-bullet-size: 0.9rem;
 
   /* ============================== 3. SHAPE ============================== */
   /* Corner radii -- one scale used everywhere. Rounded-vs-square is a deliberate

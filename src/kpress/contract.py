@@ -311,6 +311,7 @@ PUBLIC_HOST_CSS_VARIABLES = (
 PUBLIC_DATA_ATTRIBUTES = (
     "data-col",
     "data-kpress-numeric",
+    "data-kpress-table-scale",
 )
 
 # Whitelisted pass-through HTML/XML tags: the input contract is "Markdown + a known set
