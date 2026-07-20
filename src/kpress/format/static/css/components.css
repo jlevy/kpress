@@ -478,36 +478,38 @@
   flex: 1 1 auto;
 }
 
-/* Small quiet icon button matching the other chrome buttons' treatment. */
+/* Deliberately quiet control: no border or fill, colored like the Contents
+   label it sits beside (the muted TOC tone), darkening slightly on hover.
+   The chevrons glyph pair keeps it minimal — a small disclosure hint, not a
+   chrome button. */
 .kpress-toc-expand-all {
   align-items: center;
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
   border-radius: var(--kpress-radius-sm);
-  color: var(--kpress-doc-muted);
+  color: inherit;
   cursor: pointer;
   display: inline-flex;
   flex: none;
-  height: 24px;
+  height: 20px;
   justify-content: center;
-  padding: 3px;
+  opacity: 0.75;
+  padding: 2px;
   transition:
     color var(--kpress-transition-fast),
-    border-color var(--kpress-transition-fast),
-    background-color var(--kpress-transition-fast);
-  width: 24px;
+    opacity var(--kpress-transition-fast);
+  width: 20px;
 }
 
 .kpress-toc-expand-all:hover {
-  background-color: var(--color-hover-bg);
-  border-color: var(--kpress-doc-border);
   color: var(--kpress-doc-text);
+  opacity: 1;
 }
 
 .kpress-toc-expand-all-icon {
   display: block;
-  height: 16px;
-  width: 16px;
+  height: 14px;
+  width: 14px;
 }
 
 /* Both state icons are server-rendered; aria-expanded picks the visible one

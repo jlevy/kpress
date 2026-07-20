@@ -120,14 +120,14 @@ def _render_toc(tree: DocumentTree, options: RenderOptions) -> str:
                 '<button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all ',
                 'aria-expanded="false" aria-label="Expand all sections">',
                 _icon(
-                    "unfold-vertical",
+                    "chevrons-up-down",
                     css_class="kpress-toc-expand-all-icon",
-                    attrs=' width="16" height="16"',
+                    attrs=' width="14" height="14"',
                 ),
                 _icon(
-                    "fold-vertical",
+                    "chevrons-down-up",
                     css_class="kpress-toc-expand-all-icon",
-                    attrs=' width="16" height="16"',
+                    attrs=' width="14" height="14"',
                 ),
                 "</button></div>",
             ]

@@ -699,8 +699,8 @@ it.
 | `list` | `list` | Collapsed table-of-contents toggle |
 | `maximize` | `maximize` | Reserved media-maximize glyph |
 | `external-link` | `external-link` | Reserved external-link glyph |
-| `unfold-vertical` | `unfold-vertical` | TOC expand-all control (collapsed state) |
-| `fold-vertical` | `fold-vertical` | TOC expand-all control (expanded state) |
+| `chevrons-up-down` | `chevrons-up-down` | TOC expand-all control (collapsed state) |
+| `chevrons-down-up` | `chevrons-down-up` | TOC expand-all control (expanded state) |
 
 Embedding applications can own app-chrome glyphs that KPress does not need.
 For shared reader controls, they should reference the KPress sprite so the document
@@ -1138,14 +1138,19 @@ default:
 
 When collapse is on *and* at least one entry is deeper than the threshold, the server
 wraps the Contents title in `kpress-toc-header` and renders the `kpress-toc-expand-all`
-icon button (both sprite glyphs `unfold-vertical` / `fold-vertical` render; CSS shows
-one per `aria-expanded` state) plus `data-kpress-toc-collapse-depth` /
+icon button — a deliberately quiet chevrons control (both sprite glyphs
+`chevrons-up-down` / `chevrons-down-up` render, colored like the Contents label; CSS
+shows one per `aria-expanded` state) — plus `data-kpress-toc-collapse-depth` /
 `data-kpress-toc-expand-on-scroll` on the nav.
 The `toc` behavior partitions the flat entry list into spine groups (entries before the
 first spine entry form an always-visible head group), and a deep row is visible iff
 expand-all is on or scroll-follow marks its group active; hidden rows carry
 `kpress-toc-collapsed` and animate closed with the standard motion tokens
 (reduced-motion suppression applies).
+The scroll-follow handoff waits for the reading position to **settle** in one group
+(`TOC_SCROLL_FOLLOW_SETTLE_MS` in `toc.js`): rapid scrolling and the smooth glide after
+a TOC click sweep the scroll-spy across intermediate sections, and only the group the
+position rests in expands — the highlight itself still moves instantly.
 JS-channel config `collapseDepth` / `expandOnScroll` via
 `kpress.behaviors.configure("toc", ...)` overrides the data attributes (a config
 `collapseDepth` of `0` disables collapse).

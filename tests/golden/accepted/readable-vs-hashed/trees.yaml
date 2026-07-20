@@ -1,8 +1,8 @@
 readable:
   files:
     _kpress/assets/css/components.css:
-      bytes: 60131
-      sha256_16: 997726d4506ef279
+      bytes: 60162
+      sha256_16: 68a841aff81aa132
     _kpress/assets/css/document.css:
       bytes: 12343
       sha256_16: b47cd75659a40ed5
@@ -70,10 +70,10 @@ readable:
       json:
         files:
         - applied_pipeline: []
-          content_hash: 997726d4506ef279
+          content_hash: 68a841aff81aa132
           kind: css
           path: _kpress/assets/css/components.css
-          size: 60131
+          size: 60162
         - applied_pipeline: []
           content_hash: b47cd75659a40ed5
           kind: css
@@ -180,22 +180,22 @@ readable:
           path: _kpress/assets/js/viewport.js
           size: 5446
         - applied_pipeline: []
-          content_hash: 18d42306ea1cf1bb
+          content_hash: 7a1a59a6f1271dbe
           kind: html
           path: about.html
-          size: 10406
+          size: 10144
         - applied_pipeline: []
-          content_hash: 279804a70a0b0c6d
+          content_hash: 600fce2f9046447e
           kind: html
           path: index.html
-          size: 10805
+          size: 10543
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
           kind: txt
           path: robots.txt
           size: 23
         assets:
-        - content_hash: 997726d4506ef279
+        - content_hash: 68a841aff81aa132
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/components.css
@@ -480,15 +480,11 @@ readable:
             <path d="M6 20 12 4l6 16"/>
             <path d="M8.2 14h7.6"/>
           </symbol>
-          <symbol id="kpress-icon-unfold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>
+          <symbol id="kpress-icon-chevrons-up-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>
           </symbol>
-          <symbol id="kpress-icon-fold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>
+          <symbol id="kpress-icon-chevrons-down-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
         <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
@@ -654,15 +650,11 @@ readable:
             <path d="M6 20 12 4l6 16"/>
             <path d="M8.2 14h7.6"/>
           </symbol>
-          <symbol id="kpress-icon-unfold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>
+          <symbol id="kpress-icon-chevrons-up-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>
           </symbol>
-          <symbol id="kpress-icon-fold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>
+          <symbol id="kpress-icon-chevrons-down-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
         <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
@@ -691,12 +683,12 @@ readable:
         Allow: /
 hashed:
   files:
-    _kpress/assets/css/components.997726d4506ef279.css:
-      bytes: 60131
-      sha256_16: 997726d4506ef279
-    _kpress/assets/css/components.997726d4506ef279.css.gz:
-      bytes: 15346
-      sha256_16: 2fa5e06b9fb38bdf
+    _kpress/assets/css/components.68a841aff81aa132.css:
+      bytes: 60162
+      sha256_16: 68a841aff81aa132
+    _kpress/assets/css/components.68a841aff81aa132.css.gz:
+      bytes: 15436
+      sha256_16: c1d3e701fbc66594
     _kpress/assets/css/document.b47cd75659a40ed5.css:
       bytes: 12343
       sha256_16: b47cd75659a40ed5
@@ -809,17 +801,17 @@ hashed:
       json:
         files:
         - applied_pipeline: []
-          content_hash: 997726d4506ef279
+          content_hash: 68a841aff81aa132
           kind: css
-          path: _kpress/assets/css/components.997726d4506ef279.css
-          size: 60131
+          path: _kpress/assets/css/components.68a841aff81aa132.css
+          size: 60162
         - applied_pipeline: []
           compression: gzip
-          content_hash: 2fa5e06b9fb38bdf
+          content_hash: c1d3e701fbc66594
           kind: gz
-          path: _kpress/assets/css/components.997726d4506ef279.css.gz
-          size: 15346
-          source_path: _kpress/assets/css/components.997726d4506ef279.css
+          path: _kpress/assets/css/components.68a841aff81aa132.css.gz
+          size: 15436
+          source_path: _kpress/assets/css/components.68a841aff81aa132.css
         - applied_pipeline: []
           content_hash: b47cd75659a40ed5
           kind: css
@@ -1031,28 +1023,28 @@ hashed:
           size: 1682
           source_path: _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
         - applied_pipeline: []
-          content_hash: 74136f2c745a646e
+          content_hash: 743eb82642737eee
           kind: html
           path: about.html
-          size: 11024
+          size: 10762
         - applied_pipeline: []
           compression: gzip
-          content_hash: c35bf8f2e5c35a80
+          content_hash: d7f810d6a0be72a2
           kind: gz
           path: about.html.gz
-          size: 3454
+          size: 3417
           source_path: about.html
         - applied_pipeline: []
-          content_hash: f451f0574f62d2af
+          content_hash: c7fca699240ae187
           kind: html
           path: index.html
-          size: 11793
+          size: 11531
         - applied_pipeline: []
           compression: gzip
-          content_hash: 0d63b7c58e168bcd
+          content_hash: 90cff112f6a5fb1c
           kind: gz
           path: index.html.gz
-          size: 3666
+          size: 3630
           source_path: index.html
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
@@ -1060,10 +1052,10 @@ hashed:
           path: robots.txt
           size: 23
         assets:
-        - content_hash: 997726d4506ef279
+        - content_hash: 68a841aff81aa132
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/components.997726d4506ef279.css
+          output_path: _kpress/assets/css/components.68a841aff81aa132.css
           path: css/components.css
           source: package
         - content_hash: b47cd75659a40ed5
@@ -1278,7 +1270,7 @@ hashed:
         <link rel="stylesheet" href="/_kpress/assets/css/theme-dark.9c9cc21fdef2353e.css">
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.6e42f409bc9e2990.css">
         <link rel="stylesheet" href="/_kpress/assets/css/document.b47cd75659a40ed5.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/components.997726d4506ef279.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/components.68a841aff81aa132.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.99ead1dd893cdbc7.css">
         <script type="module" src="/_kpress/assets/js/theme.0df6988dde228fd2.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.a60d023aac6a9709.js"></script>
@@ -1348,15 +1340,11 @@ hashed:
             <path d="M6 20 12 4l6 16"/>
             <path d="M8.2 14h7.6"/>
           </symbol>
-          <symbol id="kpress-icon-unfold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>
+          <symbol id="kpress-icon-chevrons-up-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>
           </symbol>
-          <symbol id="kpress-icon-fold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>
+          <symbol id="kpress-icon-chevrons-down-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
         <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
@@ -1375,8 +1363,8 @@ hashed:
         </body>
         </html>
     about.html.gz:
-      bytes: 3454
-      sha256_16: c35bf8f2e5c35a80
+      bytes: 3417
+      sha256_16: d7f810d6a0be72a2
     index.html:
       text: |
         <!doctype html>
@@ -1454,7 +1442,7 @@ hashed:
         <link rel="stylesheet" href="/_kpress/assets/css/theme-dark.9c9cc21fdef2353e.css">
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.6e42f409bc9e2990.css">
         <link rel="stylesheet" href="/_kpress/assets/css/document.b47cd75659a40ed5.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/components.997726d4506ef279.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/components.68a841aff81aa132.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.99ead1dd893cdbc7.css">
         <script type="module" src="/_kpress/assets/js/theme.0df6988dde228fd2.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.a60d023aac6a9709.js"></script>
@@ -1526,15 +1514,11 @@ hashed:
             <path d="M6 20 12 4l6 16"/>
             <path d="M8.2 14h7.6"/>
           </symbol>
-          <symbol id="kpress-icon-unfold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>
+          <symbol id="kpress-icon-chevrons-up-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>
           </symbol>
-          <symbol id="kpress-icon-fold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22v-6"/><path d="M12 8V2"/>
-            <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
-            <path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>
+          <symbol id="kpress-icon-chevrons-down-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
         <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
@@ -1558,15 +1542,15 @@ hashed:
         </body>
         </html>
     index.html.gz:
-      bytes: 3666
-      sha256_16: 0d63b7c58e168bcd
+      bytes: 3630
+      sha256_16: 90cff112f6a5fb1c
     robots.txt:
       text: |
         User-agent: *
         Allow: /
 categories:
   hashed:
-  - _kpress/assets/css/components.997726d4506ef279.css
+  - _kpress/assets/css/components.68a841aff81aa132.css
   - _kpress/assets/css/document.b47cd75659a40ed5.css
   - _kpress/assets/css/print.99ead1dd893cdbc7.css
   - _kpress/assets/css/style-tokens.0d815bc8cc63ca5e.css
@@ -1583,7 +1567,7 @@ categories:
   - _kpress/assets/js/tooltips.d427e1160ca7c8cb.js
   - _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
   compressed:
-  - _kpress/assets/css/components.997726d4506ef279.css.gz
+  - _kpress/assets/css/components.68a841aff81aa132.css.gz
   - _kpress/assets/css/document.b47cd75659a40ed5.css.gz
   - _kpress/assets/css/print.99ead1dd893cdbc7.css.gz
   - _kpress/assets/css/style-tokens.0d815bc8cc63ca5e.css.gz
@@ -1602,7 +1586,7 @@ categories:
   - about.html.gz
   - index.html.gz
   hashed_only:
-  - _kpress/assets/css/components.997726d4506ef279.css.gz
+  - _kpress/assets/css/components.68a841aff81aa132.css.gz
   - _kpress/assets/css/document.b47cd75659a40ed5.css.gz
   - _kpress/assets/css/print.99ead1dd893cdbc7.css.gz
   - _kpress/assets/css/style-tokens.0d815bc8cc63ca5e.css.gz

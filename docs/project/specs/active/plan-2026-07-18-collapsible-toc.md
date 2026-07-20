@@ -21,10 +21,9 @@ drawer. This feature makes the KPress TOC collapsible by depth:
 - **Pre-collapsed deep entries:** TOC entries below a configurable depth (typically
   everything under the H2 level) start hidden, so the TOC shows only the document’s
   top-level spine.
-- **Expand-all toggle:** a small icon button on the right of the “Contents” header
-  (vertical-expand icon) expands every hidden entry; it then swaps to a
-  vertical-collapse icon, and clicking again re-collapses everything below the
-  configured depth.
+- **Expand-all toggle:** a small, quiet chevrons button on the right of the “Contents”
+  header expands every hidden entry; it then swaps to the collapse chevrons, and
+  clicking again re-collapses everything below the configured depth.
 - **Scroll-follow expansion (`toc_expand_on_scroll`, default on):** the top-level
   section the viewport is currently in is always expanded, riding the existing
   scroll-spy, so the reader always sees the subsections of where they are.
@@ -94,7 +93,8 @@ How the TOC works today:
 - **Icons.** Chrome glyphs live in the Lucide sprite (`format/static/icons/icons.svg`,
   Lucide v1.17.0, ISC); server renders via `_icon(name)` and client via
   `icons.js icon(name)`. The sprite has no fold/unfold glyphs today; Lucide’s
-  `unfold-vertical` and `fold-vertical` are exactly the vertical expand/collapse pair.
+  `chevrons-up-down` and `chevrons-down-up` are a minimal expand/collapse pair that
+  reads as a quiet disclosure hint beside the Contents label.
 - **Contract.** `kpress-toc*` structural classes are pinned in
   `contract.py PUBLIC_CSS_CLASSES`; the behavior id in `PUBLIC_BEHAVIORS`; `toc.js`
   exports in `PUBLIC_JS_EXPORTS`. Contract tests enforce registrations; goldens pin
@@ -126,8 +126,8 @@ entry is deeper than the threshold, render:
     <a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a>
     <button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all
             aria-expanded="false" aria-label="Expand all sections">
-      <svg…><use href="#kpress-icon-unfold-vertical"></use></svg>
-      <svg…><use href="#kpress-icon-fold-vertical"></use></svg>
+      <svg…><use href="#kpress-icon-chevrons-up-down"></use></svg>
+      <svg…><use href="#kpress-icon-chevrons-down-up"></use></svg>
     </button>
   </div>
   ```
@@ -176,9 +176,11 @@ row closed — `block-size`/opacity to zero with `overflow: hidden`; every `<li>
 fixed single row, so the flat list animates cleanly without measured heights — and the
 global prefers-reduced-motion suppression applies as it does to all KPress motion.
 
-**Icons (`icons.svg`):** add Lucide `unfold-vertical` and `fold-vertical` glyphs as
-`#kpress-icon-unfold-vertical` / `#kpress-icon-fold-vertical`, same v1.17.0 set as the
-existing glyphs.
+**Icons (`icons.svg`):** add Lucide `chevrons-up-down` and `chevrons-down-up` glyphs as
+`#kpress-icon-chevrons-up-down` / `#kpress-icon-chevrons-down-up`, same v1.17.0 set as
+the existing glyphs.
+(Initially built with `unfold-vertical`/`fold-vertical`; review found them too heavy
+next to the Contents label, and the chevrons pair reads as a quieter disclosure hint.)
 
 ### Components
 
@@ -246,6 +248,16 @@ Deviations and discoveries from the build (branch `feat/toc-collapse`):
 - **Sprite drift:** adding glyphs drifts every golden page (the sprite inlines per
   document) — an expected, reviewed diff; the “byte-identical” guarantee applies to the
   TOC markup gate, not to sprite additions.
+- **Scroll-follow settles before handing off:** live QA on a long report showed the
+  groups churning open/closed during rapid scrolling (and during the smooth glide after
+  a TOC click, which sweeps the scroll-spy across every intermediate section).
+  The group handoff now applies only after the active entry has stayed in one group for
+  `TOC_SCROLL_FOLLOW_SETTLE_MS` (250 ms, module-internal); the active highlight still
+  moves instantly, and returning to the current group cancels a pending handoff.
+- **Control styling:** the expand-all control is a 20 px borderless button colored like
+  the Contents label (muted, slight opacity ramp on hover) with 14 px chevrons glyphs —
+  review found the first pass (24 px bordered button, 16 px unfold/fold glyphs) too
+  heavy for the TOC header.
 
 ## Testing Strategy
 

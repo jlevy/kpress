@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Group handoff waits for the active entry to settle (see
+// TOC_SCROLL_FOLLOW_SETTLE_MS in toc.js); advance past it to apply a handoff.
+const SETTLE_MS = 300;
+
+function settle() {
+  vi.advanceTimersByTime(SETTLE_MS);
+}
 
 let importCounter = 0;
 
@@ -68,6 +76,11 @@ function expandAllButton() {
 
 beforeEach(() => {
   document.body.innerHTML = "";
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("collapsible TOC", () => {
@@ -110,21 +123,58 @@ describe("collapsible TOC", () => {
     collapsibleTocMarkup();
     initKpressToc(document);
 
-    // Activating A (via the shared setActiveLink path) expands A's subtree only.
+    // Activating A (via the shared setActiveLink path) expands A's subtree
+    // only, once the position settles.
     clickLink("#a");
+    settle();
     expect(isCollapsed("#a1")).toBe(false);
     expect(isCollapsed("#a2")).toBe(false);
     expect(isCollapsed("#b1")).toBe(true);
 
     // Handoff: activating B collapses A's group and expands B's.
     clickLink("#b");
+    settle();
     expect(isCollapsed("#a1")).toBe(true);
     expect(isCollapsed("#b1")).toBe(false);
 
     // A deep link activates its owning group.
     clickLink("#a1");
+    settle();
     expect(isCollapsed("#a1")).toBe(false);
     expect(isCollapsed("#b1")).toBe(true);
+  });
+
+  it("rapid sweeps defer the handoff until the position settles", async () => {
+    const { initKpressToc } = await importFresh("toc.js");
+    collapsibleTocMarkup();
+    initKpressToc(document);
+    clickLink("#a");
+    settle();
+    expect(isCollapsed("#a1")).toBe(false);
+
+    // Sweeping across groups before the settle window elapses moves the
+    // highlight but never flaps the groups.
+    clickLink("#b");
+    vi.advanceTimersByTime(100);
+    clickLink("#a");
+    vi.advanceTimersByTime(100);
+    clickLink("#b");
+    vi.advanceTimersByTime(100);
+    expect(isCollapsed("#a1")).toBe(false);
+    expect(isCollapsed("#b1")).toBe(true);
+
+    // Once the position rests in B, the single handoff applies.
+    settle();
+    expect(isCollapsed("#a1")).toBe(true);
+    expect(isCollapsed("#b1")).toBe(false);
+
+    // Returning to the already-active group cancels a pending handoff.
+    clickLink("#a");
+    vi.advanceTimersByTime(100);
+    clickLink("#b");
+    settle();
+    expect(isCollapsed("#a1")).toBe(true);
+    expect(isCollapsed("#b1")).toBe(false);
   });
 
   it("collapse-all returns to the baseline, which still shows the active group", async () => {
@@ -134,6 +184,7 @@ describe("collapsible TOC", () => {
     const button = expandAllButton();
 
     clickLink("#b");
+    settle();
     button.click();
     expect(isCollapsed("#a1")).toBe(false);
 
@@ -149,6 +200,7 @@ describe("collapsible TOC", () => {
     initKpressToc(document);
 
     clickLink("#a");
+    settle();
     expect(isCollapsed("#a1")).toBe(true);
 
     // The global toggle still works.
@@ -169,6 +221,7 @@ describe("collapsible TOC", () => {
     collapsibleTocMarkup();
     initKpressToc(document, { expandOnScroll: false });
     clickLink("#a");
+    settle();
     expect(isCollapsed("#a1")).toBe(true);
 
     // collapseDepth: 0 disables collapse entirely.

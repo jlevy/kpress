@@ -634,8 +634,8 @@ def test_toc_collapse_renders_header_button_and_settings() -> None:
     assert 'aria-expanded="false"' in page.html
     assert 'aria-label="Expand all sections"' in page.html
     # Both state icons render; CSS shows one per aria-expanded state.
-    assert "#kpress-icon-unfold-vertical" in page.html
-    assert "#kpress-icon-fold-vertical" in page.html
+    assert "#kpress-icon-chevrons-up-down" in page.html
+    assert "#kpress-icon-chevrons-down-up" in page.html
 
 
 def test_toc_collapse_scroll_follow_off_is_stamped() -> None:

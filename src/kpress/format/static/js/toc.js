@@ -17,6 +17,15 @@ export const TOC_TOGGLE_SCROLL_THRESHOLD_PX = 100;
 export const TOC_AT_TOP_EPSILON_PX = 8;
 
 /**
+ * How long the active entry must stay inside one top-level group before the
+ * collapsible TOC hands the expanded group off to it. Rapid scrolling (or the
+ * smooth glide after a TOC click) sweeps the scroll-spy across intermediate
+ * sections; deferring the handoff until the position settles keeps the TOC
+ * from churning open and closed mid-sweep.
+ */
+const TOC_SCROLL_FOLLOW_SETTLE_MS = 250;
+
+/**
  * Default toggle-visibility policy: reveal the floating button once the reader
  * has scrolled past the threshold. Replaceable per page via
  * `kpress.behaviors.configure("toc", { visible: (ctx) => ... })` (e.g.
@@ -267,15 +276,43 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
           applyCollapseState();
         });
       }
+      // Group handoff waits for the active entry to settle: rapid scrolling
+      // (and the smooth glide after a TOC click) sweeps the scroll-spy across
+      // every intermediate section, and expanding/collapsing groups mid-sweep
+      // makes the whole TOC churn. The highlight still moves instantly; only
+      // the expand/collapse handoff is deferred until the reading position has
+      // stayed in one group for the settle window. Returning to the current
+      // group cancels a pending handoff.
+      /** @type {Element | null} */
+      let pendingGroup = null;
+      /** @type {ReturnType<typeof setTimeout> | null} */
+      let settleTimer = null;
+      const cancelSettle = () => {
+        if (settleTimer !== null) {
+          clearTimeout(settleTimer);
+          settleTimer = null;
+        }
+      };
       followActiveGroup = (link) => {
         const group = (link && groupOfLink.get(link)) ?? null;
-        if (group !== activeGroup) {
-          activeGroup = group;
-          applyCollapseState();
+        if (group === activeGroup) {
+          cancelSettle();
+          return;
         }
+        if (settleTimer !== null && group === pendingGroup) {
+          return;
+        }
+        cancelSettle();
+        pendingGroup = group;
+        settleTimer = setTimeout(() => {
+          settleTimer = null;
+          activeGroup = pendingGroup;
+          applyCollapseState();
+        }, TOC_SCROLL_FOLLOW_SETTLE_MS);
       };
       applyCollapseState();
       cleanups.push(() => {
+        cancelSettle();
         for (const row of rows) {
           row.item.classList.remove("kpress-toc-collapsed");
         }
