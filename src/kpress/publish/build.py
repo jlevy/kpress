@@ -552,6 +552,8 @@ def build_site(
                 diagrams=cast(DiagramMode, config.format.diagrams),
                 theme_mode=cast(ThemeMode, config.format.color_mode),
                 show_frontmatter=config.format.show_frontmatter,
+                table_wide_min_columns=config.format.table_wide_min_columns,
+                table_wide_min_row_chars=config.format.table_wide_min_row_chars,
                 widgets=config.format.widgets,
                 extra_tags=config.format.extra_tags,
                 extra_attributes=config.format.extra_attributes,

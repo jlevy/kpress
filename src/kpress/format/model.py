@@ -148,6 +148,15 @@ class RenderOptions:
     show_frontmatter: bool = True
     math: MathMode = "auto"
     diagrams: DiagramMode = "auto"
+    # Wide-table cutoff (see TABLE_WIDE_MIN_* in format/markdown.py): a table
+    # is stamped data-kpress-table-scale="wide" — earning the wide presentation
+    # (bleed past the reading column on wide panes, edge-bleed scroll on
+    # phones) — only when its widest row has at least this many columns AND its
+    # average row carries at least this many visible characters. Hosts tune the
+    # static render here; the client runtime mirrors the same defaults and is
+    # tuned via kpress.behaviors.configure("tables", {...}).
+    table_wide_min_columns: int = 6
+    table_wide_min_row_chars: int = 100
     # Whitelist of additional pass-through HTML/XML tag names the host activates
     # (config: format.html.extra_tags). Unioned with the always-on <span>/<div> defaults
     # and admitted under the sanitized trust mode, carrying class/data-* (never

@@ -546,6 +546,41 @@ A--&gt;B</code></pre>
     expect(touch.defaultPrevented).toBe(true);
   });
 
+  it("keeps native navigation for keyboard activation of footnote refs", async () => {
+    document.body.innerHTML = `
+      <sup class="kpress-footnote-ref"><a href="#fn-note" id="fnref-note">[note]</a></sup>
+      <section class="kpress-footnotes"><ol><li id="fn-note">Footnote body</li></ol></section>
+    `;
+
+    await importFresh("tooltips.js");
+
+    const footnoteLink = document.querySelector(".kpress-footnote-ref a");
+    footnoteLink?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    expect(document.querySelector(".kpress-tooltip")).toBeTruthy();
+
+    // Enter on a focused link fires a click with detail 0. The preview is an
+    // unfocusable pointer/touch affordance, so keyboard activation must keep
+    // native navigation to the in-document footnote (where inner links are
+    // focusable) and dismiss the preview rather than being swallowed.
+    const keyboardClick = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 0,
+    });
+    footnoteLink?.dispatchEvent(keyboardClick);
+    expect(keyboardClick.defaultPrevented).toBe(false);
+    expect(document.querySelector(".kpress-tooltip")).toBeNull();
+
+    // A pointer click (detail 1) still opens the preview instead of jumping.
+    const pointerClick = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 1,
+    });
+    footnoteLink?.dispatchEvent(pointerClick);
+    expect(pointerClick.defaultPrevented).toBe(true);
+  });
+
   it("suppresses tooltips on table-of-contents links but not elsewhere", async () => {
     document.body.innerHTML = `
       <nav class="kpress-toc kpress-no-print" data-kpress-toc>
@@ -684,7 +719,9 @@ A--&gt;B</code></pre>
     await importFresh("tooltips.js");
 
     const footnoteLink = document.querySelector(".kpress-footnote-ref a");
-    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    // detail 1 models a pointer click; keyboard activation (detail 0) keeps
+    // native navigation and is covered by its own test above.
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
     footnoteLink?.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(true);
 
@@ -821,6 +858,59 @@ A--&gt;B</code></pre>
     expect(document.querySelector(".kpress-tooltip")).toBeNull();
   });
 
+  it("keeps links inside a shown tooltip as plain navigation, never nested previews", async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `
+      <p>Claim.<sup class="kpress-footnote-ref"><a href="#fn-a">1</a></sup></p>
+      <h2 id="target">Target Heading</h2>
+      <section class="kpress-footnotes">
+        <p id="fn-a">See <a href="#target">the section</a>.</p>
+      </section>
+    `;
+
+    await importFresh("tooltips.js");
+
+    const marker = document.querySelector('a[href="#fn-a"]');
+    marker?.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    vi.advanceTimersByTime(500);
+    const popover = document.querySelector(".kpress-tooltip");
+    expect(popover).toBeTruthy();
+
+    // The section link inside the popover must not be tooltip-wired: hovering
+    // it never stacks a second preview...
+    const innerLink = popover?.querySelector('a[href="#target"]');
+    innerLink?.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    vi.advanceTimersByTime(500);
+    expect(document.querySelectorAll(".kpress-tooltip").length).toBe(1);
+
+    // ...and activating it dismisses the popover (native navigation runs).
+    innerLink?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    vi.advanceTimersByTime(700);
+    expect(document.querySelector(".kpress-tooltip")).toBeNull();
+  });
+
+  it("navigates to the previewed section when the tooltip itself is activated", async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `
+      <p><a href="#target">Target</a></p>
+      <h2 id="target">Target Heading</h2>
+      <p>Nearby preview text.</p>
+    `;
+
+    await importFresh("tooltips.js");
+
+    const trigger = document.querySelector('a[href="#target"]');
+    trigger?.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    vi.advanceTimersByTime(500);
+    const tooltip = document.querySelector(".kpress-tooltip");
+    expect(tooltip).toBeTruthy();
+
+    tooltip?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(window.location.hash).toBe("#target");
+    vi.advanceTimersByTime(700);
+    expect(document.querySelector(".kpress-tooltip")).toBeNull();
+  });
+
   it("does not cancel a pending tooltip hide when a broken hash link is hovered", async () => {
     vi.useFakeTimers();
     document.body.innerHTML = `
@@ -861,6 +951,87 @@ A--&gt;B</code></pre>
     const cells = document.querySelectorAll("td");
     expect(cells[0]?.getAttribute("data-kpress-numeric")).toBe("true");
     expect(cells[1]?.hasAttribute("data-kpress-numeric")).toBe(false);
+  });
+
+  it("marks only large-on-both-axes tables wide, clearing stale marks", async () => {
+    const wideCells = Array.from(
+      { length: 6 },
+      (_, i) => `<td>an exhaustively verbose cell ${i}</td>`,
+    ).join("");
+    document.body.innerHTML = `
+      <article class="kpress-prose">
+        <table id="small"><tbody><tr><td>42.5</td><td>Text</td></tr></tbody></table>
+        <div class="kpress-table-wrap" data-kpress-table-scale="wide">
+          <table id="stale" class="kpress-table"><tbody><tr><td>tiny</td></tr></tbody></table>
+        </div>
+        <table id="wide"><tbody><tr>${wideCells}</tr><tr>${wideCells}</tr></tbody></table>
+      </article>
+    `;
+
+    const { initKpressTables } = await importFresh("tables.js");
+    initKpressTables();
+
+    const wrapFor = (id) => document.querySelector(`#${id}`)?.closest(".kpress-table-wrap");
+    expect(wrapFor("small")?.hasAttribute("data-kpress-table-scale")).toBe(false);
+    // A stale wide mark on a table below the cutoff is cleared, so re-running
+    // converges with the server-side decision.
+    expect(wrapFor("stale")?.hasAttribute("data-kpress-table-scale")).toBe(false);
+    expect(wrapFor("wide")?.getAttribute("data-kpress-table-scale")).toBe("wide");
+  });
+
+  it("honors configured wide-table thresholds", async () => {
+    document.body.innerHTML = `
+      <article class="kpress-prose">
+        <table><tbody><tr><td>alpha one</td><td>beta two</td></tr></tbody></table>
+      </article>
+    `;
+
+    const { initKpressTables } = await importFresh("tables.js");
+    initKpressTables(document, { wideMinColumns: 2, wideMinRowChars: 10 });
+
+    const wrap = document.querySelector(".kpress-table-wrap");
+    expect(wrap?.getAttribute("data-kpress-table-scale")).toBe("wide");
+  });
+
+  it("keeps server wide marks under custom stamped thresholds when the real behavior binds", async () => {
+    // Server output rendered with table_wide_min_columns=2 / row_chars=10:
+    // the article root carries the resolved cutoff and the wrap is already
+    // marked. Importing the module registers and binds the built-in behavior
+    // (no manual init), which re-classifies every table — the mark must
+    // survive because the stamps, not the 6/100 defaults, drive the decision.
+    document.body.innerHTML = `
+      <article class="kpress-prose"
+        data-kpress-table-wide-min-columns="2" data-kpress-table-wide-min-row-chars="10">
+        <div class="kpress-table-wrap" data-kpress-table-scale="wide">
+          <table class="kpress-table"><tbody><tr><td>alpha one</td><td>beta two</td></tr></tbody></table>
+        </div>
+        <table id="late"><tbody><tr><td>gamma three</td><td>delta four</td></tr></tbody></table>
+      </article>
+    `;
+
+    await importFresh("tables.js");
+
+    const wraps = document.querySelectorAll(".kpress-table-wrap");
+    expect(wraps[0]?.getAttribute("data-kpress-table-scale")).toBe("wide");
+    // A table the behavior wraps itself (late-rendered path) classifies under
+    // the same stamped cutoff.
+    const late = document.querySelector("#late")?.closest(".kpress-table-wrap");
+    expect(late?.getAttribute("data-kpress-table-scale")).toBe("wide");
+  });
+
+  it("lets explicit runtime config override the stamped thresholds", async () => {
+    document.body.innerHTML = `
+      <article class="kpress-prose"
+        data-kpress-table-wide-min-columns="2" data-kpress-table-wide-min-row-chars="10">
+        <table><tbody><tr><td>alpha one</td><td>beta two</td></tr></tbody></table>
+      </article>
+    `;
+
+    const { initKpressTables } = await importFresh("tables.js");
+    initKpressTables(document, { wideMinColumns: 6, wideMinRowChars: 100 });
+
+    const wrap = document.querySelector(".kpress-table-wrap");
+    expect(wrap?.hasAttribute("data-kpress-table-scale")).toBe(false);
   });
 
   it("scopes numeric marking to whole columns, accepting the typographic minus", async () => {

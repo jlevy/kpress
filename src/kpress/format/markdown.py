@@ -41,6 +41,13 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 # Currency symbols (8): $ € ¥ £ ₹ ₩ ¢ ₽
 #   ¥ covers both Japanese yen (JPY) and Chinese yuan/renminbi (CNY).
 _NUMERIC_CELL_RE = re.compile(r"^[-+−]?[$€¥£₹₩¢₽]?((\d{1,3}(,\d{3})+|\d+)(\.\d+)?|\.\d+)%?$")
+# Wide-table cutoff, mirrored by static/js/tables.js (which is also the host
+# customization seam: `kpress.behaviors.configure("tables", {...})`). A table
+# earns the wide presentation (bleed past the reading column on wide panes,
+# edge-bleed scroll on phones) only when it is large on BOTH axes; smaller
+# tables keep the reading-column width.
+TABLE_WIDE_MIN_COLUMNS = 6
+TABLE_WIDE_MIN_ROW_CHARS = 100
 _INLINE_CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 _FOOTNOTE_REF_RE = re.compile(r"(?<!\\)\[\^([^\]\s]+)\]")
 # Module-level singleton is safe to share across threads: Pygments'
@@ -629,8 +636,15 @@ class _TableCellRecord:
 
 
 class _KpressHtmlPostprocessor(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        table_wide_min_columns: int = TABLE_WIDE_MIN_COLUMNS,
+        table_wide_min_row_chars: int = TABLE_WIDE_MIN_ROW_CHARS,
+    ) -> None:
         super().__init__(convert_charrefs=False)
+        self._table_wide_min_columns = table_wide_min_columns
+        self._table_wide_min_row_chars = table_wide_min_row_chars
         self.parts: list[str] = []
         self._table_depth = 0
         self._cell: _BufferedCell | None = None
@@ -644,6 +658,13 @@ class _KpressHtmlPostprocessor(HTMLParser):
         # numeric-column decision can be made over whole columns rather than per cell.
         self._table_cells: list[_TableCellRecord] = []
         self._table_has_span = False
+        # Wide-table decision inputs, resolved at the top-level </table>: where the
+        # `.kpress-table-wrap` opening div sits in the output (rewritten when the
+        # table qualifies as wide), the visible text length of each row, and the
+        # widest row's cell count.
+        self._table_wrap_index = -1
+        self._table_row_chars: list[int] = []
+        self._table_max_columns = 0
 
     def _append(self, value: str) -> None:
         if self._cell:
@@ -724,6 +745,10 @@ class _KpressHtmlPostprocessor(HTMLParser):
         attrs = _set_attr(cell.attrs, "data-col", slug) if slug else cell.attrs
         text = cell.text()
         self._cell = None
+        if not self._table_row_chars:
+            self._table_row_chars.append(0)
+        self._table_row_chars[-1] += len(re.sub(r"\s+", " ", unescape(text)).strip())
+        self._table_max_columns = max(self._table_max_columns, self._table_col_index + 1)
         self._table_cells.append(
             _TableCellRecord(
                 parts_index=len(self.parts),
@@ -779,6 +804,30 @@ class _KpressHtmlPostprocessor(HTMLParser):
                 attrs = _set_attr(attrs, "data-col", record.slug)
             self.parts[record.parts_index] = f"<{record.tag}{_render_attrs(attrs)}>"
 
+    def _finalize_table_scale(self) -> None:
+        """Wide-table marking, decided once the whole top-level table has been seen:
+        the table earns ``data-kpress-table-scale="wide"`` on its wrap div only when
+        it is large on BOTH axes — at least ``TABLE_WIDE_MIN_COLUMNS`` columns in its
+        widest row AND at least ``TABLE_WIDE_MIN_ROW_CHARS`` visible characters in
+        the average row. The CSS keys the wide presentation (bleeding past the
+        reading column on wide panes, edge-bleed scrolling on phones) off this mark,
+        so smaller tables keep the normal reading-column width. Mirrored by
+        static/js/tables.js, which converges late-rendered tables to the same
+        decision and is the host threshold-customization seam."""
+        if self._table_wrap_index < 0 or self._table_wrap_index >= len(self.parts):
+            return
+        rows = self._table_row_chars
+        average_row_chars = sum(rows) / len(rows) if rows else 0.0
+        wide = (
+            self._table_max_columns >= self._table_wide_min_columns
+            and average_row_chars >= self._table_wide_min_row_chars
+        )
+        if wide:
+            self.parts[self._table_wrap_index] = (
+                '<div class="kpress-table-wrap" data-kpress-table-scale="wide">'
+            )
+        self._table_wrap_index = -1
+
     def _column_slug_for_cell(self, cell: _BufferedCell) -> str:
         """Header cells (`th`) define the column slug positionally; body cells (`td`) map
         to the slug recorded for their column index. No header row -> no slug (graceful)."""
@@ -814,10 +863,14 @@ class _KpressHtmlPostprocessor(HTMLParser):
                 self._table_col_index = 0
                 self._table_cells = []
                 self._table_has_span = False
+                self._table_wrap_index = len(self.parts)
+                self._table_row_chars = []
+                self._table_max_columns = 0
             self._append('<div class="kpress-table-wrap">')
             self._table_depth += 1
         elif normalized_tag == "tr" and self._table_depth >= 1 and self._cell is None:
             self._table_col_index = 0
+            self._table_row_chars.append(0)
         normalized_attrs = self._attrs_for_tag(normalized_tag, attrs)
         self._append(f"<{tag}{_render_attrs(normalized_attrs)}>")
 
@@ -852,6 +905,7 @@ class _KpressHtmlPostprocessor(HTMLParser):
             self._append("</div>")
             if self._table_depth == 0:
                 self._finalize_table_numeric_columns()
+                self._finalize_table_scale()
 
     def handle_data(self, data: str) -> None:
         if self._skip_iframe_depth:
@@ -887,8 +941,16 @@ class _KpressHtmlPostprocessor(HTMLParser):
         self._append(f"<?{data}>")
 
 
-def _postprocess_html(html: str) -> str:
-    parser = _KpressHtmlPostprocessor()
+def _postprocess_html(
+    html: str,
+    *,
+    table_wide_min_columns: int = TABLE_WIDE_MIN_COLUMNS,
+    table_wide_min_row_chars: int = TABLE_WIDE_MIN_ROW_CHARS,
+) -> str:
+    parser = _KpressHtmlPostprocessor(
+        table_wide_min_columns=table_wide_min_columns,
+        table_wide_min_row_chars=table_wide_min_row_chars,
+    )
     parser.feed(html)
     parser.close()
     return "".join(parser.parts)
@@ -1053,6 +1115,8 @@ def parse_markdown(
     diagrams: DiagramMode = "auto",
     extra_tags: Iterable[str] | None = None,
     extra_attributes: Iterable[str] | None = None,
+    table_wide_min_columns: int = TABLE_WIDE_MIN_COLUMNS,
+    table_wide_min_row_chars: int = TABLE_WIDE_MIN_ROW_CHARS,
 ) -> DocumentTree:
     """Parse KPress Markdown into stable, KPress-owned HTML.
 
@@ -1069,7 +1133,11 @@ def parse_markdown(
     footnotes = _collect_footnotes(md, tokens, env)
     html = md.renderer.render(tokens, md.options, env)
     html = _postprocess_tasks(html)
-    html = _postprocess_html(html)
+    html = _postprocess_html(
+        html,
+        table_wide_min_columns=table_wide_min_columns,
+        table_wide_min_row_chars=table_wide_min_row_chars,
+    )
 
     diagnostics: list[Diagnostic] = []
     diagnostics.extend(_math_diagnostics(env))

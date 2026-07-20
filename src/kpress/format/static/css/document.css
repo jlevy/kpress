@@ -103,14 +103,17 @@
 
 .kpress-prose h2 {
   font-family: var(--kpress-font-prose, Georgia, serif);
-  font-size: 1.32rem;
+  font-size: var(--kpress-font-size-h2, 1.32rem);
   font-style: italic;
   font-weight: 400;
   margin: 2rem 0 1rem;
 }
 
 .kpress-prose h3 {
-  font-size: calc(1.15rem * var(--kpress-caps-heading-size-multiplier, 1));
+  font-size: calc(
+    var(--kpress-font-size-h3, 1.15rem) *
+    var(--kpress-caps-heading-size-multiplier, 1)
+  );
   font-variant-caps: var(--kpress-caps-variant, normal);
   font-weight: var(--kpress-font-weight-sans-medium, 550);
   letter-spacing: var(--kpress-caps-spacing, 0);
@@ -120,7 +123,7 @@
 }
 
 .kpress-prose h4 {
-  font-size: 1.12rem;
+  font-size: var(--kpress-font-size-h4, 1.12rem);
   font-style: italic;
   font-weight: 540;
   letter-spacing: 0.015em;
@@ -184,7 +187,7 @@
   font-size: var(--kpress-bullet-size);
   left: -0.85rem;
   position: absolute;
-  top: 0.25rem;
+  top: 0.1rem;
 }
 
 .kpress-prose ol {
@@ -454,6 +457,25 @@
   color: inherit;
 }
 
-.kpress sup {
+/* Superscripts (footnote markers most of all) must never change the line box:
+   the UA default `vertical-align: super` raises the sup's inline box and
+   stretches any line that carries a marker, which reads as ragged leading on
+   phones and in print. `line-height: 0` takes the sup out of line-box sizing
+   entirely and the relative `top` nudge recreates the raised position
+   visually, so lines with and without markers are exactly the same height at
+   every pane width and on paper. Same treatment for sub, mirrored downward. */
+.kpress sup,
+.kpress sub {
   font-size: 85%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+.kpress sup {
+  top: -0.45em;
+}
+
+.kpress sub {
+  top: 0.3em;
 }

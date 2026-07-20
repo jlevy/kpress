@@ -152,6 +152,76 @@ graph TD
     assert "kpress-footnotes" in tree.html
 
 
+def _table_markdown(columns: int, cell: str, rows: int = 2) -> str:
+    header = "| " + " | ".join(f"H{i} {cell}" for i in range(columns)) + " |"
+    divider = "| " + " | ".join("---" for _ in range(columns)) + " |"
+    body = "| " + " | ".join(f"{cell} {i}" for i in range(columns)) + " |"
+    return "\n".join([header, divider, *([body] * rows)])
+
+
+def test_large_tables_are_marked_wide() -> None:
+    # 6 columns x ~20 chars per cell: over the cutoff on both axes.
+    tree = parse_markdown(_table_markdown(6, "verbose cell text"), title="T")
+    assert '<div class="kpress-table-wrap" data-kpress-table-scale="wide">' in tree.html
+
+
+def test_small_tables_are_not_marked_wide() -> None:
+    # Two short columns: under the cutoff on both axes.
+    tree = parse_markdown(_table_markdown(2, "x"), title="T")
+    assert "data-kpress-table-scale" not in tree.html
+
+
+def test_wide_cutoff_is_host_tunable() -> None:
+    # Hosts lower (or raise) the cutoff per render; a table small under the
+    # defaults qualifies under a permissive threshold.
+    tree = parse_markdown(
+        _table_markdown(2, "moderately sized cell"),
+        title="T",
+        table_wide_min_columns=2,
+        table_wide_min_row_chars=10,
+    )
+    assert 'data-kpress-table-scale="wide"' in tree.html
+
+
+def test_resolved_wide_cutoff_is_stamped_on_the_article_root() -> None:
+    # The client runtime re-classifies tables, so the server's resolved cutoff
+    # must travel with the document: js/tables.js reads these stamps as its
+    # default thresholds (explicit runtime config still wins). Without them a
+    # custom cutoff's wide marks would be undone on browser startup.
+    markdown = _table_markdown(2, "moderately sized cell")
+    document = DocumentInput(
+        title="T",
+        source_text=markdown,
+        source_path="t.md",
+        body_markdown=markdown,
+        trust_mode="sanitized",
+    )
+    default_render = render_fragment(document, RenderOptions())
+    assert 'data-kpress-table-wide-min-columns="6"' in default_render.html
+    assert 'data-kpress-table-wide-min-row-chars="100"' in default_render.html
+    custom = render_fragment(
+        document,
+        RenderOptions(table_wide_min_columns=2, table_wide_min_row_chars=10),
+    )
+    assert 'data-kpress-table-wide-min-columns="2"' in custom.html
+    assert 'data-kpress-table-wide-min-row-chars="10"' in custom.html
+    assert 'data-kpress-table-scale="wide"' in custom.html
+
+
+def test_wide_mark_requires_both_axes() -> None:
+    # Many columns but terse rows (6 cols x ~3 chars): column cutoff alone
+    # must not qualify.
+    narrow_rows = parse_markdown(_table_markdown(6, "x"), title="T")
+    assert "data-kpress-table-scale" not in narrow_rows.html
+    # Long rows but few columns (2 cols x ~60 chars): char cutoff alone must
+    # not qualify either.
+    few_columns = parse_markdown(
+        _table_markdown(2, "an exhaustively verbose description of the cell contents here"),
+        title="T",
+    )
+    assert "data-kpress-table-scale" not in few_columns.html
+
+
 def test_footnote_refs_render_sequential_numbers() -> None:
     tree = parse_markdown(
         "First.[^one] Second.[^two]\n\n[^one]: One.\n[^two]: Two.\n",

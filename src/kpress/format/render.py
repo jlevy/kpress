@@ -191,6 +191,8 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
             diagrams=options.diagrams,
             extra_tags=options.extra_tags,
             extra_attributes=options.extra_attributes,
+            table_wide_min_columns=options.table_wide_min_columns,
+            table_wide_min_row_chars=options.table_wide_min_row_chars,
         )
     # Build-time tree transform (BuildExtensions.transform_tree): applied after
     # parse_markdown has already computed tree.toc, but before the TOC and page model
@@ -237,6 +239,13 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
         f'data-kpress-fonts="{escape(options.font_mode)}" '
         f'data-kpress-palette="{escape(options.palette)}" '
         f'data-kpress-card="{"on" if options.content_card else "off"}" '
+        # The resolved wide-table cutoff travels with the document: js/tables.js
+        # re-classifies tables (late-rendered/tabbed panels), so without these
+        # stamps a custom RenderOptions/kpress.yml cutoff would be undone at
+        # runtime by the built-in defaults. Explicit
+        # `behaviors.configure("tables", ...)` values still win over the stamps.
+        f'data-kpress-table-wide-min-columns="{options.table_wide_min_columns}" '
+        f'data-kpress-table-wide-min-row-chars="{options.table_wide_min_row_chars}" '
         f"{label_attr}>"
         f"{doc_header}"
         f"{frontmatter_error}"

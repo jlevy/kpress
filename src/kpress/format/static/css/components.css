@@ -49,7 +49,7 @@
    narrow it so the reading column keeps its width. */
 @media (max-width: 767px) {
   .kpress-page-main {
-    --kpress-page-margin-inline: 0.75rem;
+    --kpress-page-margin-inline: 0.5rem;
   }
 }
 
@@ -85,13 +85,20 @@
      48-75rem   TABLET   Single column; TOC is a fixed drawer + toggle.
      < 48rem    MOBILE   Single column; drawer; tighter type.
 
-   TABLE INVARIANT: the base `.kpress-table-wrap` rule (further down) is a
-   viewport-centred full-bleed — left:50% + translateX(-50%), width keyed
-   off 100vw. That is only right for a standalone, window-width single
-   column. EVERY band above MUST neutralise it (left:0; transform:none; a
-   left-anchored width) or wide tables centre on the WINDOW and spill past
-   the pane on both sides. All three bands carry that reset today; if you
-   add a band, add the reset too.
+   TABLE INVARIANT: only tables marked `data-kpress-table-scale="wide"`
+   (stamped by the renderer / tables.js past the TABLE_WIDE_MIN_* cutoff)
+   ever leave the reading column; unmarked tables cap at the column in
+   every band. The base wide rule (further down) is a column-centred
+   full-bleed — left:50% + translateX(-50%), width keyed off 100cqw so it
+   caps at the kpress-doc pane, never the window. That centred bleed is
+   only right for a centred single column (with or without a pane
+   narrower than the window). Bands that left-align the column (the
+   wide-band TOC grid) or want internal scrolling instead MUST neutralise
+   it (left:0; transform:none; a left-anchored width) AT OR ABOVE THE
+   ATTRIBUTE SELECTOR'S SPECIFICITY (list the
+   [data-kpress-table-scale="wide"] variant in the reset) or wide tables
+   centre on the column and overhang the layout. All three bands carry
+   that reset today; if you add a band, add the reset too.
    ───────────────────────────────────────────────────────────────── */
 .kpress-content-with-toc {
   position: relative;
@@ -403,25 +410,30 @@
   padding-left: 4.8rem;
 }
 
-/* Subtle floating control, matching the settings gear (transparent until hover;
-   28px button, 16px icon). Chrome appears only on hover. */
+/* Floating TOC control (32px button, 20px icon — a step larger than the
+   settings gear so it reads as the document's primary navigation affordance).
+   It floats over the narrow band's tightened text gutter, so instead of the
+   gear's transparent-until-hover chrome it always carries a translucent
+   document-background fill: where it slightly overlaps a long line, both the
+   icon and the text beneath stay readable, in light and dark themes alike
+   (the fill follows --kpress-doc-bg). */
 .kpress-toc-toggle {
   align-items: center;
-  background: transparent;
+  background: color-mix(in srgb, var(--kpress-doc-bg) 80%, transparent);
   border: 1px solid transparent;
   border-radius: var(--kpress-radius-sm);
   color: var(--kpress-doc-muted);
   cursor: pointer;
   display: inline-flex;
   font: inherit;
-  height: 28px;
+  height: 32px;
   justify-content: center;
   padding: 4px;
   transition:
     color var(--kpress-transition-fast),
     border-color var(--kpress-transition-fast),
     background-color var(--kpress-transition-fast);
-  width: 28px;
+  width: 32px;
 }
 
 .kpress-toc-toggle:hover {
@@ -432,8 +444,8 @@
 
 .kpress-toc-toggle-icon {
   display: block;
-  height: 16px;
-  width: 16px;
+  height: 20px;
+  width: 20px;
 }
 
 .kpress-toc-title {
@@ -544,6 +556,13 @@
   opacity: 1;
   pointer-events: auto;
   visibility: visible;
+}
+
+/* Section-preview tooltips navigate to their target on tap/click
+   (tooltips.js); the pointer signals it. Footnote popovers stay plain — only
+   the links inside them navigate. */
+.kpress-tooltip:not(.kpress-tooltip-footnote) {
+  cursor: pointer;
 }
 
 /* No edge arrow on tooltips (textpress has none; the bare popover reads cleaner).
@@ -680,18 +699,34 @@
   text-decoration: none;
 }
 
+/* Tables: only tables marked wide (data-kpress-table-scale="wide", stamped by
+   the renderer/tables.js when a table is large on both axes — see
+   TABLE_WIDE_MIN_* in format/markdown.py) get the wide presentation. Smaller
+   tables keep the reading-column width in every band; content wider than the
+   wrap still scrolls internally. The base wide rule below is the
+   column-centred, pane-capped full bleed for a centred single column;
+   container bands neutralise it where the column is not centred or the
+   bleed is unwanted (see the layout comment above). */
 .kpress-table-wrap {
   background-color: var(--kpress-doc-bg);
   box-sizing: border-box;
-  left: 50%;
   margin: 2rem 0;
   overflow-x: auto;
   overflow-y: hidden;
   position: relative;
   scrollbar-color: var(--color-scrollbar) transparent;
   scrollbar-width: thin;
+  width: 100%;
+}
+
+.kpress-table-wrap[data-kpress-table-scale="wide"] {
+  left: 50%;
   transform: translateX(-50%);
-  width: min(calc(100vw - 2rem), max(100%, var(--kpress-measure)));
+  /* 100cqw, not 100vw: the bleed is capped at the kpress-doc pane, so a
+     no-TOC document embedded in a pane narrower than the window stays inside
+     the pane (without a query container, cqw falls back to vw — the
+     standalone window-width case, where they are equal). */
+  width: min(calc(100cqw - 2rem), max(100%, var(--kpress-measure)));
 }
 
 .kpress-table {
@@ -721,10 +756,18 @@
   font-size: var(--kpress-caps-label-size);
   font-variant-caps: var(--kpress-caps-variant);
   font-weight: var(--kpress-font-weight-sans-bold);
+  /* Header labels hyphenate rather than inherit the table's break-word
+     letter-level wrapping: a narrow column shows "Capitali-zation" over more
+     lines, never an unhyphenated mid-word cut. overflow-wrap stays as the
+     last resort for strings hyphenation cannot split (needs a `lang` on the
+     document/host root to pick a hyphenation dictionary). */
+  hyphens: auto;
   letter-spacing: var(--kpress-caps-spacing);
   line-height: var(--kpress-caps-heading-line-height);
+  overflow-wrap: break-word;
   text-align: center;
   text-transform: var(--kpress-caps-transform);
+  word-break: normal;
 }
 
 .kpress-table tbody tr:nth-child(even) {
@@ -1189,7 +1232,7 @@
   font-size: var(--kpress-bullet-size);
   left: -0.85rem;
   position: absolute;
-  top: 0.25rem;
+  top: 0.1rem;
 }
 
 .kpress .full-text {
@@ -1449,18 +1492,23 @@
   inline-size: 18px;
 }
 
+/* Heading step-up band: from 64rem the H2-H4 section headings take their
+   larger sizes; narrow and medium panes keep the tighter defaults from
+   style-tokens.css. Deliberately one notch below the 75rem TOC band so the
+   heading step is not swallowed by that layout reflow, and deliberately
+   headings ONLY: body text stays 1rem at every width (kash parity — kash
+   bumps prose above 1rem only for print). */
+@container kpress-doc (min-width: 64rem) {
+  .kpress {
+    --kpress-font-size-h2: 1.4rem;
+    --kpress-font-size-h3: 1.2rem;
+    --kpress-font-size-h4: 1.2rem;
+  }
+}
+
 /* Wide document: TOC is a sticky sidebar. Widths track the document viewport
    via `cqw` (not the window), so this is correct standalone and embedded. */
 @container kpress-doc (min-width: 75rem) {
-  /* Departure from kash (DEP-FONT-WIDE): kash only bumps prose above 1rem for
-     print; on screen it stays 1rem at every width. We nudge the on-screen
-     reading size to 1.1rem on wide panes only, because PT Serif's small
-     x-height reads smaller than the sans chrome an embedding host app puts
-     beside it. Base stays 1rem, so narrow/embedded panes keep kash parity. */
-  .kpress {
-    --kpress-font-size-normal: 1.1rem;
-  }
-
   body.kpress-video-open .kpress-toc,
   .kpress-viewport.kpress-video-open .kpress-toc {
     display: none;
@@ -1557,22 +1605,28 @@
     display: none;
   }
 
-  /* Wide tables bleed rightward into the trailing margin instead of scrolling
-     inside the reading column. The grid is 15rem TOC + 3rem gap + 53rem column
-     (left-aligned), and `.kpress-long-text` insets 2.5rem, so the table's left
-     edge sits 20.5rem from the pane's left; cap the width at the pane's right
-     edge (a matching 2.5rem inset → `100cqw - 23rem`). Narrow tables still fill
-     the reading column (`min-width: 100%`); wider ones grow to their content and
-     scroll internally only once they pass the pane edge. `100cqw` is the pane,
-     so the table never centres on / spills past the window. */
+  /* Tables marked wide bleed rightward into the trailing margin instead of
+     scrolling inside the reading column. The grid is 15rem TOC + 3rem gap +
+     53rem column (left-aligned), and `.kpress-long-text` insets 2.5rem, so the
+     table's left edge sits 20.5rem from the pane's left; cap the width at the
+     pane's right edge (a matching 2.5rem inset → `100cqw - 23rem`). Unmarked
+     tables cap at the reading column (`max-width: 100%`) and scroll internally;
+     wide-marked ones grow to their content and scroll internally only once
+     they pass the pane edge. `100cqw` is the pane, so the table never centres
+     on / spills past the window. */
   .kpress-content-with-toc.has-toc .kpress-table-wrap,
   .kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap {
     left: 0;
     margin-inline: 0;
-    max-width: calc(100cqw - 23rem);
+    max-width: 100%;
     min-width: 100%;
     transform: none;
     width: max-content;
+  }
+
+  .kpress-content-with-toc.has-toc .kpress-table-wrap[data-kpress-table-scale="wide"],
+  .kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap[data-kpress-table-scale="wide"] {
+    max-width: calc(100cqw - 23rem);
   }
 
   .kpress-content-with-toc.has-toc .kpress-table,
@@ -1610,7 +1664,7 @@
 
   /* The floating toggle lives in the pane's top-left gutter (fixed against
      the frame), so the document must keep an inline gutter at least as wide
-     as the toggle's footprint (0.75rem inset + 28px button + breathing
+     as the toggle's footprint (0.75rem inset + 32px button + breathing
      room) or prose slides under the control — both at mid widths, where the
      centered column's left edge moves inside the footprint, and on phones,
      where the 1rem base padding leaves the first characters covered. Hosts
@@ -1629,11 +1683,17 @@
     background: var(--kpress-doc-code-bg);
     color: var(--color-secondary);
     left: 1rem;
-    max-height: calc(100vh - 5rem);
+    /* dvh, not vh: on phones 100vh includes the area behind the collapsing
+       browser chrome, which pushed the drawer's bottom below the visible
+       viewport and trapped the last entries. The extra block-end padding
+       gives the list scroll room past its final entry so it is always
+       comfortably reachable. */
+    max-height: calc(100dvh - 6rem);
     opacity: 0;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding-block-end: 2.5rem;
     pointer-events: none;
     position: fixed;
     top: 4rem;
@@ -1686,13 +1746,15 @@
   }
 
   /* Tablet band (48–75rem): the wide (>=75rem) and mobile (<48rem) blocks
-     both neutralize the base `.kpress-table-wrap` full-bleed (left:50% +
+     both neutralize the base wide-table full-bleed (left:50% +
      translateX(-50%) centred on the viewport), but this band did not — so
      the centred bleed leaked through. Embedded in a host pane narrower than
      the window, that centres the table on the window and spills it past the
      pane on both sides. Anchor it to the prose column and scroll internally,
-     matching the other two breakpoints. */
-  .kpress-table-wrap {
+     matching the other two breakpoints. (The attribute variant is listed so
+     this reset also out-specifies the base wide-table bleed rule.) */
+  .kpress-table-wrap,
+  .kpress-table-wrap[data-kpress-table-scale="wide"] {
     left: 0;
     margin-inline: 0;
     max-width: 100%;
@@ -1714,13 +1776,20 @@
      this whole band, so the shrink must still respect its clearance reservation
      (this rule ties with the clearance rule above and wins by order). */
   .kpress-doc {
-    padding-inline: max(0.5rem, var(--kpress-toc-toggle-clearance));
+    /* The two phone gutters are held in variables so the wide-table
+       edge-bleed below can extend across exactly this inset. The stray-wide-
+       content clip guard lives HERE (not on .kpress-long-text): the doc's
+       padding box ends at the pane edge, so wide tables may bleed across the
+       gutters and are clipped only at the pane, never at the text margin. */
+    --kpress-doc-gutter: max(0.5rem, var(--kpress-toc-toggle-clearance));
+    overflow-x: hidden;
+    padding-inline: var(--kpress-doc-gutter);
   }
 
   .kpress-long-text {
+    --kpress-prose-gutter: 0.75rem;
     max-width: 100%;
-    overflow-x: hidden;
-    padding-inline: 1rem;
+    padding-inline: var(--kpress-prose-gutter);
   }
 
   /* The wide 4rem pull-in reads as wasted width on a phone. */
@@ -1740,12 +1809,23 @@
     column-count: 1;
   }
 
-  .kpress-table-wrap {
+  /* Any table too wide for the phone column keeps its left edge on the text
+     column but bleeds rightward across the phone gutters to the pane edge, so
+     the scroll region is cut off at the screen, not at the text's right
+     margin (the screen-edge cut also signals scrollability). This
+     deliberately ignores the wide mark: on a phone the mark decides nothing —
+     `max-content` under the pane-edge cap means small tables sit at the
+     column width and only overflowing ones grow. The gutter variables are the
+     two inline pads above; the doc-level clip guard keeps any rounding
+     overflow at the pane edge. */
+  .kpress-table-wrap,
+  .kpress-table-wrap[data-kpress-table-scale="wide"] {
     left: 0;
-    margin-left: auto;
-    margin-right: 0;
+    margin-inline: 0;
+    max-width: calc(100% + var(--kpress-doc-gutter, 0.5rem) + var(--kpress-prose-gutter, 0.75rem));
+    min-width: 100%;
     transform: none;
-    width: calc(100cqw - 1.5rem);
+    width: max-content;
   }
 
   .kpress-table {

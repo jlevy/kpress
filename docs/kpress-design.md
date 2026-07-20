@@ -237,8 +237,9 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Internal-link tooltips.** Previews for headings (with nearby text), figures, tables,
   code, and details, with viewport-aware placement, arrow positioning, touch fallback,
   and Escape close.
-- **Tables.** Responsive wrapping, numeric-column alignment hooks, small-caps headers,
-  zebra rows, TOC-aware desktop breakout, mobile font reduction, and print flattening.
+- **Tables.** Responsive wrapping, numeric-column alignment hooks, small-caps headers
+  (hyphenating rather than letter-breaking when narrow), zebra rows, TOC-aware desktop
+  breakout, mobile font reduction, and print flattening.
   Numeric detection is column-scoped: a column is numeric when at least one non-empty
   body cell matches the numeric pattern (sign — ASCII or typographic minus — currency,
   grouped digits, decimals, percent) and none mismatches; then every cell of the column,
@@ -246,6 +247,18 @@ feature guarantees); the sections named in the table carry the architecture deta
   start alignment with no marks.
   Each cell also carries a `data-col="<header-slug>"` enrichment hook so downstream
   decorators can select columns by name without kpress depending on them.
+  The wide presentation (bleeding past the reading column on wide panes; edge-bleed
+  scroll regions on phones) is reserved for genuinely large tables: the renderer stamps
+  `data-kpress-table-scale` (value `wide`) on the wrap only when the widest row has at
+  least 6 columns AND the average row carries at least 100 visible characters.
+  The resolved cutoff is stamped on the article root
+  (`data-kpress-table-wide-min-columns` / `data-kpress-table-wide-min-row-chars`), and
+  `tables.js` — which re-classifies tables for late-rendered/tabbed panels — resolves
+  thresholds per table with explicit runtime config
+  (`kpress.behaviors.configure("tables", { wideMinColumns, wideMinRowChars })`) first,
+  then the stamped values, then its built-in defaults, so a custom
+  `RenderOptions`/`kpress.yml` cutoff survives the runtime pass.
+  Smaller tables keep the reading-column width and scroll internally.
 - **Code copy.** A per-block copy control with success/error/idle states, accessibility
   labels, and print suppression.
 - **Video popovers.** YouTube link and raw-embed interception into a no-network
@@ -524,14 +537,15 @@ The contract module also declares:
   `optimize_text`
 - `BUILD_MANIFEST_REQUIRED_KEYS` and `ASSET_MANIFEST_REQUIRED_KEYS`
 - `OptimizerMode = Literal["none", "full"]` in `format.model`
-- `PUBLIC_DATA_ATTRIBUTES`: the stable per-cell table `data-*` hooks kpress emits for
-  downstream enrichment: `data-col` (the column slug derived from the header row) and
+- `PUBLIC_DATA_ATTRIBUTES`: the stable table `data-*` hooks kpress emits for downstream
+  consumption. Per cell: `data-col` (the column slug derived from the header row) and
   `data-kpress-numeric` (set on every cell of a numeric column — decided over the whole
-  column, not per cell).
-  This is the renderer-agnostic seam a downstream decorator consumes to select a column
-  by name or detect numeric columns.
-  kpress emits them and never consumes them; it never imports a decorator and never
-  knows any table plugin exists.
+  column, not per cell) — the renderer-agnostic seam a downstream decorator consumes to
+  select a column by name or detect numeric columns; kpress emits those and never
+  consumes them, and it never imports a decorator.
+  Per wrap: `data-kpress-table-scale` (value `wide`, stamped past the size cutoff),
+  which kpress’s own CSS keys the wide presentation off and host stylesheets scope their
+  width overrides to.
 - `PUBLIC_PASS_THROUGH_TAGS` / `PUBLIC_PASS_THROUGH_ATTRIBUTES` /
   `PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES`: the whitelisted-HTML input contract.
   The language going into kpress is **Markdown blended with a known set of pass-through
