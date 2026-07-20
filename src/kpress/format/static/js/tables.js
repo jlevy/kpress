@@ -10,10 +10,18 @@ const NUMERIC_CELL_PATTERN = /^[-+−]?[$€¥£₹₩¢₽]?((\d{1,3}(,\d{3})+|
 // earns the wide presentation (data-kpress-table-scale="wide" on its wrap,
 // which the CSS turns into a bleed past the reading column on wide panes and
 // an edge-bleed scroll region on phones) only when it is large on BOTH axes.
-// Host-tunable via `kpress.behaviors.configure("tables", { wideMinColumns,
-// wideMinRowChars })`.
+// Threshold precedence, per table: explicit runtime config
+// (`kpress.behaviors.configure("tables", { wideMinColumns, wideMinRowChars })`)
+// wins; else the server-resolved values stamped on the enclosing article root
+// (data-kpress-table-wide-min-*, see render.py) so a custom
+// RenderOptions/kpress.yml cutoff survives this runtime's re-classification;
+// else these built-in defaults (markup with no stamps, e.g. hand-authored
+// fragments).
 export const TABLE_WIDE_MIN_COLUMNS = 6;
 export const TABLE_WIDE_MIN_ROW_CHARS = 100;
+
+const TABLE_WIDE_MIN_COLUMNS_ATTR = "data-kpress-table-wide-min-columns";
+const TABLE_WIDE_MIN_ROW_CHARS_ATTR = "data-kpress-table-wide-min-row-chars";
 
 /**
  * Column-scoped numeric marking, mirroring the server-side renderer: a column
@@ -73,13 +81,14 @@ function markNumericCells(table) {
  * tables.
  *
  * @param {Element} table
- * @param {{ wideMinColumns: number, wideMinRowChars: number }} thresholds
+ * @param {Record<string, unknown>} config
  */
-function markTableScale(table, thresholds) {
+function markTableScale(table, config) {
   const wrap = table.parentElement?.closest(".kpress-table-wrap");
   if (!wrap || table.parentElement?.closest("table")) {
     return;
   }
+  const thresholds = resolveThresholds(table, config);
   let maxColumns = 0;
   let totalChars = 0;
   let rowCount = 0;
@@ -103,17 +112,38 @@ function markTableScale(table, thresholds) {
 }
 
 /**
+ * The server-resolved threshold stamped on the table's nearest carrier (the
+ * article root in rendered output), or null when absent or unparsable.
+ *
+ * @param {Element} table
+ * @param {string} name
+ * @returns {number | null}
+ */
+function stampedThreshold(table, name) {
+  const carrier = table.closest(`[${name}]`);
+  const value = carrier ? Number.parseInt(carrier.getAttribute(name) ?? "", 10) : Number.NaN;
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/**
+ * Per-table threshold resolution: explicit runtime config, else the document's
+ * stamped server values, else the built-in defaults (see the precedence note
+ * on TABLE_WIDE_MIN_COLUMNS).
+ *
+ * @param {Element} table
  * @param {Record<string, unknown>} [config]
  * @returns {{ wideMinColumns: number, wideMinRowChars: number }}
  */
-function scaleThresholds(config = {}) {
+function resolveThresholds(table, config = {}) {
   return {
     wideMinColumns:
-      typeof config.wideMinColumns === "number" ? config.wideMinColumns : TABLE_WIDE_MIN_COLUMNS,
+      typeof config.wideMinColumns === "number"
+        ? config.wideMinColumns
+        : (stampedThreshold(table, TABLE_WIDE_MIN_COLUMNS_ATTR) ?? TABLE_WIDE_MIN_COLUMNS),
     wideMinRowChars:
       typeof config.wideMinRowChars === "number"
         ? config.wideMinRowChars
-        : TABLE_WIDE_MIN_ROW_CHARS,
+        : (stampedThreshold(table, TABLE_WIDE_MIN_ROW_CHARS_ATTR) ?? TABLE_WIDE_MIN_ROW_CHARS),
   };
 }
 
@@ -122,7 +152,6 @@ function scaleThresholds(config = {}) {
  * @param {Record<string, unknown>} [config]
  */
 export function initKpressTables(root = document, config = {}) {
-  const thresholds = scaleThresholds(config);
   for (const table of root.querySelectorAll(".kpress-prose table:not(.kpress-table)")) {
     const wrapper = document.createElement("div");
     wrapper.className = "kpress-table-wrap";
@@ -130,12 +159,12 @@ export function initKpressTables(root = document, config = {}) {
     markNumericCells(table);
     table.parentNode?.insertBefore(wrapper, table);
     wrapper.append(table);
-    markTableScale(table, thresholds);
+    markTableScale(table, config);
   }
 
   for (const table of root.querySelectorAll(".kpress-prose table.kpress-table")) {
     markNumericCells(table);
-    markTableScale(table, thresholds);
+    markTableScale(table, config);
   }
 }
 

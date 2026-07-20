@@ -61,3 +61,58 @@ def test_tooltip_hover_position_and_escape_in_real_browser(tmp_path: Path) -> No
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_footnote_keyboard_activation_navigates_in_real_browser(tmp_path: Path) -> None:
+    """Keyboard path for footnote content: the preview is a pointer/touch
+    affordance, so Enter on the focused ref must run native navigation to the
+    in-document footnote, dismiss the preview, and leave the footnote's inner
+    link reachable with Tab."""
+    sync_api = pytest.importorskip("playwright.sync_api")
+    (tmp_path / "content").mkdir()
+    (tmp_path / "content" / "index.md").write_text(
+        "# Footnote keyboard smoke\n\nA claim with a source.[^1]\n\n"
+        "[^1]: See the [reference site](https://example.com) for detail.\n",
+        encoding="utf-8",
+    )
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n",
+        encoding="utf-8",
+    )
+    build_site(config)
+
+    handler = partial(_QuietHandler, directory=str(tmp_path / "public"))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_api.sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except sync_api.Error as exc:
+                pytest.skip(f"Playwright Chromium is not installed: {exc}")
+            try:
+                page = browser.new_page(viewport={"width": 1000, "height": 700})
+                page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+
+                ref = page.locator('a[href^="#fn-"]').first
+                ref.focus()
+                tooltip = page.locator(".kpress-tooltip")
+                tooltip.wait_for(state="visible", timeout=3_000)
+
+                page.keyboard.press("Enter")
+                tooltip.wait_for(state="hidden", timeout=1_000)
+                assert "#fn-" in page.url
+
+                # Focus stays on the ref after native hash navigation; the
+                # footnote's real link is reachable by keyboard from there.
+                page.keyboard.press("Tab")
+                focused_href = page.evaluate("document.activeElement?.getAttribute('href')")
+                assert focused_href == "https://example.com"
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

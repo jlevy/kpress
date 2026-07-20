@@ -543,7 +543,10 @@ function showKpressTooltip(anchor) {
   // keeps the wiring off it) and the popover dismisses instead of lingering
   // over the destination. Tapping anywhere else on a section-preview tooltip
   // navigates to the previewed target itself — on touch the anchor's own tap
-  // only opens the preview, so the preview must complete the journey.
+  // only opens the preview, so the preview must complete the journey. These
+  // surfaces are pointer/touch-only by design: the tooltip is unfocusable, and
+  // the keyboard path to the same content is the trigger anchor itself, whose
+  // Enter activation runs native navigation (see wireTooltipAnchor).
   tooltip.addEventListener("click", (event) => {
     const link = event.target instanceof Element ? event.target.closest("a") : null;
     if (link) {
@@ -643,6 +646,16 @@ function wireTooltipAnchor(anchor) {
   const isFootnote = href.startsWith("#fn-") || Boolean(anchor.closest(".kpress-footnote-ref"));
   if (isFootnote) {
     anchor.addEventListener("click", (event) => {
+      // Pointer clicks open the preview instead of jumping — but only
+      // pointer clicks. A keyboard activation (Enter fires a click with
+      // detail 0) keeps native navigation: the tooltip is an unfocusable
+      // pointer/touch affordance (role="tooltip", removed on blur), so the
+      // in-document footnote — where every link is a real, focusable
+      // element — is the keyboard path to this content.
+      if (event.detail === 0) {
+        removeKpressTooltips();
+        return;
+      }
       event.preventDefault();
     });
     anchor.addEventListener("touchend", (event) => {

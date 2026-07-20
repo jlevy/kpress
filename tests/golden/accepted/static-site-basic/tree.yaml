@@ -1,10 +1,10 @@
 files:
-  _kpress/assets/css/components.eeb0277b4016d4a3.css:
-    bytes: 56912
-    sha256_16: eeb0277b4016d4a3
-  _kpress/assets/css/components.eeb0277b4016d4a3.css.gz:
-    bytes: 14555
-    sha256_16: 461f08397aecfc8d
+  _kpress/assets/css/components.41ac74c1896886e1.css:
+    bytes: 57413
+    sha256_16: 41ac74c1896886e1
+  _kpress/assets/css/components.41ac74c1896886e1.css.gz:
+    bytes: 14699
+    sha256_16: 924a4973ca710fb6
   _kpress/assets/css/document.b47cd75659a40ed5.css:
     bytes: 12343
     sha256_16: b47cd75659a40ed5
@@ -93,17 +93,17 @@ files:
     json:
       files:
       - applied_pipeline: []
-        content_hash: eeb0277b4016d4a3
+        content_hash: 41ac74c1896886e1
         kind: css
-        path: _kpress/assets/css/components.eeb0277b4016d4a3.css
-        size: 56912
+        path: _kpress/assets/css/components.41ac74c1896886e1.css
+        size: 57413
       - applied_pipeline: []
         compression: gzip
-        content_hash: 461f08397aecfc8d
+        content_hash: 924a4973ca710fb6
         kind: gz
-        path: _kpress/assets/css/components.eeb0277b4016d4a3.css.gz
-        size: 14555
-        source_path: _kpress/assets/css/components.eeb0277b4016d4a3.css
+        path: _kpress/assets/css/components.41ac74c1896886e1.css.gz
+        size: 14699
+        source_path: _kpress/assets/css/components.41ac74c1896886e1.css
       - applied_pipeline: []
         content_hash: b47cd75659a40ed5
         kind: css
@@ -267,16 +267,16 @@ files:
         size: 1835
         source_path: _kpress/assets/js/theme.0df6988dde228fd2.js
       - applied_pipeline: []
-        content_hash: 6bab500f076ae4ae
+        content_hash: dec2da049be8b8b3
         kind: html
         path: about.html
-        size: 10222
+        size: 10304
       - applied_pipeline: []
         compression: gzip
-        content_hash: 95bfe004c0591c33
+        content_hash: c8bfd97edc8a57d5
         kind: gz
         path: about.html.gz
-        size: 3339
+        size: 3369
         source_path: about.html
       - applied_pipeline: []
         content_hash: 5945811896b61c26
@@ -284,16 +284,16 @@ files:
         path: assets/logo.svg
         size: 133
       - applied_pipeline: []
-        content_hash: 2d856d3bc4f2b5ef
+        content_hash: a72a540d921db647
         kind: html
         path: index.html
-        size: 10480
+        size: 10562
       - applied_pipeline: []
         compression: gzip
-        content_hash: 9df6d0d6406d4e1c
+        content_hash: c1cb6443b99eb958
         kind: gz
         path: index.html.gz
-        size: 3434
+        size: 3464
         source_path: index.html
       - applied_pipeline: []
         content_hash: 16ceb5ee3e0dc13a
@@ -301,10 +301,10 @@ files:
         path: robots.txt
         size: 23
       assets:
-      - content_hash: eeb0277b4016d4a3
+      - content_hash: 41ac74c1896886e1
         kind: package
         media_type: text/css
-        output_path: _kpress/assets/css/components.eeb0277b4016d4a3.css
+        output_path: _kpress/assets/css/components.41ac74c1896886e1.css
         path: css/components.css
         source: package
       - content_hash: b47cd75659a40ed5
@@ -495,7 +495,7 @@ files:
       <link rel="stylesheet" href="/_kpress/assets/css/theme-dark.9c9cc21fdef2353e.css">
       <link rel="stylesheet" href="/_kpress/assets/css/syntax.6e42f409bc9e2990.css">
       <link rel="stylesheet" href="/_kpress/assets/css/document.b47cd75659a40ed5.css">
-      <link rel="stylesheet" href="/_kpress/assets/css/components.eeb0277b4016d4a3.css">
+      <link rel="stylesheet" href="/_kpress/assets/css/components.41ac74c1896886e1.css">
       <link rel="stylesheet" href="/_kpress/assets/css/print.99ead1dd893cdbc7.css">
       <script type="module" src="/_kpress/assets/js/theme.0df6988dde228fd2.js"></script>
       <script type="module" src="/_kpress/assets/js/settings-widget.a60d023aac6a9709.js"></script>
@@ -566,7 +566,7 @@ files:
           <path d="M8.2 14h7.6"/>
         </symbol>
       </svg>
-      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
+      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
       <p>Static publishing fixture.</p></div></div></article>
         </main>
         <div class="kpress-video-backdrop" aria-hidden="true"></div>
@@ -582,8 +582,8 @@ files:
       </body>
       </html>
   about.html.gz:
-    bytes: 3339
-    sha256_16: 95bfe004c0591c33
+    bytes: 3369
+    sha256_16: c8bfd97edc8a57d5
   assets/logo.svg:
     text: |
       <svg xmlns="http://www.w3.org/2000/svg" width="80" height="20" role="img" aria-label="KPress"><text x="0" y="15">KPress</text></svg>
@@ -664,7 +664,7 @@ files:
       <link rel="stylesheet" href="/_kpress/assets/css/theme-dark.9c9cc21fdef2353e.css">
       <link rel="stylesheet" href="/_kpress/assets/css/syntax.6e42f409bc9e2990.css">
       <link rel="stylesheet" href="/_kpress/assets/css/document.b47cd75659a40ed5.css">
-      <link rel="stylesheet" href="/_kpress/assets/css/components.eeb0277b4016d4a3.css">
+      <link rel="stylesheet" href="/_kpress/assets/css/components.41ac74c1896886e1.css">
       <link rel="stylesheet" href="/_kpress/assets/css/print.99ead1dd893cdbc7.css">
       <script type="module" src="/_kpress/assets/js/theme.0df6988dde228fd2.js"></script>
       <script type="module" src="/_kpress/assets/js/settings-widget.a60d023aac6a9709.js"></script>
@@ -735,7 +735,7 @@ files:
           <path d="M8.2 14h7.6"/>
         </symbol>
       </svg>
-      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
+      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
       <p>See the logo.</p>
       <figure class="kpress-figure" data-kpress-figure="image">
       <img src="assets/logo.svg" alt="Logo" class="kpress-image" data-kpress-image="true" loading="lazy">
@@ -754,8 +754,8 @@ files:
       </body>
       </html>
   index.html.gz:
-    bytes: 3434
-    sha256_16: 9df6d0d6406d4e1c
+    bytes: 3464
+    sha256_16: c1cb6443b99eb958
   robots.txt:
     text: |
       User-agent: *

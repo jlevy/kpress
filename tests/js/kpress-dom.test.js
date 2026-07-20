@@ -546,6 +546,41 @@ A--&gt;B</code></pre>
     expect(touch.defaultPrevented).toBe(true);
   });
 
+  it("keeps native navigation for keyboard activation of footnote refs", async () => {
+    document.body.innerHTML = `
+      <sup class="kpress-footnote-ref"><a href="#fn-note" id="fnref-note">[note]</a></sup>
+      <section class="kpress-footnotes"><ol><li id="fn-note">Footnote body</li></ol></section>
+    `;
+
+    await importFresh("tooltips.js");
+
+    const footnoteLink = document.querySelector(".kpress-footnote-ref a");
+    footnoteLink?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    expect(document.querySelector(".kpress-tooltip")).toBeTruthy();
+
+    // Enter on a focused link fires a click with detail 0. The preview is an
+    // unfocusable pointer/touch affordance, so keyboard activation must keep
+    // native navigation to the in-document footnote (where inner links are
+    // focusable) and dismiss the preview rather than being swallowed.
+    const keyboardClick = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 0,
+    });
+    footnoteLink?.dispatchEvent(keyboardClick);
+    expect(keyboardClick.defaultPrevented).toBe(false);
+    expect(document.querySelector(".kpress-tooltip")).toBeNull();
+
+    // A pointer click (detail 1) still opens the preview instead of jumping.
+    const pointerClick = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      detail: 1,
+    });
+    footnoteLink?.dispatchEvent(pointerClick);
+    expect(pointerClick.defaultPrevented).toBe(true);
+  });
+
   it("suppresses tooltips on table-of-contents links but not elsewhere", async () => {
     document.body.innerHTML = `
       <nav class="kpress-toc kpress-no-print" data-kpress-toc>
@@ -684,7 +719,9 @@ A--&gt;B</code></pre>
     await importFresh("tooltips.js");
 
     const footnoteLink = document.querySelector(".kpress-footnote-ref a");
-    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    // detail 1 models a pointer click; keyboard activation (detail 0) keeps
+    // native navigation and is covered by its own test above.
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
     footnoteLink?.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(true);
 
@@ -954,6 +991,47 @@ A--&gt;B</code></pre>
 
     const wrap = document.querySelector(".kpress-table-wrap");
     expect(wrap?.getAttribute("data-kpress-table-scale")).toBe("wide");
+  });
+
+  it("keeps server wide marks under custom stamped thresholds when the real behavior binds", async () => {
+    // Server output rendered with table_wide_min_columns=2 / row_chars=10:
+    // the article root carries the resolved cutoff and the wrap is already
+    // marked. Importing the module registers and binds the built-in behavior
+    // (no manual init), which re-classifies every table — the mark must
+    // survive because the stamps, not the 6/100 defaults, drive the decision.
+    document.body.innerHTML = `
+      <article class="kpress-prose"
+        data-kpress-table-wide-min-columns="2" data-kpress-table-wide-min-row-chars="10">
+        <div class="kpress-table-wrap" data-kpress-table-scale="wide">
+          <table class="kpress-table"><tbody><tr><td>alpha one</td><td>beta two</td></tr></tbody></table>
+        </div>
+        <table id="late"><tbody><tr><td>gamma three</td><td>delta four</td></tr></tbody></table>
+      </article>
+    `;
+
+    await importFresh("tables.js");
+
+    const wraps = document.querySelectorAll(".kpress-table-wrap");
+    expect(wraps[0]?.getAttribute("data-kpress-table-scale")).toBe("wide");
+    // A table the behavior wraps itself (late-rendered path) classifies under
+    // the same stamped cutoff.
+    const late = document.querySelector("#late")?.closest(".kpress-table-wrap");
+    expect(late?.getAttribute("data-kpress-table-scale")).toBe("wide");
+  });
+
+  it("lets explicit runtime config override the stamped thresholds", async () => {
+    document.body.innerHTML = `
+      <article class="kpress-prose"
+        data-kpress-table-wide-min-columns="2" data-kpress-table-wide-min-row-chars="10">
+        <table><tbody><tr><td>alpha one</td><td>beta two</td></tr></tbody></table>
+      </article>
+    `;
+
+    const { initKpressTables } = await importFresh("tables.js");
+    initKpressTables(document, { wideMinColumns: 6, wideMinRowChars: 100 });
+
+    const wrap = document.querySelector(".kpress-table-wrap");
+    expect(wrap?.hasAttribute("data-kpress-table-scale")).toBe(false);
   });
 
   it("scopes numeric marking to whole columns, accepting the typographic minus", async () => {

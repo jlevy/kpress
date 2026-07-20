@@ -183,6 +183,31 @@ def test_wide_cutoff_is_host_tunable() -> None:
     assert 'data-kpress-table-scale="wide"' in tree.html
 
 
+def test_resolved_wide_cutoff_is_stamped_on_the_article_root() -> None:
+    # The client runtime re-classifies tables, so the server's resolved cutoff
+    # must travel with the document: js/tables.js reads these stamps as its
+    # default thresholds (explicit runtime config still wins). Without them a
+    # custom cutoff's wide marks would be undone on browser startup.
+    markdown = _table_markdown(2, "moderately sized cell")
+    document = DocumentInput(
+        title="T",
+        source_text=markdown,
+        source_path="t.md",
+        body_markdown=markdown,
+        trust_mode="sanitized",
+    )
+    default_render = render_fragment(document, RenderOptions())
+    assert 'data-kpress-table-wide-min-columns="6"' in default_render.html
+    assert 'data-kpress-table-wide-min-row-chars="100"' in default_render.html
+    custom = render_fragment(
+        document,
+        RenderOptions(table_wide_min_columns=2, table_wide_min_row_chars=10),
+    )
+    assert 'data-kpress-table-wide-min-columns="2"' in custom.html
+    assert 'data-kpress-table-wide-min-row-chars="10"' in custom.html
+    assert 'data-kpress-table-scale="wide"' in custom.html
+
+
 def test_wide_mark_requires_both_axes() -> None:
     # Many columns but terse rows (6 cols x ~3 chars): column cutoff alone
     # must not qualify.

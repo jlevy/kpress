@@ -88,14 +88,17 @@
    TABLE INVARIANT: only tables marked `data-kpress-table-scale="wide"`
    (stamped by the renderer / tables.js past the TABLE_WIDE_MIN_* cutoff)
    ever leave the reading column; unmarked tables cap at the column in
-   every band. The base wide rule (further down) is a viewport-centred
-   full-bleed — left:50% + translateX(-50%), width keyed off 100vw. That
-   is only right for a standalone, window-width single column. EVERY band
-   above MUST neutralise it (left:0; transform:none; a left-anchored
-   width) AT OR ABOVE THE ATTRIBUTE SELECTOR'S SPECIFICITY (list the
+   every band. The base wide rule (further down) is a column-centred
+   full-bleed — left:50% + translateX(-50%), width keyed off 100cqw so it
+   caps at the kpress-doc pane, never the window. That centred bleed is
+   only right for a centred single column (with or without a pane
+   narrower than the window). Bands that left-align the column (the
+   wide-band TOC grid) or want internal scrolling instead MUST neutralise
+   it (left:0; transform:none; a left-anchored width) AT OR ABOVE THE
+   ATTRIBUTE SELECTOR'S SPECIFICITY (list the
    [data-kpress-table-scale="wide"] variant in the reset) or wide tables
-   centre on the WINDOW and spill past the pane on both sides. All three
-   bands carry that reset today; if you add a band, add the reset too.
+   centre on the column and overhang the layout. All three bands carry
+   that reset today; if you add a band, add the reset too.
    ───────────────────────────────────────────────────────────────── */
 .kpress-content-with-toc {
   position: relative;
@@ -701,8 +704,9 @@
    TABLE_WIDE_MIN_* in format/markdown.py) get the wide presentation. Smaller
    tables keep the reading-column width in every band; content wider than the
    wrap still scrolls internally. The base wide rule below is the
-   viewport-centred full bleed for a standalone, window-width single column;
-   every container band neutralises it (see the layout comment above). */
+   column-centred, pane-capped full bleed for a centred single column;
+   container bands neutralise it where the column is not centred or the
+   bleed is unwanted (see the layout comment above). */
 .kpress-table-wrap {
   background-color: var(--kpress-doc-bg);
   box-sizing: border-box;
@@ -718,7 +722,11 @@
 .kpress-table-wrap[data-kpress-table-scale="wide"] {
   left: 50%;
   transform: translateX(-50%);
-  width: min(calc(100vw - 2rem), max(100%, var(--kpress-measure)));
+  /* 100cqw, not 100vw: the bleed is capped at the kpress-doc pane, so a
+     no-TOC document embedded in a pane narrower than the window stays inside
+     the pane (without a query container, cqw falls back to vw — the
+     standalone window-width case, where they are equal). */
+  width: min(calc(100cqw - 2rem), max(100%, var(--kpress-measure)));
 }
 
 .kpress-table {
@@ -1656,7 +1664,7 @@
 
   /* The floating toggle lives in the pane's top-left gutter (fixed against
      the frame), so the document must keep an inline gutter at least as wide
-     as the toggle's footprint (0.75rem inset + 28px button + breathing
+     as the toggle's footprint (0.75rem inset + 32px button + breathing
      room) or prose slides under the control — both at mid widths, where the
      centered column's left edge moves inside the footprint, and on phones,
      where the 1rem base padding leaves the first characters covered. Hosts
