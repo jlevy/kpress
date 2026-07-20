@@ -80,6 +80,23 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
   const ctx = viewportScrollContext(resolveKpressViewport(toc));
   const links = tocContentLinks(toc);
 
+  // Collapsible TOC settings: the server stamps them on the nav only when the
+  // document has entries deeper than the threshold; JS-channel config
+  // (`collapseDepth`/`expandOnScroll`) overrides the attributes, like the
+  // toggle's `icon`/`visible`. A config `collapseDepth` of 0 disables collapse.
+  const collapseDepthSetting =
+    typeof config.collapseDepth === "number"
+      ? config.collapseDepth
+      : Number.parseInt(toc.getAttribute("data-kpress-toc-collapse-depth") ?? "", 10);
+  const collapseDepth =
+    Number.isInteger(collapseDepthSetting) && collapseDepthSetting >= 1
+      ? collapseDepthSetting
+      : null;
+  const expandOnScroll =
+    typeof config.expandOnScroll === "boolean"
+      ? config.expandOnScroll
+      : toc.getAttribute("data-kpress-toc-expand-on-scroll") !== "false";
+
   // Config-tunable aspects (JS-channel config may carry callbacks): a custom
   // toggle icon and the toggle-visibility policy.
   if (typeof config.icon === "string") {
@@ -190,6 +207,82 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
     });
   }
 
+  // Depth collapse: partition the flat <li> list into spine groups — each
+  // entry at or above the threshold owns the deeper siblings that follow it up
+  // to the next spine entry. Entries before the first spine entry (possible
+  // after depth normalization) form a head group that stays visible. A row
+  // deeper than the threshold is visible iff allExpanded (the button state) or
+  // scroll-follow marks its group active; visibility is recomputed from that
+  // one predicate on every state change, so the button and scroll-follow can
+  // never fight.
+  /** @type {(link: Element | undefined) => void} */
+  let followActiveGroup = () => {};
+  if (collapseDepth !== null) {
+    /** @type {(item: Element) => number} */
+    const entryLevel = (item) => {
+      const match = /(?:^|\s)kpress-toc-level-(\d+)(?:\s|$)/.exec(item.className);
+      return match ? Number.parseInt(match[1], 10) : 1;
+    };
+    /** @type {{ item: Element, deep: boolean, group: Element | null }[]} */
+    const rows = [];
+    /** @type {Map<Element, Element | null>} */
+    const groupOfLink = new Map();
+    /** @type {Element | null} */
+    let currentGroup = null;
+    for (const item of list.querySelectorAll(":scope > li")) {
+      const link = item.querySelector("a");
+      const deep = entryLevel(item) > collapseDepth;
+      if (!deep && link) {
+        currentGroup = link;
+      }
+      const group = deep ? currentGroup : link;
+      rows.push({ item, deep, group });
+      if (link) {
+        groupOfLink.set(link, group);
+      }
+    }
+    if (rows.some((row) => row.deep)) {
+      let allExpanded = false;
+      /** @type {Element | null} */
+      let activeGroup = null;
+      const applyCollapseState = () => {
+        for (const row of rows) {
+          const visible =
+            !row.deep ||
+            row.group === null ||
+            allExpanded ||
+            (expandOnScroll && row.group === activeGroup);
+          row.item.classList.toggle("kpress-toc-collapsed", !visible);
+        }
+      };
+      const expandAllButton = toc.querySelector("[data-kpress-toc-expand-all]");
+      if (expandAllButton) {
+        on(expandAllButton, "click", () => {
+          allExpanded = !allExpanded;
+          expandAllButton.setAttribute("aria-expanded", String(allExpanded));
+          expandAllButton.setAttribute(
+            "aria-label",
+            allExpanded ? "Collapse all sections" : "Expand all sections",
+          );
+          applyCollapseState();
+        });
+      }
+      followActiveGroup = (link) => {
+        const group = (link && groupOfLink.get(link)) ?? null;
+        if (group !== activeGroup) {
+          activeGroup = group;
+          applyCollapseState();
+        }
+      };
+      applyCollapseState();
+      cleanups.push(() => {
+        for (const row of rows) {
+          row.item.classList.remove("kpress-toc-collapsed");
+        }
+      });
+    }
+  }
+
   /**
    * @param {Element | undefined} link
    */
@@ -200,6 +293,9 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
     }
     link?.setAttribute("data-active", "true");
     link?.classList.add("active");
+    // Scroll-follow rides the single active-entry path, so scroll-spy, TOC
+    // clicks, and hash arrival all move the expanded group together.
+    followActiveGroup(link);
   };
 
   for (const link of links) {
