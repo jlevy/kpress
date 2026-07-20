@@ -125,7 +125,7 @@ entry is deeper than the threshold, render:
   <div class="kpress-toc-header">
     <a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a>
     <button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all
-            aria-expanded="false" aria-label="Expand all sections">
+            aria-expanded="false" aria-label="Expand TOC" title="Expand TOC">
       <svg…><use href="#kpress-icon-chevrons-up-down"></use></svg>
       <svg…><use href="#kpress-icon-chevrons-down-up"></use></svg>
     </button>
@@ -156,9 +156,11 @@ hosts and goldens see identical bytes.
   Hidden entries get a `kpress-toc-collapsed` class; visibility is recomputed from that
   one predicate on every state change, so the button and scroll-follow can never fight.
 - Button click toggles `allExpanded`, updates `aria-expanded`, and swaps the
-  `aria-label` ("Expand all sections" / “Collapse all sections”). Collapse-all returns
-  to the baseline state — which still shows the active group when scroll-follow is on;
-  that is the setting’s documented meaning ("always expand where the viewport is").
+  `aria-label` and `title` tooltip together ("Expand TOC" / “Collapse TOC”; the
+  icon-only affordance rule keeps the tooltip and accessible name in sync).
+  Collapse-all returns to the baseline state — which still shows the active group when
+  scroll-follow is on; that is the setting’s documented meaning ("always expand where
+  the viewport is").
 - The active group updates inside the existing `setActiveLink` path (the
   IntersectionObserver and at-top handling already centralize it), so scroll, TOC-click
   navigation, and hash arrival all follow for free — clicking a collapsed section’s link
@@ -254,10 +256,11 @@ Deviations and discoveries from the build (branch `feat/toc-collapse`):
   The group handoff now applies only after the active entry has stayed in one group for
   `TOC_SCROLL_FOLLOW_SETTLE_MS` (250 ms, module-internal); the active highlight still
   moves instantly, and returning to the current group cancels a pending handoff.
-- **Control styling:** the expand-all control is a 20 px borderless button colored like
-  the Contents label (muted, slight opacity ramp on hover) with 14 px chevrons glyphs —
-  review found the first pass (24 px bordered button, 16 px unfold/fold glyphs) too
-  heavy for the TOC header.
+- **Control styling:** the expand-all control is an 18 px borderless button colored like
+  the Contents label (muted, 0.55 resting opacity ramping up on hover) with 12 px
+  chevrons glyphs — review found the first pass (24 px bordered button, 16 px
+  unfold/fold glyphs) and the second (20 px/14 px at 0.75 opacity) both too prominent
+  next to the subtle Contents heading.
 
 ## Testing Strategy
 

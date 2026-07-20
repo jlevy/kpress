@@ -118,16 +118,16 @@ def _render_toc(tree: DocumentTree, options: RenderOptions) -> str:
                 '<div class="kpress-toc-header">',
                 title_link,
                 '<button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all ',
-                'aria-expanded="false" aria-label="Expand all sections">',
+                'aria-expanded="false" aria-label="Expand TOC" title="Expand TOC">',
                 _icon(
                     "chevrons-up-down",
                     css_class="kpress-toc-expand-all-icon",
-                    attrs=' width="14" height="14"',
+                    attrs=' width="12" height="12"',
                 ),
                 _icon(
                     "chevrons-down-up",
                     css_class="kpress-toc-expand-all-icon",
-                    attrs=' width="14" height="14"',
+                    attrs=' width="12" height="12"',
                 ),
                 "</button></div>",
             ]
@@ -147,7 +147,7 @@ def _render_toc(tree: DocumentTree, options: RenderOptions) -> str:
     return "".join(
         [
             '<button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle ',
-            'aria-expanded="false" aria-label="Table of contents">',
+            'aria-expanded="false" aria-label="Table of contents" title="Table of contents">',
             _icon("list", css_class="kpress-toc-toggle-icon", attrs=' width="20" height="20"'),
             "</button>",
             '<div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div>',

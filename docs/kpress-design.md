@@ -876,7 +876,7 @@ enforce “always use CSS vars”).
   page. Low-level fragment callers pass the same option; dynamic `render_view` uses the
   default content-card setting.
 
-Two shared interaction primitives are documented so every component reuses them rather
+Three shared interaction primitives are documented so every component reuses them rather
 than re-styling:
 
 - **Disclosure toggle:** every `<details>`/summary uses the Lucide `chevron-right` glyph
@@ -889,6 +889,16 @@ than re-styling:
   only, with the label in `aria-label`/`title`, and the copy control is revealed on
   hover/focus of the code block.
   Glyphs come from the shared [Icon System](#icon-system).
+- **Icon-button hover contract:** every icon-only control that performs an operation
+  (settings gear, chooser segments, TOC drawer toggle, TOC expand-all, code copy, video
+  close) hovers identically: the light hover fill (`--color-hover-bg`) plus slight text
+  darkening (`--kpress-doc-text`), on the fast motion token — and **never a border
+  introduced or recolored on hover**. Resting borders that exist for layout or
+  legibility (the code-copy outline, the drawer toggle’s transparent border) stay
+  untouched; selected/checked state uses `--color-bg-selected` + the link color, and
+  state feedback (code-copy copied/error) may recolor its border — those are states, not
+  hover. Enforced by `tests/test_icon_button_hover.py`, which pins the control list; a
+  new icon control joins that list when added.
 
 These primitives and tokens live in the KPress static layer deliberately: an embedding
 host app consumes the same design (sharing the Lucide icon set) rather than

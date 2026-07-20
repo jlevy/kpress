@@ -632,7 +632,9 @@ def test_toc_collapse_renders_header_button_and_settings() -> None:
     assert 'class="kpress-toc-expand-all"' in page.html
     assert "data-kpress-toc-expand-all" in page.html
     assert 'aria-expanded="false"' in page.html
-    assert 'aria-label="Expand all sections"' in page.html
+    # Explanatory tooltip and accessible name, in sync (icon-only rule).
+    assert 'aria-label="Expand TOC" title="Expand TOC"' in page.html
+    assert 'aria-label="Table of contents" title="Table of contents"' in page.html
     # Both state icons render; CSS shows one per aria-expanded state.
     assert "#kpress-icon-chevrons-up-down" in page.html
     assert "#kpress-icon-chevrons-down-up" in page.html

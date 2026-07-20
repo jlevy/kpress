@@ -269,10 +269,11 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
         on(expandAllButton, "click", () => {
           allExpanded = !allExpanded;
           expandAllButton.setAttribute("aria-expanded", String(allExpanded));
-          expandAllButton.setAttribute(
-            "aria-label",
-            allExpanded ? "Collapse all sections" : "Expand all sections",
-          );
+          // The explanatory tooltip and the accessible name stay in sync
+          // (icon-only affordance rule: label in aria-label/title, no text).
+          const label = allExpanded ? "Collapse TOC" : "Expand TOC";
+          expandAllButton.setAttribute("aria-label", label);
+          expandAllButton.setAttribute("title", label);
           applyCollapseState();
         });
       }

@@ -106,7 +106,8 @@ def test_toc_collapse_expand_all_and_scroll_follow_in_real_browser(tmp_path: Pat
         button = page.locator("[data-kpress-toc-expand-all]")
         button.click()
         expect(button).to_have_attribute("aria-expanded", "true")
-        expect(button).to_have_attribute("aria-label", "Collapse all sections")
+        expect(button).to_have_attribute("aria-label", "Collapse TOC")
+        expect(button).to_have_attribute("title", "Collapse TOC")
         expect(row("#sub-2-1")).not_to_have_class(_class_pattern(collapsed))
         expect(row("#sub-2-1")).to_be_visible()
 

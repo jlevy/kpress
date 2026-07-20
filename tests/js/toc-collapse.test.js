@@ -35,7 +35,7 @@ function collapsibleTocMarkup({
         <div class="kpress-toc-header">
           <a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a>
           <button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all
-                  aria-expanded="false" aria-label="Expand all sections"><svg></svg><svg></svg></button>
+                  aria-expanded="false" aria-label="Expand TOC" title="Expand TOC"><svg></svg><svg></svg></button>
         </div>
         <ol class="toc-list">
           <li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#pre">Pre</a></li>
@@ -106,14 +106,16 @@ describe("collapsible TOC", () => {
 
     button.click();
     expect(button.getAttribute("aria-expanded")).toBe("true");
-    expect(button.getAttribute("aria-label")).toBe("Collapse all sections");
+    expect(button.getAttribute("aria-label")).toBe("Collapse TOC");
+    expect(button.getAttribute("title")).toBe("Collapse TOC");
     expect(isCollapsed("#a1")).toBe(false);
     expect(isCollapsed("#a2")).toBe(false);
     expect(isCollapsed("#b1")).toBe(false);
 
     button.click();
     expect(button.getAttribute("aria-expanded")).toBe("false");
-    expect(button.getAttribute("aria-label")).toBe("Expand all sections");
+    expect(button.getAttribute("aria-label")).toBe("Expand TOC");
+    expect(button.getAttribute("title")).toBe("Expand TOC");
     expect(isCollapsed("#a1")).toBe(true);
     expect(isCollapsed("#b1")).toBe(true);
   });
