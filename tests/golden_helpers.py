@@ -34,6 +34,8 @@ class GoldenScenario:
     source: Path
     include_toc: str = "auto"
     toc_min_headings: int = 4
+    toc_collapse_depth: int | None = None
+    toc_expand_on_scroll: bool = True
 
 
 def load_scenario(path: Path) -> GoldenScenario:
@@ -42,12 +44,17 @@ def load_scenario(path: Path) -> GoldenScenario:
         raise TypeError(f"Golden scenario must be a YAML mapping: {path}")
     data = cast("dict[str, object]", raw)
     source = KPRESS_ROOT / "tests" / "fixtures" / "documents" / str(data["source"])
+    raw_collapse_depth = data.get("toc_collapse_depth")
     return GoldenScenario(
         name=str(data["name"]),
         title=str(data["title"]),
         source=source,
         include_toc=str(data.get("include_toc", "auto")),
         toc_min_headings=int(cast("int | str", data.get("toc_min_headings", 4))),
+        toc_collapse_depth=(
+            int(cast("int | str", raw_collapse_depth)) if raw_collapse_depth is not None else None
+        ),
+        toc_expand_on_scroll=bool(data.get("toc_expand_on_scroll", True)),
     )
 
 
@@ -63,6 +70,8 @@ def render_scenario(scenario: GoldenScenario) -> str:
         RenderOptions(
             include_toc=cast(TocMode, scenario.include_toc),
             toc_min_headings=scenario.toc_min_headings,
+            toc_collapse_depth=scenario.toc_collapse_depth,
+            toc_expand_on_scroll=scenario.toc_expand_on_scroll,
         ),
     ).html
 

@@ -1,0 +1,6 @@
+name: toc-collapse
+title: Collapsible Contents
+source: toc-collapse.md
+include_toc: on
+toc_min_headings: 1
+toc_collapse_depth: 1

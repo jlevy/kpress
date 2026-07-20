@@ -522,10 +522,11 @@
    transition): each row eases its block-size and opacity to zero with the
    standard motion tokens, and visibility drops the hidden links from the
    tab order when the transition ends. Scoped to collapse-enabled navs so
-   documents without the feature keep today's exact row styling. The global
-   prefers-reduced-motion block suppresses this motion like all KPress
-   transitions. */
-.kpress-toc[data-kpress-toc-collapse-depth] .toc-list > li {
+   documents without the feature keep today's exact row styling. The
+   :where() keeps the ancestor scope at zero specificity so the global
+   prefers-reduced-motion block (`.kpress [class]`, later in this file) still
+   outranks the transition and suppresses the motion. */
+:where(.kpress-toc[data-kpress-toc-collapse-depth]) .toc-list > li {
   max-block-size: 5rem;
   overflow: hidden;
   transition:
@@ -534,7 +535,7 @@
     visibility var(--kpress-transition-med);
 }
 
-.kpress-toc[data-kpress-toc-collapse-depth] .toc-list > li.kpress-toc-collapsed {
+:where(.kpress-toc[data-kpress-toc-collapse-depth]) .toc-list > li.kpress-toc-collapsed {
   max-block-size: 0;
   opacity: 0;
   visibility: hidden;

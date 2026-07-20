@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="generator" content="kpress">
+  <style>/* KPress standalone page-shell reset. render_page owns html/body so `.kpress-page-main`
+   is the single scroll context (no nested window scrollbar). Inlined render-blocking in
+   <head> by render_page only; the embeddable fragment never carries it, so an embedding
+   host's own global styles stay untouched. See kpress-design.md "Standalone scroll model"
+   / Conscious Departures #14/#15. Lives here, in a real CSS file -- not as a Python string. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+</style>
+  <meta property="og:title" content="Collapsible Contents">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Collapsible Contents">
+  <title>Collapsible Contents</title>
+  <script>// KPress pre-paint bootstrap. Inlined render-blocking into <head> by render_page so
+// persisted reader preferences are applied before first paint (no flash of the wrong
+// theme or fonts). It is a classic IIFE (not an ES module) and reads the server-set
+// `data-kpress-theme` attribute, so the renderer never interpolates anything into this
+// source -- it lives here, in a real JS file.
+//
+// It runs before the module runtime exists, so it reads raw localStorage: hosts that
+// swap the kpress.storage adapter (e.g. cookies) re-sync at runtime init; embedded
+// hosts never load this bootstrap at all (fragment path).
+(() => {
+  const root = document.documentElement;
+  /** @param {string} key */
+  const stored = (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      // localStorage can throw in private/sandboxed contexts; keep defaults.
+      return null;
+    }
+  };
+
+  // Theme: resolve `system` via the OS preference; always stamped.
+  const mode = stored("kpress.theme") || root.dataset.kpressTheme || "system";
+  const resolved =
+    mode === "light" || mode === "dark"
+      ? mode
+      : globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+  root.dataset.kpressTheme = mode;
+  root.dataset.kpressResolvedTheme = resolved;
+
+  // Other persisted reader preferences: stamped only when a choice exists
+  // (CSS defaults apply otherwise).
+  const proseFont = stored("kpress.proseFont");
+  if (proseFont) {
+    root.dataset.kpressProseFont = proseFont;
+  }
+  const fontSet = stored("kpress.fontSet");
+  if (fontSet) {
+    root.dataset.kpressFontSet = fontSet;
+  }
+})();
+</script>
+  <link rel="stylesheet" href="/kpress-static/css/style-tokens.css">
+<link rel="stylesheet" href="/kpress-static/css/theme-light.css">
+<link rel="stylesheet" href="/kpress-static/css/theme-dark.css">
+<link rel="stylesheet" href="/kpress-static/css/syntax.css">
+<link rel="stylesheet" href="/kpress-static/css/document.css">
+<link rel="stylesheet" href="/kpress-static/css/components.css">
+<link rel="stylesheet" href="/kpress-static/css/print.css">
+<script type="module" src="/kpress-static/js/theme.js"></script>
+<script type="module" src="/kpress-static/js/settings-widget.js"></script>
+<script type="module" src="/kpress-static/js/toc.js"></script>
+<script type="module" src="/kpress-static/js/history.js"></script>
+</head>
+<body class="kpress-frame" data-kpress-frame>
+  <main class="kpress-page-main kpress-viewport" data-kpress-viewport>
+    <div class="kpress-widget kpress-settings kpress-no-print" id="kpress-settings" data-kpress-widget="settings"></div>
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none">
+  <!-- KPress icon set. Lucide Icons v1.17.0 (ISC, https://lucide.dev): stroke icons on a
+       24x24 grid. This sprite is the single source of truth for KPress chrome glyphs. The
+       server inlines it once per document; server-render and client JS then reference a
+       symbol via <svg><use href="#kpress-icon-<name>"></svg> (fragment-only -- external
+       file refs render blank in headless Chromium and some CSP/sandbox setups). Color comes
+       from CSS `color` (stroke="currentColor"); size comes from the referencing <svg>. To
+       add or swap a glyph, edit this file -- no SVG lives in Python or JS. See
+       kpress-icons.md. -->
+  <symbol id="kpress-icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
+    <circle cx="12" cy="12" r="3"/>
+  </symbol>
+  <symbol id="kpress-icon-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="20" height="14" x="2" y="3" rx="2"/>
+    <line x1="8" x2="16" y1="21" y2="21"/>
+    <line x1="12" x2="12" y1="17" y2="21"/>
+  </symbol>
+  <symbol id="kpress-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/>
+    <path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/>
+    <path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+  </symbol>
+  <symbol id="kpress-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>
+  </symbol>
+  <symbol id="kpress-icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+  </symbol>
+  <symbol id="kpress-icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+  </symbol>
+  <symbol id="kpress-icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 6 9 17l-5-5"/>
+  </symbol>
+  <symbol id="kpress-icon-maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+    <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+  </symbol>
+  <symbol id="kpress-icon-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 3h6v6"/><path d="M10 14 21 3"/>
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>
+  </symbol>
+  <symbol id="kpress-icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/>
+    <path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/>
+  </symbol>
+  <symbol id="kpress-icon-triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+    <path d="M12 9v4"/><path d="M12 17h.01"/>
+  </symbol>
+  <symbol id="kpress-icon-serif" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 20 12 5l5 15"/>
+    <path d="M8.7 15h6.6"/>
+    <path d="M5 20h4"/><path d="M15 20h4"/><path d="M10.5 5h3"/>
+  </symbol>
+  <symbol id="kpress-icon-sans" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 20 12 4l6 16"/>
+    <path d="M8.2 14h7.6"/>
+  </symbol>
+  <symbol id="kpress-icon-unfold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 22v-6"/><path d="M12 8V2"/>
+    <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
+    <path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>
+  </symbol>
+  <symbol id="kpress-icon-fold-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 22v-6"/><path d="M12 8V2"/>
+    <path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>
+    <path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>
+  </symbol>
+</svg>
+<article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="Collapsible Contents"><div class="kpress-doc-layout kpress-content-with-toc"><button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle aria-expanded="false" aria-label="Table of contents"><svg class="kpress-toc-toggle-icon" width="20" height="20" aria-hidden="true"><use href="#kpress-icon-list"></use></svg></button><div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div><nav class="kpress-toc kpress-no-print" aria-label="Table of contents" data-kpress-toc data-kpress-toc-collapse-depth="1"><div class="kpress-toc-header"><a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a><button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all aria-expanded="false" aria-label="Expand all sections"><svg class="kpress-toc-expand-all-icon" width="16" height="16" aria-hidden="true"><use href="#kpress-icon-unfold-vertical"></use></svg><svg class="kpress-toc-expand-all-icon" width="16" height="16" aria-hidden="true"><use href="#kpress-icon-fold-vertical"></use></svg></button></div><ol class="toc-list"><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#alpha">Alpha</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#alpha-one">Alpha One</a></li><li class="kpress-toc-level-3 toc-h3"><a class="toc-link" href="#alpha-one-a">Alpha One A</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#alpha-two">Alpha Two</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#beta">Beta</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#beta-one">Beta One</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#gamma">Gamma</a></li></ol></nav><div class="kpress-prose kpress-long-text"><h1 id="collapsible-contents">Collapsible Contents</h1>
+<p>Intro prose before the first section.</p>
+<h2 id="alpha">Alpha</h2>
+<p>Alpha overview text.</p>
+<h3 id="alpha-one">Alpha One</h3>
+<p>Detail under Alpha One.</p>
+<h4 id="alpha-one-a">Alpha One A</h4>
+<p>Deepest detail in the Alpha branch.</p>
+<h3 id="alpha-two">Alpha Two</h3>
+<p>Detail under Alpha Two.</p>
+<h2 id="beta">Beta</h2>
+<p>Beta overview text.</p>
+<h3 id="beta-one">Beta One</h3>
+<p>Detail under Beta One.</p>
+<h2 id="gamma">Gamma</h2>
+<p>Gamma has no subsections, so its spine entry owns no group.</p></div></div></article>
+  </main>
+  <div class="kpress-video-backdrop" aria-hidden="true"></div>
+  <section id="kpress-video-popover" class="kpress-video-popover kpress-no-print" hidden aria-hidden="true">
+    <header class="kpress-video-header">
+      <strong id="kpress-video-title">Video</strong>
+      <button type="button" data-kpress-video-close aria-label="Close video"><svg aria-hidden="true"><use href="#kpress-icon-x"></use></svg></button>
+    </header>
+    <iframe id="kpress-video-frame" title="Embedded video" allowfullscreen></iframe>
+  </section>
+  <script type="application/json" id="kpress-page-model">{"headings": [{"href": "#alpha", "level": 1, "title": "Alpha"}, {"href": "#alpha-one", "level": 2, "title": "Alpha One"}, {"href": "#alpha-one-a", "level": 3, "title": "Alpha One A"}, {"href": "#alpha-two", "level": 2, "title": "Alpha Two"}, {"href": "#beta", "level": 1, "title": "Beta"}, {"href": "#beta-one", "level": 2, "title": "Beta One"}, {"href": "#gamma", "level": 1, "title": "Gamma"}], "profile": "document", "route": "", "title": "Collapsible Contents", "version": 1, "widgets": {"settings": "on"}}</script>
+  <script type="application/json" id="kpress-diagnostics">[]</script>
+</body>
+</html>
