@@ -449,8 +449,7 @@ def test_format_toc_collapse_settings_parse_and_default_off(tmp_path: Path) -> N
 
     config = tmp_path / "kpress.yml"
     config.write_text(
-        "sources:\n  - path: .\n"
-        "format:\n  toc_collapse_depth: 2\n  toc_expand_on_scroll: false\n",
+        "sources:\n  - path: .\nformat:\n  toc_collapse_depth: 2\n  toc_expand_on_scroll: false\n",
         encoding="utf-8",
     )
     loaded = load_config(config)

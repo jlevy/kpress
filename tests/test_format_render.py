@@ -594,3 +594,69 @@ def test_resolve_widgets_removes_only_explicit_off_values() -> None:
     assert "also-gone" not in resolved
     assert resolved["minimap"] == 0
     assert resolved["settings"] == "on"
+
+
+_COLLAPSIBLE_DOC = "# One\n\n## Two\n\n### Deep A\n\n## Three\n\n### Deep B\n"
+
+
+def test_toc_collapse_off_renders_todays_markup() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc",
+            source_text=_COLLAPSIBLE_DOC,
+            source_path="doc.md",
+            body_markdown=_COLLAPSIBLE_DOC,
+        ),
+        RenderOptions(include_toc="on"),
+    )
+    assert "kpress-toc-header" not in page.html
+    assert "kpress-toc-expand-all" not in page.html
+    assert "data-kpress-toc-collapse-depth" not in page.html
+    assert "data-kpress-toc-expand-on-scroll" not in page.html
+
+
+def test_toc_collapse_renders_header_button_and_settings() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc",
+            source_text=_COLLAPSIBLE_DOC,
+            source_path="doc.md",
+            body_markdown=_COLLAPSIBLE_DOC,
+        ),
+        RenderOptions(include_toc="on", toc_collapse_depth=1),
+    )
+    assert 'data-kpress-toc-collapse-depth="1"' in page.html
+    # Scroll-follow defaults on; the attribute only appears when disabled.
+    assert "data-kpress-toc-expand-on-scroll" not in page.html
+    assert '<div class="kpress-toc-header">' in page.html
+    assert 'class="kpress-toc-expand-all"' in page.html
+    assert "data-kpress-toc-expand-all" in page.html
+    assert 'aria-expanded="false"' in page.html
+    assert 'aria-label="Expand all sections"' in page.html
+    # Both state icons render; CSS shows one per aria-expanded state.
+    assert "#kpress-icon-unfold-vertical" in page.html
+    assert "#kpress-icon-fold-vertical" in page.html
+
+
+def test_toc_collapse_scroll_follow_off_is_stamped() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc",
+            source_text=_COLLAPSIBLE_DOC,
+            source_path="doc.md",
+            body_markdown=_COLLAPSIBLE_DOC,
+        ),
+        RenderOptions(include_toc="on", toc_collapse_depth=1, toc_expand_on_scroll=False),
+    )
+    assert 'data-kpress-toc-expand-on-scroll="false"' in page.html
+
+
+def test_toc_collapse_with_nothing_collapsible_renders_no_control() -> None:
+    flat = "# One\n\n## Two\n\n## Three\n"
+    page = render_page(
+        DocumentInput(title="Doc", source_text=flat, source_path="doc.md", body_markdown=flat),
+        RenderOptions(include_toc="on", toc_min_headings=1, toc_collapse_depth=1),
+    )
+    assert "kpress-toc-header" not in page.html
+    assert "kpress-toc-expand-all" not in page.html
+    assert "data-kpress-toc-collapse-depth" not in page.html
