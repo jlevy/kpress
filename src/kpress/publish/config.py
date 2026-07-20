@@ -57,6 +57,11 @@ class FormatConfig:
     show_doc_header: bool = True
     toc: TocMode = "auto"
     toc_min_headings: int = 4
+    # Collapsible TOC depth (see RenderOptions.toc_collapse_depth): None keeps
+    # the fully expanded TOC; an int >= 1 collapses deeper entries.
+    toc_collapse_depth: int | None = None
+    # Scroll-follow expansion (see RenderOptions.toc_expand_on_scroll).
+    toc_expand_on_scroll: bool = True
     math: MathMode = "auto"
     diagrams: str = "auto"
     show_frontmatter: bool = True
@@ -328,6 +333,16 @@ def _int_value(value: object, default: int) -> int:
     return default
 
 
+def _validated_toc_collapse_depth(value: object) -> int | None:
+    """Absent/None disables collapse; anything else must be an int >= 1."""
+    if value is None:
+        return None
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
+        return value
+    msg = f"Invalid format.toc_collapse_depth: {value!r}; expected an integer >= 1"
+    raise KPressPublishError(msg)
+
+
 def _bool_value(value: object, default: bool) -> bool:
     if isinstance(value, bool):
         return value
@@ -351,6 +366,8 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "show_doc_header",
         "toc",
         "toc_min_headings",
+        "toc_collapse_depth",
+        "toc_expand_on_scroll",
         "math",
         "diagrams",
         "show_frontmatter",
@@ -575,6 +592,8 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             show_doc_header=_bool_value(fmt.get("show_doc_header"), True),
             toc=cast(TocMode, toc),
             toc_min_headings=_int_value(fmt.get("toc_min_headings"), 4),
+            toc_collapse_depth=_validated_toc_collapse_depth(fmt.get("toc_collapse_depth")),
+            toc_expand_on_scroll=_bool_value(fmt.get("toc_expand_on_scroll"), True),
             math=cast(MathMode, math),
             diagrams=diagrams,
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),

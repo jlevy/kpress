@@ -440,6 +440,39 @@ def test_format_html_extra_tags_mistyped_value_raises(tmp_path: Path) -> None:
             load_config(config)
 
 
+def test_format_toc_collapse_settings_parse_and_default_off(tmp_path: Path) -> None:
+    from kpress.publish.config import load_config
+
+    default = load_config(tmp_path / "missing.yml")
+    assert default.format.toc_collapse_depth is None
+    assert default.format.toc_expand_on_scroll is True
+
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: .\n"
+        "format:\n  toc_collapse_depth: 2\n  toc_expand_on_scroll: false\n",
+        encoding="utf-8",
+    )
+    loaded = load_config(config)
+    assert loaded.format.toc_collapse_depth == 2
+    assert loaded.format.toc_expand_on_scroll is False
+
+
+def test_format_toc_collapse_depth_invalid_raises(tmp_path: Path) -> None:
+    # An explicit bad value must fail the build, not silently disable collapse.
+    from kpress.errors import KPressPublishError
+    from kpress.publish.config import load_config
+
+    config = tmp_path / "kpress.yml"
+    for bad in ("0", "-1", "shallow", "true"):
+        config.write_text(
+            f"sources:\n  - path: .\nformat:\n  toc_collapse_depth: {bad}\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(KPressPublishError, match="toc_collapse_depth"):
+            load_config(config)
+
+
 def test_format_html_unknown_key_raises(tmp_path: Path) -> None:
     from kpress.errors import KPressPublishError
     from kpress.publish.config import load_config

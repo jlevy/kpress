@@ -201,6 +201,11 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
     """Render a document through KPress and return a JSON-ready host payload."""
 
     profile = normalize_print_profile(request.view, request.profile)
+    if request.toc_collapse_depth is not None and request.toc_collapse_depth < 1:
+        raise KPressInvalidRequestError(
+            f"Invalid toc_collapse_depth: {request.toc_collapse_depth!r}; "
+            f"expected an integer >= 1 (or None to disable collapse)"
+        )
     # Same normalization as the static dialects (presence scalars to
     # "on"/"off"/"auto", typos raise): static and dynamic hosts must publish
     # identical widget data, and an invalid value must not be kept truthy.
@@ -226,6 +231,11 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         # whitelists must not share a cache entry.
         tuple(request.extra_tags),
         tuple(request.extra_attributes),
+        # Presentation settings change the rendered markup, so they are part
+        # of the cache identity.
+        request.show_doc_header,
+        request.toc_collapse_depth,
+        request.toc_expand_on_scroll,
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -280,6 +290,8 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
             request.asset_url_prefix.rstrip("/") + "/" + _ASSET_VERSION_SEGMENT + "/"
         ),
         show_doc_header=request.show_doc_header,
+        toc_collapse_depth=request.toc_collapse_depth,
+        toc_expand_on_scroll=request.toc_expand_on_scroll,
         widgets=widgets,
         extra_tags=tuple(request.extra_tags),
         extra_attributes=tuple(request.extra_attributes),

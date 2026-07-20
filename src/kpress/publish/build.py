@@ -545,6 +545,8 @@ def build_site(
                 show_doc_header=config.format.show_doc_header,
                 include_toc=config.format.toc,
                 toc_min_headings=config.format.toc_min_headings,
+                toc_collapse_depth=config.format.toc_collapse_depth,
+                toc_expand_on_scroll=config.format.toc_expand_on_scroll,
                 math=config.format.math,
                 # diagrams/color_mode are validated against _DIAGRAM_MODES/_COLOR_MODES
                 # in validate_config, so the value is a valid DiagramMode/ThemeMode here;

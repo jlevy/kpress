@@ -383,3 +383,40 @@ def test_render_view_threads_extra_attributes_and_keys_the_cache_on_them() -> No
     stripped = runtime.render_view(request(()))
     assert 'kind="tip"' in kept["html"]
     assert 'kind="tip"' not in stripped["html"]
+
+
+def test_runtime_rejects_invalid_toc_collapse_depth() -> None:
+    runtime.clear_render_cache()
+    request = runtime.KPressRenderRequest(
+        source_text="# One\n\nBody\n",
+        source_path="docs/one.md",
+        kind="markdown",
+        view="rendered",
+        ext=".md",
+        mtime_hash="a",
+        size=12,
+        toc_collapse_depth=0,
+    )
+    with pytest.raises(runtime.KPressInvalidRequestError, match="toc_collapse_depth"):
+        runtime.render_view(request)
+
+
+def test_render_cache_distinguishes_presentation_settings() -> None:
+    """Requests differing only in presentation flags must not share a cache entry."""
+    runtime.clear_render_cache()
+
+    def request(*, show_doc_header: bool) -> runtime.KPressRenderRequest:
+        return runtime.KPressRenderRequest(
+            source_text="# One\n\nBody\n",
+            source_path="docs/one.md",
+            kind="markdown",
+            view="rendered",
+            ext=".md",
+            mtime_hash="a",
+            size=12,
+            show_doc_header=show_doc_header,
+        )
+
+    with_header = runtime.render_view(request(show_doc_header=True))
+    without_header = runtime.render_view(request(show_doc_header=False))
+    assert with_header["html"] != without_header["html"]
