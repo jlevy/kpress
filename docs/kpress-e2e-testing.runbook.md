@@ -145,6 +145,14 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 - **[Human]/[Agent]** Clicking the TOC **Contents** (top) link **clears the section hash
   from the URL** and pushes a history entry while the pane scrolls to the top; **Back**
   returns to the position (and hash) from before the top jump.
+- **[Human]/[Agent]** With `format.toc_collapse_depth: 1` on a long document: the TOC
+  opens showing the top-level spine with the current section’s subsections expanded
+  (scroll-follow); deeper entries elsewhere are hidden.
+  The expand-all button right of **Contents** opens every entry and swaps to a collapse
+  icon; clicking again returns to the spine-plus-active-group baseline.
+  Scrolling into another section hands the expanded group off; clicking a collapsed
+  section’s spine entry navigates there and expands it.
+  With OS reduced motion, rows appear/disappear without the closing animation.
 - **[Human]/[Agent]** Narrow the window → the TOC collapses to a drawer toggle.
   Open it → body scroll **locks** behind it; a backdrop appears; **Escape**,
   outside-click, or the toggle closes it and scroll position is preserved.

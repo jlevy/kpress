@@ -77,10 +77,11 @@ their follow-up review work lands.
   [interactive footnote popovers](docs/interactive-footnote-popovers.plan.md) with
   distinct transient and pinned states, native anchor fallback, complete ESM closure,
   and real-browser evidence; phase epics are `kpr-pw7v`, `kpr-ipqy`, and `kpr-x23v`
-- `kpr-vuaw` (open): implement the
-  [collapsible TOC](docs/project/specs/active/plan-2026-07-18-collapsible-toc.md) —
-  entries below a configurable depth start collapsed, an expand/collapse-all toggle sits
-  beside the Contents header, and the active section auto-expands via the scroll-spy
+- `kpr-vuaw` (in review): the
+  [collapsible TOC](docs/project/specs/active/plan-2026-07-18-collapsible-toc.md) is
+  implemented on `feat/toc-collapse` — `toc_collapse_depth` / `toc_expand_on_scroll`
+  settings, the expand/collapse-all control, scroll-follow expansion, golden and
+  real-browser acceptance; closes with the PR merge
 - `kpr-als7` (closed):
   [history-aware section navigation](docs/done/history-navigation.plan.md) is
   implemented and merged (PR #24); the PR #25 review follow-ups (`kpr-z54g`, closed)

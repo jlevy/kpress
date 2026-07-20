@@ -1061,7 +1061,8 @@ Required document components:
 
 - prose typography and headings
 - frontmatter and metadata blocks
-- TOC with desktop sticky rail, mobile affordance, active-heading state, and threshold
+- TOC with desktop sticky rail, mobile affordance, active-heading state, threshold, and
+  optional depth collapse (below)
 - footnotes with backrefs, hover/touch previews, and print simplification
 - internal-link tooltips
 - responsive tables, numeric-cell hooks, desktop breakout, mobile scroll, and print
@@ -1116,6 +1117,40 @@ Accepted fixtures and structural tests cover deterministic component output; bro
 tests cover interactive state.
 The [end-to-end validation runbook](kpress-validation.runbook.md) owns visual and
 real-engine acceptance.
+
+### Collapsible TOC
+
+Long documents overflow the TOC pane, so the TOC supports depth collapse, off by
+default:
+
+- `format.toc_collapse_depth` (`RenderOptions.toc_collapse_depth`, YAML key
+  `toc_collapse_depth`; also on `KPressRenderRequest` for the dynamic path): the deepest
+  **normalized TOC depth** that stays visible when collapsed.
+  `None`/absent (the default) disables the feature; the markup is byte-identical to the
+  always-expanded TOC. Must be an integer ≥ 1 (validated at the YAML and dynamic-request
+  boundaries). Depth is `TocEntry.level`, not the heading tag: the title H1 is dropped
+  and level gaps are closed, so in the common one-H1-title document depth 1 is the H2
+  spine, depth 2 reaches H3, and depth 3 reaches H4.
+- `format.toc_expand_on_scroll` (default `true`, meaningful only with collapse on):
+  scroll-follow — the top-level group containing the scroll-spy’s active entry is always
+  expanded, so the reader sees the subsections of where they are.
+  Collapse-all returns to this baseline, which still shows the active group.
+
+When collapse is on *and* at least one entry is deeper than the threshold, the server
+wraps the Contents title in `kpress-toc-header` and renders the `kpress-toc-expand-all`
+icon button (both sprite glyphs `unfold-vertical` / `fold-vertical` render; CSS shows
+one per `aria-expanded` state) plus `data-kpress-toc-collapse-depth` /
+`data-kpress-toc-expand-on-scroll` on the nav.
+The `toc` behavior partitions the flat entry list into spine groups (entries before the
+first spine entry form an always-visible head group), and a deep row is visible iff
+expand-all is on or scroll-follow marks its group active; hidden rows carry
+`kpress-toc-collapsed` and animate closed with the standard motion tokens
+(reduced-motion suppression applies).
+JS-channel config `collapseDepth` / `expandOnScroll` via
+`kpress.behaviors.configure("toc", ...)` overrides the data attributes (a config
+`collapseDepth` of `0` disables collapse).
+There are no per-entry disclosure toggles and no cross-page persistence; deep entries
+stay in the markup and the page model — collapse is visibility only.
 
 ### Component Authoring Contract
 

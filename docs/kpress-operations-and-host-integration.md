@@ -165,6 +165,26 @@ can use this for a serif/sans reading-font toggle, which sets
 `--kpress-host-font-prose`. Hosts customize colors by setting the public
 `--kpress-doc-*` tokens on the document scope.
 
+### Collapsible TOC
+
+For long documents, a host can pre-collapse deep TOC entries so the TOC fits its pane
+(full contract: [Collapsible TOC](kpress-design.md#collapsible-toc)):
+
+- **Static publish:** `format.toc_collapse_depth: 1` in `kpress.yml` (and optionally
+  `format.toc_expand_on_scroll: false` to disable scroll-follow).
+- **Python render:** `RenderOptions(toc_collapse_depth=1)`.
+- **Dynamic path:** `KPressRenderRequest(toc_collapse_depth=1)`; an invalid depth fails
+  the request with `KPressInvalidRequestError`.
+
+The depth is the **normalized TOC depth**, not the heading tag: in the common
+one-H1-title document, `1` keeps the H2 spine, `2` keeps H2-H3. Off (the default)
+renders byte-identical markup, so enabling it is a pure opt-in with no goldens drift for
+other documents. The client behavior reads the stamped data attributes; a host can
+override per page via
+`kpress.behaviors.configure("toc", { collapseDepth: 2, expandOnScroll: false })` before
+apply (a `collapseDepth` of `0` turns collapse off), and the expand-all control is
+server-rendered chrome — no host-injected markup.
+
 ### Client Runtime (`window.kpress`)
 
 The client runtime (`static/js/runtime.js`, loaded first in the default JS assets) is

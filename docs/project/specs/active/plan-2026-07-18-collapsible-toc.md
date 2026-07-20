@@ -9,7 +9,7 @@ author: Joshua Levy (with Claude)
 
 **Author:** Joshua Levy (with Claude)
 
-**Status:** Draft
+**Status:** Implemented (feat/toc-collapse; see Implementation Notes)
 
 **Tracking:** `kpr-vuaw`.
 
@@ -219,16 +219,33 @@ data attributes `data-kpress-toc-collapse-depth`, `data-kpress-toc-expand-on-scr
 
 ## Implementation Plan
 
-- [ ] Add the two Lucide glyphs and their icon-contract coverage.
-- [ ] Settings plumbing: `RenderOptions`, `FormatConfig`, YAML keys, validation, build
-  threading, dynamic-path mapping.
-- [ ] `_render_toc`: header row + button + data attributes behind the setting; contract
-  registrations; CSS (including the motion rules).
-- [ ] `toc.js`: grouping, visibility predicate, button toggle, scroll-follow via
-  `setActiveLink`; JS-channel config overrides; disposer coverage.
-- [ ] Tests (below); goldens: new collapse-enabled scenario, existing scenarios
-  byte-identical.
-- [ ] Doc updates (`kpress-design.md`, host-integration, e2e runbook, `TODO.md`).
+- [x] Add the two Lucide glyphs and their icon-contract coverage (`kpr-yooa`).
+- [x] Settings plumbing: `RenderOptions`, `FormatConfig`, YAML keys, validation, build
+  threading, dynamic-path mapping (`kpr-nc71`).
+- [x] `_render_toc`: header row + button + data attributes behind the setting; contract
+  registrations; CSS (including the motion rules) (`kpr-szwk`).
+- [x] `toc.js`: grouping, visibility predicate, button toggle, scroll-follow via
+  `setActiveLink`; JS-channel config overrides; disposer coverage (`kpr-myvd`).
+- [x] Tests (below); goldens: new collapse-enabled scenario, existing scenarios
+  byte-identical (`kpr-8rny`).
+- [x] Doc updates (`kpress-design.md`, host-integration, e2e runbook, `TODO.md`)
+  (`kpr-vhta`).
+
+### Implementation Notes
+
+Deviations and discoveries from the build (branch `feat/toc-collapse`):
+
+- **Reduced-motion specificity:** the row-collapse transition selector initially
+  outranked the global `prefers-reduced-motion` block (`.kpress [class]`), so the motion
+  was not suppressed — caught by the real-browser smoke.
+  The row rules wrap their ancestor scope in `:where()` so the suppression wins; this is
+  the pattern for any future rule whose compound selector beats the reduce block.
+- **Dynamic-path cache fix:** the render_view cache key omitted `show_doc_header`, so
+  requests differing only in presentation flags shared a cached payload.
+  The key now carries `show_doc_header` and both TOC-collapse settings.
+- **Sprite drift:** adding glyphs drifts every golden page (the sprite inlines per
+  document) — an expected, reviewed diff; the “byte-identical” guarantee applies to the
+  TOC markup gate, not to sprite additions.
 
 ## Testing Strategy
 
