@@ -3,13 +3,15 @@ type: is
 id: is-01ky111vjv1brrt7qyp5n6rxkf
 title: "doc-actions widget: opt-in Export PDF / View as Markdown text badges"
 kind: feature
-status: in_progress
+status: closed
 priority: 2
-version: 3
+version: 4
 labels: []
 dependencies: []
 created_at: 2026-07-21T00:26:15.514Z
-updated_at: 2026-07-21T00:35:28.381Z
+updated_at: 2026-07-21T01:23:23.444Z
+closed_at: 2026-07-21T01:23:23.443Z
+close_reason: null
 ---
 Chrome widget (off by default, format.widgets: {doc-actions: on}) rendering PDF (browser print dialog over print.css) and MD (Markdown twin via the .md-twin URL convention, markdownTwinUrl pinned export, markdown_url override). Hand-drawn type badges: format letters one notch below the TOC Contents label in a 1px currentColor frame; host-tunable badge size/radius tokens (--kpress-doc-actions-badge-size/-radius); card-corner placement with fixed inset-token fallback. Branch feat/doc-actions-widget (stacked on feat/toc-collapse, PR pending); consumed by finterm-site as the vendored pin. Downstream tracking: finterm fin-ubxu.
 
