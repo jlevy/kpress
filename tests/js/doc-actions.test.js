@@ -67,7 +67,8 @@ describe("doc-actions widget", () => {
 
   it("relocates its mount into the content card when one exists", () => {
     document.body.innerHTML =
-      '<article class="kpress"><div class="kpress-long-text"><h1>T</h1></div></article>';
+      '<article class="kpress" data-kpress-card="on">' +
+      '<div class="kpress-long-text"><h1>T</h1></div></article>';
     const el = docActionsMount();
     mountDocActions(el, {});
     expect(el.parentElement?.className).toBe("kpress-long-text");
@@ -79,6 +80,9 @@ describe("doc-actions widget", () => {
   });
 
   it("stays in place when no content card exists", () => {
+    document.body.innerHTML =
+      '<article class="kpress" data-kpress-card="off">' +
+      '<div class="kpress-long-text"><h1>T</h1></div></article>';
     const el = docActionsMount();
     mountDocActions(el, {});
     expect(el.parentElement).toBe(document.body);

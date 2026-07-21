@@ -215,6 +215,7 @@ def test_doc_actions_widget_has_reader_css_states() -> None:
         ".kpress-doc-actions-btn",
         ".kpress-doc-actions-btn:hover",
         ".kpress-doc-actions-btn:focus-visible",
+        ".kpress-long-text:has(.kpress-doc-actions):not(:has(> h1:first-child))",
     ]:
         assert required in css
 

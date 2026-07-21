@@ -255,6 +255,12 @@
   position: relative;
 }
 
+/* A body without a leading in-card H1 has no heading margin to clear the
+   absolute action row. Reserve that row before paragraph-first content. */
+.kpress-long-text:has(.kpress-doc-actions):not(:has(> h1:first-child)) {
+  padding-block-start: 3rem;
+}
+
 .kpress-long-text .kpress-doc-actions {
   inset-block-start: 1rem;
   inset-inline-end: 1rem;

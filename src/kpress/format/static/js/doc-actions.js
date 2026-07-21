@@ -94,9 +94,10 @@ export function mountDocActions(el, config) {
   // Prefer the mount's own document (an embed host mounts inside its
   // .kpress); the standalone page emits the mount as a sibling of the
   // article, so fall back to the page's first card.
-  const card =
-    el.closest(".kpress")?.querySelector(".kpress-long-text") ??
-    document.querySelector(".kpress .kpress-long-text");
+  const cardOwner =
+    el.closest('.kpress[data-kpress-card="on"]') ??
+    document.querySelector('.kpress[data-kpress-card="on"]');
+  const card = cardOwner?.querySelector(".kpress-long-text");
   if (card && !card.contains(el)) {
     card.appendChild(el);
   }
