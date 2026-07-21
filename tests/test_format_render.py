@@ -280,6 +280,28 @@ def test_enabled_widgets_each_get_a_mount_element() -> None:
     assert 'data-kpress-widget="settings"' in page.html
 
 
+def test_doc_actions_widget_is_opt_in() -> None:
+    document = DocumentInput(
+        title="Doc", source_text="# Body", source_path="doc.md", body_markdown="# Body"
+    )
+
+    # Off by default: no mount, no entry point.
+    default_page = render_page(document, RenderOptions(include_toc="off"))
+    assert 'data-kpress-widget="doc-actions"' not in default_page.html
+    assert "js/doc-actions.js" not in {asset.id for asset in default_page.assets.assets}
+
+    # Opted in: the mount is emitted (empty — the widget client-renders) and
+    # the module ships as an entry point.
+    page = render_page(document, RenderOptions(include_toc="off", widgets={"doc-actions": "on"}))
+    assert (
+        '<div class="kpress-widget kpress-doc-actions kpress-no-print" '
+        'id="kpress-doc-actions" data-kpress-widget="doc-actions"></div>'
+    ) in page.html
+    assert "kpress-doc-actions-btn" not in page.html
+    doc_actions = {asset.id: asset for asset in page.assets.assets}["js/doc-actions.js"]
+    assert doc_actions.entry_point is True
+
+
 def test_render_page_ports_standalone_social_metadata() -> None:
     page = render_page(
         DocumentInput(
@@ -594,3 +616,71 @@ def test_resolve_widgets_removes_only_explicit_off_values() -> None:
     assert "also-gone" not in resolved
     assert resolved["minimap"] == 0
     assert resolved["settings"] == "on"
+
+
+_COLLAPSIBLE_DOC = "# One\n\n## Two\n\n### Deep A\n\n## Three\n\n### Deep B\n"
+
+
+def test_toc_collapse_off_renders_todays_markup() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc",
+            source_text=_COLLAPSIBLE_DOC,
+            source_path="doc.md",
+            body_markdown=_COLLAPSIBLE_DOC,
+        ),
+        RenderOptions(include_toc="on"),
+    )
+    assert "kpress-toc-header" not in page.html
+    assert "kpress-toc-expand-all" not in page.html
+    assert "data-kpress-toc-collapse-depth" not in page.html
+    assert "data-kpress-toc-expand-on-scroll" not in page.html
+
+
+def test_toc_collapse_renders_header_button_and_settings() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc",
+            source_text=_COLLAPSIBLE_DOC,
+            source_path="doc.md",
+            body_markdown=_COLLAPSIBLE_DOC,
+        ),
+        RenderOptions(include_toc="on", toc_collapse_depth=1),
+    )
+    assert 'data-kpress-toc-collapse-depth="1"' in page.html
+    # Scroll-follow defaults on; the attribute only appears when disabled.
+    assert "data-kpress-toc-expand-on-scroll" not in page.html
+    assert '<div class="kpress-toc-header">' in page.html
+    assert 'class="kpress-toc-expand-all"' in page.html
+    assert "data-kpress-toc-expand-all" in page.html
+    assert 'aria-expanded="false"' in page.html
+    # Explanatory tooltip and accessible name, in sync (icon-only rule).
+    assert 'aria-label="Expand TOC" title="Expand TOC"' in page.html
+    assert 'aria-label="Table of contents" title="Table of contents"' in page.html
+    # Both state icons render; CSS shows one per aria-expanded state.
+    assert "#kpress-icon-chevrons-up-down" in page.html
+    assert "#kpress-icon-chevrons-down-up" in page.html
+
+
+def test_toc_collapse_scroll_follow_off_is_stamped() -> None:
+    page = render_page(
+        DocumentInput(
+            title="Doc",
+            source_text=_COLLAPSIBLE_DOC,
+            source_path="doc.md",
+            body_markdown=_COLLAPSIBLE_DOC,
+        ),
+        RenderOptions(include_toc="on", toc_collapse_depth=1, toc_expand_on_scroll=False),
+    )
+    assert 'data-kpress-toc-expand-on-scroll="false"' in page.html
+
+
+def test_toc_collapse_with_nothing_collapsible_renders_no_control() -> None:
+    flat = "# One\n\n## Two\n\n## Three\n"
+    page = render_page(
+        DocumentInput(title="Doc", source_text=flat, source_path="doc.md", body_markdown=flat),
+        RenderOptions(include_toc="on", toc_min_headings=1, toc_collapse_depth=1),
+    )
+    assert "kpress-toc-header" not in page.html
+    assert "kpress-toc-expand-all" not in page.html
+    assert "data-kpress-toc-collapse-depth" not in page.html

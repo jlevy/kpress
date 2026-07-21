@@ -18,11 +18,11 @@ body {
   overflow: hidden;
 }
 </style>
-  <meta property="og:title" content="Rich Components">
+  <meta property="og:title" content="Collapsible Contents">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Rich Components">
-  <title>Rich Components</title>
+  <meta name="twitter:title" content="Collapsible Contents">
+  <title>Collapsible Contents</title>
   <script>// KPress pre-paint bootstrap. Inlined render-blocking into <head> by render_page so
 // persisted reader preferences are applied before first paint (no flash of the wrong
 // theme or fonts). It is a classic IIFE (not an ES module) and reads the server-set
@@ -74,18 +74,10 @@ body {
 <link rel="stylesheet" href="/kpress-static/css/document.css">
 <link rel="stylesheet" href="/kpress-static/css/components.css">
 <link rel="stylesheet" href="/kpress-static/css/print.css">
-<link rel="stylesheet" href="/kpress-static/katex/katex.min.css">
 <script type="module" src="/kpress-static/js/theme.js"></script>
 <script type="module" src="/kpress-static/js/settings-widget.js"></script>
 <script type="module" src="/kpress-static/js/toc.js"></script>
-<script type="module" src="/kpress-static/js/tooltips.js"></script>
 <script type="module" src="/kpress-static/js/history.js"></script>
-<script type="module" src="/kpress-static/js/tables.js"></script>
-<script type="module" src="/kpress-static/js/code-copy.js"></script>
-<script type="module" src="/kpress-static/js/diagrams.js"></script>
-<script defer src="/kpress-static/katex/katex.min.js"></script>
-<script defer src="/kpress-static/katex/auto-render.min.js"></script>
-<script defer src="/kpress-static/katex/katex-init.js"></script>
 </head>
 <body class="kpress-frame" data-kpress-frame>
   <main class="kpress-page-main kpress-viewport" data-kpress-viewport>
@@ -159,54 +151,22 @@ body {
     <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
   </symbol>
 </svg>
-<article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="Rich Components"><div class="kpress-doc-layout kpress-content-with-toc"><button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle aria-expanded="false" aria-label="Table of contents" title="Table of contents"><svg class="kpress-toc-toggle-icon" width="20" height="20" aria-hidden="true"><use href="#kpress-icon-list"></use></svg></button><div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div><nav class="kpress-toc kpress-no-print" aria-label="Table of contents" data-kpress-toc><a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a><ol class="toc-list"><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#tasks">Tasks</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#table">Table</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#code">Code</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#math">Math</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#diagram">Diagram</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#details">Details</a></li></ol></nav><div class="kpress-prose kpress-long-text"><h1 id="rich-components">Rich Components</h1>
-<p>Intro paragraph with an <a href="#details">internal link</a> and a note.<sup class="kpress-footnote-ref"><a href="#fn-note" id="fnref-note" data-kpress-footnote-ref="note">1</a></sup></p>
-<h2 id="tasks">Tasks</h2>
-<ul class="contains-task-list">
-<li class="kpress-task task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Port theme behavior</li>
-<li class="kpress-task task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Review print output</li>
-</ul>
-<h2 id="table">Table</h2>
-<div class="kpress-table-wrap"><table class="kpress-table">
-<thead>
-<tr>
-<th data-col="feature">Feature</th>
-<th data-col="status">Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td data-col="feature">TOC</td>
-<td data-col="status">active</td>
-</tr>
-<tr>
-<td data-col="feature">Print</td>
-<td data-col="status">active</td>
-</tr>
-</tbody>
-</table></div>
-<h2 id="code">Code</h2>
-<pre class="kpress-code"><code class="language-js"><span class="kpress-token-nx">console</span><span class="kpress-token-p">.</span><span class="kpress-token-nx">log</span><span class="kpress-token-p">(</span><span class="kpress-token-s2">&quot;kpress&quot;</span><span class="kpress-token-p">);</span></code></pre>
-<h2 id="math">Math</h2>
-<p>Inline math <span class="kpress-math kpress-math-inline" data-kpress-math="inline" data-kpress-math-renderer="katex"><span class="kpress-math-render" aria-hidden="true">\(a^2 + b^2\)</span><span class="kpress-math-semantic"><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>a</mi><mn>2</mn></msup><mo>&#x0002B;</mo><msup><mi>b</mi><mn>2</mn></msup></mrow></math></span></span> and display math:</p>
-<div class="kpress-math kpress-math-display" data-kpress-math="display" data-kpress-math-renderer="katex"><div class="kpress-math-render" aria-hidden="true">\[E = mc^2\]</div><div class="kpress-math-semantic"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>E</mi><mo>&#x0003D;</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow></math></div></div>
-<h2 id="diagram">Diagram</h2>
-<figure class="kpress-diagram kpress-mermaid kpress-figure" data-kpress-diagram="mermaid" data-kpress-diagram-provider="mermaid" data-kpress-diagram-status="source"><pre class="kpress-diagram-source"><code class="language-mermaid">graph TD
-  A[Markdown] --&gt; B[KPress]
-</code></pre></figure>
-<figure class="kpress-diagram kpress-svg-diagram kpress-figure" data-kpress-diagram="svg" data-kpress-diagram-provider="inline-svg"><svg viewBox="0 0 120 40" role="img">
-  <title>Inline SVG diagram</title>
-  <rect x="1" y="1" width="118" height="38" fill="none" stroke="currentColor"></rect>
-  <text x="12" y="25">KPress SVG</text>
-</svg></figure>
-<h2 id="details">Details</h2>
-<details><summary>More</summary><p>Trusted local HTML.</p></details>
-<section class="kpress-footnotes">
-<ol>
-<li id="fn-note" class="kpress-footnote-item"><p>Footnote content for hover and print behavior. <a href="#fnref-note" class="kpress-footnote-backref">&nbsp;↑&nbsp;</a></p>
-</li>
-</ol>
-</section></div></div></article>
+<article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="Collapsible Contents"><div class="kpress-doc-layout kpress-content-with-toc"><button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle aria-expanded="false" aria-label="Table of contents" title="Table of contents"><svg class="kpress-toc-toggle-icon" width="20" height="20" aria-hidden="true"><use href="#kpress-icon-list"></use></svg></button><div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div><nav class="kpress-toc kpress-no-print" aria-label="Table of contents" data-kpress-toc data-kpress-toc-collapse-depth="1"><div class="kpress-toc-header"><a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a><button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all aria-expanded="false" aria-label="Expand TOC" title="Expand TOC"><svg class="kpress-toc-expand-all-icon" width="12" height="12" aria-hidden="true"><use href="#kpress-icon-chevrons-up-down"></use></svg><svg class="kpress-toc-expand-all-icon" width="12" height="12" aria-hidden="true"><use href="#kpress-icon-chevrons-down-up"></use></svg></button></div><ol class="toc-list"><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#alpha">Alpha</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#alpha-one">Alpha One</a></li><li class="kpress-toc-level-3 toc-h3"><a class="toc-link" href="#alpha-one-a">Alpha One A</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#alpha-two">Alpha Two</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#beta">Beta</a></li><li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#beta-one">Beta One</a></li><li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#gamma">Gamma</a></li></ol></nav><div class="kpress-prose kpress-long-text"><h1 id="collapsible-contents">Collapsible Contents</h1>
+<p>Intro prose before the first section.</p>
+<h2 id="alpha">Alpha</h2>
+<p>Alpha overview text.</p>
+<h3 id="alpha-one">Alpha One</h3>
+<p>Detail under Alpha One.</p>
+<h4 id="alpha-one-a">Alpha One A</h4>
+<p>Deepest detail in the Alpha branch.</p>
+<h3 id="alpha-two">Alpha Two</h3>
+<p>Detail under Alpha Two.</p>
+<h2 id="beta">Beta</h2>
+<p>Beta overview text.</p>
+<h3 id="beta-one">Beta One</h3>
+<p>Detail under Beta One.</p>
+<h2 id="gamma">Gamma</h2>
+<p>Gamma has no subsections, so its spine entry owns no group.</p></div></div></article>
   </main>
   <div class="kpress-video-backdrop" aria-hidden="true"></div>
   <section id="kpress-video-popover" class="kpress-video-popover kpress-no-print" hidden aria-hidden="true">
@@ -216,7 +176,7 @@ body {
     </header>
     <iframe id="kpress-video-frame" title="Embedded video" allowfullscreen></iframe>
   </section>
-  <script type="application/json" id="kpress-page-model">{"headings": [{"href": "#tasks", "level": 1, "title": "Tasks"}, {"href": "#table", "level": 1, "title": "Table"}, {"href": "#code", "level": 1, "title": "Code"}, {"href": "#math", "level": 1, "title": "Math"}, {"href": "#diagram", "level": 1, "title": "Diagram"}, {"href": "#details", "level": 1, "title": "Details"}], "profile": "document", "route": "", "title": "Rich Components", "version": 1, "widgets": {"settings": "on"}}</script>
+  <script type="application/json" id="kpress-page-model">{"headings": [{"href": "#alpha", "level": 1, "title": "Alpha"}, {"href": "#alpha-one", "level": 2, "title": "Alpha One"}, {"href": "#alpha-one-a", "level": 3, "title": "Alpha One A"}, {"href": "#alpha-two", "level": 2, "title": "Alpha Two"}, {"href": "#beta", "level": 1, "title": "Beta"}, {"href": "#beta-one", "level": 2, "title": "Beta One"}, {"href": "#gamma", "level": 1, "title": "Gamma"}], "profile": "document", "route": "", "title": "Collapsible Contents", "version": 1, "widgets": {"settings": "on"}}</script>
   <script type="application/json" id="kpress-diagnostics">[]</script>
 </body>
 </html>

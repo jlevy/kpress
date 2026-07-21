@@ -196,15 +196,13 @@
   padding: 4px;
   transition:
     color var(--kpress-transition-fast),
-    background var(--kpress-transition-fast),
-    border-color var(--kpress-transition-fast);
+    background var(--kpress-transition-fast);
   width: 28px;
 }
 
 .kpress-settings-btn:hover,
 .kpress-settings[aria-expanded="true"] .kpress-settings-btn {
   background: var(--color-hover-bg);
-  border-color: var(--kpress-doc-border);
   color: var(--kpress-doc-text);
 }
 
@@ -223,6 +221,102 @@
   inset-block-start: calc(100% + 4px);
   inset-inline-end: 0;
   position: absolute;
+}
+
+/* Document actions (doc-actions widget; off by default, opted in via
+   `format.widgets: {doc-actions: on}`): "PDF" exports via the browser print
+   dialog, "MD" opens the Markdown twin. Two-layer anatomy, mirroring the
+   other chrome controls:
+
+   - The BUTTON is the interaction layer only — the settings gear's quiet
+     28px hit target and color states (muted -> text on the shared hover
+     surface), no typography of its own.
+   - The BADGE is the "icon" — the format letters, hand-drawn from type: the
+     caps-label idiom one notch below the TOC "Contents" label, inside a
+     tight 1px currentColor frame so the frame always matches the letter
+     color through every state. Size and corner are the
+     --kpress-doc-actions-badge-* tokens (square by default).
+
+   Placement: on card documents the widget relocates its mount into
+   .kpress-long-text and these rules pin it to the card's upper-right corner
+   (the placement embedding hosts use for their own document actions);
+   without a card it stays fixed at the inset tokens (host-overridable, see
+   style-tokens.css). */
+.kpress-doc-actions {
+  display: flex;
+  gap: 0.25rem;
+  inset-block-start: var(--kpress-doc-actions-inset-block);
+  inset-inline-end: var(--kpress-doc-actions-inset-inline);
+  position: fixed;
+  z-index: 250;
+}
+
+.kpress-long-text:has(.kpress-doc-actions) {
+  position: relative;
+}
+
+/* A body without a leading in-card H1 has no heading margin to clear the
+   absolute action row. Reserve that row before paragraph-first content. */
+.kpress-long-text:has(.kpress-doc-actions):not(:has(> h1:first-child)) {
+  padding-block-start: 3rem;
+}
+
+.kpress-long-text .kpress-doc-actions {
+  inset-block-start: 1rem;
+  inset-inline-end: 1rem;
+  position: absolute;
+}
+
+.kpress-doc-actions-btn {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 4px;
+  text-decoration: none;
+  transition:
+    color var(--kpress-transition-fast),
+    background var(--kpress-transition-fast);
+}
+
+.kpress-doc-actions-btn:hover {
+  background: var(--color-hover-bg);
+  color: var(--kpress-doc-text);
+}
+
+.kpress-doc-actions-badge {
+  border: 1px solid currentColor;
+  border-radius: var(--kpress-doc-actions-badge-radius);
+  font-family: var(--kpress-font-sans);
+  font-size: var(--kpress-doc-actions-badge-size);
+  font-weight: var(--kpress-font-weight-sans-medium);
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: 1;
+  padding: 2px 3px;
+}
+
+/* The MD badge is an <a>: when the cluster relocates into the card it falls
+   under `.kpress a` link styling, which out-specifies the bare class — keep
+   the badge quiet (muted, never underlined) at higher specificity. */
+.kpress a.kpress-doc-actions-btn {
+  color: var(--kpress-doc-muted);
+  text-decoration: none;
+}
+
+.kpress a.kpress-doc-actions-btn:hover {
+  color: var(--kpress-doc-text);
+  text-decoration: none;
+}
+
+.kpress-doc-actions-btn:focus-visible {
+  outline: 3px solid var(--color-primary-light);
+  outline-offset: 2px;
 }
 
 .kpress-settings[aria-expanded="true"] .kpress-settings-menu {
@@ -431,14 +525,12 @@
   padding: 4px;
   transition:
     color var(--kpress-transition-fast),
-    border-color var(--kpress-transition-fast),
     background-color var(--kpress-transition-fast);
   width: 32px;
 }
 
 .kpress-toc-toggle:hover {
   background-color: var(--color-hover-bg);
-  border-color: var(--kpress-doc-border);
   color: var(--kpress-doc-text);
 }
 
@@ -458,6 +550,90 @@
   line-height: var(--kpress-caps-heading-line-height);
   padding-left: 0.3rem;
   text-transform: var(--kpress-caps-transform);
+}
+
+/* Collapsible-TOC chrome (server-rendered only when toc_collapse_depth is
+   set and the document has deeper entries; toc.js owns the state). The
+   header row moves the title's underline onto the full row so the TOC reads
+   the same with and without the expand-all button flush right of
+   "Contents". */
+.kpress-toc-header {
+  align-items: center;
+  border-bottom: 1px solid var(--kpress-doc-border);
+  display: flex;
+  gap: 0.3rem;
+  justify-content: space-between;
+}
+
+.kpress-toc-header .kpress-toc-title {
+  border-bottom: none;
+  flex: 1 1 auto;
+}
+
+/* Deliberately quiet control: no border or fill, colored like the Contents
+   label it sits beside (the muted TOC tone), darkening slightly on hover.
+   The chevrons glyph pair keeps it minimal — a small disclosure hint, not a
+   chrome button. */
+.kpress-toc-expand-all {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--kpress-radius-sm);
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 18px;
+  justify-content: center;
+  opacity: 0.55;
+  padding: 2px;
+  transition:
+    color var(--kpress-transition-fast),
+    opacity var(--kpress-transition-fast);
+  width: 18px;
+}
+
+.kpress-toc-expand-all:hover {
+  background-color: var(--color-hover-bg);
+  color: var(--kpress-doc-text);
+  opacity: 1;
+}
+
+.kpress-toc-expand-all-icon {
+  display: block;
+  height: 12px;
+  width: 12px;
+}
+
+/* Both state icons are server-rendered; aria-expanded picks the visible one
+   (unfold while collapsed, fold while expanded) so the behavior only flips
+   the attribute, never the markup. */
+.kpress-toc-expand-all[aria-expanded="true"] .kpress-toc-expand-all-icon:first-of-type,
+.kpress-toc-expand-all[aria-expanded="false"] .kpress-toc-expand-all-icon:last-of-type {
+  display: none;
+}
+
+/* Collapsed entries animate closed rather than display:none (which cannot
+   transition): each row eases its block-size and opacity to zero with the
+   standard motion tokens, and visibility drops the hidden links from the
+   tab order when the transition ends. Scoped to collapse-enabled navs so
+   documents without the feature keep today's exact row styling. The
+   :where() keeps the ancestor scope at zero specificity so the global
+   prefers-reduced-motion block (`.kpress [class]`, later in this file) still
+   outranks the transition and suppresses the motion. */
+:where(.kpress-toc[data-kpress-toc-collapse-depth]) .toc-list > li {
+  max-block-size: 5rem;
+  overflow: hidden;
+  transition:
+    max-block-size var(--kpress-transition-med),
+    opacity var(--kpress-transition-med),
+    visibility var(--kpress-transition-med);
+}
+
+:where(.kpress-toc[data-kpress-toc-collapse-depth]) .toc-list > li.kpress-toc-collapsed {
+  max-block-size: 0;
+  opacity: 0;
+  visibility: hidden;
 }
 
 /* `position: fixed` resolves against the non-scrolling `.kpress-frame` (the
@@ -867,8 +1043,7 @@
 
 .kpress-code-copy:hover {
   background: var(--color-hover-bg);
-  border-color: var(--kpress-doc-link);
-  color: var(--kpress-doc-link);
+  color: var(--kpress-doc-text);
 }
 
 .kpress-code-copy:focus-visible {
@@ -1651,7 +1826,6 @@
       opacity var(--kpress-transition-fade),
       visibility var(--kpress-transition-fade),
       color var(--kpress-transition-fast),
-      border-color var(--kpress-transition-fast),
       background-color var(--kpress-transition-fast);
     visibility: hidden;
     z-index: 201;
@@ -1725,6 +1899,19 @@
     font-size: var(--kpress-caps-label-size);
   }
 
+  /* In the drawer the expand-all control returns to a comfortable touch
+     size; the extra-small sizing is for the wide sidebar, where it sits
+     beside the small-caps Contents label. */
+  .kpress-toc-expand-all {
+    height: 20px;
+    width: 20px;
+  }
+
+  .kpress-toc-expand-all-icon {
+    height: 14px;
+    width: 14px;
+  }
+
   .kpress-toc ol {
     font-size: var(--kpress-font-size-small);
   }
@@ -1780,8 +1967,13 @@
        edge-bleed below can extend across exactly this inset. The stray-wide-
        content clip guard lives HERE (not on .kpress-long-text): the doc's
        padding box ends at the pane edge, so wide tables may bleed across the
-       gutters and are clipped only at the pane, never at the text margin. */
-    --kpress-doc-gutter: max(0.5rem, var(--kpress-toc-toggle-clearance));
+       gutters and are clipped only at the pane, never at the text margin.
+       Unlike the mid-width band above, the phone band does NOT reserve the
+       floating-toggle clearance: on a phone every rem of gutter is reading
+       width, and the toggle's translucent document-background fill keeps the
+       control and any text it slightly overlaps legible (design review
+       decision — see the toggle's own comment). */
+    --kpress-doc-gutter: 0.5rem;
     overflow-x: hidden;
     padding-inline: var(--kpress-doc-gutter);
   }

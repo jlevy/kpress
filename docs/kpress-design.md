@@ -285,6 +285,10 @@ feature guarantees); the sections named in the table carry the architecture deta
   orphans/widows.
 - **Browser-backed PDF.** An optional browser backend renders the print profile to PDF;
   absence of the optional dependency produces a clear error, never a silent downgrade.
+- **Document-actions widget (opt-in).** Text badge buttons — PDF (the browser print
+  dialog over the print CSS) and MD (the page’s `.md` twin) — client-rendered like the
+  settings gear but off by default: `format.widgets: {doc-actions: on}`. See
+  [Document Actions Widget](#document-actions-widget).
 
 This document describes the current alpha architecture and public contract.
 Open implementation work and current capability status are indexed in
@@ -699,6 +703,13 @@ it.
 | `list` | `list` | Collapsed table-of-contents toggle |
 | `maximize` | `maximize` | Reserved media-maximize glyph |
 | `external-link` | `external-link` | Reserved external-link glyph |
+| `chevrons-up-down` | `chevrons-up-down` | TOC expand-all control (collapsed state) |
+| `chevrons-down-up` | `chevrons-down-up` | TOC expand-all control (expanded state) |
+
+One deliberate non-icon: the doc-actions widget’s “PDF” and “MD” badges are plain text
+in the document sans stack, not sprite glyphs — a printer or generic file pictogram does
+not say what an action yields; the format letters do.
+See [Document Actions Widget](#document-actions-widget).
 
 Embedding applications can own app-chrome glyphs that KPress does not need.
 For shared reader controls, they should reference the KPress sprite so the document
@@ -874,7 +885,7 @@ enforce “always use CSS vars”).
   page. Low-level fragment callers pass the same option; dynamic `render_view` uses the
   default content-card setting.
 
-Two shared interaction primitives are documented so every component reuses them rather
+Three shared interaction primitives are documented so every component reuses them rather
 than re-styling:
 
 - **Disclosure toggle:** every `<details>`/summary uses the Lucide `chevron-right` glyph
@@ -887,6 +898,16 @@ than re-styling:
   only, with the label in `aria-label`/`title`, and the copy control is revealed on
   hover/focus of the code block.
   Glyphs come from the shared [Icon System](#icon-system).
+- **Icon-button hover contract:** every icon-only control that performs an operation
+  (settings gear, chooser segments, TOC drawer toggle, TOC expand-all, code copy, video
+  close) hovers identically: the light hover fill (`--color-hover-bg`) plus slight text
+  darkening (`--kpress-doc-text`), on the fast motion token — and **never a border
+  introduced or recolored on hover**. Resting borders that exist for layout or
+  legibility (the code-copy outline, the drawer toggle’s transparent border) stay
+  untouched; selected/checked state uses `--color-bg-selected` + the link color, and
+  state feedback (code-copy copied/error) may recolor its border — those are states, not
+  hover. Enforced by `tests/test_icon_button_hover.py`, which pins the control list; a
+  new icon control joins that list when added.
 
 These primitives and tokens live in the KPress static layer deliberately: an embedding
 host app consumes the same design (sharing the Lucide icon set) rather than
@@ -993,6 +1014,60 @@ reader modules and can replace the registered `theme` behavior before runtime ap
 The `system | light | dark` attribute contract is the shared seam; the gear chrome
 itself is per-layer.
 
+### Document Actions Widget
+
+The `doc-actions` chrome widget renders small text badge buttons for taking the document
+away: **PDF** (export via print) and **MD** (the Markdown twin).
+The badges are plain text in the document sans stack, deliberately not icons: the format
+letters say what each action yields.
+It follows the settings gear’s architecture — a client-rendered widget over a
+server-emitted mount, built only from the public layers (runtime registry, pinned CSS
+classes) — but is **off by default**: a page opts in with
+`format.widgets: {doc-actions: on}` (or `RenderOptions(widgets={"doc-actions": "on"})`),
+or with a config map, which implies on:
+
+```yaml
+format:
+  widgets:
+    doc-actions:
+      print: true         # the Export PDF button (default true)
+      markdown: true      # the View as Markdown link (default true)
+      markdown_url: ""    # explicit Markdown URL; empty derives it (default)
+```
+
+The two actions differ in what they need from the host:
+
+- **Export PDF** needs nothing: the button calls the browser’s own print dialog, and the
+  printout is the clean `print.css` rendering (badge “PDF”, label “Export PDF”).
+- **View as Markdown** needs a URL. The strongly encouraged convention is a Markdown
+  twin at the page’s own URL with a `.md` suffix — `.html`/`.htm` replaced, an
+  extensionless path appended, a directory path given `index.md` (`/note.html` →
+  `/note.md`, `/note` → `/note.md`, `/blog/post/` → `/blog/post/index.md`). The widget
+  derives that URL from `location.pathname` by default (`markdownTwinUrl`, a pinned
+  export); `markdown_url` overrides it for hosts with a different twin layout (badge
+  “MD”, label “View as Markdown”).
+
+**Anatomy.** Each control is two layers, mirroring the other chrome controls: the
+*button* (`kpress-doc-actions-btn`) is the interaction layer — the settings gear’s quiet
+28px hit target and color states (muted → text on the shared hover surface, no border of
+its own) — and the *badge* (`kpress-doc-actions-badge`) is the “icon”, hand-drawn from
+type: the format letters in the caps-label idiom one notch below the TOC “Contents”
+label, inside a tight 1px `currentColor` frame, so frame and letters stay one color
+through every state.
+Badge size and corner are host-tunable tokens (`--kpress-doc-actions-badge-size`,
+`--kpress-doc-actions-badge-radius`; the corner ships square to match the document’s
+square corners).
+Both buttons carry `kpress-no-print` chrome semantics through the mount.
+**Placement:** on card documents the widget relocates its mount into the content card
+(`.kpress-long-text`) and pins to the card’s upper-right corner — the same placement
+embedding hosts give their own document actions, so the control sits in one place across
+standalone pages and embeds.
+Without a card the cluster stays fixed at the doc-actions inset tokens
+(`--kpress-host-doc-actions-inset-block` / `--kpress-host-doc-actions-inset-inline`,
+same `:root` pattern as the settings insets; default just inline-left of the gear).
+Embedding hosts that render fragments (no widget mounts) build their own document
+actions with the same text badges, keeping one visual vocabulary.
+
 Font mode (`RenderOptions.font_mode`, type `FontMode = Literal["custom", "system"]`):
 
 - `custom` (default): themed custom font stacks (PT Serif, Source Sans 3, mono,
@@ -1042,8 +1117,8 @@ keeps each new feature on the right seam:
   `code-copy`, `video`, `tables`, `tabs`, `diagrams`, and `theme` (engine init over the
   root element). The markup is the binding surface; a host can rebind an id over the same
   markup, or register a new behavior over its own injected HTML.
-- **Chrome widgets:** client-rendered, JS-only chrome (`settings`; host-defined ids like
-  a minimap), rendering into server-emitted mounts.
+- **Chrome widgets:** client-rendered, JS-only chrome (`settings`, the opt-in
+  `doc-actions`; host-defined ids like a minimap), rendering into server-emitted mounts.
 
 Presence is controlled per kind: `format.widgets: {<id>: on/off/auto}` governs chrome
 widgets (which mounts the server emits); document components keep their own format
@@ -1059,7 +1134,8 @@ Required document components:
 
 - prose typography and headings
 - frontmatter and metadata blocks
-- TOC with desktop sticky rail, mobile affordance, active-heading state, and threshold
+- TOC with desktop sticky rail, mobile affordance, active-heading state, threshold, and
+  optional depth collapse (below)
 - footnotes with backrefs, hover/touch previews, and print simplification
 - internal-link tooltips
 - responsive tables, numeric-cell hooks, desktop breakout, mobile scroll, and print
@@ -1114,6 +1190,45 @@ Accepted fixtures and structural tests cover deterministic component output; bro
 tests cover interactive state.
 The [end-to-end validation runbook](kpress-validation.runbook.md) owns visual and
 real-engine acceptance.
+
+### Collapsible TOC
+
+Long documents overflow the TOC pane, so the TOC supports depth collapse, off by
+default:
+
+- `format.toc_collapse_depth` (`RenderOptions.toc_collapse_depth`, YAML key
+  `toc_collapse_depth`; also on `KPressRenderRequest` for the dynamic path): the deepest
+  **normalized TOC depth** that stays visible when collapsed.
+  `None`/absent (the default) disables the feature; the markup is byte-identical to the
+  always-expanded TOC. Must be an integer ≥ 1 (validated at the YAML and dynamic-request
+  boundaries). Depth is `TocEntry.level`, not the heading tag: the title H1 is dropped
+  and level gaps are closed, so in the common one-H1-title document depth 1 is the H2
+  spine, depth 2 reaches H3, and depth 3 reaches H4.
+- `format.toc_expand_on_scroll` (default `true`, meaningful only with collapse on):
+  scroll-follow — the top-level group containing the scroll-spy’s active entry is always
+  expanded, so the reader sees the subsections of where they are.
+  Collapse-all returns to this baseline, which still shows the active group.
+
+When collapse is on *and* at least one entry is deeper than the threshold, the server
+wraps the Contents title in `kpress-toc-header` and renders the `kpress-toc-expand-all`
+icon button — a deliberately quiet chevrons control (both sprite glyphs
+`chevrons-up-down` / `chevrons-down-up` render, colored like the Contents label; CSS
+shows one per `aria-expanded` state) — plus `data-kpress-toc-collapse-depth` /
+`data-kpress-toc-expand-on-scroll` on the nav.
+The `toc` behavior partitions the flat entry list into spine groups (entries before the
+first spine entry form an always-visible head group), and a deep row is visible iff
+expand-all is on or scroll-follow marks its group active; hidden rows carry
+`kpress-toc-collapsed` and animate closed with the standard motion tokens
+(reduced-motion suppression applies).
+The scroll-follow handoff waits for the reading position to **settle** in one group
+(`TOC_SCROLL_FOLLOW_SETTLE_MS` in `toc.js`): rapid scrolling and the smooth glide after
+a TOC click sweep the scroll-spy across intermediate sections, and only the group the
+position rests in expands — the highlight itself still moves instantly.
+JS-channel config `collapseDepth` / `expandOnScroll` via
+`kpress.behaviors.configure("toc", ...)` overrides the data attributes (a config
+`collapseDepth` of `0` disables collapse).
+There are no per-entry disclosure toggles and no cross-page persistence; deep entries
+stay in the markup and the page model — collapse is visibility only.
 
 ### Component Authoring Contract
 

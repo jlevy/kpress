@@ -100,6 +100,44 @@ def _render_toc(tree: DocumentTree, options: RenderOptions) -> str:
         f'<a class="toc-link" href="{escape(entry.href)}">{escape(entry.title)}</a></li>'
         for entry in tree.toc
     )
+    # Collapse renders only when the setting is on AND something is actually
+    # deeper than the threshold; otherwise the markup stays byte-identical to
+    # the always-expanded TOC (existing hosts and goldens see no change).
+    collapse_depth = options.toc_collapse_depth
+    collapsible = collapse_depth is not None and any(
+        entry.level > collapse_depth for entry in tree.toc
+    )
+    title_link = (
+        '<a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a>'
+    )
+    if collapsible:
+        # Both state icons render; CSS shows one per the button's aria-expanded
+        # state (no innerHTML swapping in the behavior).
+        header = "".join(
+            [
+                '<div class="kpress-toc-header">',
+                title_link,
+                '<button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all ',
+                'aria-expanded="false" aria-label="Expand TOC" title="Expand TOC">',
+                _icon(
+                    "chevrons-up-down",
+                    css_class="kpress-toc-expand-all-icon",
+                    attrs=' width="12" height="12"',
+                ),
+                _icon(
+                    "chevrons-down-up",
+                    css_class="kpress-toc-expand-all-icon",
+                    attrs=' width="12" height="12"',
+                ),
+                "</button></div>",
+            ]
+        )
+        nav_settings = f' data-kpress-toc-collapse-depth="{collapse_depth}"'
+        if not options.toc_expand_on_scroll:
+            nav_settings += ' data-kpress-toc-expand-on-scroll="false"'
+    else:
+        header = title_link
+        nav_settings = ""
     # The toggle button and the backdrop are siblings of the <nav>, not children:
     # in the narrow drawer layout the nav animates/hides as a unit, and a nested
     # toggle would inherit that hidden state. toc.js groups them by walking to the
@@ -109,14 +147,14 @@ def _render_toc(tree: DocumentTree, options: RenderOptions) -> str:
     return "".join(
         [
             '<button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle ',
-            'aria-expanded="false" aria-label="Table of contents">',
+            'aria-expanded="false" aria-label="Table of contents" title="Table of contents">',
             _icon("list", css_class="kpress-toc-toggle-icon", attrs=' width="20" height="20"'),
             "</button>",
             '<div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div>',
             '<nav class="kpress-toc kpress-no-print" aria-label="Table of contents" ',
-            "data-kpress-toc>",
-            '<a href="#" class="kpress-toc-title toc-link toc-title" ',
-            'data-kpress-toc-top>Contents</a><ol class="toc-list">',
+            f"data-kpress-toc{nav_settings}>",
+            header,
+            '<ol class="toc-list">',
             items,
             "</ol></nav>",
         ]
@@ -393,6 +431,8 @@ def _render_asset_manifest(
         entry_points.add("js/theme.js")
     if "settings" in enabled_widgets:
         entry_points.add("js/settings-widget.js")
+    if "doc-actions" in enabled_widgets:
+        entry_points.add("js/doc-actions.js")
     if tree is not None and _should_include_toc(tree, options):
         entry_points.add("js/toc.js")
     if tree is not None and _SAME_DOCUMENT_LINK_RE.search(tree.html):

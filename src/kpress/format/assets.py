@@ -124,6 +124,7 @@ DEFAULT_JS_ASSETS = [
     "js/runtime.js",
     "js/theme.js",
     "js/settings-widget.js",
+    "js/doc-actions.js",
     "js/toc.js",
     "js/tooltips.js",
     "js/history.js",
@@ -147,6 +148,7 @@ TRANSITIVE_JS_ASSETS = [
 PACKAGE_JS_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "js/code-copy.js": ("js/icons.js", "js/runtime.js"),
     "js/diagrams.js": ("js/runtime.js",),
+    "js/doc-actions.js": ("js/runtime.js",),
     "js/history.js": ("js/runtime.js", "js/viewport.js"),
     "js/host.js": ("js/runtime.js",),
     "js/icons.js": (),

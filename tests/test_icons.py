@@ -24,6 +24,8 @@ _REQUIRED_ICONS = (
     "triangle-alert",
     "serif",
     "sans",
+    "chevrons-up-down",
+    "chevrons-down-up",
 )
 
 

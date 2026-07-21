@@ -41,6 +41,12 @@ class KPressRenderRequest:
     # Hosts that show the document title in their own chrome suppress the
     # rendered <h1> doc header (default keeps it, as standalone pages want it).
     show_doc_header: bool = True
+    # Collapsible TOC — the dynamic-path counterpart of
+    # RenderOptions.toc_collapse_depth / toc_expand_on_scroll, so a host's
+    # embeds collapse the same way its static publish does. None keeps the
+    # fully expanded TOC; an int >= 1 collapses deeper entries (validated).
+    toc_collapse_depth: int | None = None
+    toc_expand_on_scroll: bool = True
     # Widget presence + opaque config map (same shape as format.widgets);
     # echoed in the render payload so host-mounted widgets read the same
     # config the standalone page model carries.

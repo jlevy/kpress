@@ -139,6 +139,15 @@ class RenderOptions:
     asset_policy: AssetPolicy = "auto"
     include_toc: TocMode = "auto"
     toc_min_headings: int = 4
+    # Collapsible TOC: deepest normalized TOC depth (TocEntry.level, 1-based;
+    # in the common one-H1-title document depth 1 is H2) that stays visible
+    # when collapsed. None (default) disables collapse entirely and keeps the
+    # markup byte-identical. Must be >= 1 when set; validated at the YAML and
+    # dynamic-request boundaries. See docs/kpress-design.md "TOC".
+    toc_collapse_depth: int | None = None
+    # Meaningful only when toc_collapse_depth is set: keep the active
+    # top-level TOC group expanded as the reader scrolls (scroll-follow).
+    toc_expand_on_scroll: bool = True
     # The document profile renders an <h1> doc header from the title. Hosts
     # that already show the title in their own chrome (e.g. an embedding app's
     # file header) pass False to suppress it, rather than hiding it with host CSS.
