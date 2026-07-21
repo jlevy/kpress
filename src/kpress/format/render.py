@@ -431,6 +431,8 @@ def _render_asset_manifest(
         entry_points.add("js/theme.js")
     if "settings" in enabled_widgets:
         entry_points.add("js/settings-widget.js")
+    if "doc-actions" in enabled_widgets:
+        entry_points.add("js/doc-actions.js")
     if tree is not None and _should_include_toc(tree, options):
         entry_points.add("js/toc.js")
     if tree is not None and _SAME_DOCUMENT_LINK_RE.search(tree.html):

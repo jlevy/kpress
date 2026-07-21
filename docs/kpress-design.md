@@ -285,6 +285,10 @@ feature guarantees); the sections named in the table carry the architecture deta
   orphans/widows.
 - **Browser-backed PDF.** An optional browser backend renders the print profile to PDF;
   absence of the optional dependency produces a clear error, never a silent downgrade.
+- **Document-actions widget (opt-in).** Text badge buttons — PDF (the browser print
+  dialog over the print CSS) and MD (the page’s `.md` twin) — client-rendered like the
+  settings gear but off by default: `format.widgets: {doc-actions: on}`. See
+  [Document Actions Widget](#document-actions-widget).
 
 This document describes the current alpha architecture and public contract.
 Open implementation work and current capability status are indexed in
@@ -702,6 +706,11 @@ it.
 | `chevrons-up-down` | `chevrons-up-down` | TOC expand-all control (collapsed state) |
 | `chevrons-down-up` | `chevrons-down-up` | TOC expand-all control (expanded state) |
 
+One deliberate non-icon: the doc-actions widget’s “PDF” and “MD” badges are plain text
+in the document sans stack, not sprite glyphs — a printer or generic file pictogram does
+not say what an action yields; the format letters do.
+See [Document Actions Widget](#document-actions-widget).
+
 Embedding applications can own app-chrome glyphs that KPress does not need.
 For shared reader controls, they should reference the KPress sprite so the document
 layer retains one glyph source.
@@ -1005,6 +1014,60 @@ reader modules and can replace the registered `theme` behavior before runtime ap
 The `system | light | dark` attribute contract is the shared seam; the gear chrome
 itself is per-layer.
 
+### Document Actions Widget
+
+The `doc-actions` chrome widget renders small text badge buttons for taking the document
+away: **PDF** (export via print) and **MD** (the Markdown twin).
+The badges are plain text in the document sans stack, deliberately not icons: the format
+letters say what each action yields.
+It follows the settings gear’s architecture — a client-rendered widget over a
+server-emitted mount, built only from the public layers (runtime registry, pinned CSS
+classes) — but is **off by default**: a page opts in with
+`format.widgets: {doc-actions: on}` (or `RenderOptions(widgets={"doc-actions": "on"})`),
+or with a config map, which implies on:
+
+```yaml
+format:
+  widgets:
+    doc-actions:
+      print: true         # the Export PDF button (default true)
+      markdown: true      # the View as Markdown link (default true)
+      markdown_url: ""    # explicit Markdown URL; empty derives it (default)
+```
+
+The two actions differ in what they need from the host:
+
+- **Export PDF** needs nothing: the button calls the browser’s own print dialog, and the
+  printout is the clean `print.css` rendering (badge “PDF”, label “Export PDF”).
+- **View as Markdown** needs a URL. The strongly encouraged convention is a Markdown
+  twin at the page’s own URL with a `.md` suffix — `.html`/`.htm` replaced, an
+  extensionless path appended, a directory path given `index.md` (`/note.html` →
+  `/note.md`, `/note` → `/note.md`, `/blog/post/` → `/blog/post/index.md`). The widget
+  derives that URL from `location.pathname` by default (`markdownTwinUrl`, a pinned
+  export); `markdown_url` overrides it for hosts with a different twin layout (badge
+  “MD”, label “View as Markdown”).
+
+**Anatomy.** Each control is two layers, mirroring the other chrome controls: the
+*button* (`kpress-doc-actions-btn`) is the interaction layer — the settings gear’s quiet
+28px hit target and color states (muted → text on the shared hover surface, no border of
+its own) — and the *badge* (`kpress-doc-actions-badge`) is the “icon”, hand-drawn from
+type: the format letters in the caps-label idiom one notch below the TOC “Contents”
+label, inside a tight 1px `currentColor` frame, so frame and letters stay one color
+through every state.
+Badge size and corner are host-tunable tokens (`--kpress-doc-actions-badge-size`,
+`--kpress-doc-actions-badge-radius`; the corner ships square to match the document’s
+square corners).
+Both buttons carry `kpress-no-print` chrome semantics through the mount.
+**Placement:** on card documents the widget relocates its mount into the content card
+(`.kpress-long-text`) and pins to the card’s upper-right corner — the same placement
+embedding hosts give their own document actions, so the control sits in one place across
+standalone pages and embeds.
+Without a card the cluster stays fixed at the doc-actions inset tokens
+(`--kpress-host-doc-actions-inset-block` / `--kpress-host-doc-actions-inset-inline`,
+same `:root` pattern as the settings insets; default just inline-left of the gear).
+Embedding hosts that render fragments (no widget mounts) build their own document
+actions with the same text badges, keeping one visual vocabulary.
+
 Font mode (`RenderOptions.font_mode`, type `FontMode = Literal["custom", "system"]`):
 
 - `custom` (default): themed custom font stacks (PT Serif, Source Sans 3, mono,
@@ -1054,8 +1117,8 @@ keeps each new feature on the right seam:
   `code-copy`, `video`, `tables`, `tabs`, `diagrams`, and `theme` (engine init over the
   root element). The markup is the binding surface; a host can rebind an id over the same
   markup, or register a new behavior over its own injected HTML.
-- **Chrome widgets:** client-rendered, JS-only chrome (`settings`; host-defined ids like
-  a minimap), rendering into server-emitted mounts.
+- **Chrome widgets:** client-rendered, JS-only chrome (`settings`, the opt-in
+  `doc-actions`; host-defined ids like a minimap), rendering into server-emitted mounts.
 
 Presence is controlled per kind: `format.widgets: {<id>: on/off/auto}` governs chrome
 widgets (which mounts the server emits); document components keep their own format

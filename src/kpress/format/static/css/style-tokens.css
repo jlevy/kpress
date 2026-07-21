@@ -139,6 +139,24 @@
      --kpress-measure is not in scope. See kpress-design.md -> Settings menu.) */
   --kpress-settings-inset-block: var(--kpress-host-settings-inset-block, 0.75rem);
   --kpress-settings-inset-inline: var(--kpress-host-settings-inset-inline, 0.75rem);
+  /* Document-actions cluster position (doc-actions widget; off by default).
+     Defaults to the slot just inline-left of the settings gear (28px button
+     + 12px gap = 2.5rem); host-overridable through the --kpress-host-* hooks,
+     same pattern as the settings insets above. */
+  --kpress-doc-actions-inset-block: var(
+    --kpress-host-doc-actions-inset-block,
+    var(--kpress-settings-inset-block)
+  );
+  --kpress-doc-actions-inset-inline: var(
+    --kpress-host-doc-actions-inset-inline,
+    calc(var(--kpress-settings-inset-inline) + 2.5rem)
+  );
+  /* Doc-actions badge: the format letters are the caps-label idiom one notch
+     down — slightly smaller than the TOC "Contents" label — so the badge
+     reads as an icon, not a heading. The frame corner is square by default
+     to match the document's square corners. Both are host-tunable. */
+  --kpress-doc-actions-badge-size: calc(var(--kpress-caps-label-size) * 0.85);
+  --kpress-doc-actions-badge-radius: var(--kpress-radius-none);
   /* Inline gutter the document reserves for the floating TOC toggle in the
      narrow band. Deliberately a little tighter than the toggle's full
      footprint (0.75rem inset + 32px button): the toggle carries a translucent
