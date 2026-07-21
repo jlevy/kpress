@@ -223,6 +223,102 @@
   position: absolute;
 }
 
+/* Document actions (doc-actions widget; off by default, opted in via
+   `format.widgets: {doc-actions: on}`): "PDF" exports via the browser print
+   dialog, "MD" opens the Markdown twin. Two-layer anatomy, mirroring the
+   other chrome controls:
+
+   - The BUTTON is the interaction layer only — the settings gear's quiet
+     28px hit target and color states (muted -> text on the shared hover
+     surface), no typography of its own.
+   - The BADGE is the "icon" — the format letters, hand-drawn from type: the
+     caps-label idiom one notch below the TOC "Contents" label, inside a
+     tight 1px currentColor frame so the frame always matches the letter
+     color through every state. Size and corner are the
+     --kpress-doc-actions-badge-* tokens (square by default).
+
+   Placement: on card documents the widget relocates its mount into
+   .kpress-long-text and these rules pin it to the card's upper-right corner
+   (the placement embedding hosts use for their own document actions);
+   without a card it stays fixed at the inset tokens (host-overridable, see
+   style-tokens.css). */
+.kpress-doc-actions {
+  display: flex;
+  gap: 0.25rem;
+  inset-block-start: var(--kpress-doc-actions-inset-block);
+  inset-inline-end: var(--kpress-doc-actions-inset-inline);
+  position: fixed;
+  z-index: 250;
+}
+
+.kpress-long-text:has(.kpress-doc-actions) {
+  position: relative;
+}
+
+/* A body without a leading in-card H1 has no heading margin to clear the
+   absolute action row. Reserve that row before paragraph-first content. */
+.kpress-long-text:has(.kpress-doc-actions):not(:has(> h1:first-child)) {
+  padding-block-start: 3rem;
+}
+
+.kpress-long-text .kpress-doc-actions {
+  inset-block-start: 1rem;
+  inset-inline-end: 1rem;
+  position: absolute;
+}
+
+.kpress-doc-actions-btn {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--kpress-radius-sm);
+  color: var(--kpress-doc-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 4px;
+  text-decoration: none;
+  transition:
+    color var(--kpress-transition-fast),
+    background var(--kpress-transition-fast);
+}
+
+.kpress-doc-actions-btn:hover {
+  background: var(--color-hover-bg);
+  color: var(--kpress-doc-text);
+}
+
+.kpress-doc-actions-badge {
+  border: 1px solid currentColor;
+  border-radius: var(--kpress-doc-actions-badge-radius);
+  font-family: var(--kpress-font-sans);
+  font-size: var(--kpress-doc-actions-badge-size);
+  font-weight: var(--kpress-font-weight-sans-medium);
+  letter-spacing: var(--kpress-caps-spacing);
+  line-height: 1;
+  padding: 2px 3px;
+}
+
+/* The MD badge is an <a>: when the cluster relocates into the card it falls
+   under `.kpress a` link styling, which out-specifies the bare class — keep
+   the badge quiet (muted, never underlined) at higher specificity. */
+.kpress a.kpress-doc-actions-btn {
+  color: var(--kpress-doc-muted);
+  text-decoration: none;
+}
+
+.kpress a.kpress-doc-actions-btn:hover {
+  color: var(--kpress-doc-text);
+  text-decoration: none;
+}
+
+.kpress-doc-actions-btn:focus-visible {
+  outline: 3px solid var(--color-primary-light);
+  outline-offset: 2px;
+}
+
 .kpress-settings[aria-expanded="true"] .kpress-settings-menu {
   display: flex;
 }

@@ -111,6 +111,9 @@ PUBLIC_CSS_CLASSES = (
     "kpress-code-scroll",
     "kpress-content-with-toc",
     "kpress-doc",
+    "kpress-doc-actions",
+    "kpress-doc-actions-badge",
+    "kpress-doc-actions-btn",
     "kpress-doc-header",
     "kpress-doc-layout",
     "kpress-footnotes",
@@ -229,6 +232,10 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-card-shadow",
     "--kpress-settings-inset-block",
     "--kpress-settings-inset-inline",
+    "--kpress-doc-actions-inset-block",
+    "--kpress-doc-actions-inset-inline",
+    "--kpress-doc-actions-badge-radius",
+    "--kpress-doc-actions-badge-size",
     "--kpress-print-font-size",
     "--kpress-print-footer",
     "--kpress-print-page-margin",
@@ -305,6 +312,8 @@ PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-table",
     "--kpress-host-settings-inset-block",
     "--kpress-host-settings-inset-inline",
+    "--kpress-host-doc-actions-inset-block",
+    "--kpress-host-doc-actions-inset-inline",
 )
 
 # Stable table data-* hooks kpress emits for downstream consumption. The per-cell
@@ -361,8 +370,10 @@ PUBLIC_PIPELINE_STAGES = ("none", "full")
 # Extension-model name contracts (docs/kpress-design.md "Extension and Injection
 # Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
 
-# Built-in chrome widget ids registered through kpress.widgets.
-PUBLIC_WIDGETS = ("settings",)
+# Built-in chrome widget ids registered through kpress.widgets. `settings` is
+# on by default; `doc-actions` (Export PDF / View as Markdown badge buttons) is
+# off by default and opted in via `format.widgets: {doc-actions: on}`.
+PUBLIC_WIDGETS = ("settings", "doc-actions")
 
 # Built-in behavior ids registered through kpress.behaviors (bindings over
 # server-rendered markup; each is overridable by id). "theme" is the engine's
@@ -407,6 +418,7 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
         "TOOLTIP_SHOW_DELAY_MS",
     ),
     "js/settings-widget.js": ("mountSettings",),
+    "js/doc-actions.js": ("mountDocActions", "markdownTwinUrl"),
     "js/history.js": ("initKpressHistory",),
     "js/host.js": ("HOST_BEHAVIOR_ID", "initKpressHost"),
     "js/icons.js": ("icon",),

@@ -206,6 +206,20 @@ def test_standalone_settings_menu_has_reader_css_states() -> None:
         assert required in css
 
 
+def test_doc_actions_widget_has_reader_css_states() -> None:
+    css = get_static_asset("css/components.css").content.decode("utf-8")
+
+    for required in [
+        ".kpress-doc-actions",
+        ".kpress-doc-actions-badge",
+        ".kpress-doc-actions-btn",
+        ".kpress-doc-actions-btn:hover",
+        ".kpress-doc-actions-btn:focus-visible",
+        ".kpress-long-text:has(.kpress-doc-actions):not(:has(> h1:first-child))",
+    ]:
+        assert required in css
+
+
 def test_toc_and_footnote_transitions_are_property_scoped() -> None:
     css = get_static_asset("css/components.css").content.decode("utf-8")
 

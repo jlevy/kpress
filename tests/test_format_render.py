@@ -280,6 +280,28 @@ def test_enabled_widgets_each_get_a_mount_element() -> None:
     assert 'data-kpress-widget="settings"' in page.html
 
 
+def test_doc_actions_widget_is_opt_in() -> None:
+    document = DocumentInput(
+        title="Doc", source_text="# Body", source_path="doc.md", body_markdown="# Body"
+    )
+
+    # Off by default: no mount, no entry point.
+    default_page = render_page(document, RenderOptions(include_toc="off"))
+    assert 'data-kpress-widget="doc-actions"' not in default_page.html
+    assert "js/doc-actions.js" not in {asset.id for asset in default_page.assets.assets}
+
+    # Opted in: the mount is emitted (empty — the widget client-renders) and
+    # the module ships as an entry point.
+    page = render_page(document, RenderOptions(include_toc="off", widgets={"doc-actions": "on"}))
+    assert (
+        '<div class="kpress-widget kpress-doc-actions kpress-no-print" '
+        'id="kpress-doc-actions" data-kpress-widget="doc-actions"></div>'
+    ) in page.html
+    assert "kpress-doc-actions-btn" not in page.html
+    doc_actions = {asset.id: asset for asset in page.assets.assets}["js/doc-actions.js"]
+    assert doc_actions.entry_point is True
+
+
 def test_render_page_ports_standalone_social_metadata() -> None:
     page = render_page(
         DocumentInput(
