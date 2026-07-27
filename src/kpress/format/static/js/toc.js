@@ -217,9 +217,19 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
   }
 
   // A runtime override can explicitly disable server-configured collapse.
-  // Keep the always-expanded rows and hide the now-inert expand-all control
-  // for this binding; disposal restores the server markup for a later rebind.
+  // Remove the CSS activation hook, keep the always-expanded rows, and hide
+  // the now-inert control; disposal restores the server markup for rebind.
   if (config.collapseDepth === 0) {
+    const originalCollapseDepth = toc.getAttribute("data-kpress-toc-collapse-depth");
+    toc.removeAttribute("data-kpress-toc-collapse-depth");
+    cleanups.push(() => {
+      if (originalCollapseDepth === null) {
+        toc.removeAttribute("data-kpress-toc-collapse-depth");
+      } else {
+        toc.setAttribute("data-kpress-toc-collapse-depth", originalCollapseDepth);
+      }
+    });
+
     const expandAllButton = toc.querySelector("[data-kpress-toc-expand-all]");
     if (expandAllButton) {
       const originallyHidden = expandAllButton.hasAttribute("hidden");

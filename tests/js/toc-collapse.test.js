@@ -235,11 +235,14 @@ describe("collapsible TOC", () => {
     // collapseDepth: 0 disables collapse entirely.
     document.body.innerHTML = "";
     collapsibleTocMarkup();
+    const toc = document.querySelector("[data-kpress-toc]");
     const disabledDispose = initKpressToc(document, { collapseDepth: 0 });
     expect(isCollapsed("#a1")).toBe(false);
     expect(isCollapsed("#a2")).toBe(false);
+    expect(toc.getAttribute("data-kpress-toc-collapse-depth")).toBeNull();
     expect(expandAllButton().hasAttribute("hidden")).toBe(true);
     disabledDispose();
+    expect(toc.getAttribute("data-kpress-toc-collapse-depth")).toBe("1");
     expect(expandAllButton().hasAttribute("hidden")).toBe(false);
   });
 
