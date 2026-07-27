@@ -5,7 +5,7 @@ title: KPress v0.2.4 patch release
 kind: epic
 status: open
 priority: 1
-version: 18
+version: 19
 spec_path: docs/publishing.md
 labels:
   - release
@@ -29,6 +29,10 @@ child_order_hints:
   - is-01kyh1128faa021b48wxd17zzr
   - is-01kyh1kdvsza3f2qy8cfhhktc5
 created_at: 2026-07-27T05:32:38.885Z
-updated_at: 2026-07-27T05:45:47.889Z
+updated_at: 2026-07-27T06:48:21.901Z
 ---
 Ship the current post-v0.2.3 merged delta as KPress v0.2.4: presentation polish, collapsible TOC, document-actions widget, reviewed dependency maintenance, and the intentional alpha migration to pinned GitHub-compatible heading anchors from GitHub issue #33. Release scope excludes the unmerged interactive-footnote-popover feature epic and general roadmap work. Backward compatibility is not maintained for the tracked heading, footnote, and table-identifier migrations: no legacy modes, alias anchors, redirects, dual identifiers, or compatibility attributes. Done means all public and private release blockers are resolved, exact-head main CI and the complete local release gate are green with no unexpected browser skips or dependency advisories, contract and migration notes are accurate, wheel/sdist and clean-room workflows are verified, the GitHub release publishes through PyPI Trusted Publishing, and the registry package passes post-publication smoke tests.
+
+## Notes
+
+RELEASE-CANDIDATE STATUS 2026-07-27: implementation/review branch codex/v0.2.4-release-readiness at 4c8a713 is pushed as PR #35, mergeable/CLEAN. Canonical local make verify and GitHub lint, distribution, Python 3.12, 3.13, and 3.14 CI are green. Issue #33 migration and all implementation, documentation, validation, and artifact child beads are closed. Remaining gates are intentionally external/stateful: kpr-3bp0 private security sign-off; merge plus exact-head main/alert confirmation for kpr-z52k and final review closure; then kpr-9oue publication and kpr-for5 registry verification. No tag, merge, release, or publication was performed.
