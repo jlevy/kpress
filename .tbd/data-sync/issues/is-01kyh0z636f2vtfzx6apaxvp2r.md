@@ -5,11 +5,12 @@ title: KPress v0.2.4 patch release
 kind: epic
 status: open
 priority: 1
-version: 16
+version: 18
 spec_path: docs/publishing.md
 labels:
   - release
   - v0.2.4
+  - breaking-alpha
 dependencies: []
 parent_id: is-01kxcpnre3k47pw88htva8xt0d
 child_order_hints:
@@ -26,7 +27,8 @@ child_order_hints:
   - is-01ky150r6vegs67zh623tnwy7j
   - is-01kyh11209n4en189vpa2ag5b9
   - is-01kyh1128faa021b48wxd17zzr
+  - is-01kyh1kdvsza3f2qy8cfhhktc5
 created_at: 2026-07-27T05:32:38.885Z
-updated_at: 2026-07-27T05:34:41.672Z
+updated_at: 2026-07-27T05:45:47.889Z
 ---
-Ship the current post-v0.2.3 merged delta as KPress v0.2.4: presentation polish, collapsible TOC, document-actions widget, and reviewed dependency maintenance. Release scope excludes the unmerged interactive-footnote-popover feature epic and general roadmap work. Done means all public and private release blockers are resolved, exact-head main CI and the complete local release gate are green with no unexpected browser skips or dependency advisories, wheel/sdist and clean-room workflows are verified, 0.2.4 notes and version references are accurate, the GitHub release publishes through PyPI Trusted Publishing, and the registry package passes post-publication smoke tests.
+Ship the current post-v0.2.3 merged delta as KPress v0.2.4: presentation polish, collapsible TOC, document-actions widget, reviewed dependency maintenance, and the intentional alpha migration to pinned GitHub-compatible heading anchors from GitHub issue #33. Release scope excludes the unmerged interactive-footnote-popover feature epic and general roadmap work. Backward compatibility is not maintained for the tracked heading, footnote, and table-identifier migrations: no legacy modes, alias anchors, redirects, dual identifiers, or compatibility attributes. Done means all public and private release blockers are resolved, exact-head main CI and the complete local release gate are green with no unexpected browser skips or dependency advisories, contract and migration notes are accurate, wheel/sdist and clean-room workflows are verified, the GitHub release publishes through PyPI Trusted Publishing, and the registry package passes post-publication smoke tests.
