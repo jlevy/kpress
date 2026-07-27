@@ -58,6 +58,7 @@ def _inspect_wheel(wheel: Path) -> None:
             "kpress/format/static/js/runtime.js",
             "kpress/format/static/fonts/pt-serif-latin-400-normal.woff2",
             "kpress/format/templates/page.html.jinja",
+            "kpress/licenses/github-slugger.txt",
             "kpress/licenses/katex.txt",
         }
         for suffix in required_suffixes:
@@ -80,6 +81,7 @@ def _inspect_sdist(sdist: Path) -> None:
             "README.md",
             "pyproject.toml",
             "src/kpress/format/static/js/runtime.js",
+            "src/kpress/licenses/github-slugger.txt",
         }
         for suffix in required_suffixes:
             if not any(name.endswith(suffix) for name in names):

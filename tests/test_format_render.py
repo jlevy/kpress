@@ -228,12 +228,28 @@ def test_footnote_refs_render_sequential_numbers() -> None:
         title="Footnotes",
     )
 
-    # Visible markers are sequential numbers, not the authored labels...
-    assert 'data-kpress-footnote-ref="one">1</a></sup>' in tree.html
-    assert 'data-kpress-footnote-ref="two">2</a></sup>' in tree.html
-    # ...while the labels still back the anchor ids.
-    assert 'href="#fn-one"' in tree.html
-    assert 'id="fn-two"' in tree.html
+    assert 'href="#fn-1" id="fnref-1" data-kpress-footnote-ref="1">1</a></sup>' in tree.html
+    assert 'href="#fn-2" id="fnref-2" data-kpress-footnote-ref="2">2</a></sup>' in tree.html
+    assert 'id="fn-1"' in tree.html
+    assert 'id="fn-2"' in tree.html
+
+
+def test_footnote_ids_are_ordinal_and_repeated_refs_are_collision_free() -> None:
+    tree = parse_markdown(
+        "A.[^café] Again.[^café] B.[^!!!] C.[^cafe]\n\n"
+        "[^café]: Unicode.\n[^!!!]: Punctuation.\n[^cafe]: ASCII.\n",
+        title="Footnote identities",
+    )
+
+    assert 'href="#fn-1" id="fnref-1" data-kpress-footnote-ref="1">1</a></sup>' in tree.html
+    assert 'href="#fn-1" id="fnref-1-2" data-kpress-footnote-ref="1">1</a></sup>' in tree.html
+    assert 'href="#fn-2" id="fnref-2" data-kpress-footnote-ref="2">2</a></sup>' in tree.html
+    assert 'href="#fn-3" id="fnref-3" data-kpress-footnote-ref="3">3</a></sup>' in tree.html
+    assert 'id="fn-1"' in tree.html
+    assert 'id="fn-2"' in tree.html
+    assert 'id="fn-3"' in tree.html
+    assert 'href="#fnref-1"' in tree.html
+    assert 'href="#fnref-1-2"' in tree.html
 
 
 def test_render_page_includes_assets_theme_and_toc() -> None:
@@ -471,6 +487,35 @@ def test_page_model_block_carries_contract_keys() -> None:
     assert {"level", "title", "href"} <= set(headings[0])
     # Widget config is opaque: passed through verbatim.
     assert model["widgets"] == {"settings": {"choosers": ["theme", "reading-font"]}}
+
+
+def test_unicode_anchor_is_shared_by_heading_toc_page_model_and_link_audit() -> None:
+    markdown = (
+        "## Café Notes\n\n"
+        "[Encoded target](#caf%C3%A9-notes) and [literal target](#café-notes).\n\n"
+        "## Café Notes\n"
+    )
+    document = DocumentInput(
+        title="Anchor contract",
+        source_text=markdown,
+        source_path="anchors.md",
+        body_markdown=markdown,
+    )
+    page = render_page(
+        document,
+        RenderOptions(include_toc="on", toc_min_headings=1),
+    )
+    model = _page_model(page.html)
+
+    assert '<h2 id="café-notes">Café Notes</h2>' in page.html
+    assert '<h2 id="café-notes-1">Café Notes</h2>' in page.html
+    assert '<a class="toc-link" href="#café-notes">Café Notes</a>' in page.html
+    assert '<a class="toc-link" href="#café-notes-1">Café Notes</a>' in page.html
+    assert model["headings"] == [
+        {"href": "#café-notes", "level": 1, "title": "Café Notes"},
+        {"href": "#café-notes-1", "level": 1, "title": "Café Notes"},
+    ]
+    assert not [item for item in page.diagnostics if item.type == "broken_anchor"]
 
 
 def test_page_model_defaults_settings_on_and_off_removes_it() -> None:

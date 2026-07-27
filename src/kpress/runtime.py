@@ -201,9 +201,17 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
     """Render a document through KPress and return a JSON-ready host payload."""
 
     profile = normalize_print_profile(request.view, request.profile)
-    if request.toc_collapse_depth is not None and request.toc_collapse_depth < 1:
+    # Treat the dataclass field as an untrusted runtime value: Python callers can
+    # construct it without a static type checker, and this boundary must reject
+    # bool/float/string values with a KPress error rather than leaking TypeError.
+    collapse_depth: Any = request.toc_collapse_depth
+    if collapse_depth is not None and (
+        isinstance(collapse_depth, bool)
+        or not isinstance(collapse_depth, int)
+        or collapse_depth < 1
+    ):
         raise KPressInvalidRequestError(
-            f"Invalid toc_collapse_depth: {request.toc_collapse_depth!r}; "
+            f"Invalid toc_collapse_depth: {collapse_depth!r}; "
             f"expected an integer >= 1 (or None to disable collapse)"
         )
     # Same normalization as the static dialects (presence scalars to

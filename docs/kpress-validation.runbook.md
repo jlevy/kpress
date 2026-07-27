@@ -170,6 +170,8 @@ Accept golden changes only when the diff is expected.
 Review at least:
 
 - document structure and semantic classes
+- heading ids, TOC hrefs, and page-model hrefs, including Unicode and duplicate headings
+- ordinal footnote anchors and literal `data-col` / positional `data-col-index` metadata
 - asset order and asset URLs
 - manifest `schema_version`
 - content hashes and hashed filenames

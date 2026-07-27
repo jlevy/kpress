@@ -161,8 +161,10 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
 
 - **[Human]/[Agent]** Footnote reference markers render as **sequential superscript
   numbers** (1, 2, 3 …) that **match the numbers** in the footnotes section at the
-  bottom, even when the markdown labels are words (`[^one]`). The anchor still targets
-  the label (`#fn-one`). (Markers are pill-styled and sans.)
+  bottom, even when the markdown labels are words (`[^one]`). Anchors use the same
+  document ordinal (`#fn-1`, `#fnref-1`, and `#fnref-1-2` for a repeated reference);
+  labels do not leak into DOM identity.
+  (Markers are pill-styled and sans.)
 - **[Agent]/[Human]** Hover or click a footnote ref → a tooltip appears with a **solid**
   background (no bleed-through of text behind it) in **sans**, positioned within the
   viewport.

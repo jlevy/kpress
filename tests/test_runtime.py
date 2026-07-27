@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -385,7 +386,8 @@ def test_render_view_threads_extra_attributes_and_keys_the_cache_on_them() -> No
     assert 'kind="tip"' not in stripped["html"]
 
 
-def test_runtime_rejects_invalid_toc_collapse_depth() -> None:
+@pytest.mark.parametrize("value", [0, -1, 1.5, True, "1"])
+def test_runtime_rejects_invalid_toc_collapse_depth(value: object) -> None:
     runtime.clear_render_cache()
     request = runtime.KPressRenderRequest(
         source_text="# One\n\nBody\n",
@@ -395,7 +397,7 @@ def test_runtime_rejects_invalid_toc_collapse_depth() -> None:
         ext=".md",
         mtime_hash="a",
         size=12,
-        toc_collapse_depth=0,
+        toc_collapse_depth=cast(Any, value),
     )
     with pytest.raises(runtime.KPressInvalidRequestError, match="toc_collapse_depth"):
         runtime.render_view(request)

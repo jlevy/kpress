@@ -15,6 +15,8 @@ Use this index for implementation, maintenance, and release work.
 - [History-Aware Section Navigation](done/history-navigation.plan.md): the completed
   plan for native hash history on TOC links and viewport-aware scroll restoration on
   Back/Forward
+- [Collapsible TOC](done/collapsible-toc.plan.md): the completed depth-collapse,
+  expand-all, and scroll-follow design
 - [Operations and Host Integration](kpress-operations-and-host-integration.md): local
   runtime probes, browser quality gates, acceptance, accessibility, and dynamic embeds
 - [Backlog and Status](../TODO.md): current capability evidence, release gates, and
@@ -40,8 +42,9 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
-- [KPress 0.2.3](releases/0.2.3.md): current navigation and rendering maintenance
-  release
+- [KPress 0.2.4](releases/0.2.4.md): current alpha anchor migration, presentation, and
+  release-hardening release
+- [KPress 0.2.3](releases/0.2.3.md): navigation and rendering maintenance release
 - [KPress 0.2.2](releases/0.2.2.md): host-export maintenance release
 - [KPress 0.2.1](releases/0.2.1.md): rendering and release-floor maintenance release
 - [KPress 0.2.0](releases/0.2.0.md): host-rendering and asset-contract release

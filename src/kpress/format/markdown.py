@@ -22,6 +22,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name  # pyright: ignore[reportUnknownVariableType]
 from pygments.util import ClassNotFound
 
+from kpress.format._github_slugger import GithubSlugger
 from kpress.format.model import (
     Diagnostic,
     DiagramMode,
@@ -34,7 +35,6 @@ from kpress.format.model import (
 )
 from kpress.format.sanitize import sanitize_generated_svg, sanitize_raw_html
 
-_SLUG_RE = re.compile(r"[^a-z0-9]+")
 # Optional leading sign (ASCII or typographic minus U+2212) and major currency
 # symbol; _is_numeric_cell_text strips whitespace first, so "$ 12.45" is matched
 # as "$12.45".
@@ -91,20 +91,6 @@ _YOUTUBE_HOSTS = {
 }
 
 
-def slugify(value: str, used: set[str] | None = None) -> str:
-    """Create a stable heading ID."""
-
-    used = used if used is not None else set()
-    base = _SLUG_RE.sub("-", value.strip().lower()).strip("-") or "section"
-    slug = base
-    idx = 2
-    while slug in used:
-        slug = f"{base}-{idx}"
-        idx += 1
-    used.add(slug)
-    return slug
-
-
 def _highlight_code(code: str, language: str) -> str:
     if not language:
         return escape(code)
@@ -144,8 +130,7 @@ def _render_fence(token: Token, *, diagrams: DiagramMode) -> str:
 
 
 def _footnote_ident(token: Token) -> str:
-    raw = token.meta.get("label") or str(int(token.meta.get("id", 0)) + 1)
-    return _SLUG_RE.sub("-", str(raw).strip().lower()).strip("-") or "note"
+    return str(int(token.meta.get("id", 0)) + 1)
 
 
 def _footnote_ref_id(token: Token) -> str:
@@ -158,10 +143,9 @@ def _render_footnote_ref(tokens: list[Token], idx: int, _options: Any, _env: Any
     token = tokens[idx]
     ident = _footnote_ident(token)
     ref_id = _footnote_ref_id(token)
-    # The visible marker is the sequential footnote number (1, 2, 3 …) matching the
-    # ordered footnotes section, regardless of the authored label; the label still backs
-    # the anchor ids (`#fn-<label>` / `#fnref-<label>`).
-    caption = escape(str(int(token.meta.get("id", 0)) + 1))
+    # One parser-owned ordinal drives visible numbering, DOM identity, and the model.
+    # Authored labels remain source syntax and diagnostic context only.
+    caption = escape(ident)
     return (
         f'<sup class="kpress-footnote-ref"><a href="#fn-{ident}" id="fnref-{ref_id}" '
         f'data-kpress-footnote-ref="{ident}">{caption}</a></sup>'
@@ -431,29 +415,28 @@ def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode
 def _plain_inline_text(token: Token) -> str:
     pieces: list[str] = []
     for child in token.children or []:
-        if child.type in {"text", "code_inline", "html_inline"}:
+        if child.type in {"text", "code_inline"}:
             pieces.append(child.content)
         elif child.type in {"softbreak", "hardbreak"}:
             pieces.append(" ")
         elif child.type == "image":
             pieces.append(child.content)
-    text = "".join(pieces).strip()
-    return re.sub(r"\s+", " ", text) or token.content
+    return "".join(pieces)
 
 
-def _add_heading_ids(tokens: list[Token]) -> tuple[list[Heading], set[str]]:
+def _add_heading_ids(tokens: list[Token]) -> list[Heading]:
     headings: list[Heading] = []
-    used_ids: set[str] = set()
+    slugger = GithubSlugger()
     for idx, token in enumerate(tokens):
         if token.type != "heading_open":
             continue
         inline = tokens[idx + 1] if idx + 1 < len(tokens) else None
         title = _plain_inline_text(inline) if inline and inline.type == "inline" else ""
         level = int(token.tag.removeprefix("h"))
-        heading_id = slugify(title, used_ids)
+        heading_id = slugger.slug(title)
         token.attrSet("id", heading_id)
         headings.append(Heading(level=level, title=title, id=heading_id))
-    return headings, used_ids
+    return headings
 
 
 def _postprocess_tasks(html: str) -> str:
@@ -590,14 +573,6 @@ def _is_numeric_cell_text(value: str) -> bool:
     return bool(_NUMERIC_CELL_RE.fullmatch(text))
 
 
-def _slugify_column(text: str) -> str:
-    """Stable column key derived from a table header cell's text: lowercased, with
-    non-alphanumeric runs collapsed to single hyphens. Empty when the header carries no
-    alphanumerics. This is the public ``data-col`` enrichment hook downstream decorators
-    use to select a column by name; kpress emits it and never consumes it."""
-    return re.sub(r"[^a-z0-9]+", "-", text.strip().lower()).strip("-")
-
-
 class _BufferedCell:
     def __init__(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.tag = tag
@@ -619,7 +594,7 @@ class _TableCellRecord:
         parts_index: int,
         tag: str,
         base_attrs: list[tuple[str, str | None]],
-        slug: str,
+        column_label: str | None,
         column: int,
         is_body: bool,
         is_empty: bool,
@@ -628,7 +603,7 @@ class _TableCellRecord:
         self.parts_index = parts_index
         self.tag = tag
         self.base_attrs = base_attrs
-        self.slug = slug
+        self.column_label = column_label
         self.column = column
         self.is_body = is_body
         self.is_empty = is_empty
@@ -649,10 +624,10 @@ class _KpressHtmlPostprocessor(HTMLParser):
         self._table_depth = 0
         self._cell: _BufferedCell | None = None
         self._skip_iframe_depth = 0
-        # Per-top-level-table column slugs (from the header row) + the current row's
-        # column index, used to emit data-col on body cells. Only the top-level table is
-        # tracked, matching the fact that only its cells are buffered.
-        self._table_columns: list[str] = []
+        # Per-top-level-table visible header labels plus the current row's column index.
+        # ``None`` means no header-backed metadata exists for that position; an empty
+        # string is a real, empty header label and still gets an unambiguous index.
+        self._table_columns: list[str | None] = []
         self._table_col_index = 0
         # Flushed cells of the current top-level table, kept until </table> so the
         # numeric-column decision can be made over whole columns rather than per cell.
@@ -741,8 +716,11 @@ class _KpressHtmlPostprocessor(HTMLParser):
             cell.attrs, "rowspan"
         ) not in (None, "1"):
             self._table_has_span = True
-        slug = self._column_slug_for_cell(cell)
-        attrs = _set_attr(cell.attrs, "data-col", slug) if slug else cell.attrs
+        column_label = self._column_label_for_cell(cell)
+        attrs = cell.attrs
+        if column_label is not None:
+            attrs = _set_attr(attrs, "data-col", column_label)
+            attrs = _set_attr(attrs, "data-col-index", str(self._table_col_index + 1))
         text = cell.text()
         self._cell = None
         if not self._table_row_chars:
@@ -754,7 +732,7 @@ class _KpressHtmlPostprocessor(HTMLParser):
                 parts_index=len(self.parts),
                 tag=cell.tag,
                 base_attrs=cell.attrs,
-                slug=slug,
+                column_label=column_label,
                 column=self._table_col_index,
                 is_body=cell.tag.lower() == "td",
                 is_empty=not re.sub(r"\s+", "", unescape(text)),
@@ -800,8 +778,9 @@ class _KpressHtmlPostprocessor(HTMLParser):
                 continue
             if numeric:
                 attrs = _set_attr(attrs, "data-kpress-numeric", "true")
-            if record.slug:
-                attrs = _set_attr(attrs, "data-col", record.slug)
+            if record.column_label is not None:
+                attrs = _set_attr(attrs, "data-col", record.column_label)
+                attrs = _set_attr(attrs, "data-col-index", str(record.column + 1))
             self.parts[record.parts_index] = f"<{record.tag}{_render_attrs(attrs)}>"
 
     def _finalize_table_scale(self) -> None:
@@ -828,19 +807,19 @@ class _KpressHtmlPostprocessor(HTMLParser):
             )
         self._table_wrap_index = -1
 
-    def _column_slug_for_cell(self, cell: _BufferedCell) -> str:
-        """Header cells (`th`) define the column slug positionally; body cells (`td`) map
-        to the slug recorded for their column index. No header row -> no slug (graceful)."""
+    def _column_label_for_cell(self, cell: _BufferedCell) -> str | None:
+        """Map a cell to its normalized visible header label by column position."""
+
         index = self._table_col_index
         if cell.tag.lower() == "th":
-            slug = _slugify_column(cell.text())
+            label = re.sub(r"\s+", " ", unescape(cell.text())).strip()
             if len(self._table_columns) <= index:
-                self._table_columns.extend([""] * (index + 1 - len(self._table_columns)))
-            self._table_columns[index] = slug
-            return slug
+                self._table_columns.extend([None] * (index + 1 - len(self._table_columns)))
+            self._table_columns[index] = label
+            return label
         if index < len(self._table_columns):
             return self._table_columns[index]
-        return ""
+        return None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         normalized_tag = tag.lower()
@@ -1129,7 +1108,7 @@ def parse_markdown(
     env: dict[str, Any] = {}
     tokens = md.parse(markdown, env)
     _mark_standalone_image_figures(tokens)
-    headings, _ = _add_heading_ids(tokens)
+    headings = _add_heading_ids(tokens)
     footnotes = _collect_footnotes(md, tokens, env)
     html = md.renderer.render(tokens, md.options, env)
     html = _postprocess_tasks(html)

@@ -24,7 +24,17 @@ async function importFresh(relativePath) {
 function collapsibleTocMarkup({
   depthAttr = ' data-kpress-toc-collapse-depth="1"',
   extra = "",
+  expandControl = true,
 } = {}) {
+  const title = `<a href="#" class="kpress-toc-title toc-link toc-title"
+                    data-kpress-toc-top>Contents</a>`;
+  const header = expandControl
+    ? `<div class="kpress-toc-header">
+        ${title}
+        <button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all
+                aria-expanded="false" aria-label="Expand TOC" title="Expand TOC"><svg></svg><svg></svg></button>
+      </div>`
+    : title;
   document.body.innerHTML = `
     <div class="kpress-content-with-toc">
       <button class="kpress-toc-toggle" type="button" data-kpress-toc-toggle aria-expanded="false">
@@ -32,11 +42,7 @@ function collapsibleTocMarkup({
       </button>
       <div class="kpress-toc-backdrop" data-kpress-toc-backdrop aria-hidden="true"></div>
       <nav class="kpress-toc" data-kpress-toc${depthAttr}${extra}>
-        <div class="kpress-toc-header">
-          <a href="#" class="kpress-toc-title toc-link toc-title" data-kpress-toc-top>Contents</a>
-          <button class="kpress-toc-expand-all" type="button" data-kpress-toc-expand-all
-                  aria-expanded="false" aria-label="Expand TOC" title="Expand TOC"><svg></svg><svg></svg></button>
-        </div>
+        ${header}
         <ol class="toc-list">
           <li class="kpress-toc-level-2 toc-h2"><a class="toc-link" href="#pre">Pre</a></li>
           <li class="kpress-toc-level-1 toc-h1"><a class="toc-link" href="#a">A</a></li>
@@ -229,9 +235,12 @@ describe("collapsible TOC", () => {
     // collapseDepth: 0 disables collapse entirely.
     document.body.innerHTML = "";
     collapsibleTocMarkup();
-    initKpressToc(document, { collapseDepth: 0 });
+    const disabledDispose = initKpressToc(document, { collapseDepth: 0 });
     expect(isCollapsed("#a1")).toBe(false);
     expect(isCollapsed("#a2")).toBe(false);
+    expect(expandAllButton().hasAttribute("hidden")).toBe(true);
+    disabledDispose();
+    expect(expandAllButton().hasAttribute("hidden")).toBe(false);
   });
 
   it("without the attribute or config, no entry is ever collapsed", async () => {
@@ -240,6 +249,49 @@ describe("collapsible TOC", () => {
     initKpressToc(document);
     expect(isCollapsed("#a1")).toBe(false);
     expect(isCollapsed("#b1")).toBe(false);
+  });
+
+  it("creates removable expand-all chrome for collapse enabled only through JS config", async () => {
+    const { initKpressToc } = await importFresh("toc.js");
+    collapsibleTocMarkup({ depthAttr: "", expandControl: false });
+    expect(expandAllButton()).toBeNull();
+    expect(document.querySelector(".kpress-toc-header")).toBeNull();
+
+    const dispose = initKpressToc(document, { collapseDepth: 1 });
+    const button = expandAllButton();
+    expect(button).not.toBeNull();
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(isCollapsed("#a1")).toBe(true);
+
+    button.click();
+    expect(isCollapsed("#a1")).toBe(false);
+
+    dispose();
+    expect(expandAllButton()).toBeNull();
+    expect(document.querySelector(".kpress-toc-header")).toBeNull();
+    expect(document.querySelector("[data-kpress-toc-collapse-depth]")).toBeNull();
+    expect(document.querySelectorAll(".kpress-toc-collapsed")).toHaveLength(0);
+  });
+
+  it("resets expand-all state before a dispose and rebind cycle", async () => {
+    const { initKpressToc } = await importFresh("toc.js");
+    collapsibleTocMarkup();
+    const firstDispose = initKpressToc(document);
+    const button = expandAllButton();
+
+    button.click();
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    firstDispose();
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(button.getAttribute("aria-label")).toBe("Expand TOC");
+    expect(button.getAttribute("title")).toBe("Expand TOC");
+
+    const secondDispose = initKpressToc(document);
+    expect(isCollapsed("#a1")).toBe(true);
+    button.click();
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(isCollapsed("#a1")).toBe(false);
+    secondDispose();
   });
 
   it("dispose removes collapsed classes and the expand-all listener", async () => {

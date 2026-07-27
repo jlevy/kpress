@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -13,6 +15,19 @@ from kpress.publish import build_site
 class _QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         _ = (format, args)
+
+
+def _launch_browser(playwright: Any, sync_api: Any) -> Any:
+    try:
+        return playwright.chromium.launch(headless=True)
+    except sync_api.Error:
+        try:
+            return playwright.chromium.launch(headless=True, channel="chrome")
+        except sync_api.Error as exc:
+            message = f"No Playwright Chromium or system Chrome available: {exc}"
+            if os.environ.get("CI"):
+                pytest.fail(message)
+            pytest.skip(message)
 
 
 def test_tooltip_hover_position_and_escape_in_real_browser(tmp_path: Path) -> None:
@@ -36,10 +51,7 @@ def test_tooltip_hover_position_and_escape_in_real_browser(tmp_path: Path) -> No
     thread.start()
     try:
         with sync_api.sync_playwright() as playwright:
-            try:
-                browser = playwright.chromium.launch(headless=True)
-            except sync_api.Error as exc:
-                pytest.skip(f"Playwright Chromium is not installed: {exc}")
+            browser = _launch_browser(playwright, sync_api)
             try:
                 page = browser.new_page(viewport={"width": 1000, "height": 700})
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
@@ -88,10 +100,7 @@ def test_footnote_keyboard_activation_navigates_in_real_browser(tmp_path: Path) 
     thread.start()
     try:
         with sync_api.sync_playwright() as playwright:
-            try:
-                browser = playwright.chromium.launch(headless=True)
-            except sync_api.Error as exc:
-                pytest.skip(f"Playwright Chromium is not installed: {exc}")
+            browser = _launch_browser(playwright, sync_api)
             try:
                 page = browser.new_page(viewport={"width": 1000, "height": 700})
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")

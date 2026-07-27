@@ -29,7 +29,7 @@ def test_gfm_markdown_document_tree_covers_nested_blocks_and_inline_features() -
         title="Reader parity",
     )
 
-    assert [heading.id for heading in tree.headings] == ["repeated", "repeated-2"]
+    assert [heading.id for heading in tree.headings] == ["repeated", "repeated-1"]
     assert "<blockquote>\n<p>Quoted <strong>strong</strong> text</p>\n</blockquote>" in tree.html
     assert "<ol>" in tree.html
     assert "kpress-task" in tree.html
@@ -220,6 +220,48 @@ def test_heading_metadata_uses_plain_text_and_toc_skips_single_leading_h1() -> N
     ]
 
 
+def test_heading_ids_use_visible_text_and_github_slugger_semantics() -> None:
+    tree = parse_markdown(
+        dedent(
+            """
+            ## Figma's Share Price
+
+            ## S&P 500
+
+            ## Café Notes
+
+            ## Summary
+
+            ## Summary
+
+            ## 😄 emoji
+
+            ## Привет 世界
+
+            ## &#x20;a&#x20;
+
+            ## !!!
+
+            ## <em>Raw HTML</em>
+            """
+        ).strip(),
+        title="GitHub anchors",
+    )
+
+    assert [(item.title, item.id) for item in tree.headings] == [
+        ("Figma's Share Price", "figmas-share-price"),
+        ("S&P 500", "sp-500"),
+        ("Café Notes", "café-notes"),
+        ("Summary", "summary"),
+        ("Summary", "summary-1"),
+        ("😄 emoji", "-emoji"),
+        ("Привет 世界", "привет-世界"),
+        (" a ", "-a-"),
+        ("!!!", ""),
+        ("Raw HTML", "raw-html"),
+    ]
+
+
 def test_toc_normalizes_levels_when_top_levels_are_absent() -> None:
     # A document of only H3s (no H1/H2) should list flat at the TOC top level, not
     # indented three deep as if the missing H1/H2 ancestors existed. The rendered <h3>
@@ -364,19 +406,19 @@ def test_tables_preserve_attrs_and_get_static_reader_hooks() -> None:
     )
 
     assert '<div class="kpress-table-wrap"><table class="kpress-table">' in tree.html
-    # GFM header cells carry the data-col enrichment hook (column slug from the header).
-    assert '<th data-col="label">Label</th>' in tree.html
+    # GFM cells carry the visible header label and its unambiguous position.
+    assert '<th data-col="Label" data-col-index="1">Label</th>' in tree.html
     # Numeric marking is column-scoped and includes the header of a numeric column.
     assert (
-        '<th style="text-align:right" data-kpress-numeric="true" data-col="amount">Amount</th>'
-        in tree.html
-    )
-    # Body cells map to their column's slug; numeric detection and alignment still apply.
-    assert '<td data-col="label">Revenue</td>' in tree.html
+        '<th style="text-align:right" data-kpress-numeric="true" '
+        'data-col="Amount" data-col-index="2">Amount</th>'
+    ) in tree.html
+    # Body cells map to the same label and index; numeric detection still applies.
+    assert '<td data-col="Label" data-col-index="1">Revenue</td>' in tree.html
     assert (
-        '<td style="text-align:right" data-kpress-numeric="true" data-col="amount">1,234.50</td>'
-        in tree.html
-    )
+        '<td style="text-align:right" data-kpress-numeric="true" '
+        'data-col="Amount" data-col-index="2">1,234.50</td>'
+    ) in tree.html
     # A raw HTML table with no header row degrades gracefully: the numeric hook is still
     # set, but no data-col is invented.
     assert '<table id="raw" class="wide kpress-table">' in tree.html
@@ -385,7 +427,7 @@ def test_tables_preserve_attrs_and_get_static_reader_hooks() -> None:
     assert "data-col" not in tree.html.split('id="raw"', 1)[1]
 
 
-def test_table_cells_emit_data_col_from_header_slug() -> None:
+def test_table_cells_emit_literal_column_metadata() -> None:
     tree = parse_markdown(
         dedent(
             """
@@ -397,20 +439,60 @@ def test_table_cells_emit_data_col_from_header_slug() -> None:
         title="Cols",
     )
 
-    # Header text is slugified: lowercased, non-alphanumeric runs -> a single hyphen.
-    assert '<th data-col="ticker">Ticker</th>' in tree.html
+    assert '<th data-col="Ticker" data-col-index="1">Ticker</th>' in tree.html
     assert (
-        '<th style="text-align:right" data-kpress-numeric="true" data-col="net-change">'
-        "Net Change %</th>" in tree.html
-    )
-    assert '<th data-col="notes">Notes</th>' in tree.html
-    # Body cells inherit their column's slug by position.
-    assert '<td data-col="ticker">ACME</td>' in tree.html
+        '<th style="text-align:right" data-kpress-numeric="true" '
+        'data-col="Net Change %" data-col-index="2">Net Change %</th>'
+    ) in tree.html
+    assert '<th data-col="Notes" data-col-index="3">Notes</th>' in tree.html
+    # Body cells inherit the visible label and stable position.
+    assert '<td data-col="Ticker" data-col-index="1">ACME</td>' in tree.html
     assert (
-        '<td style="text-align:right" data-kpress-numeric="true" data-col="net-change">12.5</td>'
-        in tree.html
+        '<td style="text-align:right" data-kpress-numeric="true" '
+        'data-col="Net Change %" data-col-index="2">12.5</td>'
+    ) in tree.html
+    assert '<td data-col="Notes" data-col-index="3">up</td>' in tree.html
+
+
+def test_table_column_metadata_preserves_visible_labels_and_position() -> None:
+    tree = parse_markdown(
+        dedent(
+            """
+            | Net Change % | Café | Café |
+            | ---: | --- | --- |
+            | 12.5 | Oui | Non |
+            """
+        ).strip(),
+        title="Literal columns",
     )
-    assert '<td data-col="notes">up</td>' in tree.html
+
+    assert (
+        '<th style="text-align:right" data-kpress-numeric="true" '
+        'data-col="Net Change %" data-col-index="1">Net Change %</th>'
+    ) in tree.html
+    assert '<th data-col="Café" data-col-index="2">Café</th>' in tree.html
+    assert '<th data-col="Café" data-col-index="3">Café</th>' in tree.html
+    assert (
+        '<td style="text-align:right" data-kpress-numeric="true" '
+        'data-col="Net Change %" data-col-index="1">12.5</td>'
+    ) in tree.html
+    assert '<td data-col="Café" data-col-index="2">Oui</td>' in tree.html
+    assert '<td data-col="Café" data-col-index="3">Non</td>' in tree.html
+
+
+def test_table_column_metadata_handles_empty_header_labels() -> None:
+    tree = parse_markdown(
+        (
+            "<table><thead><tr><th></th><th>Café</th></tr></thead>"
+            "<tbody><tr><td>Unlabeled</td><td>Oui</td></tr></tbody></table>"
+        ),
+        title="Empty column label",
+    )
+
+    assert '<th data-col="" data-col-index="1"></th>' in tree.html
+    assert '<th data-col="Café" data-col-index="2">Café</th>' in tree.html
+    assert '<td data-col="" data-col-index="1">Unlabeled</td>' in tree.html
+    assert '<td data-col="Café" data-col-index="2">Oui</td>' in tree.html
 
 
 def test_numeric_marking_is_column_scoped_and_accepts_typographic_minus() -> None:
@@ -428,13 +510,20 @@ def test_numeric_marking_is_column_scoped_and_accepts_typographic_minus() -> Non
 
     # Typographic minus (U+2212) counts as a sign; the whole column aligns together,
     # header included.
-    assert '<th data-kpress-numeric="true" data-col="change">Change</th>' in tree.html
-    assert '<td data-kpress-numeric="true" data-col="change">−35%</td>' in tree.html
-    assert '<td data-kpress-numeric="true" data-col="change">+45%</td>' in tree.html
+    assert (
+        '<th data-kpress-numeric="true" data-col="Change" data-col-index="2">Change</th>'
+        in tree.html
+    )
+    assert (
+        '<td data-kpress-numeric="true" data-col="Change" data-col-index="2">−35%</td>' in tree.html
+    )
+    assert (
+        '<td data-kpress-numeric="true" data-col="Change" data-col-index="2">+45%</td>' in tree.html
+    )
     # A column mixing numbers and text gets no numeric marks at all: default alignment.
-    assert '<th data-col="mixed">Mixed</th>' in tree.html
-    assert '<td data-col="mixed">12</td>' in tree.html
-    assert '<td data-col="mixed">n/a</td>' in tree.html
+    assert '<th data-col="Mixed" data-col-index="3">Mixed</th>' in tree.html
+    assert '<td data-col="Mixed" data-col-index="3">12</td>' in tree.html
+    assert '<td data-col="Mixed" data-col-index="3">n/a</td>' in tree.html
 
 
 def test_numeric_columns_tolerate_empty_cells_and_skip_span_tables() -> None:
@@ -453,9 +542,11 @@ def test_numeric_columns_tolerate_empty_cells_and_skip_span_tables() -> None:
     )
 
     # Empty cells neither qualify nor disqualify a column, and are marked with it.
-    assert '<th data-kpress-numeric="true" data-col="value">Value</th>' in tree.html
-    assert '<td data-kpress-numeric="true" data-col="value">10</td>' in tree.html
-    assert '<td data-kpress-numeric="true" data-col="value"></td>' in tree.html
+    assert (
+        '<th data-kpress-numeric="true" data-col="Value" data-col-index="2">Value</th>' in tree.html
+    )
+    assert '<td data-kpress-numeric="true" data-col="Value" data-col-index="2">10</td>' in tree.html
+    assert '<td data-kpress-numeric="true" data-col="Value" data-col-index="2"></td>' in tree.html
     # Rowspan/colspan shift cell positions, so span tables get no numeric marks.
     assert "data-kpress-numeric" not in tree.html.split('id="span"', 1)[1]
 
@@ -647,6 +738,38 @@ def test_sanitized_mode_preserves_rendered_markdown_html() -> None:
     assert any(item.type.startswith("html_sanitized_") for item in tree.diagnostics)
 
 
+def test_sanitized_mode_preserves_generated_identifier_contracts() -> None:
+    tree = parse_markdown(
+        dedent(
+            """
+            ## Café déjà vu
+
+            Text with a footnote.[^named-label]
+
+            [^named-label]: Footnote text.
+
+            | Café | Net Change % |
+            | --- | --- |
+            | Oui | 12.5 |
+            """
+        ).strip(),
+        title="Sanitized identifiers",
+        trust_mode="sanitized",
+    )
+
+    assert 'id="café-déjà-vu"' in tree.html
+    assert [(item.title, item.href) for item in tree.toc] == [("Café déjà vu", "#café-déjà-vu")]
+    assert 'id="fnref-1"' in tree.html
+    assert 'href="#fn-1"' in tree.html
+    assert 'id="fn-1"' in tree.html
+    assert 'href="#fnref-1"' in tree.html
+    assert '<th data-col="Café" data-col-index="1">Café</th>' in tree.html
+    assert (
+        '<td data-kpress-numeric="true" data-col="Net Change %" data-col-index="2">12.5</td>'
+    ) in tree.html
+    assert not tree.diagnostics
+
+
 def test_external_links_get_new_tab_safety_policy_without_changing_internal_links() -> None:
     tree = parse_markdown(
         dedent(
@@ -787,8 +910,8 @@ def test_footnotes_and_math_inside_fenced_code_are_not_extracted() -> None:
     assert "Inline $not_math$ also stays in code" in tree.html
     assert "fn-code" not in tree.html
     assert "kpress-math-inline" not in tree.html
-    assert "fn-real" in tree.html
-    assert [footnote.id for footnote in tree.footnotes] == ["real"]
+    assert "fn-1" in tree.html
+    assert [footnote.id for footnote in tree.footnotes] == ["1"]
 
 
 def test_footnote_diagnostics_cover_missing_and_unused_definitions() -> None:

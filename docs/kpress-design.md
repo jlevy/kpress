@@ -158,13 +158,23 @@ feature guarantees); the sections named in the table carry the architecture deta
 
 - **GFM block and inline parsing.** Headings, paragraphs, nested lists, blockquotes,
   links and autolinks, strikethrough, task lists, hard/soft breaks, and code fences.
-- **Stable heading anchors and TOC metadata.** Deterministic, de-duplicated heading ids
-  with plain inline titles; broken-anchor diagnostics; a single leading H1 is excluded
-  from the TOC. TOC entry levels are structural depths, not raw tag levels: each entry
-  nests one level under its nearest preceding shallower heading, so the TOC always forms
-  a proper tree. A heading with no enclosing ancestor (an H3 before the first H2) lists
-  at the top level rather than indenting ahead of shallower entries, and skipped levels
-  (an H4 directly inside an H2) compress to one step.
+- **GitHub-compatible heading anchors and TOC metadata.** Heading ids are generated from
+  visible plain inline text by a dependency-free implementation pinned to
+  `github-slugger` 2.0.0 at commit `3461c4350868329c8530904d170358bca1d31448` and its
+  Unicode 13 exclusion data.
+  The complete published 78-case fixture sequence pins the contract: lowercase, remove
+  the upstream exclusion set, replace each literal ASCII space with one hyphen, preserve
+  leading/trailing spaces as leading/trailing hyphens, allow an empty slug, and allocate
+  collisions from `-1` with upstream occurrence bookkeeping.
+  The generated id is the single source for heading markup, `Heading.id`, TOC links, the
+  page model, browser behaviors, and broken-anchor diagnostics; percent-encoded and
+  literal Unicode fragments resolve to that same id.
+  A single leading H1 is excluded from the TOC. TOC entry levels are structural depths,
+  not raw tag levels: each entry nests one level under its nearest preceding shallower
+  heading, so the TOC always forms a proper tree.
+  A heading with no enclosing ancestor (an H3 before the first H2) lists at the top
+  level rather than indenting ahead of shallower entries, and skipped levels (an H4
+  directly inside an H2) compress to one step.
   Rendered heading tags are unchanged; this normalization is TOC-only.
 - **Raw HTML trust modes.** `trusted` (no sanitization, for your own files) and
   `sanitized` (for anyone else’s content: embeds, publishing, exports) with a defined
@@ -178,6 +188,9 @@ feature guarantees); the sections named in the table carry the architecture deta
   superscript numbering (markers show `1, 2, 3 …` matching the footnotes section
   regardless of the authored label), missing-reference and unused-definition
   diagnostics, and simplified print rendering.
+  DOM and model identities are parser ordinals: `fn-1`, `fnref-1`, and `fnref-1-2` for a
+  repeated first reference.
+  Authored labels remain source syntax and diagnostic context, never identity.
 - **Code fences and syntax highlighting.** Language-classed code blocks with server-side
   token markup and a shipped light and dark highlight stylesheet.
 - **Source profile.** Large source files are capped to a bounded preview with a visible
@@ -245,8 +258,10 @@ feature guarantees); the sections named in the table carry the architecture deta
   grouped digits, decimals, percent) and none mismatches; then every cell of the column,
   header included, carries `data-kpress-numeric`, while mixed columns keep the default
   start alignment with no marks.
-  Each cell also carries a `data-col="<header-slug>"` enrichment hook so downstream
-  decorators can select columns by name without kpress depending on them.
+  Header-backed cells carry `data-col="<visible header label>"`, preserving case,
+  punctuation, and Unicode after whitespace normalization, plus the 1-based
+  `data-col-index`. The index lets downstream decorators select duplicate or
+  empty-labeled columns unambiguously without kpress depending on them.
   The wide presentation (bleeding past the reading column on wide panes; edge-bleed
   scroll regions on phones) is reserved for genuinely large tables: the renderer stamps
   `data-kpress-table-scale` (value `wide`) on the wrap only when the widest row has at
@@ -542,11 +557,14 @@ The contract module also declares:
 - `BUILD_MANIFEST_REQUIRED_KEYS` and `ASSET_MANIFEST_REQUIRED_KEYS`
 - `OptimizerMode = Literal["none", "full"]` in `format.model`
 - `PUBLIC_DATA_ATTRIBUTES`: the stable table `data-*` hooks kpress emits for downstream
-  consumption. Per cell: `data-col` (the column slug derived from the header row) and
-  `data-kpress-numeric` (set on every cell of a numeric column — decided over the whole
-  column, not per cell) — the renderer-agnostic seam a downstream decorator consumes to
-  select a column by name or detect numeric columns; kpress emits those and never
-  consumes them, and it never imports a decorator.
+  consumption. Per header-backed cell, `data-col` is the whitespace-normalized visible
+  header label with case, punctuation, and Unicode preserved; `data-col-index` is its
+  1-based positional identity, including duplicate and empty labels.
+  `data-kpress-numeric` is set on every cell of a numeric column, decided over the whole
+  column rather than per cell.
+  These are renderer-agnostic seams a downstream decorator consumes to select a column
+  by label or position or detect numeric columns; kpress emits them, never consumes
+  them, and never imports a decorator.
   Per wrap: `data-kpress-table-scale` (value `wide`, stamped past the size cutoff),
   which kpress’s own CSS keys the wide presentation off and host stylesheets scope their
   width overrides to.
@@ -780,7 +798,7 @@ The supported fragment structure is:
 - document scopes: `kpress`, `kpress-doc`, `kpress-doc-layout`,
   `kpress-content-with-toc`, `kpress-prose`, and `kpress-long-text`
 - wide tabular content: `kpress-table-wrap` and `kpress-table`, with the public cell
-  attributes `data-col` and `data-kpress-numeric`
+  attributes `data-col`, `data-col-index`, and `data-kpress-numeric`
 - wide figures: `kpress-figure`, `kpress-image`, and `kpress-figcaption`
 - print and visibility: `kpress-print-surface`, `kpress-no-print`, and
   `kpress-print-only`
@@ -1227,6 +1245,11 @@ position rests in expands — the highlight itself still moves instantly.
 JS-channel config `collapseDepth` / `expandOnScroll` via
 `kpress.behaviors.configure("toc", ...)` overrides the data attributes (a config
 `collapseDepth` of `0` disables collapse).
+When JS config enables collapse on server markup that rendered the feature off, the
+behavior creates the same accessible header and expand-all chrome and adds the CSS
+activation attribute for that binding.
+Disposal removes generated chrome, restores the original attribute, clears collapsed
+rows, and resets an existing control’s ARIA label and expanded state before rebind.
 There are no per-entry disclosure toggles and no cross-page persistence; deep entries
 stay in the markup and the page model — collapse is visibility only.
 

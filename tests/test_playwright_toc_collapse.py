@@ -96,11 +96,11 @@ def test_toc_collapse_expand_all_and_scroll_follow_in_real_browser(tmp_path: Pat
 
         # Initial state: at the top the scroll-spy activates Part 1, so its
         # group rides scroll-follow while the other groups start collapsed.
-        expect(row("#sub-1-1")).not_to_have_class(_class_pattern(collapsed))
-        expect(row("#sub-2-1")).to_have_class(_class_pattern(collapsed))
-        expect(row("#sub-3-1")).to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-11")).not_to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-21")).to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-31")).to_have_class(_class_pattern(collapsed))
         # A collapsed row occupies no space once the motion settles.
-        expect(row("#sub-2-1")).not_to_be_visible()
+        expect(row("#sub-21")).not_to_be_visible()
 
         # Expand-all: every group opens and the button flips state.
         button = page.locator("[data-kpress-toc-expand-all]")
@@ -108,26 +108,26 @@ def test_toc_collapse_expand_all_and_scroll_follow_in_real_browser(tmp_path: Pat
         expect(button).to_have_attribute("aria-expanded", "true")
         expect(button).to_have_attribute("aria-label", "Collapse TOC")
         expect(button).to_have_attribute("title", "Collapse TOC")
-        expect(row("#sub-2-1")).not_to_have_class(_class_pattern(collapsed))
-        expect(row("#sub-2-1")).to_be_visible()
+        expect(row("#sub-21")).not_to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-21")).to_be_visible()
 
         # Collapse-all returns to the baseline, which keeps the active group.
         button.click()
         expect(button).to_have_attribute("aria-expanded", "false")
-        expect(row("#sub-1-1")).not_to_have_class(_class_pattern(collapsed))
-        expect(row("#sub-2-1")).to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-11")).not_to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-21")).to_have_class(_class_pattern(collapsed))
 
         # Scroll-follow handoff: reaching Part 3 expands its group and
         # collapses Part 1's.
-        page.evaluate("document.getElementById('sub-3-1').scrollIntoView()")
-        expect(row("#sub-3-1")).not_to_have_class(_class_pattern(collapsed))
-        expect(row("#sub-1-1")).to_have_class(_class_pattern(collapsed))
+        page.evaluate("document.getElementById('sub-31').scrollIntoView()")
+        expect(row("#sub-31")).not_to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-11")).to_have_class(_class_pattern(collapsed))
 
         # TOC click into a collapsed group: the spine entry stays clickable and
         # its group expands on arrival.
         page.locator('.kpress-toc a[href="#part-2"]').click()
-        expect(row("#sub-2-1")).not_to_have_class(_class_pattern(collapsed))
-        expect(row("#sub-3-1")).to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-21")).not_to_have_class(_class_pattern(collapsed))
+        expect(row("#sub-31")).to_have_class(_class_pattern(collapsed))
     finally:
         browser.close()
         playwright.stop()
@@ -159,7 +159,7 @@ def test_toc_collapse_applies_without_transition_under_reduced_motion(tmp_path: 
         button = page.locator("[data-kpress-toc-expand-all]")
         button.click()
         sync_api.expect(
-            page.locator('.kpress-toc .toc-list li:has(a[href="#sub-2-1"])')
+            page.locator('.kpress-toc .toc-list li:has(a[href="#sub-21"])')
         ).to_be_visible()
     finally:
         browser.close()
