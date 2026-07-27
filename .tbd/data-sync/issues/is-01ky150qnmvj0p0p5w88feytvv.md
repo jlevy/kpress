@@ -5,14 +5,17 @@ title: Reject non-integer dynamic TOC collapse depths
 kind: bug
 status: open
 priority: 2
-version: 1
+version: 4
+spec_path: docs/publishing.md
 labels:
   - toc
   - python
   - host-api
-dependencies: []
-parent_id: is-01ky147hh0nbx9vhjphw3fabn3
+dependencies:
+  - type: blocks
+    target: is-01kyh1118c3xsmapj9d3bv74az
+parent_id: is-01kyh0z636f2vtfzx6apaxvp2r
 created_at: 2026-07-21T01:35:33.043Z
-updated_at: 2026-07-21T01:35:33.043Z
+updated_at: 2026-07-27T05:34:14.313Z
 ---
 render_view only compares toc_collapse_depth < 1. Float and bool values pass and are stamped as 1.5 or True even though browser parsing disagrees; strings raise a raw TypeError instead of KPressInvalidRequestError. Validate isinstance(value, int), explicitly reject bool, and require >=1 before cache/render; add float, bool, and string boundary tests.
