@@ -3,9 +3,9 @@ type: is
 id: is-01ky150qddmda8kaqethhf0tk1
 title: Provide expand-all chrome when JS config enables TOC collapse
 kind: bug
-status: open
+status: closed
 priority: 2
-version: 4
+version: 6
 spec_path: docs/publishing.md
 labels:
   - toc
@@ -16,6 +16,12 @@ dependencies:
     target: is-01kyh1118c3xsmapj9d3bv74az
 parent_id: is-01kyh0z636f2vtfzx6apaxvp2r
 created_at: 2026-07-21T01:35:32.780Z
-updated_at: 2026-07-27T05:34:14.313Z
+updated_at: 2026-07-27T06:34:11.846Z
+closed_at: 2026-07-27T06:34:11.846Z
+close_reason: Implemented the reviewed TOC/runtime/CI correction with focused unit and real-browser regressions; the canonical make verify gate passes with all Playwright tests executed and no unexpected skips.
 ---
 The documented behaviors.configure('toc', {collapseDepth: N}) path can enable collapse on server output that was rendered with collapse off. toc.js then collapses deep rows, but the server emitted no data-kpress-toc-expand-all control, leaving no way to expand all. Make the JS override path create/activate equivalent chrome or constrain/document the API so it cannot produce inaccessible collapsed content; test against true collapse-off server markup without a dormant button.
+
+## Notes
+
+IMPLEMENTED LOCALLY 2026-07-27: JS-only collapseDepth on true collapse-off server markup now stamps the CSS hook and creates equivalent header/button/SVG chrome; disposal restores the original markup and attribute exactly. Vitest regression passes.

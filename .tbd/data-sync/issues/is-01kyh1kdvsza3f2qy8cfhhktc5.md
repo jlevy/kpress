@@ -3,9 +3,9 @@ type: is
 id: is-01kyh1kdvsza3f2qy8cfhhktc5
 title: "Adopt exact GitHub heading-anchor semantics (GitHub #33)"
 kind: feature
-status: open
+status: closed
 priority: 1
-version: 9
+version: 10
 spec_path: docs/publishing.md
 labels:
   - release
@@ -25,6 +25,8 @@ child_order_hints:
   - is-01kyh1nrge3scekb0ggx5n9261
   - is-01kyh1p3vz1r6qaqc9693pte3d
 created_at: 2026-07-27T05:43:42.200Z
-updated_at: 2026-07-27T05:45:31.808Z
+updated_at: 2026-07-27T06:34:05.427Z
+closed_at: 2026-07-27T06:34:05.427Z
+close_reason: "Resolved GitHub issue #33 with the pinned GitHub-compatible anchor design and no legacy mode, alias ids, redirects, or dual output. Heading, footnote, table, docs, golden, sanitizer, and browser contracts are implemented and make verify is green."
 ---
 Resolve https://github.com/jlevy/kpress/issues/33 as a v0.2.4 release blocker. Replace the current ASCII-only, suffix-from-2 heading IDs with a dependency-free Python port whose contract is pinned to github-slugger 2.0.0, tag commit 3461c4350868329c8530904d170358bca1d31448, and its 78 published fixtures. The stateful slugger is scoped per parsed document; heading IDs, DocumentTree metadata, TOC hrefs, page-model hrefs, internal-link diagnostics, history navigation, scroll spy, and tooltips must agree for punctuation, Unicode, empty results, and duplicate collisions. KPress is alpha: DO NOT MAINTAIN the old algorithm or add legacy modes, alias anchors, redirects, fallback IDs, or dual output. Remove obsolete code and document the intentional anchor migration. Keep heading slugs separate from footnote identities, table column metadata, routes, widgets, tabs, and CSS-only tokens.

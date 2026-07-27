@@ -3,9 +3,9 @@ type: is
 id: is-01kyh1m8q37qtxf4r96g9d5g21
 title: Freeze the GitHub slug contract, fixtures, and provenance
 kind: task
-status: open
+status: closed
 priority: 1
-version: 4
+version: 7
 spec_path: docs/publishing.md
 labels:
   - anchors
@@ -20,6 +20,12 @@ dependencies:
     target: is-01kyh1nrge3scekb0ggx5n9261
 parent_id: is-01kyh1kdvsza3f2qy8cfhhktc5
 created_at: 2026-07-27T05:44:09.697Z
-updated_at: 2026-07-27T05:45:30.342Z
+updated_at: 2026-07-27T06:33:51.762Z
+closed_at: 2026-07-27T06:33:51.761Z
+close_reason: "Implemented as specified: exact pinned fixtures/provenance, dependency-free stateful slugger, single-source heading consumers, ordinal footnote ids, and literal/indexed table metadata. Focused regressions and the complete make verify gate pass."
 ---
 Define the implementation contract before code changes. Pin parity to github-slugger 2.0.0 at commit 3461c4350868329c8530904d170358bca1d31448, not to mutable live GitHub behavior. Bring the complete 78-case published fixture corpus into the test surface with its ISC provenance and required license notice; do not add or execute an npm runtime dependency. Record the exact rules: use visible plain heading text, lowercase with GitHub-compatible mappings, remove the pinned Unicode 13 exclusion set, replace each literal ASCII space with one hyphen without trimming or collapsing, allow an empty base slug, and allocate duplicate/collision suffixes from -1 using the upstream occurrence bookkeeping. KPress does not expose maintainCase. Future upstream fixture or Unicode revisions require an explicit reviewed contract change.
+
+## Notes
+
+IMPLEMENTED LOCALLY 2026-07-27: vendored the exact 78-case github-slugger 2.0.0 fixture corpus and ISC license from commit 3461c4350868329c8530904d170358bca1d31448 with SHA-256 provenance. No npm/runtime dependency added or executed. Full parity test is green.
