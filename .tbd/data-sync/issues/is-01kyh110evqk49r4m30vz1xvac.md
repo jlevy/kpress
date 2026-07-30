@@ -3,9 +3,9 @@ type: is
 id: is-01kyh110evqk49r4m30vz1xvac
 title: Restore green main by remediating the PostCSS advisory
 kind: bug
-status: in_progress
+status: closed
 priority: 0
-version: 12
+version: 13
 spec_path: docs/publishing.md
 labels:
   - release
@@ -17,7 +17,9 @@ dependencies:
     target: is-01kyh1118c3xsmapj9d3bv74az
 parent_id: is-01kyh0z636f2vtfzx6apaxvp2r
 created_at: 2026-07-27T05:33:38.651Z
-updated_at: 2026-07-30T19:02:25.228Z
+updated_at: 2026-07-30T19:09:56.045Z
+closed_at: 2026-07-30T19:09:56.044Z
+close_reason: "PR #35 merged as 9ba160f; exact-head local make verify and main CI passed; private Dependabot review alert #2 is fixed; no draft repository advisories remain; release-safe security sign-off recorded."
 ---
 Current main d1f014f fails the required npm audit because PostCSS 8.5.16 is affected by GHSA-r28c-9q8g-f849. PR #35 remediates the advisory with PostCSS 8.5.18, the oldest patched version that satisfies the repository's 14-day dependency cool-off, and passes the complete local release gate plus all PR checks. PR #34 is superseded: its PostCSS 8.5.23 pin remains inside the cool-off until 2026-08-07T17:05:13Z, duplicates the remediation, and conflicts with PR #35's lockfile. Done means PR #35 is merged, exact-head main CI and npm audit are green, the repository advisory state confirms remediation, and PR #34 is closed without merging.
 

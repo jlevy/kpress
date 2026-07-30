@@ -3,9 +3,9 @@ type: is
 id: is-01kyh1118c3xsmapj9d3bv74az
 title: Perform the final 0.2.4 code and contract review
 kind: task
-status: in_progress
+status: closed
 priority: 1
-version: 11
+version: 12
 spec_path: docs/publishing.md
 labels:
   - release
@@ -19,7 +19,9 @@ dependencies:
     target: is-01ky150r6vegs67zh623tnwy7j
 parent_id: is-01kyh0z636f2vtfzx6apaxvp2r
 created_at: 2026-07-27T05:33:39.468Z
-updated_at: 2026-07-30T19:01:44.229Z
+updated_at: 2026-07-30T19:09:56.306Z
+closed_at: 2026-07-30T19:09:56.305Z
+close_reason: "Aggregate v0.2.4 review completed with no unresolved P0/P1/P2 findings; PR #35 merged; exact-head local and GitHub validation is green; private security gate is closed."
 ---
 After all remediation changes land, review the aggregate v0.2.3...release-candidate delta rather than individual commits. Confirm Python APIs, template variables, CSS/JS contracts, data attributes, manifests, defaults, generated identifiers, and host behavior match the intended v0.2.4 design. For GitHub issue #33, verify the old heading algorithm and label/table slug coupling are removed completely, every consumer uses the new single source of truth, and no compatibility modes, alias ids, redirects, dual outputs, or stale documentation remain. Confirm docs, migration guidance, tests, and goldens match every intentional alpha-breaking change; record findings and block publication on unresolved P0/P1/P2 release defects.
 
