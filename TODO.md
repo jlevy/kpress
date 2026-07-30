@@ -11,7 +11,7 @@ tbd is authoritative for issue status and dependencies.
 This file is the maintained view across both.
 Update all three together when a public capability changes.
 
-Last reconciled: 2026-07-19.
+Last reconciled: 2026-07-27.
 
 ## Release Status
 
@@ -21,7 +21,11 @@ history-aware section navigation with viewport scroll restoration, normalizes TO
 nesting to structural tree depth, scopes numeric table alignment to whole columns, keeps
 the document clear of the floating TOC toggle, and consolidates the supply-chain gate
 tooling. KPress `0.1.0` remains the first public alpha.
-All P1 release and stabilization gates are closed.
+KPress `0.2.4` is the active release candidate under the single `kpr-ki7m` epic.
+It adds the merged presentation work, collapsible TOC, document-actions widget, and the
+intentional alpha migration to GitHub-compatible heading anchors.
+Release review, candidate validation, private security sign-off, artifact inspection,
+publication, and post-publication verification remain tracked under that epic.
 Alpha status is conveyed by package metadata and release notes, not by a version suffix.
 
 Completed release gates:
@@ -77,11 +81,10 @@ their follow-up review work lands.
   [interactive footnote popovers](docs/interactive-footnote-popovers.plan.md) with
   distinct transient and pinned states, native anchor fallback, complete ESM closure,
   and real-browser evidence; phase epics are `kpr-pw7v`, `kpr-ipqy`, and `kpr-x23v`
-- `kpr-vuaw` (in review): the
-  [collapsible TOC](docs/project/specs/active/plan-2026-07-18-collapsible-toc.md) is
-  implemented on `feat/toc-collapse` — `toc_collapse_depth` / `toc_expand_on_scroll`
-  settings, the expand/collapse-all control, scroll-follow expansion, golden and
-  real-browser acceptance; closes with the PR merge
+- `kpr-vuaw` (closed): the [collapsible TOC](docs/done/collapsible-toc.plan.md) is
+  implemented and merged with `toc_collapse_depth` / `toc_expand_on_scroll` settings,
+  the expand/collapse-all control, scroll-follow expansion, goldens, and real-browser
+  acceptance
 - `kpr-als7` (closed):
   [history-aware section navigation](docs/done/history-navigation.plan.md) is
   implemented and merged (PR #24); the PR #25 review follow-ups (`kpr-z54g`, closed)
@@ -93,7 +96,10 @@ their follow-up review work lands.
 
 ### P1: Release Gates
 
-No P1 release gates remain open.
+- `kpr-ki7m`: complete and publish the v0.2.4 release candidate.
+  This epic is the authoritative workstream for remediation, the GitHub issue #33
+  migration, final contract review, release gates, artifacts, publication, and
+  post-publication verification.
 
 ### P2: Stabilization After the First Alpha
 
@@ -138,7 +144,7 @@ No P1 release gates remain open.
 Useful public orientation: [README](README.md), [documentation index](docs/README.md),
 [design and public contracts](docs/kpress-design.md),
 [validation runbook](docs/kpress-validation.runbook.md), and
-[current release notes](docs/releases/0.2.3.md).
+[v0.2.4 release-candidate notes](docs/releases/0.2.4.md).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

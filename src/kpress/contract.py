@@ -317,14 +317,16 @@ PUBLIC_HOST_CSS_VARIABLES = (
 )
 
 # Stable table data-* hooks kpress emits for downstream consumption. The per-cell
-# hooks (`data-col`, `data-kpress-numeric`) exist for downstream decorators (a host
-# app's table plugin, a future static-site builder) to select a column by name and
-# detect numeric columns; kpress never consumes those and never imports a decorator.
+# hooks (`data-col`, `data-col-index`, `data-kpress-numeric`) exist for downstream
+# decorators (a host app's table plugin, a future static-site builder) to select a
+# column by its visible label or unambiguous position and detect numeric columns;
+# kpress never consumes those and never imports a decorator.
 # `data-kpress-table-scale` is per-wrap, not per-cell: the renderer/tables.js stamp
 # it (value "wide") past the size cutoff, kpress's own CSS keys the wide
 # presentation off it, and host stylesheets scope their width overrides to it.
 PUBLIC_DATA_ATTRIBUTES = (
     "data-col",
+    "data-col-index",
     "data-kpress-numeric",
     "data-kpress-table-scale",
 )

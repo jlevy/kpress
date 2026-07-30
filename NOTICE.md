@@ -18,6 +18,11 @@ independent of KPress’s license.
 - **Source Sans 3** ([SIL Open Font License 1.1](src/kpress/licenses/source-sans-3.txt),
   Adobe, [adobe-fonts/source-sans](https://github.com/adobe-fonts/source-sans)).
   Variable woff2 subsets vendored under `src/kpress/format/static/fonts/`.
+- **github-slugger** v2.0.0 ([ISC License](src/kpress/licenses/github-slugger.txt),
+  [Flet/github-slugger](https://github.com/Flet/github-slugger)). KPress’s
+  dependency-free heading slugger and pinned Unicode exclusion data derive from commit
+  `3461c4350868329c8530904d170358bca1d31448`; no JavaScript runtime dependency is
+  installed or bundled.
 
 ## Optional Publishing Tooling Cached Separately
 

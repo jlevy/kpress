@@ -216,6 +216,32 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
     });
   }
 
+  // A runtime override can explicitly disable server-configured collapse.
+  // Remove the CSS activation hook, keep the always-expanded rows, and hide
+  // the now-inert control; disposal restores the server markup for rebind.
+  if (config.collapseDepth === 0) {
+    const originalCollapseDepth = toc.getAttribute("data-kpress-toc-collapse-depth");
+    toc.removeAttribute("data-kpress-toc-collapse-depth");
+    cleanups.push(() => {
+      if (originalCollapseDepth === null) {
+        toc.removeAttribute("data-kpress-toc-collapse-depth");
+      } else {
+        toc.setAttribute("data-kpress-toc-collapse-depth", originalCollapseDepth);
+      }
+    });
+
+    const expandAllButton = toc.querySelector("[data-kpress-toc-expand-all]");
+    if (expandAllButton) {
+      const originallyHidden = expandAllButton.hasAttribute("hidden");
+      expandAllButton.setAttribute("hidden", "");
+      cleanups.push(() => {
+        if (!originallyHidden) {
+          expandAllButton.removeAttribute("hidden");
+        }
+      });
+    }
+  }
+
   // Depth collapse: partition the flat <li> list into spine groups — each
   // entry at or above the threshold owns the deeper siblings that follow it up
   // to the next spine entry. Entries before the first spine entry (possible
@@ -227,6 +253,20 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
   /** @type {(link: Element | undefined) => void} */
   let followActiveGroup = () => {};
   if (collapseDepth !== null) {
+    // A JS-only override starts from server markup with no collapse stamp.
+    // Add the same CSS activation hook for this binding, then restore the
+    // original attribute exactly when a host disposes or reconfigures it.
+    if (typeof config.collapseDepth === "number") {
+      const originalCollapseDepth = toc.getAttribute("data-kpress-toc-collapse-depth");
+      toc.setAttribute("data-kpress-toc-collapse-depth", String(collapseDepth));
+      cleanups.push(() => {
+        if (originalCollapseDepth === null) {
+          toc.removeAttribute("data-kpress-toc-collapse-depth");
+        } else {
+          toc.setAttribute("data-kpress-toc-collapse-depth", originalCollapseDepth);
+        }
+      });
+    }
     /** @type {(item: Element) => number} */
     const entryLevel = (item) => {
       const match = /(?:^|\s)kpress-toc-level-(\d+)(?:\s|$)/.exec(item.className);
@@ -264,7 +304,52 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
           row.item.classList.toggle("kpress-toc-collapsed", !visible);
         }
       };
-      const expandAllButton = toc.querySelector("[data-kpress-toc-expand-all]");
+      let expandAllButton = toc.querySelector("[data-kpress-toc-expand-all]");
+      /** @type {(() => void) | null} */
+      let removeGeneratedChrome = null;
+      if (!expandAllButton) {
+        const title = toc.querySelector("[data-kpress-toc-top]");
+        let header = toc.querySelector(":scope > .kpress-toc-header");
+        const createdHeader = !header;
+        if (!header) {
+          header = document.createElement("div");
+          header.className = "kpress-toc-header";
+          toc.insertBefore(header, list);
+          if (title) {
+            header.append(title);
+          }
+        }
+
+        const generatedButton = document.createElement("button");
+        generatedButton.className = "kpress-toc-expand-all";
+        generatedButton.type = "button";
+        generatedButton.setAttribute("data-kpress-toc-expand-all", "");
+        generatedButton.setAttribute("aria-expanded", "false");
+        generatedButton.setAttribute("aria-label", "Expand TOC");
+        generatedButton.setAttribute("title", "Expand TOC");
+        for (const iconName of ["chevrons-up-down", "chevrons-down-up"]) {
+          const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          icon.setAttribute("class", "kpress-toc-expand-all-icon");
+          icon.setAttribute("width", "12");
+          icon.setAttribute("height", "12");
+          icon.setAttribute("aria-hidden", "true");
+          const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+          use.setAttribute("href", `#kpress-icon-${iconName}`);
+          icon.append(use);
+          generatedButton.append(icon);
+        }
+        header.append(generatedButton);
+        expandAllButton = generatedButton;
+        removeGeneratedChrome = () => {
+          generatedButton.remove();
+          if (createdHeader) {
+            if (title) {
+              toc.insertBefore(title, header);
+            }
+            header.remove();
+          }
+        };
+      }
       if (expandAllButton) {
         on(expandAllButton, "click", () => {
           allExpanded = !allExpanded;
@@ -314,9 +399,15 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
       applyCollapseState();
       cleanups.push(() => {
         cancelSettle();
+        if (expandAllButton) {
+          expandAllButton.setAttribute("aria-expanded", "false");
+          expandAllButton.setAttribute("aria-label", "Expand TOC");
+          expandAllButton.setAttribute("title", "Expand TOC");
+        }
         for (const row of rows) {
           row.item.classList.remove("kpress-toc-collapsed");
         }
+        removeGeneratedChrome?.();
       });
     }
   }

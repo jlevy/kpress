@@ -5,13 +5,13 @@ author: Joshua Levy (with Claude)
 ---
 # Feature: Collapsible TOC (Depth Collapse, Expand-All, Scroll-Follow)
 
-**Date:** 2026-07-18 (last updated 2026-07-19)
+**Date:** 2026-07-18 (completed 2026-07-27)
 
 **Author:** Joshua Levy (with Claude)
 
-**Status:** Implemented (feat/toc-collapse; see Implementation Notes)
+**Status:** Completed and merged; see Implementation Notes.
 
-**Tracking:** `kpr-vuaw`.
+**Tracking:** `kpr-vuaw` (closed); v0.2.4 release hardening is tracked by `kpr-ki7m`.
 
 ## Overview
 
@@ -237,7 +237,7 @@ data attributes `data-kpress-toc-collapse-depth`, `data-kpress-toc-expand-on-scr
 
 ### Implementation Notes
 
-Deviations and discoveries from the build (branch `feat/toc-collapse`):
+Deviations and discoveries from the implementation:
 
 - **Reduced-motion specificity:** the row-collapse transition selector initially
   outranked the global `prefers-reduced-motion` block (`.kpress [class]`), so the motion
@@ -261,6 +261,12 @@ Deviations and discoveries from the build (branch `feat/toc-collapse`):
   chevrons glyphs — review found the first pass (24 px bordered button, 16 px
   unfold/fold glyphs) and the second (20 px/14 px at 0.75 opacity) both too prominent
   next to the subtle Contents heading.
+- **Runtime-only enablement:** a host can enable collapse through
+  `behaviors.configure("toc", { collapseDepth: N })` even when the server rendered
+  collapse-off markup.
+  The behavior creates equivalent header/button chrome and the CSS activation attribute
+  for that binding, then removes them on disposal.
+  Disposal also resets the control’s ARIA state before rebind.
 
 ## Testing Strategy
 
@@ -295,12 +301,12 @@ Ships off by default in the next release — no host sees any change until it se
 - `src/kpress/format/render.py` (`_render_toc`), `format/markdown.py` (`_toc_entries`),
   `format/static/js/toc.js`, `format/static/css/components.css`,
   `src/kpress/contract.py` — the code seams.
-- [`history-navigation.plan.md`](../../../done/history-navigation.plan.md) — the
-  adjacent TOC behavior change this design builds on (native hash navigation,
-  `setActiveLink` as the single active-entry path).
-- [`content-size-indicators.plan.md`](../../../content-size-indicators.plan.md) — the
+- [`history-navigation.plan.md`](history-navigation.plan.md) — the adjacent TOC behavior
+  change this design builds on (native hash navigation, `setActiveLink` as the single
+  active-entry path).
+- [`content-size-indicators.plan.md`](../content-size-indicators.plan.md) — the
   config-plumbing and contract-registration conventions this plan mirrors.
-- [`kpress-design.md`](../../../kpress-design.md) — behaviors/component contract and the
+- [`kpress-design.md`](../kpress-design.md) — behaviors/component contract and the
   public-surface rules.
 
 <!-- This document follows common-doc-guidelines.md.

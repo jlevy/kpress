@@ -209,6 +209,8 @@ reportImplicitStringConcatenation = false
 [tool.codespell]
 # Skip test content/golden outputs and vendored third-party assets.
 skip = "tests/fixtures,tests/golden/accepted,tests/e2e/docs,src/kpress/format/static/katex,src/kpress/format/static/icons,*.woff2,uv.lock"
+# Percent-encoded Café anchors necessarily contain the ASCII URL fragment `caf`.
+ignore-words-list = "caf"
 
 [tool.pytest.ini_options]
 python_files = ["*.py"]

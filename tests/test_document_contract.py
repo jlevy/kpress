@@ -44,4 +44,4 @@ def test_rendered_page_has_stable_document_structure() -> None:
         "kpress-footnotes",
     } <= parser.classes
     assert "#section" in page.html
-    assert "fn-a" in parser.ids
+    assert "fn-1" in parser.ids

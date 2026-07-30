@@ -138,3 +138,85 @@ def test_hash_history_and_viewport_restoration_in_real_browser(tmp_path: Path) -
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_unicode_anchor_consumers_agree_in_real_browser(tmp_path: Path) -> None:
+    sync_api = pytest.importorskip("playwright.sync_api")
+    (tmp_path / "content").mkdir()
+    (tmp_path / "content" / "index.md").write_text(
+        "# Unicode anchor smoke\n\n"
+        "[Preview Café](#caf%C3%A9-notes)\n\n"
+        f"## Early\n\n{FILLER}\n\n"
+        f"## Café Notes\n\n{FILLER}\n\n"
+        f"## Café Notes\n\n{FILLER}\n\n"
+        f"## Привет 世界\n\n{FILLER}\n\n"
+        "## Last\n\nDone.\n",
+        encoding="utf-8",
+    )
+    config = tmp_path / "kpress.yml"
+    config.write_text(
+        "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n",
+        encoding="utf-8",
+    )
+    build_site(config)
+
+    handler = partial(_QuietHandler, directory=str(tmp_path / "public"))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_api.sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except sync_api.Error:
+                try:
+                    browser = playwright.chromium.launch(headless=True, channel="chrome")
+                except sync_api.Error as exc:
+                    pytest.skip(f"No Playwright Chromium or system Chrome available: {exc}")
+            try:
+                page = browser.new_page(viewport={"width": 1400, "height": 700})
+                page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+
+                authored_link = page.locator('.kpress-prose a[href="#caf%C3%A9-notes"]')
+                authored_link.hover()
+                tooltip = page.locator(".kpress-tooltip")
+                tooltip.wait_for(state="visible", timeout=3_000)
+                assert "Café Notes" in tooltip.inner_text()
+                page.keyboard.press("Escape")
+
+                first_toc = page.locator('.kpress-toc a[href="#café-notes"]')
+                first_toc.click()
+                page.wait_for_url("**/#caf%C3%A9-notes")
+                assert page.evaluate("document.getElementById('café-notes')?.textContent") == (
+                    "Café Notes"
+                )
+
+                duplicate_toc = page.locator('.kpress-toc a[href="#café-notes-1"]')
+                duplicate_toc.click()
+                page.wait_for_url("**/#caf%C3%A9-notes-1")
+                assert page.evaluate("document.getElementById('café-notes-1')?.textContent") == (
+                    "Café Notes"
+                )
+
+                page.go_back()
+                page.wait_for_url("**/#caf%C3%A9-notes")
+                assert page.evaluate("document.getElementById('café-notes')?.id") == "café-notes"
+
+                page.evaluate(
+                    """(() => {
+                      const pane = document.querySelector('[data-kpress-viewport]');
+                      const heading = document.getElementById('привет-世界');
+                      pane.scrollTop = heading.offsetTop - 20;
+                    })()"""
+                )
+                page.wait_for_function(
+                    """document.querySelector(
+                      '.kpress-toc a[href="#привет-世界"]'
+                    )?.getAttribute('data-active') === 'true'"""
+                )
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
