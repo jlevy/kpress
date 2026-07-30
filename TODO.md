@@ -11,27 +11,25 @@ tbd is authoritative for issue status and dependencies.
 This file is the maintained view across both.
 Update all three together when a public capability changes.
 
-Last reconciled: 2026-07-27.
+Last reconciled: 2026-07-30.
 
 ## Release Status
 
-KPress `0.2.3` is published on PyPI as the current public alpha.
-It preserves the complete typed host asset and fragment contract from `0.2.0`, adds
-history-aware section navigation with viewport scroll restoration, normalizes TOC
-nesting to structural tree depth, scopes numeric table alignment to whole columns, keeps
-the document clear of the floating TOC toggle, and consolidates the supply-chain gate
-tooling. KPress `0.1.0` remains the first public alpha.
-KPress `0.2.4` is the active release candidate under the single `kpr-ki7m` epic.
+KPress `0.2.4` is published on PyPI as the current public alpha.
 It adds the merged presentation work, collapsible TOC, document-actions widget, and the
 intentional alpha migration to GitHub-compatible heading anchors.
-Release review, candidate validation, private security sign-off, artifact inspection,
-publication, and post-publication verification remain tracked under that epic.
+Footnote ids now follow document order, and table metadata uses literal labels plus
+positional indexes instead of reusing heading-slug rules.
+The release shipped without compatibility shims after exact-main review, private
+security sign-off, artifact inspection, Trusted Publishing, and independent registry
+smokes. KPress `0.1.0` remains the first public alpha.
 Alpha status is conveyed by package metadata and release notes, not by a version suffix.
 
 Completed release gates:
 
 | Gate | Bead | Result |
 | --- | --- | --- |
+| GitHub-compatible anchors and v0.2.4 publication | `kpr-ki7m` | Closed; PR #35 resolved issue #33 with the intentional alpha identifier migrations, GitHub release `v0.2.4` published through PyPI Trusted Publishing, and the exact registry wheel passed clean CLI, README, and bundled-example smokes. |
 | Host asset contract and external install | `kpr-f8oz` | Closed; PR #16 shipped the typed asset manifest, public materializer, explicit asset policies, and pinned fragment hooks. GitHub release `v0.2.0` published through PyPI Trusted Publishing, and the exact registry package passed clean CLI and capability smokes. |
 | Trusted publication and external install | `kpr-1kfq` | Closed; GitHub release `v0.1.0` published through PyPI Trusted Publishing, and the registry package passed the documented CLI, clean-project, and bundled-example smokes. |
 | Public planning and docs hygiene | `kpr-nyc1` | Closed; the public ledger, docs, source, tests, and fixtures are checked for private paths, project names, and tracker IDs. |
@@ -67,7 +65,7 @@ not count as visual acceptance.
 | Optimizer | `none` and optional `full` stages work; a reviewed npm lock ships, cold-cache bootstrap uses `npm ci`, and preflight runs before output mutation | Optimizer, pipeline, manifest, doctor network-semantics, cold/offline/error, and preflight tests | Warm and cold cache paths are verified on the supported platforms | — |
 | CLI and local workflows | `init`, `convert`, `format`, `render`, `paste`, `files`, `export`, `clean`, `build`, `optimize`, and `doctor` have tested supported paths; unsupported source conversion is explicit | CLI, workflow, clean-room, and wheel smoke tests | HTML paths are verified; PDF delegates to the real browser-print pipeline | `kpr-qmii` for full visual acceptance |
 | Print and PDF | Print CSS and a Playwright/Chromium browser-PDF backend exist; no placeholder PDF path is exposed | Print-contract, missing-dependency, and browser-backend unit tests | Full print-preview/PDF artifact acceptance remains open | `kpr-qmii` |
-| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, Common Doc footer checks, locked-graph vulnerability audits, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | PyPI Trusted Publishing and external `kpress==0.2.3` version, help, doctor, and minimal static-site build are verified | — |
+| Packaging and documentation | Typed wheel/sdist, complete bundled-asset licenses, three examples, external quickstart, security policy, release notes, public backlog, and trusted-publish workflow exist | Lint/public-hygiene over source and tests, Common Doc footer checks, locked-graph vulnerability audits, build inspection, clean-room wheel, README flow, CLI, library, and example smokes | PyPI Trusted Publishing and external `kpress==0.2.4` version, help, doctor, README, and bundled-example builds are verified | — |
 | Platforms and maintenance | Python 3.12–3.14 on Linux/macOS is the declared and verified implementation boundary; dependency alerts, automated security fixes, and current Node runner support are enabled | CI covers supported Python versions on Ubuntu; local macOS gates pass | Native Windows support is not verified or claimed | `kpr-isp2` |
 
 ## Prioritized Backlog
@@ -93,13 +91,6 @@ their follow-up review work lands.
 - `kpr-lrfg` (deferred, P3): optional
   [content-size indicators](docs/content-size-indicators.plan.md) — see the P3 backlog
   entry below
-
-### P1: Release Gates
-
-- `kpr-ki7m`: complete and publish the v0.2.4 release candidate.
-  This epic is the authoritative workstream for remediation, the GitHub issue #33
-  migration, final contract review, release gates, artifacts, publication, and
-  post-publication verification.
 
 ### P2: Stabilization After the First Alpha
 
@@ -144,7 +135,7 @@ their follow-up review work lands.
 Useful public orientation: [README](README.md), [documentation index](docs/README.md),
 [design and public contracts](docs/kpress-design.md),
 [validation runbook](docs/kpress-validation.runbook.md), and
-[v0.2.4 release-candidate notes](docs/releases/0.2.4.md).
+[v0.2.4 release notes](docs/releases/0.2.4.md).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
