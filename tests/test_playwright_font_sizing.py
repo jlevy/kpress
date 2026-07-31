@@ -28,7 +28,7 @@ import pytest
 
 from kpress.publish import build_site
 
-DESIGN_RATIOS = {"h1": 1.7, "h2": 1.32, "code": 0.82, "bullet": 0.9}
+DESIGN_RATIOS = {"h1": 1.7, "h2": 1.32, "code": 0.82, "bullet": 0.9, "tooltip": 0.95}
 
 
 class _QuietHandler(SimpleHTTPRequestHandler):
@@ -58,12 +58,22 @@ _METRICS_SCRIPT = """(() => {
   const px = (value) => parseFloat(value);
   const prose = document.querySelector('.kpress-prose > p, .kpress-prose p');
   const li = document.querySelector('.kpress-prose ul > li');
+  // Overlays portal to document.body, outside any wrapper scope: the :root
+  // host hook must still size them (a .kpress-scoped override cannot).
+  let tooltip = document.querySelector('#portal-probe');
+  if (!tooltip) {
+    tooltip = document.createElement('aside');
+    tooltip.id = 'portal-probe';
+    tooltip.className = 'kpress-tooltip';
+    document.body.append(tooltip);
+  }
   return {
     body: px(getComputedStyle(prose).fontSize),
     h1: px(getComputedStyle(document.querySelector('.kpress-prose h1')).fontSize),
     h2: px(getComputedStyle(document.querySelector('.kpress-prose h2')).fontSize),
     code: px(getComputedStyle(document.querySelector('.kpress-prose code')).fontSize),
     bullet: px(getComputedStyle(li, '::before').fontSize),
+    tooltip: px(getComputedStyle(tooltip).fontSize),
   };
 })()"""
 

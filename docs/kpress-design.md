@@ -816,7 +816,14 @@ The supported fragment variables are:
   (default `1rem`; every internal font size, the bullet glyph, and its offsets are
   `calc(base × ratio)`). Hosts set it once — preferably through the
   `--kpress-host-font-size-base` hook on `:root`, which also reaches the body-level
-  overlays — and never override individual sizes.
+  overlays. The derived tier is the sanctioned divergence seam: `--kpress-font-size-h2`,
+  `--kpress-font-size-h3`, `--kpress-font-size-h4`, `--kpress-font-size-large`,
+  `--kpress-font-size-mono`, `--kpress-font-size-mono-small`,
+  `--kpress-font-size-mono-tiny`, `--kpress-font-size-normal`,
+  `--kpress-font-size-small`, `--kpress-font-size-smaller`, `--kpress-font-size-tiny`,
+  `--kpress-caps-label-size`, and `--kpress-bullet-size` — override one only for a
+  deliberate design departure from the derived ratio (for example aligning mono or
+  label sizes with host chrome), never as the way to scale the document.
   See “Sizing policy” below.
 - measure and host spacing: `--kpress-measure`, `--kpress-page-margin-inline`,
   `--kpress-page-margin-block-start`, and `--kpress-toc-toggle-clearance` (the inline
@@ -956,11 +963,17 @@ size, silently changing ratios in nested contexts like captions and footnotes.
   font settings.
 - **Embedders** set the base once — preferably `--kpress-host-font-size-base: 17px` (or
   any length) on `:root`, which flows through every token scope including the
-  body-appended overlays — and never override individual sizes.
+  body-appended overlays.
   Setting `--kpress-font-size-base` itself works too but must be declared at the
-  `.kpress` scope (or deeper) with later order or higher specificity, and does not reach
-  body-level overlays from a wrapper scope.
-  Hosts set the base, not `--kpress-font-size-normal` (that token is the base, derived).
+  `.kpress` scope (or deeper) with later order or higher specificity, does not reach
+  body-level overlays from a wrapper scope, and — because it replaces the derivation
+  chain — also overrides the print re-rooting below: use the hook if print should
+  follow `--kpress-print-font-size`; redeclare the base only if the host intends to own
+  print sizing too.
+  Scaling goes through the base, never through individual sizes; the public ramp,
+  label, and bullet tokens exist for *deliberate design divergence* from a derived
+  ratio (a host aligning mono or label sizes with its own chrome), and stay derived
+  from the base unless overridden.
 - **Print** re-roots the base at `--kpress-print-font-size` inside `@media print`, so
   paper output keeps the designed ratios to the print body size regardless of the screen
   root or a host-pinned base.
