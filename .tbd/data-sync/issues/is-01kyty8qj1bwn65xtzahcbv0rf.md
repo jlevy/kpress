@@ -5,13 +5,13 @@ title: "Hygiene lint: forbid data-kpress-theme in CSS"
 kind: task
 status: closed
 priority: 2
-version: 3
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 4
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies: []
 parent_id: is-01kytxza2a4r789k649dzrantj
 created_at: 2026-07-31T01:57:50.273Z
-updated_at: 2026-07-31T03:14:41.101Z
+updated_at: 2026-07-31T23:21:06.309Z
 closed_at: 2026-07-31T02:35:26.391Z
 close_reason: mode-keyed-css hygiene rule + tests added; shipped tree clean; lint gate green.
 ---

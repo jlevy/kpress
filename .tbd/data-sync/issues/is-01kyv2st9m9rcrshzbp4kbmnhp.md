@@ -5,12 +5,12 @@ title: Guideline polish pass on migrated declarative-embedding content
 kind: task
 status: closed
 priority: 2
-version: 2
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 3
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies: []
 created_at: 2026-07-31T03:17:04.435Z
-updated_at: 2026-07-31T03:20:05.136Z
+updated_at: 2026-07-31T23:21:06.871Z
 closed_at: 2026-07-31T03:20:05.134Z
 close_reason: "Migrated content polished: present-state phrasing, tracked-bead pointer for the overlay note, punctuation cleanup; full suite and lint gate green."
 ---

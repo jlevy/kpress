@@ -5,13 +5,13 @@ title: Two-root Playwright sizing regression test
 kind: task
 status: closed
 priority: 1
-version: 4
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 5
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies: []
 parent_id: is-01kytxz9k3cjy0drxwt3xsq9d8
 created_at: 2026-07-31T01:57:27.930Z
-updated_at: 2026-07-31T03:14:38.355Z
+updated_at: 2026-07-31T23:21:02.116Z
 closed_at: 2026-07-31T02:13:56.045Z
 close_reason: Two-root Playwright test added and verified red-then-green against the conversion.
 ---

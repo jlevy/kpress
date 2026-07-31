@@ -5,8 +5,8 @@ title: Decouple settings controls from theme resolver execution
 kind: task
 status: closed
 priority: 1
-version: 5
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 7
+spec_path: docs/done/declarative-embedding.plan.md
 labels:
   - javascript
   - release-0.3.0
@@ -17,7 +17,7 @@ dependencies:
     target: is-01kyx4mdx4esn96svjc5mbbsjd
 parent_id: is-01kyx2e4pq85s0fm0vek4ptvye
 created_at: 2026-07-31T22:27:23.321Z
-updated_at: 2026-07-31T22:54:43.530Z
+updated_at: 2026-07-31T23:21:04.842Z
 closed_at: 2026-07-31T22:54:43.529Z
 close_reason: Implemented behavior-neutral theme controls with theme:request, preserved standalone resolver behavior and public exports, updated asset closure and goldens, and passed 588 Python plus 174 JavaScript tests.
 ---

@@ -5,13 +5,13 @@ title: Theming embedder-contract docs and changelog
 kind: task
 status: closed
 priority: 2
-version: 4
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 5
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies: []
 parent_id: is-01kytxza2a4r789k649dzrantj
 created_at: 2026-07-31T01:57:50.612Z
-updated_at: 2026-07-31T03:14:41.611Z
+updated_at: 2026-07-31T23:21:06.595Z
 closed_at: 2026-07-31T02:45:39.981Z
 close_reason: "Theming embedder contract documented across design/host/skill docs; 0.3.0 migration table added; spec record corrected per PR #40 review; cache-key fix landed separately (cb752ca)."
 ---

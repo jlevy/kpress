@@ -5,8 +5,8 @@ title: Theme-agnostic fragment SSR
 kind: task
 status: closed
 priority: 1
-version: 5
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 6
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies:
   - type: blocks
@@ -15,7 +15,7 @@ dependencies:
     target: is-01kyty8qwmms8t029r8xs6ya1k
 parent_id: is-01kytxza2a4r789k649dzrantj
 created_at: 2026-07-31T01:57:49.591Z
-updated_at: 2026-07-31T03:14:40.212Z
+updated_at: 2026-07-31T23:21:02.674Z
 closed_at: 2026-07-31T02:32:19.036Z
 close_reason: Article theme/palette attrs removed from fragment SSR with byte-identical test; page shell unchanged; goldens regenerated; full suite + lint green.
 ---

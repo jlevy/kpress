@@ -5,12 +5,12 @@ title: Restructure declarative-embedding plan into canonical tbd plan format
 kind: task
 status: closed
 priority: 1
-version: 3
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 4
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies: []
 created_at: 2026-07-31T03:13:20.063Z
-updated_at: 2026-07-31T03:15:29.820Z
+updated_at: 2026-07-31T23:21:04.024Z
 closed_at: 2026-07-31T03:15:29.819Z
 close_reason: Plan moved to canonical dated path with durable content pointed at reference docs; index, release notes, and all bead spec links retargeted; gates green.
 ---

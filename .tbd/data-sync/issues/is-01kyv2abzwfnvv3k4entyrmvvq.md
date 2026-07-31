@@ -5,12 +5,12 @@ title: Apply common-doc-guidelines rigorously across repo docs
 kind: task
 status: closed
 priority: 1
-version: 3
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 4
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies: []
 created_at: 2026-07-31T03:08:38.256Z
-updated_at: 2026-07-31T03:14:43.760Z
+updated_at: 2026-07-31T23:21:03.732Z
 closed_at: 2026-07-31T03:13:00.760Z
 close_reason: "Guidelines audit complete: index discoverability fixed, meta-commentary trimmed, duplication removed, sweeps clean; lint gate green."
 ---

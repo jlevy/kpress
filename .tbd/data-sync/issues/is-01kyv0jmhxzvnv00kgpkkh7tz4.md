@@ -5,13 +5,13 @@ title: "PR #40 review F2: sanctioned ramp-override tier in the contract"
 kind: task
 status: closed
 priority: 1
-version: 4
-spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
+version: 5
+spec_path: docs/done/declarative-embedding.plan.md
 labels: []
 dependencies: []
 parent_id: is-01kytxz9k3cjy0drxwt3xsq9d8
 created_at: 2026-07-31T02:38:12.029Z
-updated_at: 2026-07-31T03:14:42.098Z
+updated_at: 2026-07-31T23:21:03.232Z
 closed_at: 2026-07-31T02:40:43.311Z
 close_reason: Ramp tier public in both contract lists with docs + guidance rewording; tooltip portal case and fallback-literal lint test added; 33 focused tests green.
 ---
