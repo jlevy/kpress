@@ -145,7 +145,7 @@ Both designs are recorded in full in the reference docs; the decisions that shap
   remains available; inert dynamic theme-state inputs are removed (`kpr-meex`)
 - [x] Settings controls no longer import the standalone resolver and instead emit a
   host-handleable `theme:request` event (`kpr-zym8`)
-- [ ] Python, browserless DOM, and real-browser regressions cover default host
+- [x] Python, browserless DOM, and real-browser regressions cover default host
   ownership, explicit opt-in, and unchanged standalone behavior (`kpr-azfp`)
 - [ ] Public contracts, integration guidance, and v0.3.0 migration notes describe the
   final behavior and the dynamic API break (`kpr-7dip`)
