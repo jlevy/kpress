@@ -227,8 +227,12 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         request.mtime_hash,
         request.size,
         __version__,
-        request.theme_mode,
-        request.resolved_theme,
+        # Fragment SSR is theme-agnostic (no baked theme/palette attributes),
+        # so theme state is NOT part of the render identity: light and dark
+        # requests share one entry. The single payload-relevant derivative is
+        # whether `system` mode ships the theme.js resolver in the declared
+        # assets.
+        request.theme_mode == "system",
         request.asset_url_prefix,
         source_digest,
         # Widgets affect the echoed payload (and any widget-dependent render),

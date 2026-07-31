@@ -63,7 +63,6 @@ def test_wide_table_stays_inside_a_narrow_no_toc_host_pane(tmp_path: Path) -> No
         read_package_text(rel_path)
         for rel_path in (
             "css/style-tokens.css",
-            "css/theme-light.css",
             "css/document.css",
             "css/components.css",
         )

@@ -110,9 +110,9 @@ class AssetManifest:
 
 
 DEFAULT_CSS_ASSETS = [
+    # Theme keying (palette tokens AND color-scheme, co-located) lives in
+    # style-tokens.css; there are no separate per-theme stylesheets.
     "css/style-tokens.css",
-    "css/theme-light.css",
-    "css/theme-dark.css",
     "css/syntax.css",
     "css/document.css",
     "css/components.css",

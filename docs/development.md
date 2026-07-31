@@ -64,15 +64,6 @@ make audit
 make build
 ```
 
-Install the repository hooks after the first environment sync:
-
-```shell
-make hooks-install
-```
-
-The pre-commit hook formats staged Python, JavaScript, CSS, JSON, and Markdown, then
-checks spelling. The pre-push hook runs the read-only lint and test gates.
-
 ## Dependency Changes
 
 Read [Supply-Chain Security](../SUPPLY-CHAIN-SECURITY.md) before changing a dependency.

@@ -305,9 +305,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   settings gear but off by default: `format.widgets: {doc-actions: on}`. See
   [Document Actions Widget](#document-actions-widget).
 
-This document describes the current alpha architecture and public contract.
-Open implementation work and current capability status are indexed in
-[`TODO.md`](../TODO.md).
+The architecture and contracts here are the current alpha surface; open implementation
+work and capability status are indexed in [`TODO.md`](../TODO.md).
 
 ## Dependency Rules
 
@@ -812,6 +811,19 @@ The supported fragment variables are:
   `--kpress-doc-surface-selected`
 - typography: `--kpress-font-body`, `--kpress-font-prose`, `--kpress-font-sans`,
   `--kpress-font-mono`, `--kpress-font-footnote`, and `--kpress-font-table`
+- sizing: `--kpress-font-size-base`, the one knob the entire type ramp derives from
+  (default `1rem`; every internal font size, the bullet glyph, and its offsets are
+  `calc(base × ratio)`). Hosts set it once — preferably through the
+  `--kpress-host-font-size-base` hook on `:root`, which also reaches the body-level
+  overlays. The derived tier is the sanctioned divergence seam: `--kpress-font-size-h2`,
+  `--kpress-font-size-h3`, `--kpress-font-size-h4`, `--kpress-font-size-large`,
+  `--kpress-font-size-mono`, `--kpress-font-size-mono-small`,
+  `--kpress-font-size-mono-tiny`, `--kpress-font-size-normal`,
+  `--kpress-font-size-small`, `--kpress-font-size-smaller`, `--kpress-font-size-tiny`,
+  `--kpress-caps-label-size`, and `--kpress-bullet-size` — override one only for a
+  deliberate design departure from the derived ratio (for example aligning mono or label
+  sizes with host chrome), never as the way to scale the document.
+  See “Sizing policy” below.
 - measure and host spacing: `--kpress-measure`, `--kpress-page-margin-inline`,
   `--kpress-page-margin-block-start`, and `--kpress-toc-toggle-clearance` (the inline
   gutter the document reserves for the floating TOC toggle in the narrow band; a host
@@ -931,6 +943,50 @@ These primitives and tokens live in the KPress static layer deliberately: an emb
 host app consumes the same design (sharing the Lucide icon set) rather than
 re-implementing it.
 
+### Sizing Policy
+
+All typography derives from one public base knob, `--kpress-font-size-base` (default
+`1rem`): every internal font size — the size-token ramp, every heading, code, labels,
+the bullet glyph, and its positional offsets — is expressed as `calc(base × ratio)`.
+Ratios are design; units are the host’s choice.
+No font-size rule may reference `rem` directly, because `rem` resolves against the host
+page’s root font size, which an embedder does not control the way KPress does on its own
+standalone pages: with a px-pinned host body, every rem-based size renders at a
+browser-dependent ratio to the pinned text.
+The derivations use `calc(base × ratio)` rather than bare `em` so a size means the same
+thing in every context: an `em` token would resolve against each consumer’s inherited
+size, silently changing ratios in nested contexts like captions and footnotes.
+
+- **Standalone pages:** the `1rem` default resolves against the reader’s browser
+  preference at the `.kpress` root, so published pages respect reader font settings.
+- **Embedders** set the base once, preferably `--kpress-host-font-size-base: 17px` (or
+  any length) on `:root`, which flows through every token scope including the
+  body-appended overlays.
+  Setting `--kpress-font-size-base` itself works too but must be declared at the
+  `.kpress` scope (or deeper) with later order or higher specificity, does not reach
+  body-level overlays from a wrapper scope, and (because it replaces the derivation
+  chain) also overrides the print re-rooting below: use the hook if print should follow
+  `--kpress-print-font-size`; redeclare the base only if the host intends to own print
+  sizing too. Scaling goes through the base, never through individual sizes; the public
+  ramp, label, and bullet tokens exist for *deliberate design divergence* from a derived
+  ratio (a host aligning mono or label sizes with its own chrome), and stay derived from
+  the base unless overridden.
+- **Print** re-roots the base at `--kpress-print-font-size` inside `@media print`, so
+  paper output keeps the designed ratios to the print body size regardless of the screen
+  root or a host-pinned base.
+- **Deliberately root-relative** (not derived from the base): layout lengths — the
+  `--kpress-measure` reading measure, container-query band conditions (where `var()` is
+  not valid CSS), TOC grid tracks, tooltip width caps, and page margins.
+  Container bands and the type they resize therefore key off the same root only when the
+  base is left at its default; a host that pins the base accepts that band boundaries
+  stay root-relative.
+- **Contributors:** new sizes must be expressed relative to the base
+  (`calc(var(--kpress-font-size-base) * ratio)`); intentionally context-relative
+  `em`/`%` sizes (the summary chevron, the task-list checkbox, `sup`/`sub`) are the
+  exception, not the pattern.
+  The no-`rem` invariant is enforced by `devtools/public_hygiene.py` and a two-root
+  real-browser regression test.
+
 ## Theme and Fonts
 
 Theme mode values:
@@ -941,6 +997,29 @@ Theme mode values:
 
 Standalone pages include a pre-paint bootstrap that resolves `system` using
 `prefers-color-scheme`. Dynamic fragments let hosts resolve and set attributes.
+
+**Theme scopes and the embedder contract.** CSS reads exactly one theme input:
+`data-kpress-resolved-theme="light|dark"` — the resolver’s *output*. The mode
+(`data-kpress-theme`) is resolver state and never keys CSS (lint-enforced).
+Light and dark are keyed symmetrically at two scopes — any ancestor (`:root` or a plain
+host wrapper) and the element itself — with the element winning, so a stamped element is
+a coherent theme island in either direction and `color-scheme` travels in rules keyed
+identically to the palette (the two cannot split).
+Rendered fragments are **theme-agnostic**: they bake no theme or palette attributes, so
+one render is cacheable across themes and the embedder contract is exactly:
+
+- stamp `data-kpress-resolved-theme` (and optionally `data-kpress-palette`) on one
+  chosen scope; update it on toggle — nothing else;
+- do not load `theme.js`; if the asset set includes it (`theme_mode="system"`), override
+  the behavior: `kpress.behaviors.override("theme", () => {})`;
+- combined palette × theme states bind fully when both attributes sit on the same scope
+  element;
+- body-portaled overlays (tooltips, footnote previews) escape a non-`:root` wrapper
+  scope: a wrapper-scoped host should stamp `:root` as well, or stamp overlays
+  individually (overlay theme inheritance is tracked as `kpr-gssj`).
+
+The standalone page shell stamps `<html>` from the template plus the pre-paint
+bootstrap; `theme.js` is the standalone resolver behind the same attribute.
 
 **Theme engine vs. settings widget.** These are two layers, deliberately separate (see
 [Extension and Injection Model](#extension-and-injection-model)):
@@ -1938,7 +2017,7 @@ Enable it only when the deploy origin actually serves sidecars:
 ## Operations and Host Integration
 
 Runtime capability probes, browser quality gates, acceptance evidence, accessibility,
-and the dynamic embedding protocol now live in
+and the dynamic embedding protocol live in
 [KPress Operations and Host Integration](kpress-operations-and-host-integration.md).
 
 <!-- This document follows common-doc-guidelines.md.

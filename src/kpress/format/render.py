@@ -242,14 +242,15 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
     frontmatter_error = _render_frontmatter_error(document)
     frontmatter = _render_frontmatter(document) if options.show_frontmatter else ""
     thumbnail = _render_thumbnail(document, str(title))
-    # Both `data-kpress-theme` (user preference: system|light|dark) and
-    # `data-kpress-resolved-theme` (light|dark, the host's resolution of
-    # `system`) are stamped on the article. The full-page shell mirrors
-    # both on `<html>` so `:root[data-kpress-resolved-theme=...]` CSS
-    # selectors engage there too; for the dynamic-host fragment, putting
-    # the resolved theme on the article means `.kpress[data-kpress-...]`
-    # selectors work regardless of whether the host shell stamps its own
-    # root attribute.
+    # Fragment SSR is theme-agnostic: the article bakes NO theme or palette
+    # attributes, so the same render is cacheable and reusable across themes.
+    # Theme state lives at display time only -- the page shell stamps
+    # `data-kpress-theme` (mode) and `data-kpress-resolved-theme` plus the
+    # palette on `<html>` from the template, and an embedding host stamps
+    # `data-kpress-resolved-theme` (and optionally the palette) on its chosen
+    # scope; the ancestor/element selector grammar in style-tokens.css resolves
+    # either scope. `data-kpress-fonts` stays baked: font mode is asset-coupled
+    # (whether the vendored faces ship), not a runtime theme.
     # Render the title header unless the body already opens with a single H1 that
     # matches the title: that lone H1 is the visible title, so a separate header
     # would duplicate it. A differing first H1, multiple H1s, or no H1 means the
@@ -272,10 +273,8 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
     )
     html = (
         '<article class="kpress kpress-doc kpress-print-surface" '
-        f'data-kpress-profile="document" data-kpress-theme="{escape(options.theme_mode)}" '
-        f'data-kpress-resolved-theme="{escape(options.resolved_theme)}" '
+        f'data-kpress-profile="document" '
         f'data-kpress-fonts="{escape(options.font_mode)}" '
-        f'data-kpress-palette="{escape(options.palette)}" '
         f'data-kpress-card="{"on" if options.content_card else "off"}" '
         # The resolved wide-table cutoff travels with the document: js/tables.js
         # re-classifies tables (late-rendered/tabbed panels), so without these

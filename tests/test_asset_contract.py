@@ -139,7 +139,8 @@ def test_syntax_highlighting_css_is_a_shipped_reader_asset() -> None:
         ".kpress-token-nf",
         ".kpress-token-s",
         ".kpress-token-c",
-        ':root[data-kpress-resolved-theme="dark"] .kpress',
+        ':where([data-kpress-resolved-theme="dark"]) .kpress',
+        '.kpress[data-kpress-resolved-theme="dark"]',
     ]:
         assert required in css
 
@@ -434,15 +435,19 @@ def test_warm_palette_selector_recipe_and_native_borders_are_pinned() -> None:
     css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
 
     for selector in (
-        ':root[data-kpress-palette="warm"]',
-        ':root[data-kpress-palette="warm"] .kpress',
-        '.kpress[data-kpress-palette="warm"]',
-        ':root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"]',
-        ':root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] .kpress',
-        '.kpress[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"]',
+        # Symmetric two-scope grammar (see style-tokens.css "SELECTOR GRAMMAR"):
+        # ancestor forms are :where()-flattened, element forms are full-strength,
+        # and only the resolved-theme attribute keys CSS.
+        ':root:where([data-kpress-palette="warm"])',
+        ':where([data-kpress-palette="warm"])',
+        ':where([data-kpress-resolved-theme="dark"][data-kpress-palette="warm"])',
+        '[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"]',
+        '[data-kpress-palette="warm"][data-kpress-resolved-theme="light"]',
     ):
         assert selector in css
-    warm_light = css.split('data-kpress-palette="warm"] {', 1)[1].split("}", 1)[0]
+    warm_light = css.split('data-kpress-palette="warm"][data-kpress-resolved-theme="light"] {', 1)[
+        1
+    ].split("}", 1)[0]
     assert "--kpress-doc-border:" in warm_light
     assert "--kpress-doc-border-hairline:" in warm_light
 
@@ -456,8 +461,6 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
         get_static_asset(path).content.decode("utf-8")
         for path in [
             "css/style-tokens.css",
-            "css/theme-light.css",
-            "css/theme-dark.css",
             "css/document.css",
             "css/components.css",
         ]

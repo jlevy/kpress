@@ -1,8 +1,8 @@
 # KPress Operations and Host Integration
 
-This reference covers local runtime operations, browser-asset quality gates, acceptance
-evidence, accessibility, and the dynamic embedding boundary.
-The core architecture, format, CSS, and static-publishing contracts remain in
+Local runtime operations, browser-asset quality gates, acceptance evidence,
+accessibility, and the dynamic embedding boundary live here; the core architecture,
+format, CSS, and static-publishing contracts remain in
 [KPress Design](kpress-design.md).
 
 ## Local Document Workflows
@@ -164,6 +164,32 @@ font-role table under [Theme and Fonts](kpress-design.md#theme-and-fonts)); a ho
 can use this for a serif/sans reading-font toggle, which sets
 `--kpress-host-font-prose`. Hosts customize colors by setting the public
 `--kpress-doc-*` tokens on the document scope.
+
+Document sizing is one knob, not many: every KPress font size derives from
+`--kpress-font-size-base` (default `1rem`), so a host that pins its own typography
+(px-based app chrome, for example) sets `--kpress-host-font-size-base: 17px` once on
+`:root` and the entire document — prose, headings, code, labels, bullets — scales as one
+proportional unit, independent of the browser’s root font size.
+Scale through the base, never through individual size tokens
+(`--kpress-font-size-normal` and the rest of the ramp derive from it); the public ramp,
+label, and bullet tokens are the sanctioned seam for *deliberate design divergence* — a
+host aligning mono or label sizes with its own chrome scale overrides those tokens and
+keeps everything else derived.
+The `:root`-level hook also reaches the body-appended overlays (tooltips, footnote
+previews), which a `.kpress`-scoped override cannot; prefer the hook over redeclaring
+the base, which would also override the print re-rooting (redeclare only to own print
+sizing too).
+See [Sizing Policy](kpress-design.md#sizing-policy) for the contract and the
+deliberately root-relative layout lengths.
+
+Theming is equally declarative: rendered fragments carry no baked theme or palette
+attributes, so a host stamps `data-kpress-resolved-theme` (and optionally
+`data-kpress-palette`) on one scope — `:root` or a wrapper — and updates it on toggle;
+element-level attributes win, `color-scheme` follows the palette automatically, and one
+cached render serves every theme.
+Do not load `theme.js` (or no-op override the `theme` behavior); see
+[Theme and Fonts](kpress-design.md#theme-and-fonts) for the full embedder contract and
+the wrapper-scope note about body-portaled overlays.
 
 ### Collapsible TOC
 

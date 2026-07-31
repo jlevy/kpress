@@ -203,9 +203,22 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-font-body",
     "--kpress-font-features-sans",
     "--kpress-font-footnote",
+    # The sizing tier: the base is the one knob everything derives from; the
+    # ramp/label/bullet tokens below it are the sanctioned divergence seam for
+    # hosts whose design deliberately departs from a derived ratio (e.g. a host
+    # aligning mono or label sizes with its own chrome scale).
+    "--kpress-font-size-base",
+    "--kpress-font-size-h2",
+    "--kpress-font-size-h3",
+    "--kpress-font-size-h4",
+    "--kpress-font-size-large",
     "--kpress-font-size-mono",
+    "--kpress-font-size-mono-small",
+    "--kpress-font-size-mono-tiny",
     "--kpress-font-size-normal",
     "--kpress-font-size-small",
+    "--kpress-font-size-smaller",
+    "--kpress-font-size-tiny",
     "--kpress-font-mono",
     "--kpress-font-prose",
     "--kpress-font-punctuation",
@@ -213,7 +226,9 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-font-table",
     "--kpress-font-weight-sans-bold",
     "--kpress-font-weight-sans-medium",
+    "--kpress-bullet-size",
     "--kpress-caps-heading-size-multiplier",
+    "--kpress-caps-label-size",
     "--kpress-caps-spacing",
     "--kpress-caps-transform",
     "--kpress-measure",
@@ -282,7 +297,23 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
     "--kpress-font-mono",
     "--kpress-font-prose",
     "--kpress-font-sans",
+    # The sizing tier (see PUBLIC_CSS_VARIABLES): base knob + the sanctioned
+    # ramp/label/bullet divergence seam, all fragment-safe.
+    "--kpress-font-size-base",
+    "--kpress-font-size-h2",
+    "--kpress-font-size-h3",
+    "--kpress-font-size-h4",
+    "--kpress-font-size-large",
+    "--kpress-font-size-mono",
+    "--kpress-font-size-mono-small",
+    "--kpress-font-size-mono-tiny",
+    "--kpress-font-size-normal",
+    "--kpress-font-size-small",
+    "--kpress-font-size-smaller",
+    "--kpress-font-size-tiny",
     "--kpress-font-table",
+    "--kpress-bullet-size",
+    "--kpress-caps-label-size",
     "--kpress-measure",
     "--kpress-page-margin-block-start",
     "--kpress-page-margin-inline",
@@ -301,7 +332,8 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
 # tokens were retired when the palette moved to the direct, per-theme×palette model
 # (see style-tokens.css "Palette options"): an embedding host now re-themes by setting
 # the resolved --kpress-doc-* / --color-* tokens directly, not through a --kpress-host-*
-# color fallback. The font and settings-inset seams remain.
+# color fallback. The font, sizing (--kpress-host-font-size-base, the one knob the
+# whole type ramp derives from), and settings-inset seams remain.
 PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-body",
     "--kpress-host-font-footnote",
@@ -309,6 +341,7 @@ PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-prose",
     "--kpress-host-font-prose-sans",
     "--kpress-host-font-sans",
+    "--kpress-host-font-size-base",
     "--kpress-host-font-table",
     "--kpress-host-settings-inset-block",
     "--kpress-host-settings-inset-inline",

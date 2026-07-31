@@ -36,10 +36,14 @@ configuration.
 - Import only JavaScript exports pinned by the public contract.
 - Treat unlisted Python names, CSS tokens, selectors, and JavaScript exports as private.
 
-kpress stamps resolved theme/palette state on both `<html>` and the `.kpress` article.
-Runtime host controls should update the root attribute and only mirror the article
-attribute when the documented cascade does not propagate that setting.
-A stale article attribute can shadow root state.
+Rendered fragments are theme-agnostic: kpress bakes no theme or palette attributes on
+the article (standalone pages stamp `<html>` only). An embedding host stamps
+`data-kpress-resolved-theme` (and optionally `data-kpress-palette`) on one chosen scope
+and updates it on toggle — nothing else; do not load `theme.js`, or no-op override the
+`theme` behavior if the asset set includes it.
+An element-level attribute deliberately wins over an ancestor scope (a stamped element
+is a coherent theme island); body-portaled tooltips escape non-`:root` wrapper scopes,
+so wrapper-scoped hosts stamp `:root` too.
 
 ## Keep markup in templates
 
@@ -55,6 +59,15 @@ Mark trusted pre-rendered markup explicitly; escape ordinary data by default.
 Prefer the pinned host font hooks when replacing the default families.
 Override related weight tokens when the replacement face does not support the same
 variable-font axis.
+
+Size the document through the one base knob: set `--kpress-host-font-size-base` (any
+length, e.g. `17px`) once on `:root` and every kpress font size, bullet, and label
+scales proportionally, independent of the browser root font size.
+Never scale by overriding ramp tokens; override a public ramp/label/bullet token only
+for a deliberate design divergence from its derived ratio (e.g. aligning mono or label
+sizes with host chrome).
+The `:root` hook also reaches body-appended tooltips; a `.kpress`-scoped override does
+not, and a redeclared base also overrides kpress's print re-rooting.
 
 Use root-absolute URLs for webfonts injected into pages at different route depths, and
 ensure the host copies those files into the published tree.

@@ -1258,7 +1258,7 @@
 .kpress .hero h1 {
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
-  font-size: 1.6rem;
+  font-size: calc(var(--kpress-font-size-base) * 1.6);
   font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: 0.03em;
   line-height: 1.05;
@@ -1268,7 +1268,7 @@
 
 .kpress .hero h1 i {
   font-family: var(--kpress-font-prose);
-  font-size: 1.5rem;
+  font-size: calc(var(--kpress-font-size-base) * 1.5);
   font-style: italic;
   letter-spacing: 0;
   text-transform: none;
@@ -1306,7 +1306,7 @@
 .kpress .sans-text h1 {
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
-  font-size: 1.75rem;
+  font-size: calc(var(--kpress-font-size-base) * 1.75);
   font-weight: 380;
   margin-block: 1rem 1.2rem;
 }
@@ -1314,7 +1314,7 @@
 .kpress .sans-text h2 {
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
-  font-size: 1.25rem;
+  font-size: calc(var(--kpress-font-size-base) * 1.25);
   font-weight: 440;
   margin-block: 1rem 0.8rem;
 }
@@ -1359,7 +1359,7 @@
   display: block;
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
-  font-size: calc(1.2rem * var(--kpress-caps-heading-size-multiplier));
+  font-size: calc(var(--kpress-font-size-base) * 1.2 * var(--kpress-caps-heading-size-multiplier));
   font-variant-caps: var(--kpress-caps-variant);
   font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: var(--kpress-caps-spacing);
@@ -1405,9 +1405,9 @@
 .kpress .claim::before {
   content: "\25AA\FE0E";
   font-size: var(--kpress-bullet-size);
-  left: -0.85rem;
+  left: calc(var(--kpress-font-size-base) * -0.85);
   position: absolute;
-  top: 0.1rem;
+  top: calc(var(--kpress-font-size-base) * 0.1);
 }
 
 .kpress .full-text {
@@ -1675,9 +1675,9 @@
    bumps prose above 1rem only for print). */
 @container kpress-doc (min-width: 64rem) {
   .kpress {
-    --kpress-font-size-h2: 1.4rem;
-    --kpress-font-size-h3: 1.2rem;
-    --kpress-font-size-h4: 1.2rem;
+    --kpress-font-size-h2: calc(var(--kpress-font-size-base) * 1.4);
+    --kpress-font-size-h3: calc(var(--kpress-font-size-base) * 1.2);
+    --kpress-font-size-h4: calc(var(--kpress-font-size-base) * 1.2);
   }
 }
 

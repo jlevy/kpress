@@ -1,8 +1,5 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on this
-project.
-
 ## Supply-Chain Security (read before installing anything)
 
 Before adding, upgrading, or running any dependency—including zero-install runners
