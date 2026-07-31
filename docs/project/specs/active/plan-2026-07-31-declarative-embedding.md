@@ -143,7 +143,7 @@ Both designs are recorded in full in the reference docs; the decisions that shap
 
 - [x] Auto fragments omit page-default settings and `theme.js`; explicit resolver opt-in
   remains available; inert dynamic theme-state inputs are removed (`kpr-meex`)
-- [ ] Settings controls no longer import the standalone resolver and instead emit a
+- [x] Settings controls no longer import the standalone resolver and instead emit a
   host-handleable `theme:request` event (`kpr-zym8`)
 - [ ] Python, browserless DOM, and real-browser regressions cover default host
   ownership, explicit opt-in, and unchanged standalone behavior (`kpr-azfp`)

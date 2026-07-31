@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// The widget imports "./runtime.js" and "./theme.js" without cache-busting
-// queries; share those instances to drive and observe it.
 import {
+  emit as sharedEmit,
+  off as sharedOff,
+  on as sharedOn,
   storage as sharedStorage,
   widgets as sharedWidgets,
 } from "../../src/kpress/format/static/js/runtime.js";
@@ -91,8 +92,34 @@ describe("settings widget", () => {
     expect(el.getAttribute("aria-expanded")).toBe("true");
   });
 
+  it("requests a host theme without loading or running the resolver", async () => {
+    const requests = [];
+    const listener = (detail) => requests.push(detail);
+    sharedOn("theme:request", listener);
+    document.documentElement.dataset.kpressResolvedTheme = "light";
+
+    await importFresh("settings-widget.js");
+    const el = settingsMount();
+    sharedWidgets.mount("settings", el, { choosers: ["theme"] });
+    const dark = /** @type {HTMLElement} */ (el.querySelector('[data-kpress-theme-choice="dark"]'));
+    dark.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(requests).toEqual([{ mode: "dark" }]);
+    expect(document.documentElement.dataset.kpressTheme).toBeUndefined();
+    expect(document.documentElement.dataset.kpressResolvedTheme).toBe("light");
+    expect(localStorage.getItem("kpress.theme")).toBeNull();
+
+    document.documentElement.dataset.kpressResolvedTheme = "dark";
+    sharedEmit("theme:change", { mode: "dark", resolved: "dark" });
+    expect(
+      el.querySelector('[data-kpress-theme-choice="dark"]')?.getAttribute("aria-checked"),
+    ).toBe("true");
+    sharedOff("theme:request", listener);
+  });
+
   it("theme segments drive the theme engine", async () => {
     await importFresh("settings-widget.js");
+    await importFresh("theme.js");
     const el = settingsMount();
     sharedWidgets.mount("settings", el, { choosers: ["theme"] });
 
@@ -107,6 +134,7 @@ describe("settings widget", () => {
 
   it("keeps the settings menu open and focused while switching themes", async () => {
     await importFresh("settings-widget.js");
+    await importFresh("theme.js");
     const el = settingsMount();
     sharedWidgets.mount("settings", el, { choosers: ["theme", "reading-font"] });
 
@@ -173,6 +201,7 @@ describe("settings widget", () => {
 
   it("changing the theme leaves the active reading-font segment checked", async () => {
     await importFresh("settings-widget.js");
+    await importFresh("theme.js");
     const el = settingsMount();
     sharedWidgets.mount("settings", el, { choosers: ["theme", "reading-font"] });
 

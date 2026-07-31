@@ -3,21 +3,27 @@
  * the `system` preference, set the `data-kpress-theme` /
  * `data-kpress-resolved-theme` state attrs, persist the choice, notify
  * listeners, and track OS theme changes. Presentation lives elsewhere (the
- * settings widget is the default face; a host can put its own toggle on this
- * engine). See kpress-design.md "Theme and Fonts".
+ * settings widget is the default face; its behavior-neutral controls request
+ * changes from whichever layer owns resolution). See kpress-design.md "Theme
+ * and Fonts".
  *
  * Import attaches ONLY the headless namespace — no storage I/O, no DOM
  * mutation, no matchMedia binding. Initialization is the registered `theme`
- * BEHAVIOR's bind, which the runtime applies at ready: a host head script can
- * therefore swap the storage adapter before the engine's first read, and an
- * embed host that owns theme resolution can `override("theme", ...)` so
- * KPress never touches the root theme attrs.
+ * BEHAVIOR's bind, which the runtime applies at ready. Standalone pages load
+ * this module; auto fragment manifests omit it so embedding hosts remain the
+ * only root-theme writer.
  */
 
-import { behaviors, emit, on, storage } from "./runtime.js";
+import { behaviors, emit, off, on, storage } from "./runtime.js";
+import {
+  bindThemeToggleControls,
+  normalizeThemeMode,
+  syncThemeControls,
+} from "./theme-controls.js";
+
+export { bindThemeToggleControls } from "./theme-controls.js";
 
 const STORAGE_KEY = "kpress.theme";
-const THEME_MODES = new Set(["system", "light", "dark"]);
 /** @type {{ query: MediaQueryList, handler: () => void } | null} */
 let systemThemeBinding = null;
 
@@ -32,26 +38,6 @@ function resolveTheme(mode) {
   return globalThis.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
 }
 
-/**
- * @param {string | null | undefined} mode
- * @returns {"system" | "light" | "dark"}
- */
-function normalizeThemeMode(mode) {
-  return mode && THEME_MODES.has(mode)
-    ? /** @type {"system" | "light" | "dark"} */ (mode)
-    : "system";
-}
-
-/**
- * @param {"system" | "light" | "dark"} mode
- */
-function syncThemeControls(mode) {
-  for (const button of document.querySelectorAll("[data-kpress-theme-choice]")) {
-    const active = button.getAttribute("data-kpress-theme-choice") === mode;
-    button.setAttribute("aria-checked", active ? "true" : "false");
-  }
-}
-
 export function setKpressTheme(mode = "system") {
   const normalized = normalizeThemeMode(mode);
   const resolved = resolveTheme(normalized);
@@ -60,18 +46,6 @@ export function setKpressTheme(mode = "system") {
   syncThemeControls(normalized);
   storage.set(STORAGE_KEY, normalized);
   emit("theme:change", { mode: normalized, resolved });
-}
-
-export function bindThemeToggleControls() {
-  for (const button of document.querySelectorAll("[data-kpress-theme-choice]")) {
-    if (button.getAttribute("data-kpress-bound") === "true") {
-      continue;
-    }
-    button.setAttribute("data-kpress-bound", "true");
-    button.addEventListener("click", () => {
-      setKpressTheme(button.getAttribute("data-kpress-theme-choice") || "system");
-    });
-  }
 }
 
 function bindSystemThemeListener() {
@@ -143,6 +117,16 @@ kpressGlobal.theme = {
 behaviors.register("theme", {
   bind: () => {
     initKpressTheme();
-    return unbindSystemThemeListener;
+    /** @param {unknown} detail */
+    const handleThemeRequest = (detail) => {
+      const request =
+        detail && typeof detail === "object" ? /** @type {{ mode?: unknown }} */ (detail) : {};
+      setKpressTheme(typeof request.mode === "string" ? request.mode : "system");
+    };
+    on("theme:request", handleThemeRequest);
+    return () => {
+      off("theme:request", handleThemeRequest);
+      unbindSystemThemeListener();
+    };
   },
 });

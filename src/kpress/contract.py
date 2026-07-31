@@ -435,8 +435,8 @@ PUBLIC_WIDGETS = ("settings", "doc-actions")
 # Built-in behavior ids registered through kpress.behaviors (bindings over
 # server-rendered markup; each is overridable by id). "theme" is the engine's
 # initialization (read persisted mode through the live storage adapter, stamp
-# root attrs, track OS changes): an embed host that owns theme resolution
-# overrides it so kpress never touches the root theme attrs.
+# root attrs, track OS changes). Auto fragment manifests omit it; explicit
+# resolver consumers can still override its binding by id.
 PUBLIC_BEHAVIORS = (
     "toc",
     "tooltip",
@@ -465,6 +465,11 @@ PUBLIC_PAGE_MODEL_KEYS = (
 # are added deliberately, not by reflex.
 PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     "js/runtime.js": ("getModel", "on", "off", "emit", "storage", "widgets", "behaviors"),
+    "js/theme-controls.js": (
+        "normalizeThemeMode",
+        "syncThemeControls",
+        "bindThemeToggleControls",
+    ),
     "js/theme.js": ("setKpressTheme", "initKpressTheme", "bindThemeToggleControls"),
     "js/menu.js": ("bindMenu", "markChecked"),
     "js/toc.js": ("initKpressToc", "TOC_TOGGLE_SCROLL_THRESHOLD_PX", "defaultTocToggleVisible"),
