@@ -118,7 +118,7 @@ The host-hook indirection matters: the token scopes declare their own values, so
 KPress’s own declaration.
 The `--kpress-host-*` idiom (already used for every font family) is order-independent,
 settable once on `:root`, and reaches body-portaled tooltips.
-Hosts may alternatively re-declare the base itself at matching scope and higher
+Hosts may alternatively redeclare the base itself at matching scope and higher
 specificity (metabrowser’s existing pattern).
 
 **Derivation form.** Every font-size token and literal becomes
@@ -211,7 +211,7 @@ Since the article no longer bakes a palette attribute, the standalone palette ch
 - [ ] Declare the base knob + host hook in `style-tokens.css`; convert the size ramp,
   heading tokens, caps-label and badge derivations, and bullet size to `calc(base × R)`.
 - [ ] Convert literal font sizes and bullet offsets in `document.css` and
-  `components.css` (including the wide-band re-declarations and the `clamp()` bounds).
+  `components.css` (including the wide-band redeclarations and the `clamp()` bounds).
 - [ ] Route `print.css` through the base knob.
 - [ ] Contract additions; sizing-policy comment atop `style-tokens.css`.
 - [ ] Hygiene lint (`devtools/public_hygiene.py`): fail any `font-size` declaration or
