@@ -11,8 +11,9 @@ Use this index for implementation, maintenance, and release work.
   static publishing, assets, icons, and optimization
 - [Icon System](kpress-design.md#icon-system): the icon set, its SVG contract, and how
   glyphs are added or replaced (within KPress Design)
-- [Declarative Embedding](declarative-embedding.plan.md): the root-independent sizing
-  and single-scope theming plan (issues #37/#38) and its embedder contract
+- [Declarative Embedding](project/specs/active/plan-2026-07-31-declarative-embedding.md):
+  the root-independent sizing and single-scope theming plan (issues #37/#38); its
+  durable contracts live in KPress Design and the 0.3.0 notes
 - [Content-Size Indicators](content-size-indicators.plan.md): proposed word-count and
   reading-time indicators
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
