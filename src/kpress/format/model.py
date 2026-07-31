@@ -123,10 +123,11 @@ class RenderOptions:
     # components.css "Content card". On by default; pass False (or
     # `format.content_card: false`) for the flat full-bleed page.
     content_card: bool = True
-    # Named palette preset: a built-in bundle of the host-var contract, stamped as
-    # data-kpress-palette on the .kpress wrapper. "neutral" is the default (no
-    # overrides); "warm" applies the tan-paper ramp. Hosts may still override any
-    # individual --kpress-host-* var on top.
+    # Named palette preset. "neutral" is the default (no overrides); "warm"
+    # applies the tan-paper ramp. Stamped as data-kpress-palette on <html> by the
+    # page shell only -- fragments bake no palette attribute (theme-agnostic SSR);
+    # an embedding host stamps the attribute on its own theme scope. Hosts may
+    # still override any individual --kpress-doc-* token on top.
     palette: str = "neutral"
     resolved_theme: Literal["light", "dark"] = "light"
     asset_url_prefix: str = "/kpress-static/"

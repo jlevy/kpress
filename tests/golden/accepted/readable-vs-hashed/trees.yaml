@@ -164,15 +164,15 @@ readable:
           path: _kpress/assets/js/viewport.js
           size: 5446
         - applied_pipeline: []
-          content_hash: 8886f4fe23d17221
+          content_hash: 95c396f59190f6d2
           kind: html
           path: about.html
-          size: 10011
+          size: 9919
         - applied_pipeline: []
-          content_hash: c98d747895a35673
+          content_hash: b0c3ebb22c0ae960
           kind: html
           path: index.html
-          size: 10410
+          size: 10318
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
           kind: txt
@@ -457,7 +457,7 @@ readable:
             <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
-        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
+        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-fonts="custom" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
         <p>Static publishing fixture.</p></div></div></article>
           </main>
           <div class="kpress-video-backdrop" aria-hidden="true"></div>
@@ -625,7 +625,7 @@ readable:
             <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
-        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
+        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-fonts="custom" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
         <p>Intro paragraph with a <a href="#details">link</a>.</p>
         <h2 id="details">Details</h2>
         <ul>
@@ -955,28 +955,28 @@ hashed:
           size: 1682
           source_path: _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
         - applied_pipeline: []
-          content_hash: 56095b6c164a03dd
+          content_hash: 874d5e3ec409f40f
           kind: html
           path: about.html
-          size: 10595
+          size: 10503
         - applied_pipeline: []
           compression: gzip
-          content_hash: bc46c18fbde4850f
+          content_hash: c0b103004105d5d7
           kind: gz
           path: about.html.gz
-          size: 3376
+          size: 3371
           source_path: about.html
         - applied_pipeline: []
-          content_hash: 407ec72e3210fe08
+          content_hash: c772b63c310b35a8
           kind: html
           path: index.html
-          size: 11364
+          size: 11272
         - applied_pipeline: []
           compression: gzip
-          content_hash: ce5922f332750498
+          content_hash: cc89c0c46545f62d
           kind: gz
           path: index.html.gz
-          size: 3592
+          size: 3588
           source_path: index.html
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
@@ -1265,7 +1265,7 @@ hashed:
             <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
-        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
+        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-fonts="custom" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
         <p>Static publishing fixture.</p></div></div></article>
           </main>
           <div class="kpress-video-backdrop" aria-hidden="true"></div>
@@ -1281,8 +1281,8 @@ hashed:
         </body>
         </html>
     about.html.gz:
-      bytes: 3376
-      sha256_16: bc46c18fbde4850f
+      bytes: 3371
+      sha256_16: c0b103004105d5d7
     index.html:
       text: |
         <!doctype html>
@@ -1437,7 +1437,7 @@ hashed:
             <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
           </symbol>
         </svg>
-        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
+        <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-fonts="custom" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
         <p>Intro paragraph with a <a href="#details">link</a>.</p>
         <h2 id="details">Details</h2>
         <ul>
@@ -1458,8 +1458,8 @@ hashed:
         </body>
         </html>
     index.html.gz:
-      bytes: 3592
-      sha256_16: ce5922f332750498
+      bytes: 3588
+      sha256_16: cc89c0c46545f62d
     robots.txt:
       text: |
         User-agent: *

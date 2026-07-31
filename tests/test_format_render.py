@@ -252,6 +252,32 @@ def test_footnote_ids_are_ordinal_and_repeated_refs_are_collision_free() -> None
     assert 'href="#fnref-1-2"' in tree.html
 
 
+def test_fragment_render_is_theme_and_palette_agnostic() -> None:
+    """Fragment SSR bakes no theme or palette state: the same document renders
+    byte-identically for every theme_mode/resolved_theme/palette, so hosts can
+    cache one render and theme it declaratively at display time."""
+    doc = DocumentInput(
+        title="Agnostic",
+        source_text="# Agnostic\n\nBody with `code`.\n",
+        source_path="doc.md",
+        body_markdown="# Agnostic\n\nBody with `code`.\n",
+    )
+    base = render_fragment(doc, RenderOptions(theme_mode="light", resolved_theme="light"))
+    dark = render_fragment(doc, RenderOptions(theme_mode="dark", resolved_theme="dark"))
+    system = render_fragment(doc, RenderOptions(theme_mode="system", resolved_theme="dark"))
+    warm = render_fragment(doc, RenderOptions(palette="warm"))
+
+    assert base.html == dark.html
+    assert base.html == system.html
+    assert base.html == warm.html
+    for attribute in (
+        "data-kpress-theme=",
+        "data-kpress-resolved-theme=",
+        "data-kpress-palette=",
+    ):
+        assert attribute not in base.html
+
+
 def test_render_page_includes_assets_theme_and_toc() -> None:
     page = render_page(
         DocumentInput(

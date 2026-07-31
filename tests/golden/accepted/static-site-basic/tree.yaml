@@ -231,16 +231,16 @@ files:
         size: 1835
         source_path: _kpress/assets/js/theme.0df6988dde228fd2.js
       - applied_pipeline: []
-        content_hash: 56095b6c164a03dd
+        content_hash: 874d5e3ec409f40f
         kind: html
         path: about.html
-        size: 10595
+        size: 10503
       - applied_pipeline: []
         compression: gzip
-        content_hash: bc46c18fbde4850f
+        content_hash: c0b103004105d5d7
         kind: gz
         path: about.html.gz
-        size: 3376
+        size: 3371
         source_path: about.html
       - applied_pipeline: []
         content_hash: 5945811896b61c26
@@ -248,16 +248,16 @@ files:
         path: assets/logo.svg
         size: 133
       - applied_pipeline: []
-        content_hash: 0566dd1f69d0be7b
+        content_hash: 7ad8d35aa27b0a45
         kind: html
         path: index.html
-        size: 10853
+        size: 10761
       - applied_pipeline: []
         compression: gzip
-        content_hash: 1794ca5e2d79edaa
+        content_hash: aba3023af6351551
         kind: gz
         path: index.html.gz
-        size: 3473
+        size: 3469
         source_path: index.html
       - applied_pipeline: []
         content_hash: 16ceb5ee3e0dc13a
@@ -522,7 +522,7 @@ files:
           <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
         </symbol>
       </svg>
-      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
+      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-fonts="custom" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-label="About"><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="about">About</h1>
       <p>Static publishing fixture.</p></div></div></article>
         </main>
         <div class="kpress-video-backdrop" aria-hidden="true"></div>
@@ -538,8 +538,8 @@ files:
       </body>
       </html>
   about.html.gz:
-    bytes: 3376
-    sha256_16: bc46c18fbde4850f
+    bytes: 3371
+    sha256_16: c0b103004105d5d7
   assets/logo.svg:
     text: |
       <svg xmlns="http://www.w3.org/2000/svg" width="80" height="20" role="img" aria-label="KPress"><text x="0" y="15">KPress</text></svg>
@@ -695,7 +695,7 @@ files:
           <path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>
         </symbol>
       </svg>
-      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-fonts="custom" data-kpress-palette="neutral" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
+      <article class="kpress kpress-doc kpress-print-surface" data-kpress-profile="document" data-kpress-fonts="custom" data-kpress-card="on" data-kpress-table-wide-min-columns="6" data-kpress-table-wide-min-row-chars="100" aria-labelledby="kpress-title-index"><header class="kpress-doc-header kpress-metadata"><h1 id="kpress-title-index">Index</h1></header><div class="kpress-doc-layout kpress-content-with-toc"><div class="kpress-prose kpress-long-text"><h1 id="home">Home</h1>
       <p>See the logo.</p>
       <figure class="kpress-figure" data-kpress-figure="image">
       <img src="assets/logo.svg" alt="Logo" class="kpress-image" data-kpress-image="true" loading="lazy">
@@ -714,8 +714,8 @@ files:
       </body>
       </html>
   index.html.gz:
-    bytes: 3473
-    sha256_16: 1794ca5e2d79edaa
+    bytes: 3469
+    sha256_16: aba3023af6351551
   robots.txt:
     text: |
       User-agent: *
