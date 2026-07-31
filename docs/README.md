@@ -9,6 +9,12 @@ Use this index for implementation, maintenance, and release work.
 
 - [KPress Design](kpress-design.md): architecture, public contracts, extension seams,
   static publishing, assets, icons, and optimization
+- [Icon System](kpress-design.md#icon-system): the icon set, its SVG contract, and how
+  glyphs are added or replaced (within KPress Design)
+- [Declarative Embedding](declarative-embedding.plan.md): the root-independent sizing
+  and single-scope theming plan (issues #37/#38) and its embedder contract
+- [Content-Size Indicators](content-size-indicators.plan.md): proposed word-count and
+  reading-time indicators
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
   interaction, accessibility, asset, and verification contract for pinnable evidence
   previews
@@ -42,6 +48,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
+- [KPress 0.3.0](releases/0.3.0.md): unreleased notes for the declarative-embedding work
+  (root-independent sizing, single-scope theming)
 - [KPress 0.2.4](releases/0.2.4.md): current alpha anchor migration, presentation, and
   release-hardening release
 - [KPress 0.2.3](releases/0.2.3.md): navigation and rendering maintenance release

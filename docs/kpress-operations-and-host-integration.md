@@ -1,8 +1,8 @@
 # KPress Operations and Host Integration
 
-This reference covers local runtime operations, browser-asset quality gates, acceptance
-evidence, accessibility, and the dynamic embedding boundary.
-The core architecture, format, CSS, and static-publishing contracts remain in
+Local runtime operations, browser-asset quality gates, acceptance evidence,
+accessibility, and the dynamic embedding boundary live here; the core architecture,
+format, CSS, and static-publishing contracts remain in
 [KPress Design](kpress-design.md).
 
 ## Local Document Workflows

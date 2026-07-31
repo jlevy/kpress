@@ -278,8 +278,8 @@ bridge; and lift the `kpress==0.2.2` pin.
 
 All three resolved as recommended, confirmed by the PR #40 spec review:
 element-over-ancestor precedence; `data-kpress-palette` dropped from the article; the
-theme stylesheets folded into `style-tokens.css` with the load-bearing source order
-pinned in the SELECTOR GRAMMAR comment.
+theme stylesheets folded into `style-tokens.css` with the required source order pinned
+in the SELECTOR GRAMMAR comment.
 
 Tracked follow-ups from that review: base-relative container bands via `em` query
 conditions (`kpr-y20o`) and overlays copying the anchor’s resolved theme so wrapper

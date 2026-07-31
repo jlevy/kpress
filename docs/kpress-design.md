@@ -305,9 +305,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   settings gear but off by default: `format.widgets: {doc-actions: on}`. See
   [Document Actions Widget](#document-actions-widget).
 
-This document describes the current alpha architecture and public contract.
-Open implementation work and current capability status are indexed in
-[`TODO.md`](../TODO.md).
+The architecture and contracts here are the current alpha surface; open implementation
+work and capability status are indexed in [`TODO.md`](../TODO.md).
 
 ## Dependency Rules
 
