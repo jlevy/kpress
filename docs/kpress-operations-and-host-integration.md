@@ -165,6 +165,18 @@ can use this for a serif/sans reading-font toggle, which sets
 `--kpress-host-font-prose`. Hosts customize colors by setting the public
 `--kpress-doc-*` tokens on the document scope.
 
+Document sizing is one knob, not many: every KPress font size derives from
+`--kpress-font-size-base` (default `1rem`), so a host that pins its own typography
+(px-based app chrome, for example) sets `--kpress-host-font-size-base: 17px` once on
+`:root` and the entire document — prose, headings, code, labels, bullets — scales as one
+proportional unit, independent of the browser’s root font size.
+Set the base; never override individual size tokens (`--kpress-font-size-normal` and the
+rest of the ramp are derived from the base).
+The `:root`-level hook also reaches the body-appended overlays (tooltips, footnote
+previews), which a `.kpress`-scoped override cannot.
+See [Sizing Policy](kpress-design.md#sizing-policy) for the contract and the
+deliberately root-relative layout lengths.
+
 ### Collapsible TOC
 
 For long documents, a host can pre-collapse deep TOC entries so the TOC fits its pane
