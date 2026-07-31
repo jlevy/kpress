@@ -1,5 +1,5 @@
 tbd_format: f06
-tbd_version: 0.4.1
+tbd_version: 0.4.2
 # tbd_upgrades: tbd versions that have run `tbd setup` in this repo (oldest first);
 # tbd_version above is the most recent. Informational; updated automatically by setup.
 tbd_upgrades:
@@ -8,6 +8,8 @@ tbd_upgrades:
     at: 2026-07-14T19:41:47.075Z
   - version: 0.4.1
     at: 2026-07-19T17:44:30.334Z
+  - version: 0.4.2
+    at: 2026-07-31T01:44:04.614Z
 display:
   id_prefix: kpr
 sync:
@@ -93,6 +95,7 @@ docs_cache:
     guidelines/tbd-sync-troubleshooting.md: internal:guidelines/tbd-sync-troubleshooting.md
     guidelines/typescript-cli-tool-rules.md: internal:guidelines/typescript-cli-tool-rules.md
     guidelines/typescript-code-coverage.md: internal:guidelines/typescript-code-coverage.md
+    guidelines/typescript-lint-format-rules.md: internal:guidelines/typescript-lint-format-rules.md
     guidelines/typescript-rules.md: internal:guidelines/typescript-rules.md
     guidelines/typescript-sorting-patterns.md: internal:guidelines/typescript-sorting-patterns.md
     guidelines/typescript-yaml-handling-rules.md: internal:guidelines/typescript-yaml-handling-rules.md
