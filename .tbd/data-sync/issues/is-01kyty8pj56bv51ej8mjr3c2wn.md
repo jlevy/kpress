@@ -5,8 +5,8 @@ title: "Theme selector overhaul: symmetric forms, co-located color-scheme"
 kind: task
 status: closed
 priority: 1
-version: 6
-spec_path: docs/declarative-embedding.plan.md
+version: 7
+spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
 labels: []
 dependencies:
   - type: blocks
@@ -19,7 +19,7 @@ dependencies:
     target: is-01kyty8qwmms8t029r8xs6ya1k
 parent_id: is-01kytxza2a4r789k649dzrantj
 created_at: 2026-07-31T01:57:49.253Z
-updated_at: 2026-07-31T02:28:04.951Z
+updated_at: 2026-07-31T03:14:39.755Z
 closed_at: 2026-07-31T02:28:04.951Z
 close_reason: Symmetric two-scope selector grammar in style-tokens + syntax.css, color-scheme co-located, theme css files folded/deleted, pins + goldens updated; full suite and lint gate green.
 ---

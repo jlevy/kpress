@@ -5,13 +5,13 @@ title: "PR #40 review F1/F4/F6: spec record, migration table, print-path guidanc
 kind: task
 status: closed
 priority: 1
-version: 3
-spec_path: docs/declarative-embedding.plan.md
+version: 5
+spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
 labels: []
 dependencies: []
 parent_id: is-01kytxyzcd4wk87syn1t3naxhg
 created_at: 2026-07-31T02:38:12.368Z
-updated_at: 2026-07-31T02:45:40.677Z
+updated_at: 2026-07-31T03:14:42.529Z
 closed_at: 2026-07-31T02:45:40.677Z
 close_reason: "Theming embedder contract documented across design/host/skill docs; 0.3.0 migration table added; spec record corrected per PR #40 review; cache-key fix landed separately (cb752ca)."
 ---
