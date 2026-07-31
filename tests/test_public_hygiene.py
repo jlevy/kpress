@@ -5,8 +5,10 @@ from pathlib import Path
 
 from devtools.public_hygiene import (
     COMMON_DOC_FOOTER,
+    KPRESS_CSS_ROOT,
     ROOT,
     find_documentation_findings,
+    find_sizing_findings,
     find_violations,
     public_package_paths,
 )
@@ -84,6 +86,48 @@ def test_generated_and_rendering_documents_are_footer_exempt() -> None:
     assert find_documentation_findings(generated, "") == []
     assert find_documentation_findings(rendering_fixture, "") == []
     assert find_documentation_findings(rendering_example, "") == []
+
+
+def test_sizing_findings_flag_rem_font_sizes_and_size_tokens(tmp_path: Path) -> None:
+    css = tmp_path / "sample.css"
+    text = (
+        ".a { font-size: 1.2rem; }\n"
+        ".b { font-size: clamp(\n    1.75rem,\n    4.5vw,\n    2.3rem\n  ); }\n"
+        ":root { --kpress-font-size-mono: 0.82rem; --kpress-bullet-size: 0.9rem; }\n"
+    )
+
+    findings = find_sizing_findings(css, text)
+
+    assert [(finding.rule, finding.line) for finding in findings] == [
+        ("rem-font-size", 1),
+        ("rem-font-size", 2),
+        ("rem-font-size", 7),
+        ("rem-font-size", 7),
+    ]
+
+
+def test_sizing_findings_allow_base_derivations_and_the_base_default(tmp_path: Path) -> None:
+    css = tmp_path / "sample.css"
+    text = (
+        ":root { --kpress-font-size-base: var(--kpress-host-font-size-base, 1rem); }\n"
+        ".a { font-size: calc(var(--kpress-font-size-base) * 1.7); }\n"
+        ".b { font-size: var(--kpress-font-size-mono); }\n"
+        ".c { font-size: 0.85em; }\n"
+        ".d { font-size: 110%; }\n"
+        ".e { margin: 1rem; max-width: 48rem; }\n"
+    )
+
+    assert find_sizing_findings(css, text) == []
+
+
+def test_shipped_css_derives_every_font_size_from_the_base() -> None:
+    findings = [
+        finding
+        for path in sorted(KPRESS_CSS_ROOT.glob("*.css"))
+        for finding in find_sizing_findings(path, path.read_text(encoding="utf-8"))
+    ]
+
+    assert findings == []
 
 
 def test_codex_hook_commands_anchor_to_repository_root() -> None:

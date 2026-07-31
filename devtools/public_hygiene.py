@@ -90,6 +90,44 @@ RULE_PATTERNS: Final = (
     ),
 )
 
+# Sizing contract (style-tokens.css SIZING POLICY, kpress-design.md "Sizing
+# Policy"): every font size in first-party CSS derives from
+# --kpress-font-size-base, so no font-size declaration or size token may
+# reference rem. Layout lengths (measure, bands, margins) are deliberately
+# root-relative and not covered by this rule; the one legitimate rem is the
+# base knob's own default, which keeps standalone pages tracking the reader's
+# browser font preference.
+KPRESS_CSS_ROOT: Final = ROOT / "src" / "kpress" / "format" / "static" / "css"
+SIZING_REM_ALLOWLIST: Final = frozenset(
+    {"--kpress-font-size-base: var(--kpress-host-font-size-base, 1rem)"}
+)
+_SIZE_DECLARATION = re.compile(
+    r"(?P<prop>--kpress-font-size[\w-]*|--kpress-bullet-size|(?<![\w-])font-size)"
+    r"\s*:\s*(?P<value>[^;{}]*)"
+)
+_REM_UNIT = re.compile(r"[\d.]rem\b")
+
+
+def find_sizing_findings(path: Path, text: str) -> list[Finding]:
+    """Flag rem-based font sizes and size tokens in a first-party stylesheet."""
+    findings: list[Finding] = []
+    for match in _SIZE_DECLARATION.finditer(text):
+        value = match.group("value")
+        if _REM_UNIT.search(value) is None:
+            continue
+        declaration = re.sub(r"\s+", " ", f"{match.group('prop')}: {value}").strip()
+        if declaration in SIZING_REM_ALLOWLIST:
+            continue
+        findings.append(
+            Finding(
+                path=path,
+                line=text.count("\n", 0, match.start()) + 1,
+                rule="rem-font-size",
+                excerpt=declaration,
+            )
+        )
+    return findings
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -148,7 +186,10 @@ def find_text_findings(path: Path, text: str) -> list[Finding]:
 def find_violations(paths: list[Path]) -> list[Finding]:
     findings: list[Finding] = []
     for path in _iter_text_files(paths):
-        findings.extend(find_text_findings(path, path.read_text(encoding="utf-8")))
+        text = path.read_text(encoding="utf-8")
+        findings.extend(find_text_findings(path, text))
+        if path.suffix == ".css" and path.is_relative_to(KPRESS_CSS_ROOT):
+            findings.extend(find_sizing_findings(path, text))
     return findings
 
 
