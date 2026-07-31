@@ -130,13 +130,15 @@ class RenderOptions:
     # still override any individual --kpress-doc-* token on top.
     palette: str = "neutral"
     resolved_theme: Literal["light", "dark"] = "light"
+    # Include the standalone theme resolver in the browser asset manifest.
+    # None follows the render surface: pages include it and fragments omit it.
+    include_theme_resolver: bool | None = None
     asset_url_prefix: str = "/kpress-static/"
     asset_mode: AssetMode = "hosted"
     # Asset-selection policy for the returned typed manifest. "auto" includes
     # the base styles/fonts plus only browser modules required by the rendered
-    # features; "none" returns an empty manifest; "all" returns the complete
-    # reader closure. Hosts that own theme resolution and chrome can produce a
-    # CSS-only plain fragment with theme_mode light/dark and settings disabled.
+    # surface and features; "none" returns an empty manifest; "all" returns the
+    # complete reader closure.
     asset_policy: AssetPolicy = "auto"
     include_toc: TocMode = "auto"
     toc_min_headings: int = 4
@@ -238,8 +240,8 @@ def parse_widgets(value: object) -> dict[str, Any]:
     return widgets
 
 
-def resolve_widgets(widgets: Mapping[str, Any]) -> dict[str, Any]:
-    """Resolve a widget presence map: defaults under host values, "off" removed.
+def resolve_widgets(widgets: Mapping[str, Any], *, include_defaults: bool = True) -> dict[str, Any]:
+    """Resolve a widget presence map: optional defaults under host values, "off" removed.
 
     Values pass through verbatim (a dict is the widget's opaque config and
     implies on; "on"/"auto"/True are presence markers). KPress never interprets
@@ -247,7 +249,8 @@ def resolve_widgets(widgets: Mapping[str, Any]) -> dict[str, Any]:
     payload) to the widget's own JS.
     """
 
-    merged: dict[str, Any] = {**DEFAULT_WIDGETS, **dict(widgets)}
+    defaults = DEFAULT_WIDGETS if include_defaults else {}
+    merged: dict[str, Any] = {**defaults, **dict(widgets)}
     # Only explicit off markers remove a widget: `value not in ("off", False)`
     # would also drop integer 0 via `0 == False`.
     return {

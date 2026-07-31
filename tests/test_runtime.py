@@ -50,17 +50,17 @@ def test_runtime_renders_and_caches_document() -> None:
     assert 'class="kpress kpress-doc kpress-print-surface"' in first["html"]
     assets = {row["id"]: row for row in first["assets"]["assets"]}
     assert assets["css/document.css"]["public_url"] == (f"/kpress-static/{_VSEG}/css/document.css")
-    assert assets["js/theme.js"]["public_url"] == f"/kpress-static/{_VSEG}/js/theme.js"
+    assert "js/theme.js" not in assets
+    assert "js/settings-widget.js" not in assets
     assert first["assets"]["import_map"] == {}
+    assert first["widgets"] == {}
+    assert first["model"]["widgets"] == {}
 
 
-def test_runtime_render_cache_is_theme_agnostic() -> None:
-    """Fragments bake no theme state, so renders that differ only in theme
-    share one cache entry; `system` mode stays distinct because it ships the
-    theme.js resolver in the declared assets."""
+def test_runtime_theme_resolver_is_explicit_and_cache_relevant() -> None:
     runtime.clear_render_cache()
 
-    def request(theme_mode: str, resolved_theme: str) -> runtime.KPressRenderRequest:
+    def request(include_theme_resolver: bool) -> runtime.KPressRenderRequest:
         return runtime.KPressRenderRequest(
             source_text="# One\n\nBody\n",
             source_path="docs/one.md",
@@ -70,19 +70,33 @@ def test_runtime_render_cache_is_theme_agnostic() -> None:
             mtime_hash="a",
             size=12,
             frontmatter={"title": "One"},
-            theme_mode=theme_mode,  # pyright: ignore[reportArgumentType]
-            resolved_theme=resolved_theme,  # pyright: ignore[reportArgumentType]
+            include_theme_resolver=include_theme_resolver,
         )
 
-    light = runtime.render_view(request("light", "light"))
-    dark = runtime.render_view(request("dark", "dark"))
-    assert light == dark
+    host_owned = runtime.render_view(request(False))
+    assert "js/theme.js" not in {row["id"] for row in host_owned["assets"]["assets"]}
     assert len(runtime._RENDER_CACHE) == 1  # pyright: ignore[reportPrivateUsage]
 
-    system = runtime.render_view(request("system", "dark"))
+    resolver_owned = runtime.render_view(request(True))
     assert len(runtime._RENDER_CACHE) == 2  # pyright: ignore[reportPrivateUsage]
-    system_assets = {row["id"] for row in system["assets"]["assets"]}
-    assert "js/theme.js" in system_assets
+    resolver_assets = {row["id"] for row in resolver_owned["assets"]["assets"]}
+    assert "js/theme.js" in resolver_assets
+
+
+def test_runtime_rejects_non_boolean_theme_resolver_flag() -> None:
+    request = runtime.KPressRenderRequest(
+        source_text="# One\n",
+        source_path="docs/one.md",
+        kind="markdown",
+        view="rendered",
+        ext=".md",
+        mtime_hash="resolver-invalid",
+        size=6,
+        include_theme_resolver=cast("bool", "on"),
+    )
+
+    with pytest.raises(KPressInvalidRequestError, match="include_theme_resolver"):
+        runtime.render_view(request)
 
 
 def test_runtime_renders_source_profile() -> None:
@@ -324,6 +338,7 @@ def test_render_view_payload_model_matches_the_static_page_model() -> None:
             mtime_hash="model-1",
             size=len(source),
             frontmatter={"title": "Guide"},
+            widgets={"settings": "on"},
         )
     )
     model = payload["model"]

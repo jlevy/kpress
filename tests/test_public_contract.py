@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import sys
+from dataclasses import fields
 from pathlib import Path
 
 import kpress
@@ -30,6 +31,7 @@ from kpress.contract import (
     PUBLIC_PASS_THROUGH_ATTRIBUTES,
     PUBLIC_PASS_THROUGH_TAGS,
     PUBLIC_PUBLISH_API,
+    PUBLIC_RENDER_REQUEST_FIELDS,
     PUBLIC_TEMPLATE_VARIABLES,
     PUBLIC_WIDGETS,
 )
@@ -43,6 +45,12 @@ def test_public_python_api_names_are_current_contract() -> None:
     assert tuple(kpress.__all__) == PUBLIC_PACKAGE_API
     assert tuple(kpress_format.__all__) == PUBLIC_FORMAT_API
     assert tuple(kpress_publish.__all__) == PUBLIC_PUBLISH_API
+
+
+def test_dynamic_render_request_fields_are_current_contract() -> None:
+    assert tuple(field.name for field in fields(kpress.KPressRenderRequest)) == (
+        PUBLIC_RENDER_REQUEST_FIELDS
+    )
 
 
 def test_format_import_keeps_publisher_pdf_and_optimizer_out_of_core() -> None:

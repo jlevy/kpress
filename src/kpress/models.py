@@ -34,8 +34,9 @@ class KPressRenderRequest:
     frontmatter: dict[str, Any] = field(default_factory=dict)
     frontmatter_error: str | None = None
     profile: str | None = None
-    theme_mode: ThemeMode = "system"
-    resolved_theme: Literal["light", "dark"] = "light"
+    # Embedded hosts own theme state by default; opt in only when KPress should
+    # register its standalone resolver over the host page.
+    include_theme_resolver: bool = False
     host: str = "host"
     asset_url_prefix: str = "/kpress-static/"
     # Hosts that show the document title in their own chrome suppress the

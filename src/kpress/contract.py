@@ -89,6 +89,28 @@ PUBLIC_PUBLISH_API = (
     "validate_config",
 )
 
+PUBLIC_RENDER_REQUEST_FIELDS = (
+    "source_text",
+    "source_path",
+    "kind",
+    "view",
+    "ext",
+    "mtime_hash",
+    "size",
+    "frontmatter",
+    "frontmatter_error",
+    "profile",
+    "include_theme_resolver",
+    "host",
+    "asset_url_prefix",
+    "show_doc_header",
+    "toc_collapse_depth",
+    "toc_expand_on_scroll",
+    "widgets",
+    "extra_tags",
+    "extra_attributes",
+)
+
 PUBLIC_CSS_CLASSES = (
     "annotated-para",
     "boxed-text",
