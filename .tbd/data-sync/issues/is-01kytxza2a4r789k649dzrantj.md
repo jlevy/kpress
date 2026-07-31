@@ -5,7 +5,7 @@ title: "Single-scope symmetric theming, theme-agnostic fragment SSR (issue #38)"
 kind: feature
 status: open
 priority: 1
-version: 8
+version: 9
 spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
 labels: []
 dependencies: []
@@ -16,7 +16,8 @@ child_order_hints:
   - is-01kyty8q78gkqp1y8e7pz8rcn4
   - is-01kyty8qj1bwn65xtzahcbv0rf
   - is-01kyty8qwmms8t029r8xs6ya1k
+  - is-01kyx2e4pq85s0fm0vek4ptvye
 created_at: 2026-07-31T01:52:41.545Z
-updated_at: 2026-07-31T03:14:37.606Z
+updated_at: 2026-07-31T21:49:10.737Z
 ---
 Phase 2 of the declarative-embedding spec: CSS keys only data-kpress-resolved-theme with two symmetric selector forms (ancestor :where() + element; element wins); color-scheme co-located with palette blocks; fold theme-light/theme-dark.css into style-tokens.css; stop baking theme/palette attrs on the article so fragment renders are byte-identical across themes; contract/goldens/tests + embedder-contract docs. GitHub: https://github.com/jlevy/kpress/issues/38
