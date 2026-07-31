@@ -11,7 +11,7 @@ tbd is authoritative for issue status and dependencies.
 This file is the maintained view across both.
 Update all three together when a public capability changes.
 
-Last reconciled: 2026-07-30.
+Last reconciled: 2026-07-31.
 
 ## Release Status
 
@@ -24,6 +24,20 @@ The release shipped without compatibility shims after exact-main review, private
 security sign-off, artifact inspection, Trusted Publishing, and independent registry
 smokes. KPress `0.1.0` remains the first public alpha.
 Alpha status is conveyed by package metadata and release notes, not by a version suffix.
+
+KPress `0.3.0` is the validated next release candidate.
+It makes typography root-independent, makes light and dark theme selection symmetric at
+one host-chosen scope, keeps fragment HTML theme-agnostic, and makes automatic fragment
+assets host-owned by default.
+The full KPress release gate and an exact-source metabrowser integration pass are
+complete; tagging, GitHub release creation, and PyPI Trusted Publishing remain a
+separate explicit release action.
+
+Completed release-candidate gates:
+
+| Gate | Bead | Result |
+| --- | --- | --- |
+| Declarative embedding and v0.3.0 preparation | `kpr-t290` | Complete; issues #37, #38, and #42 are implemented with Python, checked-JavaScript, browserless DOM, real-Chromium, public-contract, artifact, and downstream-host validation. |
 
 Completed release gates:
 
@@ -88,6 +102,9 @@ their follow-up review work lands.
   implemented and merged (PR #24); the PR #25 review follow-ups (`kpr-z54g`, closed)
   refined the clearance cascade, native anchor semantics, and numeric marker parity, and
   the completed plan now lives in `docs/done/`
+- `kpr-t290` (closed): [declarative embedding](docs/done/declarative-embedding.plan.md)
+  is implemented with one host-controlled font-size base, symmetric resolved-theme
+  scoping, theme-agnostic fragment HTML, and host-owned automatic fragment assets
 - `kpr-lrfg` (deferred, P3): optional
   [content-size indicators](docs/content-size-indicators.plan.md) — see the P3 backlog
   entry below
@@ -135,7 +152,7 @@ their follow-up review work lands.
 Useful public orientation: [README](README.md), [documentation index](docs/README.md),
 [design and public contracts](docs/kpress-design.md),
 [validation runbook](docs/kpress-validation.runbook.md), and
-[v0.2.4 release notes](docs/releases/0.2.4.md).
+[v0.3.0 release-candidate notes](docs/releases/0.3.0.md).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
