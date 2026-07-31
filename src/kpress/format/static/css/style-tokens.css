@@ -188,7 +188,9 @@
   /* Square list bullet -- one size for prose lists, claim markers, and concept
      items, so every bulleted list matches. Sized with the base * 0.1 top offset
      on the ::before markers so the square's center sits at the crossbar of a
-     capital F in the first line, not below it. */
+     capital F in the first line, not below it. NOTE for diverging hosts: the
+     marker OFFSETS track the base, not this token, so overriding the bullet
+     size shifts glyph-to-offset geometry slightly. */
   --kpress-bullet-size: calc(var(--kpress-font-size-base) * 0.9);
 
   /* ============================== 3. SHAPE ============================== */

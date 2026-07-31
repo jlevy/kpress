@@ -96,6 +96,7 @@ def test_sizing_findings_flag_rem_font_sizes_and_size_tokens(tmp_path: Path) -> 
         ".b { font-size: clamp(\n    1.75rem,\n    4.5vw,\n    2.3rem\n  ); }\n"
         ":root { --kpress-font-size-mono: 0.82rem; --kpress-bullet-size: 0.9rem; }\n"
         ".c { font-size: var(--kpress-font-size-h2, 1.32rem); }\n"
+        ":root { --kpress-caps-label-size: 0.9rem; }\n"
     )
 
     findings = find_sizing_findings(css, text)
@@ -107,6 +108,7 @@ def test_sizing_findings_flag_rem_font_sizes_and_size_tokens(tmp_path: Path) -> 
         ("rem-font-size", 7),
         # A rem fallback literal inside var() is still a rem reference.
         ("rem-font-size", 8),
+        ("rem-font-size", 9),
     ]
 
 

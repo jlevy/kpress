@@ -102,7 +102,8 @@ SIZING_REM_ALLOWLIST: Final = frozenset(
     {"--kpress-font-size-base: var(--kpress-host-font-size-base, 1rem)"}
 )
 _SIZE_DECLARATION = re.compile(
-    r"(?P<prop>--kpress-font-size[\w-]*|--kpress-bullet-size|(?<![\w-])font-size)"
+    r"(?P<prop>--kpress-font-size[\w-]*|--kpress-bullet-size|--kpress-caps-label-size"
+    r"|(?<![\w-])font-size)"
     r"\s*:\s*(?P<value>[^;{}]*)"
 )
 _REM_UNIT = re.compile(r"[\d.]rem\b")
