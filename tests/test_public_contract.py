@@ -32,6 +32,7 @@ from kpress.contract import (
     PUBLIC_PASS_THROUGH_TAGS,
     PUBLIC_PUBLISH_API,
     PUBLIC_RENDER_REQUEST_FIELDS,
+    PUBLIC_RUNTIME_EVENTS,
     PUBLIC_TEMPLATE_VARIABLES,
     PUBLIC_WIDGETS,
 )
@@ -362,8 +363,7 @@ def test_render_view_returns_jsonable_contract_payload_with_opaque_host() -> Non
 
 
 def test_widget_behavior_and_js_export_contracts_match_the_js() -> None:
-    """The extension-model name contracts are real: every pinned widget id,
-    behavior id, and module export exists in the shipped JS."""
+    """Every pinned widget, behavior, event, and module export exists in shipped JS."""
 
     js_dir = _KPRESS_ROOT / "src/kpress/format/static/js"
     all_js = "\n".join(path.read_text(encoding="utf-8") for path in sorted(js_dir.glob("*.js")))
@@ -372,6 +372,8 @@ def test_widget_behavior_and_js_export_contracts_match_the_js() -> None:
         assert f'widgets.register("{widget_id}"' in all_js, widget_id
     for behavior_id in PUBLIC_BEHAVIORS:
         assert f'behaviors.register("{behavior_id}"' in all_js, behavior_id
+    for event in PUBLIC_RUNTIME_EVENTS:
+        assert re.search(rf'["\']{re.escape(event)}["\']', all_js), event
 
     for module, names in PUBLIC_JS_EXPORTS.items():
         text = (_KPRESS_ROOT / "src/kpress/format/static" / module).read_text(encoding="utf-8")

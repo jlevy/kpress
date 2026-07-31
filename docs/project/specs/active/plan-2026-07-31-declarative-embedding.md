@@ -147,7 +147,7 @@ Both designs are recorded in full in the reference docs; the decisions that shap
   host-handleable `theme:request` event (`kpr-zym8`)
 - [x] Python, browserless DOM, and real-browser regressions cover default host
   ownership, explicit opt-in, and unchanged standalone behavior (`kpr-azfp`)
-- [ ] Public contracts, integration guidance, and v0.3.0 migration notes describe the
+- [x] Public contracts, integration guidance, and v0.3.0 migration notes describe the
   final behavior and the dynamic API break (`kpr-7dip`)
 - [ ] Release metadata, tracker state, full gates, and metabrowser source-pin validation
   are complete (`kpr-o48p`)

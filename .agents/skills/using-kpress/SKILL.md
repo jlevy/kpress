@@ -37,13 +37,18 @@ configuration.
 - Treat unlisted Python names, CSS tokens, selectors, and JavaScript exports as private.
 
 Rendered fragments are theme-agnostic: kpress bakes no theme or palette attributes on
-the article (standalone pages stamp `<html>` only). An embedding host stamps
-`data-kpress-resolved-theme` (and optionally `data-kpress-palette`) on one chosen scope
-and updates it on toggle — nothing else; do not load `theme.js`, or no-op override the
-`theme` behavior if the asset set includes it.
-An element-level attribute deliberately wins over an ancestor scope (a stamped element
-is a coherent theme island); body-portaled tooltips escape non-`:root` wrapper scopes,
-so wrapper-scoped hosts stamp `:root` too.
+the article (standalone pages stamp `<html>` only).
+An embedding host stamps `data-kpress-resolved-theme` (and optionally
+`data-kpress-palette`) on one chosen scope and updates it on toggle.
+Fragment manifests omit `theme.js` and page-default widgets; set
+`include_theme_resolver=True` only when kpress should own root theme state, persistence,
+and OS-theme tracking.
+The explicit `asset_policy="all"` includes the resolver by definition; use `auto` or
+`none` for host-owned fragments.
+Explicit settings controls remain host-safe: handle their `theme:request`, apply host
+state, then emit `theme:change`. An element-level attribute deliberately wins over an
+ancestor scope (a stamped element is a coherent theme island); body-portaled tooltips
+escape non-`:root` wrapper scopes, so wrapper-scoped hosts stamp `:root` too.
 
 ## Keep markup in templates
 
@@ -67,7 +72,7 @@ Never scale by overriding ramp tokens; override a public ramp/label/bullet token
 for a deliberate design divergence from its derived ratio (e.g. aligning mono or label
 sizes with host chrome).
 The `:root` hook also reaches body-appended tooltips; a `.kpress`-scoped override does
-not, and a redeclared base also overrides kpress's print re-rooting.
+not, and a redeclared base also overrides kpress’s print re-rooting.
 
 Use root-absolute URLs for webfonts injected into pages at different route depths, and
 ensure the host copies those files into the published tree.

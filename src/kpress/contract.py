@@ -428,8 +428,9 @@ PUBLIC_PIPELINE_STAGES = ("none", "full")
 # Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
 
 # Built-in chrome widget ids registered through kpress.widgets. `settings` is
-# on by default; `doc-actions` (Export PDF / View as Markdown badge buttons) is
-# off by default and opted in via `format.widgets: {doc-actions: on}`.
+# on by default for standalone pages and explicit for fragments; `doc-actions`
+# (Export PDF / View as Markdown badge buttons) is off by default and opted in
+# via `format.widgets: {doc-actions: on}`.
 PUBLIC_WIDGETS = ("settings", "doc-actions")
 
 # Built-in behavior ids registered through kpress.behaviors (bindings over
@@ -448,6 +449,17 @@ PUBLIC_BEHAVIORS = (
     "tabs",
     "diagrams",
     "theme",
+)
+
+# Events exchanged through the public runtime event bus. `theme:request` is
+# presentation-to-owner intent; `theme:change` and `palette:change` announce
+# state that has already been applied by the owning layer.
+PUBLIC_RUNTIME_EVENTS = (
+    "kpress:ready",
+    "widget:change",
+    "theme:request",
+    "theme:change",
+    "palette:change",
 )
 
 # Keys of the #kpress-page-model JSON block (layer A published data).
@@ -534,6 +546,8 @@ __all__ = [
     "PUBLIC_PASS_THROUGH_TAGS",
     "PUBLIC_PIPELINE_STAGES",
     "PUBLIC_PUBLISH_API",
+    "PUBLIC_RENDER_REQUEST_FIELDS",
+    "PUBLIC_RUNTIME_EVENTS",
     "PUBLIC_TEMPLATE_VARIABLES",
     "PUBLIC_WIDGETS",
 ]
