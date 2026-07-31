@@ -54,6 +54,37 @@ def test_runtime_renders_and_caches_document() -> None:
     assert first["assets"]["import_map"] == {}
 
 
+def test_runtime_render_cache_is_theme_agnostic() -> None:
+    """Fragments bake no theme state, so renders that differ only in theme
+    share one cache entry; `system` mode stays distinct because it ships the
+    theme.js resolver in the declared assets."""
+    runtime.clear_render_cache()
+
+    def request(theme_mode: str, resolved_theme: str) -> runtime.KPressRenderRequest:
+        return runtime.KPressRenderRequest(
+            source_text="# One\n\nBody\n",
+            source_path="docs/one.md",
+            kind="markdown",
+            view="rendered",
+            ext=".md",
+            mtime_hash="a",
+            size=12,
+            frontmatter={"title": "One"},
+            theme_mode=theme_mode,  # pyright: ignore[reportArgumentType]
+            resolved_theme=resolved_theme,  # pyright: ignore[reportArgumentType]
+        )
+
+    light = runtime.render_view(request("light", "light"))
+    dark = runtime.render_view(request("dark", "dark"))
+    assert light == dark
+    assert len(runtime._RENDER_CACHE) == 1  # pyright: ignore[reportPrivateUsage]
+
+    system = runtime.render_view(request("system", "dark"))
+    assert len(runtime._RENDER_CACHE) == 2  # pyright: ignore[reportPrivateUsage]
+    system_assets = {row["id"] for row in system["assets"]["assets"]}
+    assert "js/theme.js" in system_assets
+
+
 def test_runtime_renders_source_profile() -> None:
     runtime.clear_render_cache()
     request = runtime.KPressRenderRequest(
