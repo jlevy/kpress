@@ -36,10 +36,14 @@ configuration.
 - Import only JavaScript exports pinned by the public contract.
 - Treat unlisted Python names, CSS tokens, selectors, and JavaScript exports as private.
 
-kpress stamps resolved theme/palette state on both `<html>` and the `.kpress` article.
-Runtime host controls should update the root attribute and only mirror the article
-attribute when the documented cascade does not propagate that setting.
-A stale article attribute can shadow root state.
+Rendered fragments are theme-agnostic: kpress bakes no theme or palette attributes on
+the article (standalone pages stamp `<html>` only). An embedding host stamps
+`data-kpress-resolved-theme` (and optionally `data-kpress-palette`) on one chosen scope
+and updates it on toggle — nothing else; do not load `theme.js`, or no-op override the
+`theme` behavior if the asset set includes it.
+An element-level attribute deliberately wins over an ancestor scope (a stamped element
+is a coherent theme island); body-portaled tooltips escape non-`:root` wrapper scopes,
+so wrapper-scoped hosts stamp `:root` too.
 
 ## Keep markup in templates
 

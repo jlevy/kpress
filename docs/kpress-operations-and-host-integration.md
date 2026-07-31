@@ -182,6 +182,15 @@ sizing too).
 See [Sizing Policy](kpress-design.md#sizing-policy) for the contract and the
 deliberately root-relative layout lengths.
 
+Theming is equally declarative: rendered fragments carry no baked theme or palette
+attributes, so a host stamps `data-kpress-resolved-theme` (and optionally
+`data-kpress-palette`) on one scope — `:root` or a wrapper — and updates it on toggle;
+element-level attributes win, `color-scheme` follows the palette automatically, and one
+cached render serves every theme.
+Do not load `theme.js` (or no-op override the `theme` behavior); see
+[Theme and Fonts](kpress-design.md#theme-and-fonts) for the full embedder contract and
+the wrapper-scope note about body-portaled overlays.
+
 ### Collapsible TOC
 
 For long documents, a host can pre-collapse deep TOC entries so the TOC fits its pane

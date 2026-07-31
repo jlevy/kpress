@@ -822,8 +822,8 @@ The supported fragment variables are:
   `--kpress-font-size-mono-tiny`, `--kpress-font-size-normal`,
   `--kpress-font-size-small`, `--kpress-font-size-smaller`, `--kpress-font-size-tiny`,
   `--kpress-caps-label-size`, and `--kpress-bullet-size` — override one only for a
-  deliberate design departure from the derived ratio (for example aligning mono or
-  label sizes with host chrome), never as the way to scale the document.
+  deliberate design departure from the derived ratio (for example aligning mono or label
+  sizes with host chrome), never as the way to scale the document.
   See “Sizing policy” below.
 - measure and host spacing: `--kpress-measure`, `--kpress-page-margin-inline`,
   `--kpress-page-margin-block-start`, and `--kpress-toc-toggle-clearance` (the inline
@@ -967,13 +967,12 @@ size, silently changing ratios in nested contexts like captions and footnotes.
   Setting `--kpress-font-size-base` itself works too but must be declared at the
   `.kpress` scope (or deeper) with later order or higher specificity, does not reach
   body-level overlays from a wrapper scope, and — because it replaces the derivation
-  chain — also overrides the print re-rooting below: use the hook if print should
-  follow `--kpress-print-font-size`; redeclare the base only if the host intends to own
-  print sizing too.
-  Scaling goes through the base, never through individual sizes; the public ramp,
-  label, and bullet tokens exist for *deliberate design divergence* from a derived
-  ratio (a host aligning mono or label sizes with its own chrome), and stay derived
-  from the base unless overridden.
+  chain — also overrides the print re-rooting below: use the hook if print should follow
+  `--kpress-print-font-size`; redeclare the base only if the host intends to own print
+  sizing too. Scaling goes through the base, never through individual sizes; the public
+  ramp, label, and bullet tokens exist for *deliberate design divergence* from a derived
+  ratio (a host aligning mono or label sizes with its own chrome), and stay derived from
+  the base unless overridden.
 - **Print** re-roots the base at `--kpress-print-font-size` inside `@media print`, so
   paper output keeps the designed ratios to the print body size regardless of the screen
   root or a host-pinned base.
@@ -1000,6 +999,29 @@ Theme mode values:
 
 Standalone pages include a pre-paint bootstrap that resolves `system` using
 `prefers-color-scheme`. Dynamic fragments let hosts resolve and set attributes.
+
+**Theme scopes and the embedder contract.** CSS reads exactly one theme input:
+`data-kpress-resolved-theme="light|dark"` — the resolver’s *output*. The mode
+(`data-kpress-theme`) is resolver state and never keys CSS (lint-enforced).
+Light and dark are keyed symmetrically at two scopes — any ancestor (`:root` or a plain
+host wrapper) and the element itself — with the element winning, so a stamped element is
+a coherent theme island in either direction and `color-scheme` travels in rules keyed
+identically to the palette (the two cannot split).
+Rendered fragments are **theme-agnostic**: they bake no theme or palette attributes, so
+one render is cacheable across themes and the embedder contract is exactly:
+
+- stamp `data-kpress-resolved-theme` (and optionally `data-kpress-palette`) on one
+  chosen scope; update it on toggle — nothing else;
+- do not load `theme.js`; if the asset set includes it (`theme_mode="system"`), override
+  the behavior: `kpress.behaviors.override("theme", () => {})`;
+- combined palette × theme states bind fully when both attributes sit on the same scope
+  element;
+- body-portaled overlays (tooltips, footnote previews) escape a non-`:root` wrapper
+  scope: a wrapper-scoped host should stamp `:root` as well (or stamp overlays
+  individually) until overlays copy the anchor’s resolved theme themselves.
+
+The standalone page shell stamps `<html>` from the template plus the pre-paint
+bootstrap; `theme.js` remains the standalone resolver behind the same attribute.
 
 **Theme engine vs. settings widget.** These are two layers, deliberately separate (see
 [Extension and Injection Model](#extension-and-injection-model)):

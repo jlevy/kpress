@@ -5,11 +5,11 @@ author: Joshua Levy (with Claude)
 ---
 # Feature: Declarative Embedding — Sizing and Theming
 
-**Date:** 2026-07-31
+**Date:** 2026-07-31 (last updated 2026-07-31)
 
 **Author:** Joshua Levy (with Claude)
 
-**Status:** Draft
+**Status:** In Review
 
 **Tracking:** `kpr-t290` is the governing epic.
 Its phase features are root-independent sizing (`kpr-2m8v`, issue #37) and single-scope
@@ -72,16 +72,23 @@ Findings from reviewing both issues against kpress `f59c44f` and metabrowser `00
 rules that bypass it: h1 `1.7rem` (`document.css`), h5/h6 `1rem`, doc-header h1
 `clamp(1.75rem, 4.5vw, 2.3rem)`, hero `1.6/1.5rem`, sans-text `1.75/1.25rem`, the
 key-claims label `calc(1.2rem × multiplier)`, and the wide-band heading step-up
-(`1.4/1.2/1.2rem` inside `@container (min-width: 64rem)`). Corrections to the issue
-text: `--kpress-bullet-size` is `0.9rem` (not 0.8), and h2–h4 are already tokenized.
+(`1.4/1.2/1.2rem` inside `@container (min-width: 64rem)`). Version-skew note (not issue
+errors): the issue’s `0.8rem` bullet and its offsets are the values at the
+`kpress==0.2.2` tag metabrowser pins (where the bullet genuinely is `0.8rem` with
+`top: 0.25rem`); at current HEAD the bullet is `0.9rem` with `−0.85`/`0.1` offsets, and
+h2–h4 are tokenized.
 The fragment seam (`PUBLIC_FRAGMENT_CSS_VARIABLES`) pins **no** font-size token, so
 there is no supported sizing seam today.
-metabrowser’s current workaround is a single higher-specificity override of
+metabrowser `main` carries a single higher-specificity override of
 `--kpress-font-size-normal` to 17px, which fixes body text only — headings, code, and
 labels stay root-relative, and the override cannot reach tooltips because they portal to
-`document.body` (`tooltips.js:562`). metabrowser also still pins `kpress==0.2.2` and
-sets retired `--kpress-host-bg`-family color hooks, demonstrating the
-re-audit-on-upgrade cost.
+`document.body` (`tooltips.js:562`); the full em bridge (ramp remap plus `em`
+restatements of h1–h6, bullet geometry, and widget labels, calibrated to 0.2.2) lives on
+the in-flight type-scale branch
+([metabrowser#16](https://github.com/jlevy/metabrowser/pull/16)), which is the real
+downstream migration target.
+metabrowser also still sets retired `--kpress-host-bg`-family color hooks, demonstrating
+the re-audit-on-upgrade cost.
 `tooltips.js:22` additionally hardcodes px mirrors of the rem width caps “at a 16px
 root” (existing wart, out of scope here).
 
@@ -256,21 +263,27 @@ The contract scans and golden suite force same-patch updates of every pinned sur
 ## Rollout Plan
 
 One release (0.3.0: the fragment-attribute removal and print-ratio change are
-behavior-visible). Release notes carry a migration table; downstream metabrowser
-follow-ups (tracked there, not here): set `--kpress-host-font-size-base: 17px` and drop
-the `--kpress-font-size-normal` override, stamp `data-kpress-resolved-theme` at one
-scope and delete the element-chasing loop, drop the retired `--kpress-host-*` color-hook
-bridge, and upgrade the `kpress==0.2.2` pin.
+behavior-visible). Release notes carry a migration table (base knob, print-path
+divergence, wide-band step-up reappearing in embedded panes once bridge suppression is
+deleted, dropped baked attributes breaking downstream assertions).
+Downstream metabrowser follow-ups (tracked there, not here): collapse the **entire**
+type-scale bridge from [metabrowser#16](https://github.com/jlevy/metabrowser/pull/16) —
+the ramp remap, the `em` restatements, and the `--kpress-font-size-normal` override —
+into `--kpress-host-font-size-base: 17px` on `:root` plus deliberate ramp-token
+overrides via the now-public divergence tier; stamp `data-kpress-resolved-theme` at one
+scope and delete the element-chasing loop; drop the retired `--kpress-host-*` color-hook
+bridge; and lift the `kpress==0.2.2` pin.
 
 ## Open Questions
 
-- Element-over-ancestor precedence confirmed?
-  (Recommended: matches the issue’s per-document-island intent; metabrowser is
-  unaffected.)
-- Drop `data-kpress-palette` from the article along with the theme attributes?
-  (Recommended for full cross-theme cacheability; standalone chooser unaffected.)
-- Fold `theme-light.css`/`theme-dark.css` into `style-tokens.css` (recommended) or keep
-  three files with mirrored selectors?
+All three resolved as recommended, confirmed by the PR #40 spec review:
+element-over-ancestor precedence; `data-kpress-palette` dropped from the article; the
+theme stylesheets folded into `style-tokens.css` with the load-bearing source order
+pinned in the SELECTOR GRAMMAR comment.
+
+Tracked follow-ups from that review: base-relative container bands via `em` query
+conditions (`kpr-y20o`) and overlays copying the anchor’s resolved theme so wrapper
+scopes reach portaled tooltips (`kpr-gssj`).
 
 ## References
 
@@ -279,9 +292,11 @@ bridge, and upgrade the `kpress==0.2.2` pin.
 - [kpress-design.md](kpress-design.md) — architecture and public-contract reference
 - [kpress-operations-and-host-integration.md](kpress-operations-and-host-integration.md)
   — current host guidance
-- metabrowser (attic checkout `00af0be`): `src/metabrowser/static/styles.css` (bridge
-  tokens, `--kpress-font-size-normal` override), `static/app.js:490-501` (element
-  re-stamping)
+- metabrowser: `main` at `00af0be` (`src/metabrowser/static/styles.css` bridge tokens
+  and `--kpress-font-size-normal` override; `static/app.js:490-501` element re-stamping)
+  and the in-flight type-scale bridge on
+  [metabrowser#16](https://github.com/jlevy/metabrowser/pull/16), the actual migration
+  target
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
