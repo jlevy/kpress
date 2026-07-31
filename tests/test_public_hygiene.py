@@ -116,8 +116,8 @@ def test_claude_hook_commands_anchor_to_project_root() -> None:
 
 def test_agent_skill_runners_use_exact_versions() -> None:
     expected = {
-        ".agents/skills/tbd/SKILL.md": "get-tbd@0.4.1",
-        ".claude/skills/tbd/SKILL.md": "get-tbd@0.4.1",
+        ".agents/skills/tbd/SKILL.md": "get-tbd@0.4.2",
+        ".claude/skills/tbd/SKILL.md": "get-tbd@0.4.2",
         ".agents/skills/repren/SKILL.md": "repren@3.1.0",
         ".claude/skills/repren/SKILL.md": "repren@3.1.0",
     }
