@@ -5,8 +5,8 @@ title: "Sizing core patch: base knob, calc conversions, contract, goldens"
 kind: task
 status: closed
 priority: 1
-version: 6
-spec_path: docs/declarative-embedding.plan.md
+version: 7
+spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
 labels: []
 dependencies:
   - type: blocks
@@ -17,7 +17,7 @@ dependencies:
     target: is-01kyty82gxnmdx4dz28hassyba
 parent_id: is-01kytxz9k3cjy0drxwt3xsq9d8
 created_at: 2026-07-31T01:56:42.587Z
-updated_at: 2026-07-31T02:10:29.073Z
+updated_at: 2026-07-31T03:14:37.898Z
 closed_at: 2026-07-31T02:10:29.072Z
 close_reason: "Implemented: base knob + calc derivations across style-tokens/document/components/print, contract + docs additions, goldens regenerated; make lint-check and full pytest green."
 ---

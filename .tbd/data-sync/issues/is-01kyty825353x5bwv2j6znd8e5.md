@@ -5,13 +5,13 @@ title: "Hygiene lint: forbid rem font sizes with allowlist"
 kind: task
 status: closed
 priority: 2
-version: 2
-spec_path: docs/declarative-embedding.plan.md
+version: 3
+spec_path: docs/project/specs/active/plan-2026-07-31-declarative-embedding.md
 labels: []
 dependencies: []
 parent_id: is-01kytxz9k3cjy0drxwt3xsq9d8
 created_at: 2026-07-31T01:57:28.355Z
-updated_at: 2026-07-31T02:16:21.508Z
+updated_at: 2026-07-31T03:14:38.845Z
 closed_at: 2026-07-31T02:16:21.507Z
 close_reason: rem font-size lint added to public_hygiene with allowlist + unit and shipped-tree tests; lint gate green.
 ---
