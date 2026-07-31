@@ -93,7 +93,7 @@ def test_resolved_theme_is_coherent_at_every_scope(tmp_path: Path) -> None:
                 page = browser.new_page(viewport={"width": 900, "height": 700})
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
 
-                def snapshot(setup: str) -> dict[str, dict[str, str]]:
+                def snapshot(setup: list[list[str]]) -> dict[str, dict[str, str]]:
                     page.evaluate(
                         """(setup) => {
                           const root = document.documentElement;

@@ -121,9 +121,7 @@ def find_theme_vocabulary_findings(path: Path, text: str) -> list[Finding]:
     for match in _MODE_ATTRIBUTE_SELECTOR.finditer(text):
         line = text.count("\n", 0, match.start()) + 1
         excerpt = text.splitlines()[line - 1].strip()
-        findings.append(
-            Finding(path=path, line=line, rule="mode-keyed-css", excerpt=excerpt)
-        )
+        findings.append(Finding(path=path, line=line, rule="mode-keyed-css", excerpt=excerpt))
     return findings
 
 
