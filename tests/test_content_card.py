@@ -47,7 +47,8 @@ def test_components_css_keys_card_chrome_on_attribute() -> None:
 def test_card_tokens_defined_with_dark_shadow() -> None:
     css = (STATIC_CSS / "style-tokens.css").read_text(encoding="utf-8")
     assert "--kpress-card-border:" in css
-    assert css.count("--kpress-card-shadow:") == 2  # base + dark override
+    # base + the symmetric keyed light twin + the dark override
+    assert css.count("--kpress-card-shadow:") == 3
 
 
 def test_card_chrome_never_prints() -> None:

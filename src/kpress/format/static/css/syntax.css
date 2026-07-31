@@ -1,5 +1,11 @@
+/* Syntax palettes key on the resolved theme with the same grammar as the
+   document palette in style-tokens.css: unkeyed default = light, then a
+   symmetric keyed pair -- ancestor scope flattened with :where(), element
+   scope at full strength -- so a stamped element is a coherent island and the
+   mode attribute never keys CSS. */
 .kpress,
-:root[data-kpress-resolved-theme="light"] .kpress {
+:where([data-kpress-resolved-theme="light"]) .kpress,
+.kpress[data-kpress-resolved-theme="light"] {
   --kpress-syntax-text: var(--kpress-doc-text);
   --kpress-syntax-comment: oklch(51.75% 0.0369 198.5);
   --kpress-syntax-error: oklch(50.03% 0.1821 29.5);
@@ -30,8 +36,8 @@
   --kpress-syntax-inserted-bg: oklch(96.24% 0.0434 156.7);
 }
 
-:root[data-kpress-resolved-theme="dark"] .kpress,
-.kpress[data-kpress-theme="dark"] {
+:where([data-kpress-resolved-theme="dark"]) .kpress,
+.kpress[data-kpress-resolved-theme="dark"] {
   --kpress-syntax-text: oklch(94.25% 0.0111 243.7);
   --kpress-syntax-comment: oklch(73.29% 0.026 242.5);
   --kpress-syntax-error: oklch(73.45% 0.1626 25.8);

@@ -328,14 +328,41 @@
 
    Each theme x palette block sets the document color tokens (--kpress-doc-*)
    DIRECTLY to literal values -- no host-var / fallback indirection, so a typo
-   renders obviously broken instead of silently swapping themes. Blocks target
-   BOTH :root (standalone: render.py stamps data-kpress-resolved-theme +
-   data-kpress-palette on <html>, so the tokens cascade to the WHOLE shell -- gear,
-   tooltips, TOC, not just the article) AND .kpress (embedded: the host stamps the
-   attrs on the wrapper). Selectors are FLAT -- all attributes on one element, no
-   descendant combinator. `neutral` is the default (bare, no [data-kpress-palette]);
+   renders obviously broken instead of silently swapping themes.
+
+   SELECTOR GRAMMAR (the one theme vocabulary): CSS reads exactly ONE input,
+   `data-kpress-resolved-theme="light|dark"` -- the resolver's OUTPUT. The mode
+   attribute (data-kpress-theme: system|light|dark) is resolver state and never
+   keys CSS (enforced by devtools/public_hygiene.py). Every keyed state uses the
+   same three selector forms, in one rule:
+
+     :root:where([state])            -- the standalone/host shell: tokens on the
+                                        root so body-level chrome (video popover,
+                                        future overlays) inherits them; :where()
+                                        keeps it at :root's own specificity.
+     :where([state]) :is(scopes)     -- ANY ancestor theme scope (:root or a host
+                                        wrapper), flattened to (0,1,0) so it wins
+                                        over the unkeyed defaults by source order
+                                        alone.
+     :is(scopes)[state]              -- the ELEMENT scope, (0,2,0): an element's
+                                        own attribute beats any ancestor state,
+                                        so a stamped element is a coherent theme
+                                        island in either direction.
+
+   Light and dark are keyed SYMMETRICALLY (light re-asserts its values; the
+   unkeyed defaults remain as the no-attribute fallback, identical to light).
+   `color-scheme` is declared in an adjacent rule keyed identically (component
+   scopes only -- KPress never restyles a host root's UA behavior), so palette
+   and color-scheme cannot resolve to different themes. Palette forms are
+   flattened with :where() except the explicit palette x theme element forms,
+   so the theme axis outranks a lone palette attribute across scopes. Combined
+   states (palette + theme) bind fully when both attributes sit on the SAME
+   scope element; splitting axes across scopes intentionally resolves theme
+   first. Order in this file is load-bearing: defaults -> light -> warm ->
+   dark -> warm-dark. `neutral` is the default (bare, no [data-kpress-palette]);
    each other palette overrides ONLY the tokens that differ. An embedding host
-   overrides any --kpress-doc-* directly. Add a palette = add its two blocks.
+   overrides any --kpress-doc-* directly, or stamps the attributes and lets
+   these blocks resolve. Add a palette = add its two rules.
 
    ROLE ORDER within each block (a color family taxonomy -- the same grouping the
    playground palette editor uses): foreground (text, muted) -> hairline (border)
@@ -349,8 +376,8 @@
    "neutral with a teal accent over warm paper," not a tan wash.
    ============================================================================ */
 
-/* neutral -- light (default; also the pre-JS state). :root drives the standalone
-   shell; .kpress drives the embedded fragment. */
+/* neutral -- light (default; also the pre-JS / no-attribute state). :root drives
+   the standalone shell; .kpress drives the embedded fragment. */
 :root,
 .kpress {
   --kpress-doc-text: oklch(21.01% 0.0318 264.7);
@@ -368,19 +395,69 @@
   --kpress-doc-danger: oklch(50.03% 0.1821 29.5);
 }
 
-/* neutral -- dark. The descendant rule (:root[...dark] .kpress) re-colors the
-   embedded .kpress article on STANDALONE pages. The article is stamped with its OWN
-   data-kpress-resolved-theme at render time and binds colors via the flat .kpress[...]
-   selectors, but the runtime theme toggle (theme.js) updates only <html>; without the
-   descendant rule the article keeps its light tokens (set directly on it by the
-   neutral/warm-light blocks) and SHADOWS :root's dark values for the reading column,
-   so the page goes dark but the content panel stays white. The flat .kpress[...]
-   selectors remain for embedded hosts that stamp the attrs on the wrapper itself.
-   (Reading-font already uses this descendant pattern; theme/palette now match it.) */
-:root[data-kpress-resolved-theme="dark"],
-:root[data-kpress-resolved-theme="dark"] .kpress,
-.kpress[data-kpress-resolved-theme="dark"],
-.kpress[data-kpress-theme="dark"] {
+/* Default color-scheme, component scopes only (never a host's root). */
+.kpress,
+.kpress-page-main,
+.kpress-tooltip {
+  color-scheme: light;
+}
+
+/* neutral -- light, keyed: the symmetric twin of the dark block below. Values
+   MUST mirror the unkeyed defaults above (plus the light card shadow from the
+   Chrome section), so a stamped light element inside a dark scope renders as a
+   coherent light island instead of a specificity accident. */
+:root:where([data-kpress-resolved-theme="light"]),
+:where([data-kpress-resolved-theme="light"]) :is(.kpress, .kpress-page-main, .kpress-tooltip),
+:is(.kpress, .kpress-page-main, .kpress-tooltip)[data-kpress-resolved-theme="light"] {
+  --kpress-doc-text: oklch(21.01% 0.0318 264.7);
+  --kpress-doc-muted: oklch(50.06% 0.025 259.2);
+  --kpress-doc-border: oklch(89.90% 0.0151 260.7);
+  --kpress-doc-border-hairline: oklch(42.00% 0.006 260.7);
+  --kpress-doc-link: oklch(45.76% 0.1445 254.7);
+  --kpress-doc-bg: oklch(100.00% 0 0);
+  --kpress-doc-code-bg: oklch(97.85% 0.0045 258.3);
+  --kpress-doc-surface-hover: color-mix(in srgb, var(--kpress-doc-link) 8%, transparent);
+  --kpress-doc-surface-selected: color-mix(in srgb, var(--kpress-doc-link) 10%, transparent);
+  --kpress-doc-success: oklch(52.73% 0.1371 150.1);
+  --kpress-doc-danger: oklch(50.03% 0.1821 29.5);
+  --kpress-card-shadow:
+    0 10px 15px -3px oklch(0.00% 0 0 / 0.1), 0 -2px 6px -1px oklch(0.00% 0 0 / 0.07);
+}
+
+:where([data-kpress-resolved-theme="light"]) :is(.kpress, .kpress-page-main, .kpress-tooltip),
+:is(.kpress, .kpress-page-main, .kpress-tooltip)[data-kpress-resolved-theme="light"] {
+  color-scheme: light;
+}
+
+/* warm -- light values: teal accent + cream surface (textpress/kash). Overrides
+   only the cool-identity tokens -- to teal (hue ~208) at neutral's exact
+   lightness, so text stays near-black and the border stays a quiet hairline --
+   plus the code surface to cream (hue ~83). bg, surfaces, success, danger
+   inherit neutral. The lone-element form is :where()-flattened so the dark
+   block below outranks a palette attribute split across scopes; the explicit
+   warm+light element form binds the combined state at full strength. */
+:root:where([data-kpress-palette="warm"]),
+:where([data-kpress-palette="warm"]) :is(.kpress, .kpress-page-main, .kpress-tooltip),
+:is(.kpress, .kpress-page-main, .kpress-tooltip):where([data-kpress-palette="warm"]),
+:is(
+  .kpress,
+  .kpress-page-main,
+  .kpress-tooltip
+)[data-kpress-palette="warm"][data-kpress-resolved-theme="light"] {
+  --kpress-doc-text: oklch(21.01% 0.022 208);
+  --kpress-doc-muted: oklch(50.06% 0.022 208);
+  --kpress-doc-border: oklch(89.90% 0.012 208);
+  --kpress-doc-border-hairline: oklch(42.00% 0.006 208);
+  --kpress-doc-link: oklch(56.60% 0.061 208);
+  /* A mild cream -- kept very light (matches textpress's near-white code surface)
+     so monospace spans and tooltips read as a gentle tan, not a heavy one. */
+  --kpress-doc-code-bg: oklch(98.40% 0.005 83);
+}
+
+/* neutral -- dark. */
+:root:where([data-kpress-resolved-theme="dark"]),
+:where([data-kpress-resolved-theme="dark"]) :is(.kpress, .kpress-page-main, .kpress-tooltip),
+:is(.kpress, .kpress-page-main, .kpress-tooltip)[data-kpress-resolved-theme="dark"] {
   --kpress-doc-text: oklch(94.40% 0.0097 252.8);
   --kpress-doc-muted: oklch(76.58% 0.0205 252.9);
   --kpress-doc-border: oklch(33.73% 0.0207 254.1);
@@ -397,28 +474,22 @@
     0 10px 15px -3px oklch(0.00% 0 0 / 0.3), 0 -2px 6px -1px oklch(0.00% 0 0 / 0.2);
 }
 
-/* warm -- light: teal accent + cream surface (textpress/kash). Overrides only the
-   cool-identity tokens -- to teal (hue ~208) at neutral's exact lightness, so text
-   stays near-black and the border stays a quiet hairline -- plus the code surface
-   to cream (hue ~83). bg, surfaces, success, danger inherit neutral. */
-:root[data-kpress-palette="warm"],
-:root[data-kpress-palette="warm"] .kpress,
-.kpress[data-kpress-palette="warm"] {
-  --kpress-doc-text: oklch(21.01% 0.022 208);
-  --kpress-doc-muted: oklch(50.06% 0.022 208);
-  --kpress-doc-border: oklch(89.90% 0.012 208);
-  --kpress-doc-border-hairline: oklch(42.00% 0.006 208);
-  --kpress-doc-link: oklch(56.60% 0.061 208);
-  /* A mild cream -- kept very light (matches textpress's near-white code surface)
-     so monospace spans and tooltips read as a gentle tan, not a heavy one. */
-  --kpress-doc-code-bg: oklch(98.40% 0.005 83);
+:where([data-kpress-resolved-theme="dark"]) :is(.kpress, .kpress-page-main, .kpress-tooltip),
+:is(.kpress, .kpress-page-main, .kpress-tooltip)[data-kpress-resolved-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* warm -- dark: same teal accent (lighter) over neutral's dark surfaces. Must
-   override the SAME token set as warm-light so warm-light never leaks into dark. */
-:root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"],
-:root[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] .kpress,
-.kpress[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] {
+   override the SAME token set as the warm light block so warm light values
+   never leak into dark. */
+:root:where([data-kpress-resolved-theme="dark"][data-kpress-palette="warm"]),
+:where([data-kpress-resolved-theme="dark"][data-kpress-palette="warm"])
+  :is(.kpress, .kpress-page-main, .kpress-tooltip),
+:is(
+  .kpress,
+  .kpress-page-main,
+  .kpress-tooltip
+)[data-kpress-resolved-theme="dark"][data-kpress-palette="warm"] {
   --kpress-doc-text: oklch(94.40% 0.01 208);
   --kpress-doc-muted: oklch(76.58% 0.02 208);
   --kpress-doc-border: oklch(33.73% 0.016 208);
