@@ -957,16 +957,15 @@ The derivations use `calc(base × ratio)` rather than bare `em` so a size means 
 thing in every context: an `em` token would resolve against each consumer’s inherited
 size, silently changing ratios in nested contexts like captions and footnotes.
 
-- **Standalone pages** are unchanged: the `1rem` default resolves against the reader’s
-  browser preference at the `.kpress` root, so published pages keep respecting reader
-  font settings.
-- **Embedders** set the base once — preferably `--kpress-host-font-size-base: 17px` (or
+- **Standalone pages:** the `1rem` default resolves against the reader’s browser
+  preference at the `.kpress` root, so published pages respect reader font settings.
+- **Embedders** set the base once, preferably `--kpress-host-font-size-base: 17px` (or
   any length) on `:root`, which flows through every token scope including the
   body-appended overlays.
   Setting `--kpress-font-size-base` itself works too but must be declared at the
   `.kpress` scope (or deeper) with later order or higher specificity, does not reach
-  body-level overlays from a wrapper scope, and — because it replaces the derivation
-  chain — also overrides the print re-rooting below: use the hook if print should follow
+  body-level overlays from a wrapper scope, and (because it replaces the derivation
+  chain) also overrides the print re-rooting below: use the hook if print should follow
   `--kpress-print-font-size`; redeclare the base only if the host intends to own print
   sizing too. Scaling goes through the base, never through individual sizes; the public
   ramp, label, and bullet tokens exist for *deliberate design divergence* from a derived
@@ -1016,11 +1015,11 @@ one render is cacheable across themes and the embedder contract is exactly:
 - combined palette × theme states bind fully when both attributes sit on the same scope
   element;
 - body-portaled overlays (tooltips, footnote previews) escape a non-`:root` wrapper
-  scope: a wrapper-scoped host should stamp `:root` as well (or stamp overlays
-  individually) until overlays copy the anchor’s resolved theme themselves.
+  scope: a wrapper-scoped host should stamp `:root` as well, or stamp overlays
+  individually (overlay theme inheritance is tracked as `kpr-gssj`).
 
 The standalone page shell stamps `<html>` from the template plus the pre-paint
-bootstrap; `theme.js` remains the standalone resolver behind the same attribute.
+bootstrap; `theme.js` is the standalone resolver behind the same attribute.
 
 **Theme engine vs. settings widget.** These are two layers, deliberately separate (see
 [Extension and Injection Model](#extension-and-injection-model)):
@@ -2018,7 +2017,7 @@ Enable it only when the deploy origin actually serves sidecars:
 ## Operations and Host Integration
 
 Runtime capability probes, browser quality gates, acceptance evidence, accessibility,
-and the dynamic embedding protocol now live in
+and the dynamic embedding protocol live in
 [KPress Operations and Host Integration](kpress-operations-and-host-integration.md).
 
 <!-- This document follows common-doc-guidelines.md.

@@ -29,7 +29,7 @@ embedding host sets two declarative inputs — a base size variable and a resolv
 attribute — and the document follows, with no knowledge of KPress internals and no
 re-audit on upgrade.
 
-The durable contracts this plan produced live in the reference docs, not here:
+The durable contracts live in the reference docs:
 [Sizing Policy](../../../kpress-design.md#sizing-policy) and
 [Theme and Fonts](../../../kpress-design.md#theme-and-fonts) in KPress Design, the
 embedder guidance in
