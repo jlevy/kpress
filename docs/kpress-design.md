@@ -812,6 +812,12 @@ The supported fragment variables are:
   `--kpress-doc-surface-selected`
 - typography: `--kpress-font-body`, `--kpress-font-prose`, `--kpress-font-sans`,
   `--kpress-font-mono`, `--kpress-font-footnote`, and `--kpress-font-table`
+- sizing: `--kpress-font-size-base`, the one knob the entire type ramp derives from
+  (default `1rem`; every internal font size, the bullet glyph, and its offsets are
+  `calc(base × ratio)`). Hosts set it once — preferably through the
+  `--kpress-host-font-size-base` hook on `:root`, which also reaches the body-level
+  overlays — and never override individual sizes.
+  See “Sizing policy” below.
 - measure and host spacing: `--kpress-measure`, `--kpress-page-margin-inline`,
   `--kpress-page-margin-block-start`, and `--kpress-toc-toggle-clearance` (the inline
   gutter the document reserves for the floating TOC toggle in the narrow band; a host
@@ -930,6 +936,46 @@ than re-styling:
 These primitives and tokens live in the KPress static layer deliberately: an embedding
 host app consumes the same design (sharing the Lucide icon set) rather than
 re-implementing it.
+
+### Sizing Policy
+
+All typography derives from one public base knob, `--kpress-font-size-base` (default
+`1rem`): every internal font size — the size-token ramp, every heading, code, labels,
+the bullet glyph, and its positional offsets — is expressed as `calc(base × ratio)`.
+Ratios are design; units are the host’s choice.
+No font-size rule may reference `rem` directly, because `rem` resolves against the host
+page’s root font size, which an embedder does not control the way KPress does on its own
+standalone pages: with a px-pinned host body, every rem-based size renders at a
+browser-dependent ratio to the pinned text.
+The derivations use `calc(base × ratio)` rather than bare `em` so a size means the same
+thing in every context: an `em` token would resolve against each consumer’s inherited
+size, silently changing ratios in nested contexts like captions and footnotes.
+
+- **Standalone pages** are unchanged: the `1rem` default resolves against the reader’s
+  browser preference at the `.kpress` root, so published pages keep respecting reader
+  font settings.
+- **Embedders** set the base once — preferably `--kpress-host-font-size-base: 17px` (or
+  any length) on `:root`, which flows through every token scope including the
+  body-appended overlays — and never override individual sizes.
+  Setting `--kpress-font-size-base` itself works too but must be declared at the
+  `.kpress` scope (or deeper) with later order or higher specificity, and does not reach
+  body-level overlays from a wrapper scope.
+  Hosts set the base, not `--kpress-font-size-normal` (that token is the base, derived).
+- **Print** re-roots the base at `--kpress-print-font-size` inside `@media print`, so
+  paper output keeps the designed ratios to the print body size regardless of the screen
+  root or a host-pinned base.
+- **Deliberately root-relative** (not derived from the base): layout lengths — the
+  `--kpress-measure` reading measure, container-query band conditions (where `var()` is
+  not valid CSS), TOC grid tracks, tooltip width caps, and page margins.
+  Container bands and the type they resize therefore key off the same root only when the
+  base is left at its default; a host that pins the base accepts that band boundaries
+  stay root-relative.
+- **Contributors:** new sizes must be expressed relative to the base
+  (`calc(var(--kpress-font-size-base) * ratio)`); intentionally context-relative
+  `em`/`%` sizes (the summary chevron, the task-list checkbox, `sup`/`sub`) are the
+  exception, not the pattern.
+  The no-`rem` invariant is enforced by `devtools/public_hygiene.py` and a two-root
+  real-browser regression test.
 
 ## Theme and Fonts
 

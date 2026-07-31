@@ -33,6 +33,22 @@
      host re-themes by overriding those --kpress-doc-* tokens directly. */
 
   /* ============================ 1. TYPOGRAPHY ============================ */
+  /* SIZING POLICY: every font size in KPress derives from ONE base knob,
+     --kpress-font-size-base, via calc(base * ratio) -- ratios are design, units
+     are the host's choice. No font-size rule may reference `rem` directly (the
+     lint in devtools/public_hygiene.py enforces this): `rem` would couple an
+     embedded document's proportions to a root font size the embedder may not
+     control, while the base knob keeps standalone pages preference-respecting
+     (the 1rem default resolves against the reader's browser setting) and lets a
+     host with any unit policy scale the whole document as one proportional
+     unit. Embedders set --kpress-host-font-size-base ONCE (e.g. `17px` on
+     :root); never override individual sizes. Deliberately root-relative and NOT
+     derived from the base: layout lengths (--kpress-measure, container-query
+     band conditions, grid tracks, tooltip width caps, page margins) -- see
+     kpress-design.md "Sizing policy". Intentionally context-relative em/% sizes
+     (the summary chevron, checkbox, sup/sub) also stay as they are. */
+  --kpress-font-size-base: var(--kpress-host-font-size-base, 1rem);
+
   /* Families. body = UI/chrome sans; prose = serif reading face; sans = the sans
      stack; mono = code; footnote/table default to sans; punctuation borrows a
      serif's quote glyphs. Each reads a --kpress-host-* hook so a host can swap it. */
@@ -81,24 +97,25 @@
   --kpress-font-weight-sans-bold: 650;
 
   /* Sizes. One ramp for prose + UI; the mono sizes are a touch smaller so code
-     aligns visually with surrounding text. */
-  --kpress-font-size-large: 1.2rem;
-  --kpress-font-size-normal: 1rem;
-  --kpress-font-size-small: 0.95rem;
-  --kpress-font-size-smaller: 0.9rem;
-  --kpress-font-size-tiny: 0.85rem;
-  --kpress-font-size-mono: 0.82rem;
-  --kpress-font-size-mono-small: 0.75rem;
-  --kpress-font-size-mono-tiny: 0.7rem;
+     aligns visually with surrounding text. `normal` is the base itself --
+     derived, not a second knob: hosts set the base, not normal. */
+  --kpress-font-size-large: calc(var(--kpress-font-size-base) * 1.2);
+  --kpress-font-size-normal: var(--kpress-font-size-base);
+  --kpress-font-size-small: calc(var(--kpress-font-size-base) * 0.95);
+  --kpress-font-size-smaller: calc(var(--kpress-font-size-base) * 0.9);
+  --kpress-font-size-tiny: calc(var(--kpress-font-size-base) * 0.85);
+  --kpress-font-size-mono: calc(var(--kpress-font-size-base) * 0.82);
+  --kpress-font-size-mono-small: calc(var(--kpress-font-size-base) * 0.75);
+  --kpress-font-size-mono-tiny: calc(var(--kpress-font-size-base) * 0.7);
 
   /* Prose section-heading sizes (H2-H4; H1 and H5/H6 keep their literals).
      These narrow/medium defaults step up on wide panes only (the >=64rem
      container band in components.css); phones and embedded panes keep the
      tighter scale. Body text does not scale with pane width — only the
      section headings do. */
-  --kpress-font-size-h2: 1.32rem;
-  --kpress-font-size-h3: 1.15rem;
-  --kpress-font-size-h4: 1.12rem;
+  --kpress-font-size-h2: calc(var(--kpress-font-size-base) * 1.32);
+  --kpress-font-size-h3: calc(var(--kpress-font-size-base) * 1.15);
+  --kpress-font-size-h4: calc(var(--kpress-font-size-base) * 1.12);
 
   /* Line heights. */
   --kpress-line-height-normal: 1.5;
@@ -169,10 +186,10 @@
      is clearly legible at a glance and not confused with a bullet. */
   --kpress-checkbox-size: 1.15em;
   /* Square list bullet -- one size for prose lists, claim markers, and concept
-     items, so every bulleted list matches. Sized with the 0.1rem top offset on
-     the ::before markers so the square's center sits at the crossbar of a
+     items, so every bulleted list matches. Sized with the base * 0.1 top offset
+     on the ::before markers so the square's center sits at the crossbar of a
      capital F in the first line, not below it. */
-  --kpress-bullet-size: 0.9rem;
+  --kpress-bullet-size: calc(var(--kpress-font-size-base) * 0.9);
 
   /* ============================== 3. SHAPE ============================== */
   /* Corner radii -- one scale used everywhere. Rounded-vs-square is a deliberate

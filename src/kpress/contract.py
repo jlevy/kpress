@@ -203,6 +203,7 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-font-body",
     "--kpress-font-features-sans",
     "--kpress-font-footnote",
+    "--kpress-font-size-base",
     "--kpress-font-size-mono",
     "--kpress-font-size-normal",
     "--kpress-font-size-small",
@@ -282,6 +283,7 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
     "--kpress-font-mono",
     "--kpress-font-prose",
     "--kpress-font-sans",
+    "--kpress-font-size-base",
     "--kpress-font-table",
     "--kpress-measure",
     "--kpress-page-margin-block-start",
@@ -301,7 +303,8 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
 # tokens were retired when the palette moved to the direct, per-theme×palette model
 # (see style-tokens.css "Palette options"): an embedding host now re-themes by setting
 # the resolved --kpress-doc-* / --color-* tokens directly, not through a --kpress-host-*
-# color fallback. The font and settings-inset seams remain.
+# color fallback. The font, sizing (--kpress-host-font-size-base, the one knob the
+# whole type ramp derives from), and settings-inset seams remain.
 PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-body",
     "--kpress-host-font-footnote",
@@ -309,6 +312,7 @@ PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-prose",
     "--kpress-host-font-prose-sans",
     "--kpress-host-font-sans",
+    "--kpress-host-font-size-base",
     "--kpress-host-font-table",
     "--kpress-host-settings-inset-block",
     "--kpress-host-settings-inset-inline",

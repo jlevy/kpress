@@ -20,6 +20,12 @@
   :root,
   .kpress {
     color-scheme: light;
+    /* Re-root the whole type ramp at the print size: every size derives from
+       the base (see style-tokens.css SIZING POLICY), so headings, code, and
+       bullets keep their designed ratios to the 11pt body on paper. Before
+       this, rem-based sizes kept tracking the 16px screen root while the body
+       was pinned, printing h1/body at ~1.85 instead of the designed 1.7. */
+    --kpress-font-size-base: var(--kpress-print-font-size);
     --kpress-doc-bg: oklch(100.00% 0 0);
     --kpress-doc-text: oklch(17.76% 0 0);
     --kpress-doc-muted: oklch(38.67% 0 0);
@@ -170,7 +176,7 @@
     display: block;
     font-family: var(--kpress-font-sans);
     font-feature-settings: var(--kpress-font-features-sans);
-    font-size: calc(1rem * var(--kpress-caps-heading-size-multiplier));
+    font-size: calc(var(--kpress-font-size-base) * var(--kpress-caps-heading-size-multiplier));
     font-variant-caps: var(--kpress-caps-variant);
     font-weight: var(--kpress-font-weight-sans-medium);
     letter-spacing: var(--kpress-caps-spacing);
@@ -297,10 +303,10 @@
 
   .kpress ol ul > li::before {
     content: "\25AA\FE0E";
-    font-size: 0.7rem;
-    left: -0.85rem;
+    font-size: calc(var(--kpress-font-size-base) * 0.7);
+    left: calc(var(--kpress-font-size-base) * -0.85);
     position: absolute;
-    top: 0.1rem;
+    top: calc(var(--kpress-font-size-base) * 0.1);
   }
 
   .kpress .kpress-long-list,
