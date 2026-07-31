@@ -9,6 +9,7 @@ from devtools.public_hygiene import (
     ROOT,
     find_documentation_findings,
     find_sizing_findings,
+    find_theme_vocabulary_findings,
     find_violations,
     public_package_paths,
 )
@@ -118,6 +119,30 @@ def test_sizing_findings_allow_base_derivations_and_the_base_default(tmp_path: P
     )
 
     assert find_sizing_findings(css, text) == []
+
+
+def test_theme_vocabulary_findings_flag_mode_attribute_selectors(tmp_path: Path) -> None:
+    css = tmp_path / "sample.css"
+    text = (
+        '.kpress[data-kpress-theme="dark"] { color: black; }\n'
+        ':where([data-kpress-resolved-theme="dark"]) .kpress { color: white; }\n'
+        "[data-kpress-theme-choice] { cursor: pointer; }\n"
+        "/* prose mention of data-kpress-theme is fine */\n"
+    )
+
+    findings = find_theme_vocabulary_findings(css, text)
+
+    assert [(finding.rule, finding.line) for finding in findings] == [("mode-keyed-css", 1)]
+
+
+def test_shipped_css_keys_only_on_the_resolved_theme() -> None:
+    findings = [
+        finding
+        for path in sorted(KPRESS_CSS_ROOT.glob("*.css"))
+        for finding in find_theme_vocabulary_findings(path, path.read_text(encoding="utf-8"))
+    ]
+
+    assert findings == []
 
 
 def test_shipped_css_derives_every_font_size_from_the_base() -> None:

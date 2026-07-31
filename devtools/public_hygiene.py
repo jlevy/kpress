@@ -108,6 +108,25 @@ _SIZE_DECLARATION = re.compile(
 _REM_UNIT = re.compile(r"[\d.]rem\b")
 
 
+# Theme contract (style-tokens.css SELECTOR GRAMMAR, kpress-design.md): CSS
+# keys on the resolved theme only. The mode attribute (data-kpress-theme) is
+# resolver state and must never appear as an attribute selector; the widget
+# control attribute data-kpress-theme-choice remains legitimate.
+_MODE_ATTRIBUTE_SELECTOR = re.compile(r"\[data-kpress-theme(?![-\w])")
+
+
+def find_theme_vocabulary_findings(path: Path, text: str) -> list[Finding]:
+    """Flag attribute selectors on the theme MODE in a first-party stylesheet."""
+    findings: list[Finding] = []
+    for match in _MODE_ATTRIBUTE_SELECTOR.finditer(text):
+        line = text.count("\n", 0, match.start()) + 1
+        excerpt = text.splitlines()[line - 1].strip()
+        findings.append(
+            Finding(path=path, line=line, rule="mode-keyed-css", excerpt=excerpt)
+        )
+    return findings
+
+
 def find_sizing_findings(path: Path, text: str) -> list[Finding]:
     """Flag rem-based font sizes and size tokens in a first-party stylesheet."""
     findings: list[Finding] = []
@@ -190,6 +209,7 @@ def find_violations(paths: list[Path]) -> list[Finding]:
         findings.extend(find_text_findings(path, text))
         if path.suffix == ".css" and path.is_relative_to(KPRESS_CSS_ROOT):
             findings.extend(find_sizing_findings(path, text))
+            findings.extend(find_theme_vocabulary_findings(path, text))
     return findings
 
 
