@@ -49,10 +49,10 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
-- [KPress 0.3.0](releases/0.3.0.md): release-candidate notes for root-independent
+- [KPress 0.3.0](releases/0.3.0.md): current published alpha with root-independent
   sizing, single-scope theming, and host-safe fragment assets
-- [KPress 0.2.4](releases/0.2.4.md): current published alpha with anchor migration,
-  presentation, and release hardening
+- [KPress 0.2.4](releases/0.2.4.md): previous alpha with anchor migration, presentation,
+  and release hardening
 - [KPress 0.2.3](releases/0.2.3.md): navigation and rendering maintenance release
 - [KPress 0.2.2](releases/0.2.2.md): host-export maintenance release
 - [KPress 0.2.1](releases/0.2.1.md): rendering and release-floor maintenance release
