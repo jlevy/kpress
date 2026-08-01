@@ -482,7 +482,7 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
         "syncThemeControls",
         "bindThemeToggleControls",
     ),
-    "js/theme.js": ("setKpressTheme", "initKpressTheme", "bindThemeToggleControls"),
+    "js/theme.js": ("setKpressTheme", "initKpressTheme"),
     "js/menu.js": ("bindMenu", "markChecked"),
     "js/toc.js": ("initKpressToc", "TOC_TOGGLE_SCROLL_THRESHOLD_PX", "defaultTocToggleVisible"),
     "js/tooltips.js": (

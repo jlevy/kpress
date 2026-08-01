@@ -15,13 +15,7 @@
  */
 
 import { behaviors, emit, off, on, storage } from "./runtime.js";
-import {
-  bindThemeToggleControls,
-  normalizeThemeMode,
-  syncThemeControls,
-} from "./theme-controls.js";
-
-export { bindThemeToggleControls } from "./theme-controls.js";
+import { bindThemeToggleControls, normalizeThemeMode } from "./theme-controls.js";
 
 const STORAGE_KEY = "kpress.theme";
 /** @type {{ query: MediaQueryList, handler: () => void } | null} */
@@ -43,7 +37,6 @@ export function setKpressTheme(mode = "system") {
   const resolved = resolveTheme(normalized);
   document.documentElement.dataset.kpressTheme = normalized;
   document.documentElement.dataset.kpressResolvedTheme = resolved;
-  syncThemeControls(normalized);
   storage.set(STORAGE_KEY, normalized);
   emit("theme:change", { mode: normalized, resolved });
 }
@@ -121,7 +114,10 @@ behaviors.register("theme", {
     const handleThemeRequest = (detail) => {
       const request =
         detail && typeof detail === "object" ? /** @type {{ mode?: unknown }} */ (detail) : {};
-      setKpressTheme(typeof request.mode === "string" ? request.mode : "system");
+      if (typeof request.mode !== "string") {
+        return;
+      }
+      setKpressTheme(request.mode);
     };
     on("theme:request", handleThemeRequest);
     return () => {

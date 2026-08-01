@@ -117,6 +117,22 @@ describe("settings widget", () => {
     sharedOff("theme:request", listener);
   });
 
+  it("synchronizes host-owned theme state announced after mount", async () => {
+    await importFresh("settings-widget.js");
+    const el = settingsMount();
+    sharedWidgets.mount("settings", el, { choosers: ["theme"] });
+
+    document.documentElement.dataset.kpressResolvedTheme = "dark";
+    sharedEmit("theme:change", { mode: "dark", resolved: "dark" });
+
+    expect(
+      el.querySelector('[data-kpress-theme-choice="dark"]')?.getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      el.querySelector('[data-kpress-theme-choice="system"]')?.getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+
   it("theme segments drive the theme engine", async () => {
     await importFresh("settings-widget.js");
     await importFresh("theme.js");
@@ -129,7 +145,9 @@ describe("settings widget", () => {
     light.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
     expect(document.documentElement.dataset.kpressTheme).toBe("light");
-    expect(light.getAttribute("aria-checked")).toBe("true");
+    expect(
+      el.querySelector('[data-kpress-theme-choice="light"]')?.getAttribute("aria-checked"),
+    ).toBe("true");
   });
 
   it("keeps the settings menu open and focused while switching themes", async () => {
@@ -214,7 +232,9 @@ describe("settings widget", () => {
     );
     light.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
-    expect(light.getAttribute("aria-checked")).toBe("true");
+    expect(
+      el.querySelector('[data-kpress-theme-choice="light"]')?.getAttribute("aria-checked"),
+    ).toBe("true");
     expect(sans.getAttribute("aria-checked")).toBe("true");
   });
 

@@ -387,7 +387,8 @@ Extension-model surface (see
 - Name contracts in `kpress.contract`, mirroring `PUBLIC_CSS_VARIABLES` /
   `PUBLIC_CSS_CLASSES`: `PUBLIC_WIDGETS` (built-in widget ids), `PUBLIC_BEHAVIORS`
   (built-in behavior ids), `PUBLIC_RUNTIME_EVENTS` (event-bus names),
-  `PUBLIC_JS_EXPORTS` (stability-pinned module exports), `PUBLIC_PIPELINE_STAGES`
+  `PUBLIC_JS_EXPORTS` (stability-pinned module exports), `PUBLIC_RENDER_REQUEST_FIELDS`
+  (`KPressRenderRequest` fields in constructor order), `PUBLIC_PIPELINE_STAGES`
   (built-in stage names), and `PUBLIC_PAGE_MODEL_KEYS` (page-model block keys).
 
 ## Data Model Lifecycle
@@ -556,6 +557,8 @@ The contract module also declares:
 - `PUBLIC_PUBLISH_API`: names from `kpress.publish`, including `BuildOptions`,
   `BuildReport`, `OptimizerOptions`, `PublishConfig`, `get_optimizer`, and
   `optimize_text`
+- `PUBLIC_RENDER_REQUEST_FIELDS`: `KPressRenderRequest` field names in constructor
+  order, pinning the dynamic host request shape
 - `BUILD_MANIFEST_REQUIRED_KEYS` and `ASSET_MANIFEST_REQUIRED_KEYS`
 - `OptimizerMode = Literal["none", "full"]` in `format.model`
 - `PUBLIC_DATA_ATTRIBUTES`: the stable table `data-*` hooks kpress emits for downstream
@@ -1027,6 +1030,11 @@ one render is cacheable across themes and the embedder contract is exactly:
 
 The standalone page shell stamps `<html>` from the template plus the pre-paint
 bootstrap; `theme.js` is the standalone resolver behind the same attribute.
+Resolver inclusion is independent of the settings widget and configured color mode: even
+a fixed `light` or `dark` standalone page with settings off includes `theme.js` by
+default. Library callers that intentionally want a page shell without the resolver can
+pass `RenderOptions(include_theme_resolver=False)`; `kpress.yml` does not expose that
+page-level opt-out. The page’s inline pre-paint bootstrap remains in either case.
 
 **Theme engine vs. settings widget.** These are two layers, deliberately separate (see
 [Extension and Injection Model](#extension-and-injection-model)):

@@ -422,14 +422,20 @@ If a fragment explicitly enables `widgets={"settings": "on"}`, the settings modu
 its behavior-neutral controls are included, but `theme.js` is not.
 A theme choice emits `theme:request` with `{mode: "system" | "light" | "dark"}`. The
 host applies the request, then emits `theme:change` with `{mode, resolved}` so settings
-and other presentation layers synchronize:
+and other presentation layers synchronize.
+After mounting settings, the host also announces its current state once so the chooser
+does not momentarily show its default:
 
 ```js
-kpress.on("theme:request", ({ mode }) => {
+function applyHostTheme(mode) {
   const resolved = resolveHostTheme(mode);
   document.documentElement.dataset.kpressResolvedTheme = resolved;
   kpress.emit("theme:change", { mode, resolved });
-});
+}
+
+kpress.on("theme:request", ({ mode }) => applyHostTheme(mode));
+kpress.widgets.mount("settings", settingsElement, { choosers: ["theme"] });
+applyHostTheme(readHostThemeMode());
 ```
 
 Set `include_theme_resolver=True` only for an embedded surface where KPress should own

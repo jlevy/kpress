@@ -107,6 +107,7 @@ class RenderOptions:
     print_profile: PrintProfile = "document"
     view: str = "document"
     host: str | None = None
+    # Standalone page-shell/bootstrap state only; fragment SSR is theme-agnostic.
     theme_mode: ThemeMode = "system"
     font_mode: FontMode = "custom"
     # Site default for the reading-font chooser: the serif reading face or the
@@ -129,6 +130,7 @@ class RenderOptions:
     # an embedding host stamps the attribute on its own theme scope. Hosts may
     # still override any individual --kpress-doc-* token on top.
     palette: str = "neutral"
+    # Standalone page-shell/bootstrap state only; fragment SSR ignores this value.
     resolved_theme: Literal["light", "dark"] = "light"
     # Include the standalone theme resolver in the browser asset manifest.
     # None follows the render surface: pages include it and fragments omit it.

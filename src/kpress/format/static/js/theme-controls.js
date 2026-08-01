@@ -40,6 +40,8 @@ export function bindThemeToggleControls() {
   }
 }
 
+// The event bus and native ESM module are page singletons, so this listener
+// intentionally lives for the module lifetime.
 on("theme:change", (detail) => {
   const change =
     detail && typeof detail === "object" ? /** @type {{ mode?: unknown }} */ (detail) : {};

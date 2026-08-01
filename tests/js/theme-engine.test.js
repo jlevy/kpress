@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // theme.js imports "./runtime.js" WITHOUT a cache-busting query, so the engine
 // binds to this exact module instance: import it statically to share it, and
 // reset its adapter between tests.
 import {
   behaviors as sharedBehaviors,
+  emit as sharedEmit,
   storage as sharedStorage,
 } from "../../src/kpress/format/static/js/runtime.js";
 
@@ -87,6 +88,41 @@ describe("theme engine (kpress.theme)", () => {
     setKpressTheme("dark");
 
     expect(seen.at(-1)).toEqual({ mode: "dark", resolved: "dark" });
+  });
+
+  it("synchronizes each theme control once per engine change", async () => {
+    document.body.innerHTML = `
+      <button data-kpress-theme-choice="system"></button>
+      <button data-kpress-theme-choice="light"></button>
+      <button data-kpress-theme-choice="dark"></button>
+    `;
+    const { setKpressTheme } = await importFresh("theme.js");
+    const buttons = [...document.querySelectorAll("[data-kpress-theme-choice]")];
+    const spies = buttons.map((button) => vi.spyOn(button, "setAttribute"));
+
+    setKpressTheme("dark");
+
+    for (const spy of spies) {
+      expect(spy.mock.calls.filter(([name]) => name === "aria-checked")).toHaveLength(1);
+    }
+  });
+
+  it("ignores malformed theme requests without changing persisted state", async () => {
+    const remembered = new Map();
+    sharedStorage.use({
+      get: (key) => remembered.get(key) ?? null,
+      set: (key, value) => remembered.set(key, value),
+    });
+    const { setKpressTheme } = await importFresh("theme.js");
+    setKpressTheme("dark");
+
+    sharedEmit("theme:request", {});
+    sharedEmit("theme:request", { mode: null });
+    sharedEmit("theme:request", null);
+
+    expect(document.documentElement.dataset.kpressTheme).toBe("dark");
+    expect(document.documentElement.dataset.kpressResolvedTheme).toBe("dark");
+    expect(remembered.get("kpress.theme")).toBe("dark");
   });
 
   it("binds the OS theme listener once per bind and unbinds it on override", async () => {

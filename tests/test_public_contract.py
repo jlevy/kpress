@@ -378,11 +378,8 @@ def test_widget_behavior_and_js_export_contracts_match_the_js() -> None:
     for module, names in PUBLIC_JS_EXPORTS.items():
         text = (_KPRESS_ROOT / "src/kpress/format/static" / module).read_text(encoding="utf-8")
         for name in names:
-            direct = rf"export (?:async )?(?:function|const) {re.escape(name)}\b"
-            reexport = rf"export \{{[^}}]*\b{re.escape(name)}\b[^}}]*\}} from "
-            assert re.search(direct, text) or re.search(reexport, text), (
-                f"{module}: {name} not exported"
-            )
+            pattern = rf"export (?:async )?(?:function|const) {re.escape(name)}\b"
+            assert re.search(pattern, text), f"{module}: {name} not exported"
 
 
 def test_page_model_block_keys_match_the_contract() -> None:
