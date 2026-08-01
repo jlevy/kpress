@@ -2,8 +2,8 @@
  * The settings widget (registry id `settings`): the default presentation over
  * the theme/font engines — a gear button opening a menu of choosers. It is a
  * built-in chrome widget assembled ONLY from the public layers (dogfood rule):
- * the runtime registries, the menu primitive, the theme engine, the icon
- * sprite, and the `data-kpress-*` state-attr contract.
+ * the runtime registries, the menu primitive, behavior-neutral theme controls,
+ * the icon sprite, and the `data-kpress-*` state-attr contract.
  *
  * Its chooser catalog is defined here, in the widget's own JS
  * (schema-with-the-code): config is `{ choosers: [...] }` (default
@@ -14,7 +14,7 @@
 import { icon } from "./icons.js";
 import { bindMenu, markChecked } from "./menu.js";
 import { emit, storage, widgets } from "./runtime.js";
-import { bindThemeToggleControls } from "./theme.js";
+import { bindThemeToggleControls } from "./theme-controls.js";
 
 const PROSE_FONT_KEY = "kpress.proseFont";
 const FONT_SET_KEY = "kpress.fontSet";

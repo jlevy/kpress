@@ -368,7 +368,21 @@ def render_fragment(
 ) -> RenderedDocument:
     """Render a KPress document fragment for a dynamic host."""
 
-    options = options or RenderOptions()
+    return _render_fragment(document, options or RenderOptions(), standalone_page=False)
+
+
+def _render_fragment(
+    document: DocumentInput,
+    options: RenderOptions,
+    *,
+    standalone_page: bool,
+) -> RenderedDocument:
+    """Render the shared document body with surface-specific browser assets."""
+
+    resolver_option: Any = options.include_theme_resolver
+    if resolver_option is not None and not isinstance(resolver_option, bool):
+        msg = f"Invalid include_theme_resolver: {resolver_option!r}; expected a boolean or None"
+        raise KPressPublishError(msg)
     profile = options.print_profile or document.document_profile or document.profile
     tree: DocumentTree | None = None
 
@@ -386,6 +400,7 @@ def render_fragment(
         tree=tree,
         options=options,
         has_math=has_math,
+        standalone_page=standalone_page,
     )
     return RenderedDocument(
         html=html,
@@ -404,6 +419,7 @@ def _render_asset_manifest(
     tree: DocumentTree | None,
     options: RenderOptions,
     has_math: bool,
+    standalone_page: bool,
 ) -> AssetManifest:
     if options.asset_policy == "none":
         return AssetManifest()
@@ -425,8 +441,11 @@ def _render_asset_manifest(
         raise KPressPublishError(msg)
 
     entry_points: set[str] = set()
-    enabled_widgets = resolve_widgets(options.widgets)
-    if options.theme_mode == "system":
+    enabled_widgets = resolve_widgets(options.widgets, include_defaults=standalone_page)
+    include_theme_resolver = options.include_theme_resolver
+    if include_theme_resolver is None:
+        include_theme_resolver = standalone_page
+    if include_theme_resolver:
         entry_points.add("js/theme.js")
     if "settings" in enabled_widgets:
         entry_points.add("js/settings-widget.js")
@@ -670,7 +689,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
     """Render a complete HTML page from a KPress document."""
 
     options = options or RenderOptions(asset_mode="linked")
-    fragment = render_fragment(document, options)
+    fragment = _render_fragment(document, options, standalone_page=True)
     title = page_title(document)
     asset_tags = _asset_tags(
         fragment.assets, options.asset_url_prefix, asset_mode=options.asset_mode

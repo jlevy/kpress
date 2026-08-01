@@ -187,9 +187,14 @@ attributes, so a host stamps `data-kpress-resolved-theme` (and optionally
 `data-kpress-palette`) on one scope — `:root` or a wrapper — and updates it on toggle;
 element-level attributes win, `color-scheme` follows the palette automatically, and one
 cached render serves every theme.
-Do not load `theme.js` (or no-op override the `theme` behavior); see
-[Theme and Fonts](kpress-design.md#theme-and-fonts) for the full embedder contract and
-the wrapper-scope note about body-portaled overlays.
+Automatic fragment manifests are host-owned by default: they omit `theme.js` and the
+page-default settings widget.
+A host may explicitly request settings chrome without acquiring the resolver; its theme
+controls emit `theme:request`, which the host handles by stamping its chosen scope and
+then emitting `theme:change`. Set `include_theme_resolver=True` only when KPress should
+instead own root attributes, theme persistence, and the OS-color-scheme listener.
+See [Theme and Fonts](kpress-design.md#theme-and-fonts) for the full embedder contract
+and the wrapper-scope note about body-portaled overlays.
 
 ### Collapsible TOC
 
@@ -220,12 +225,14 @@ It assembles the `kpress` global from per-module namespaces:
 - `kpress.model()`: the parsed `#kpress-page-model` page model (empty in fragments;
   embedding hosts get the same data in the `render_view` payload).
 - `kpress.on` / `kpress.off` / `kpress.emit`: events (`kpress:ready` after the runtime
-  applies registrations; `widget:change` from widgets).
+  applies registrations; `widget:change` from widgets; `theme:request` from
+  behavior-neutral settings controls; `theme:change` after the owning layer applies
+  theme state).
 - `kpress.storage`: `{get, set, use(adapter)}`; localStorage default.
   An embedding host swaps persistence with one call (e.g. a cookie adapter for
   cross-port sharing) and every primitive and widget follows.
-- `kpress.theme`: the theme engine (see
-  [Theme and Fonts](kpress-design.md#theme-and-fonts)).
+- `kpress.theme`: the optional KPress theme engine, present when `theme.js` is loaded
+  (see [Theme and Fonts](kpress-design.md#theme-and-fonts)).
 - `kpress.menu`: the popover-behavior primitive.
 - `kpress.widgets`:
   `{register(id, {mount}), configure(id, config), mount(id, el, config?)}`; mounting is
@@ -248,23 +255,23 @@ scripts use `rebind`/`mount`. The exported ES-module parts of built-ins (TOC vis
 policy, tooltip placement, …) are importable through the same import map the assets
 already publish, and the stability-pinned subset is `contract.py::PUBLIC_JS_EXPORTS`.
 
-Asset shipping is deliberately simple: the default JS/CSS set is a **fixed reader
-bundle**: `widgets: {settings: off}` removes the mount (so nothing renders or runs), not
-the asset; there is no per-widget asset selection.
-A host widget’s own JS and CSS ship through host channels: a `head_extra_html`
-`<script type="module">`/`<link>` plus `sources[].static` passthrough for the files.
-That is the supported delivery contract (the static-site example’s `demo/extensions.js`
-is the reference).
+Asset shipping is manifest-driven under the default `auto` policy: standalone defaults
+and rendered features select entry points, while fragments select only explicit widgets
+and rendered features.
+Turning settings off removes both its mount and, when no other selection needs it, its
+entry point. A host widget’s own JS and CSS ship through host channels: a
+`head_extra_html` `<script type="module">`/`<link>` plus `sources[].static` passthrough
+for the files. That is the supported delivery contract (the static-site example’s
+`demo/extensions.js` is the reference).
 
 An embedding host can mount the same settings widget used by a standalone page:
 `kpress.widgets.mount("settings", el, {choosers: [...]})` plus
 `kpress.storage.use(cookieAdapter)`, and keeps only its font-stack choices via the
 `--kpress-host-font-*` vars.
-Theme init itself is the registered `theme` behavior (it reads persisted state through
-the current storage adapter at apply time and binds the OS listener): an embedding host
-that owns theme resolution disables it before apply:
-`kpress.behaviors.override("theme", () => {})`, and the engine API (`kpress.theme.set`,
-…) stays callable.
+Theme choices emit `theme:request`, so a host-owned resolver needs no behavior override.
+If `include_theme_resolver=True`, theme init is the registered `theme` behavior: it
+reads persisted state through the current storage adapter at apply time, binds the OS
+listener, and exposes the engine API (`kpress.theme.set`, …).
 
 In-document hash navigation is covered by the registered `history` behavior: because the
 document scrolls in the `[data-kpress-viewport]` pane (which browsers exclude from
@@ -296,12 +303,13 @@ JSON-ready dict. Fields and semantics:
 | `frontmatter` | no | Parsed YAML metadata the host already extracted; KPress treats this as authoritative |
 | `frontmatter_error` | no | Host-side YAML parse error string; surfaced as a visible reader banner |
 | `profile` | no | Optional explicit KPress profile override; bypasses the view-name mapping |
-| `theme_mode` | no | `"system"` (default), `"light"`, or `"dark"`: the user’s theme preference |
-| `resolved_theme` | no | `"light"` or `"dark"`: the host’s resolution of `system` for SSR/no-flash bootstrap |
+| `include_theme_resolver` | no | Whether automatic asset selection includes KPress’s standalone `theme.js` resolver; defaults to `false`, preserving host ownership |
 | `host` | no | Free-form host identifier for diagnostics; KPress never special-cases this value |
 | `asset_url_prefix` | no | URL prefix the host uses to serve `/kpress-static/...`; defaults to `/kpress-static/` |
 | `show_doc_header` | no | Whether a document-profile fragment renders its title header; defaults to `true` |
-| `widgets` | no | Widget presence + opaque config map (same shape as `format.widgets`); echoed in the response payload so host-mounted widgets read the same config the standalone page model carries |
+| `toc_collapse_depth` | no | Deepest normalized TOC depth left expanded; defaults to `None` (fully expanded) |
+| `toc_expand_on_scroll` | no | Whether scroll-follow expands the active collapsed branch; defaults to `true` |
+| `widgets` | no | Widget presence + opaque config map (same shape as `format.widgets`); defaults to `{}` for fragments and is echoed in the response payload so host-mounted widgets read the same config the standalone page model carries |
 | `extra_tags` | no | Additional inert HTML/XML tags admitted by the sanitized render path |
 | `extra_attributes` | no | Additional inert attributes admitted only on pass-through tags |
 
@@ -400,20 +408,43 @@ embedded surface:
 The host opts into Escape-to-close behavior; KPress does not assume it.
 All messages include the document id when one was provided.
 
-### Theme Mode Plumbing
+### Fragment Theme Ownership
 
-`theme_mode` is one of `"system" | "light" | "dark"` and represents the user’s
-preference. `resolved_theme` (`"light" | "dark"`) is the host’s resolution of `system`
-for the initial server render.
-KPress uses it to stamp `data-kpress-resolved-theme` on `<html>` for a no-flash first
-paint.
+Dynamic fragments carry no theme inputs or resolved theme state.
+By default, `KPressRenderRequest(include_theme_resolver=False)` omits `theme.js`, so
+loading every declared entry point cannot stamp `<html>`, read or write the
+`kpress.theme` preference, or bind `prefers-color-scheme`. The host resolves its own
+`system | light | dark` preference, stamps `data-kpress-resolved-theme="light|dark"` on
+`:root` or a wrapper, and owns no-flash initialization.
 
-After load, `theme.js` listens for the system color-scheme media query and updates the
-resolved attribute live; it also persists explicit `theme_mode` choices to the active
-`kpress.storage` adapter under `kpress.theme`. The standalone full-page render ships an
-accessible settings gear with System, Light, and Dark choices bound to the same
-machinery. Embedded hosts with their own theme control set `theme_mode` per request and
-can replace the registered `theme` behavior.
+Settings presentation is independent of resolver ownership.
+If a fragment explicitly enables `widgets={"settings": "on"}`, the settings module and
+its behavior-neutral controls are included, but `theme.js` is not.
+A theme choice emits `theme:request` with `{mode: "system" | "light" | "dark"}`. The
+host applies the request, then emits `theme:change` with `{mode, resolved}` so settings
+and other presentation layers synchronize.
+After mounting settings, the host also announces its current state once so the chooser
+does not momentarily show its default:
+
+```js
+function applyHostTheme(mode) {
+  const resolved = resolveHostTheme(mode);
+  document.documentElement.dataset.kpressResolvedTheme = resolved;
+  kpress.emit("theme:change", { mode, resolved });
+}
+
+kpress.on("theme:request", ({ mode }) => applyHostTheme(mode));
+kpress.widgets.mount("settings", settingsElement, { choosers: ["theme"] });
+applyHostTheme(readHostThemeMode());
+```
+
+Set `include_theme_resolver=True` only for an embedded surface where KPress should own
+the root attributes, the `kpress.theme` storage key, and the OS-color-scheme listener.
+Standalone pages make that choice automatically and retain their pre-paint bootstrap,
+settings gear, and System/Light/Dark behavior.
+`asset_policy="all"` remains the explicit complete-reader bundle and includes the
+resolver regardless of feature flags; host-owned embeds should use the default `auto`
+policy or `none`.
 
 ### Print Profile Mapping
 

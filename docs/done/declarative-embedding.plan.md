@@ -1,6 +1,6 @@
 ---
 title: Declarative Embedding
-description: Plan for root-independent typography via one base size knob (issue #37) and single-scope, symmetric, theme-agnostic theming (issue #38)
+description: Completed root-independent typography, symmetric theming, and host-safe fragment runtime work (issues #37, #38, and #42)
 author: Joshua Levy (with Claude)
 ---
 # Feature: Declarative Embedding — Sizing and Theming
@@ -9,14 +9,16 @@ author: Joshua Levy (with Claude)
 
 **Author:** Joshua Levy (with Claude)
 
-**Status:** Implemented (in review on [PR #40](https://github.com/jlevy/kpress/pull/40))
+**Status:** Completed; PR #40 and the pre-release host-safety follow-up are validated
 
 **Tracking:** `kpr-t290` is the governing epic; its phase features are `kpr-2m8v`
 (sizing, issue #37) and `kpr-lnzh` (theming, issue #38), with implementation beads
 `kpr-sdbo`, `kpr-d0n1`, `kpr-xfee`, `kpr-jtaw`, `kpr-tf2i`, `kpr-wjtf`, `kpr-vlsr`,
 `kpr-bgqq`, `kpr-c0kl` and review beads `kpr-2197`, `kpr-tjjd` (all closed).
-Follow-ups remain open as `kpr-y20o` (base-relative container bands) and `kpr-gssj`
-(overlays copy the anchor’s resolved theme).
+The v0.3.0 host-safety follow-up is `kpr-3gh4`, with implementation beads `kpr-meex`,
+`kpr-zym8`, `kpr-azfp`, `kpr-7dip`, and `kpr-o48p` (all closed).
+Later follow-ups remain open as `kpr-y20o` (base-relative container bands) and
+`kpr-gssj` (overlays copy the anchor’s resolved theme).
 
 ## Overview
 
@@ -30,12 +32,12 @@ attribute — and the document follows, with no knowledge of KPress internals an
 re-audit on upgrade.
 
 The durable contracts live in the reference docs:
-[Sizing Policy](../../../kpress-design.md#sizing-policy) and
-[Theme and Fonts](../../../kpress-design.md#theme-and-fonts) in KPress Design, the
-embedder guidance in
-[Operations and Host Integration](../../../kpress-operations-and-host-integration.md),
-the SELECTOR GRAMMAR and SIZING POLICY comments in `style-tokens.css`, and the
-[0.3.0 release notes](../../../releases/0.3.0.md) with the migration table.
+[Sizing Policy](../kpress-design.md#sizing-policy) and
+[Theme and Fonts](../kpress-design.md#theme-and-fonts) in KPress Design, the embedder
+guidance in
+[Operations and Host Integration](../kpress-operations-and-host-integration.md), the
+SELECTOR GRAMMAR and SIZING POLICY comments in `style-tokens.css`, and the
+[0.3.0 release notes](../releases/0.3.0.md) with the migration table.
 
 ## Goals
 
@@ -102,9 +104,15 @@ Both designs are recorded in full in the reference docs; the decisions that shap
   order, and a full-strength element form that wins over any ancestor state — with
   `color-scheme` keyed identically, the mode attribute banned from CSS, and the palette
   matrix on the same grammar.
-- **Fragment SSR bakes no theme or palette attributes**; the page shell stamps `<html>`;
-  the dynamic render cache keys only the payload-relevant derivative of theme state
-  (`system` mode ships `theme.js`).
+- **Fragment SSR bakes no theme or palette attributes**; the page shell stamps `<html>`.
+  Auto fragment manifests omit the standalone theme resolver and page-default settings;
+  a fragment caller explicitly opts into either.
+  The dynamic API exposes that resolver choice directly instead of accepting inert theme
+  state.
+- **Theme controls request rather than resolve:** the settings widget emits a
+  `theme:request` event through a behavior-neutral controls module.
+  A standalone page’s `theme.js` engine handles it; an embedding host may handle the
+  same event without importing or overriding the standalone resolver.
 
 ## Implementation Plan
 
@@ -131,41 +139,66 @@ Both designs are recorded in full in the reference docs; the decisions that shap
 - [x] Embedder theming contract in the reference docs; migration table in the release
   notes (`kpr-c0kl`, `kpr-tjjd`)
 
+### Phase 3: Host-safe fragment runtime (#42) — complete
+
+- [x] Auto fragments omit page-default settings and `theme.js`; explicit resolver opt-in
+  remains available; inert dynamic theme-state inputs are removed (`kpr-meex`)
+- [x] Settings controls no longer import the standalone resolver and instead emit a
+  host-handleable `theme:request` event (`kpr-zym8`)
+- [x] Python, browserless DOM, and real-browser regressions cover default host
+  ownership, explicit opt-in, and unchanged standalone behavior (`kpr-azfp`)
+- [x] Public contracts, integration guidance, and v0.3.0 migration notes describe the
+  final behavior and the dynamic API break (`kpr-7dip`)
+- [x] Release metadata, tracker state, full gates, and metabrowser source-pin validation
+  are complete (`kpr-o48p`)
+
 ## Testing Strategy
 
 Real-browser Playwright for everything cascade-dependent (two-root sizing matrix, theme
-coherence at both scopes, stale-attribute islands); browserless pytest for SSR
-properties (byte-identical fragments, absent attributes, cache identity); static
-enforcement via the two hygiene lints; the contract scans and golden suite force
-same-patch updates of every pinned surface.
+coherence at both scopes, stale-attribute islands, and root-mutation observation while
+loading the default fragment asset set); browserless pytest for SSR and asset-manifest
+properties; checked-JavaScript DOM tests for event and lifecycle behavior; static
+enforcement via the two hygiene lints.
+Contract scans and the golden suite force same-patch updates of every pinned surface.
 
 ## Rollout Plan
 
-One release (0.3.0): the fragment-attribute removal and print-ratio change are
-behavior-visible, and the [release notes](../../../releases/0.3.0.md) carry the
-migration table. Downstream metabrowser follow-ups (tracked there): collapse the entire
+One release (0.3.0): the fragment-attribute removal, host-owned default asset behavior,
+dynamic request cleanup, and print-ratio change are behavior-visible.
+The [release notes](../releases/0.3.0.md) carry the migration table.
+Downstream metabrowser follow-ups (tracked there): collapse the entire
 [metabrowser#16](https://github.com/jlevy/metabrowser/pull/16) bridge into the base hook
-plus deliberate ramp-token overrides, stamp `data-kpress-resolved-theme` at one scope
-and delete the element-chasing loop, drop the retired color-hook bridge, and lift the
-`kpress==0.2.2` pin.
+plus deliberate ramp-token overrides, stamp `data-kpress-resolved-theme` at one scope,
+delete the element-chasing loop and temporary resolver neutralizer, replace the
+pre-public color-hook bridge, and lift the `kpress==0.2.2` pin.
+
+The release-candidate validation installed exact KPress source commit `1508ff0` into an
+isolated metabrowser PR #18 worktree without changing its release lock.
+After removing the two retired dynamic request fields and the obsolete resolver
+neutralizer, all 738 Python tests, both checked-JavaScript programs, 28 CLI golden
+cases, lint, type checks, public-hygiene checks, and the supply-chain gate passed.
+A live Chromium pass confirmed that host dark/light changes remain coherent, fragments
+carry no theme attributes, automatic fragment assets load no KPress resolver, and the
+console stays clean.
 
 ## Open Questions
 
-All resolved (element-over-ancestor precedence; palette attribute dropped from the
-article; theme stylesheets folded into `style-tokens.css`), confirmed by the PR #40 spec
-review and re-review.
-Follow-ups tracked as `kpr-y20o` and `kpr-gssj`.
+The #37/#38 design questions are resolved (element-over-ancestor precedence; palette
+attribute dropped from the article; theme stylesheets folded into `style-tokens.css`),
+confirmed by the PR #40 spec review and re-review.
+No release-blocking design questions remain.
+Later follow-ups are `kpr-y20o` and `kpr-gssj`.
 
 ## References
 
 - [Issue #37](https://github.com/jlevy/kpress/issues/37),
   [Issue #38](https://github.com/jlevy/kpress/issues/38),
+  [Issue #42](https://github.com/jlevy/kpress/issues/42),
   [PR #40](https://github.com/jlevy/kpress/pull/40) (spec review and re-review)
-- [KPress Design](../../../kpress-design.md) — Sizing Policy, Theme and Fonts, CSS
-  Contract
-- [Operations and Host Integration](../../../kpress-operations-and-host-integration.md)
-  — embedder guidance
-- [KPress 0.3.0 notes](../../../releases/0.3.0.md) — migration table
+- [KPress Design](../kpress-design.md) — Sizing Policy, Theme and Fonts, CSS Contract
+- [Operations and Host Integration](../kpress-operations-and-host-integration.md) —
+  embedder guidance
+- [KPress 0.3.0 notes](../releases/0.3.0.md) — migration table
 - metabrowser: `main` at `00af0be` and
   [metabrowser#16](https://github.com/jlevy/metabrowser/pull/16)
 

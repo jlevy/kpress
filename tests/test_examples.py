@@ -117,11 +117,13 @@ def test_wrapped_site_example_embeds_fragments(tmp_path: Path) -> None:
         for ref in re.findall(r'(?:href|src)="(/assets/kpress/[^"]+)"', html.read_text()):
             assert (tmp_path / ref.lstrip("/")).is_file(), f"broken asset link {ref}"
 
-    # The injected settings entry point imports dependency-only modules. The
-    # wrapper serves that exact closure without also shipping unrelated modules.
+    # Fragment defaults omit page-only settings and theme modules. The wrapper
+    # serves the feature-selected closure without unrelated modules.
     js_dir = tmp_path / "assets" / "kpress" / "js"
     assert (js_dir / "icons.js").is_file(), "transitive module icons.js not copied"
-    assert (js_dir / "menu.js").is_file(), "transitive module menu.js not copied"
+    assert not (js_dir / "menu.js").exists(), "unused menu.js was copied"
+    assert not (js_dir / "settings-widget.js").exists(), "unused settings widget was copied"
+    assert not (js_dir / "theme.js").exists(), "unused theme resolver was copied"
     assert not (js_dir / "overlay.js").exists(), "unused overlay.js was copied"
     for module in js_dir.glob("*.js"):
         for spec in _ESM_IMPORT_RE.findall(module.read_text(encoding="utf-8")):
@@ -145,7 +147,9 @@ def test_wrapped_site_zip_bundles_transitive_assets(tmp_path: Path) -> None:
         names = set(zf.namelist())
     # Transitive ESM modules and fonts must ride along in the archive.
     assert "assets/kpress/js/icons.js" in names
-    assert "assets/kpress/js/menu.js" in names
+    assert "assets/kpress/js/menu.js" not in names
+    assert "assets/kpress/js/settings-widget.js" not in names
+    assert "assets/kpress/js/theme.js" not in names
     assert "assets/kpress/js/overlay.js" not in names
     assert "assets/kpress/js/toc.js" not in names
     assert any(n.startswith("assets/kpress/fonts/") and n.endswith(".woff2") for n in names)

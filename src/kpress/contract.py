@@ -89,6 +89,28 @@ PUBLIC_PUBLISH_API = (
     "validate_config",
 )
 
+PUBLIC_RENDER_REQUEST_FIELDS = (
+    "source_text",
+    "source_path",
+    "kind",
+    "view",
+    "ext",
+    "mtime_hash",
+    "size",
+    "frontmatter",
+    "frontmatter_error",
+    "profile",
+    "include_theme_resolver",
+    "host",
+    "asset_url_prefix",
+    "show_doc_header",
+    "toc_collapse_depth",
+    "toc_expand_on_scroll",
+    "widgets",
+    "extra_tags",
+    "extra_attributes",
+)
+
 PUBLIC_CSS_CLASSES = (
     "annotated-para",
     "boxed-text",
@@ -406,15 +428,16 @@ PUBLIC_PIPELINE_STAGES = ("none", "full")
 # Model"): the same discipline as PUBLIC_CSS_* applied to the client seams.
 
 # Built-in chrome widget ids registered through kpress.widgets. `settings` is
-# on by default; `doc-actions` (Export PDF / View as Markdown badge buttons) is
-# off by default and opted in via `format.widgets: {doc-actions: on}`.
+# on by default for standalone pages and explicit for fragments; `doc-actions`
+# (Export PDF / View as Markdown badge buttons) is off by default and opted in
+# via `format.widgets: {doc-actions: on}`.
 PUBLIC_WIDGETS = ("settings", "doc-actions")
 
 # Built-in behavior ids registered through kpress.behaviors (bindings over
 # server-rendered markup; each is overridable by id). "theme" is the engine's
 # initialization (read persisted mode through the live storage adapter, stamp
-# root attrs, track OS changes): an embed host that owns theme resolution
-# overrides it so kpress never touches the root theme attrs.
+# root attrs, track OS changes). Auto fragment manifests omit it; explicit
+# resolver consumers can still override its binding by id.
 PUBLIC_BEHAVIORS = (
     "toc",
     "tooltip",
@@ -426,6 +449,17 @@ PUBLIC_BEHAVIORS = (
     "tabs",
     "diagrams",
     "theme",
+)
+
+# Events exchanged through the public runtime event bus. `theme:request` is
+# presentation-to-owner intent; `theme:change` and `palette:change` announce
+# state that has already been applied by the owning layer.
+PUBLIC_RUNTIME_EVENTS = (
+    "kpress:ready",
+    "widget:change",
+    "theme:request",
+    "theme:change",
+    "palette:change",
 )
 
 # Keys of the #kpress-page-model JSON block (layer A published data).
@@ -443,7 +477,12 @@ PUBLIC_PAGE_MODEL_KEYS = (
 # are added deliberately, not by reflex.
 PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     "js/runtime.js": ("getModel", "on", "off", "emit", "storage", "widgets", "behaviors"),
-    "js/theme.js": ("setKpressTheme", "initKpressTheme", "bindThemeToggleControls"),
+    "js/theme-controls.js": (
+        "normalizeThemeMode",
+        "syncThemeControls",
+        "bindThemeToggleControls",
+    ),
+    "js/theme.js": ("setKpressTheme", "initKpressTheme"),
     "js/menu.js": ("bindMenu", "markChecked"),
     "js/toc.js": ("initKpressToc", "TOC_TOGGLE_SCROLL_THRESHOLD_PX", "defaultTocToggleVisible"),
     "js/tooltips.js": (
@@ -507,6 +546,8 @@ __all__ = [
     "PUBLIC_PASS_THROUGH_TAGS",
     "PUBLIC_PIPELINE_STAGES",
     "PUBLIC_PUBLISH_API",
+    "PUBLIC_RENDER_REQUEST_FIELDS",
+    "PUBLIC_RUNTIME_EVENTS",
     "PUBLIC_TEMPLATE_VARIABLES",
     "PUBLIC_WIDGETS",
 ]

@@ -11,9 +11,9 @@ Use this index for implementation, maintenance, and release work.
   static publishing, assets, icons, and optimization
 - [Icon System](kpress-design.md#icon-system): the icon set, its SVG contract, and how
   glyphs are added or replaced (within KPress Design)
-- [Declarative Embedding](project/specs/active/plan-2026-07-31-declarative-embedding.md):
-  the root-independent sizing and single-scope theming plan (issues #37/#38); its
-  durable contracts live in KPress Design and the 0.3.0 notes
+- [Declarative Embedding](done/declarative-embedding.plan.md): the completed
+  root-independent sizing, single-scope theming, and host-safe fragment runtime work
+  (issues #37/#38/#42); its durable contracts live in KPress Design and the 0.3.0 notes
 - [Content-Size Indicators](content-size-indicators.plan.md): proposed word-count and
   reading-time indicators
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
@@ -49,10 +49,10 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
-- [KPress 0.3.0](releases/0.3.0.md): unreleased notes for the declarative-embedding work
-  (root-independent sizing, single-scope theming)
-- [KPress 0.2.4](releases/0.2.4.md): current alpha anchor migration, presentation, and
-  release-hardening release
+- [KPress 0.3.0](releases/0.3.0.md): release-candidate notes for root-independent
+  sizing, single-scope theming, and host-safe fragment assets
+- [KPress 0.2.4](releases/0.2.4.md): current published alpha with anchor migration,
+  presentation, and release hardening
 - [KPress 0.2.3](releases/0.2.3.md): navigation and rendering maintenance release
 - [KPress 0.2.2](releases/0.2.2.md): host-export maintenance release
 - [KPress 0.2.1](releases/0.2.1.md): rendering and release-floor maintenance release

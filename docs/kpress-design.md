@@ -377,15 +377,19 @@ Extension-model surface (see
 
 - `RenderOptions.widgets` / `format.widgets`: the uniform widget presence and opaque
   config map (Python’s entire involvement with chrome).
+- `RenderOptions.include_theme_resolver` / `KPressRenderRequest.include_theme_resolver`:
+  explicit ownership of the standalone theme resolver; pages default on and fragments
+  default off.
 - `build_site(config, options=None, extensions=BuildExtensions(pipeline=…, transform_tree=…, transform_page_html=…))`
   (the build pipeline seam).
 - The client runtime `window.kpress` (`static/js/runtime.js`), see
   [Host Integration](kpress-operations-and-host-integration.md#host-integration).
 - Name contracts in `kpress.contract`, mirroring `PUBLIC_CSS_VARIABLES` /
   `PUBLIC_CSS_CLASSES`: `PUBLIC_WIDGETS` (built-in widget ids), `PUBLIC_BEHAVIORS`
-  (built-in behavior ids), `PUBLIC_JS_EXPORTS` (stability-pinned module exports),
-  `PUBLIC_PIPELINE_STAGES` (built-in stage names), `PUBLIC_PAGE_MODEL_KEYS` (page-model
-  block keys).
+  (built-in behavior ids), `PUBLIC_RUNTIME_EVENTS` (event-bus names),
+  `PUBLIC_JS_EXPORTS` (stability-pinned module exports), `PUBLIC_RENDER_REQUEST_FIELDS`
+  (`KPressRenderRequest` fields in constructor order), `PUBLIC_PIPELINE_STAGES`
+  (built-in stage names), and `PUBLIC_PAGE_MODEL_KEYS` (page-model block keys).
 
 ## Data Model Lifecycle
 
@@ -553,6 +557,8 @@ The contract module also declares:
 - `PUBLIC_PUBLISH_API`: names from `kpress.publish`, including `BuildOptions`,
   `BuildReport`, `OptimizerOptions`, `PublishConfig`, `get_optimizer`, and
   `optimize_text`
+- `PUBLIC_RENDER_REQUEST_FIELDS`: `KPressRenderRequest` field names in constructor
+  order, pinning the dynamic host request shape
 - `BUILD_MANIFEST_REQUIRED_KEYS` and `ASSET_MANIFEST_REQUIRED_KEYS`
 - `OptimizerMode = Literal["none", "full"]` in `format.model`
 - `PUBLIC_DATA_ATTRIBUTES`: the stable table `data-*` hooks kpress emits for downstream
@@ -832,12 +838,14 @@ The supported fragment variables are:
   `--kpress-print-footer`
 
 Set these variables on the fragment’s `.kpress` scope.
-A host that owns theme resolution passes a resolved `light` or `dark` `theme_mode`; a
-host that owns controls also passes `widgets={"settings": "off"}`. Under the default
-`auto` asset policy, a plain fragment in that configuration has no JavaScript.
-A rich fragment still declares only the modules needed by its rendered features.
-The host must not hide the settings widget with CSS, rebuild the table wrapper, or reach
-for selectors and variables outside these pinned subsets.
+A host stamps its resolved `light` or `dark` theme on `:root` or a wrapper.
+Dynamic fragments omit the KPress resolver and all page-default widgets unless
+explicitly requested.
+Under the default `auto` asset policy, a plain fragment with no requested widgets has no
+JavaScript. A rich fragment still declares only the modules needed by its rendered
+features.
+The host must not hide the settings widget with CSS, rebuild the table wrapper,
+or reach for selectors and variables outside these pinned subsets.
 
 **Body-level overlays.** Tooltips and footnote previews are appended to `<body>`
 (outside the `.kpress` subtree) so their `position: fixed` resolves against the
@@ -1008,10 +1016,12 @@ identically to the palette (the two cannot split).
 Rendered fragments are **theme-agnostic**: they bake no theme or palette attributes, so
 one render is cacheable across themes and the embedder contract is exactly:
 
-- stamp `data-kpress-resolved-theme` (and optionally `data-kpress-palette`) on one
-  chosen scope; update it on toggle — nothing else;
-- do not load `theme.js`; if the asset set includes it (`theme_mode="system"`), override
-  the behavior: `kpress.behaviors.override("theme", () => {})`;
+- use `data-kpress-resolved-theme` (and optionally `data-kpress-palette`) on one chosen
+  scope as the only CSS theme input;
+- leave `include_theme_resolver=False` (the dynamic default), so the automatic fragment
+  manifest omits `theme.js` and KPress cannot become a second root writer;
+- if KPress settings controls are enabled, handle `theme:request`, apply host state, and
+  emit `theme:change` with the resulting `{mode, resolved}`;
 - combined palette × theme states bind fully when both attributes sit on the same scope
   element;
 - body-portaled overlays (tooltips, footnote previews) escape a non-`:root` wrapper
@@ -1020,6 +1030,11 @@ one render is cacheable across themes and the embedder contract is exactly:
 
 The standalone page shell stamps `<html>` from the template plus the pre-paint
 bootstrap; `theme.js` is the standalone resolver behind the same attribute.
+Resolver inclusion is independent of the settings widget and configured color mode: even
+a fixed `light` or `dark` standalone page with settings off includes `theme.js` by
+default. Library callers that intentionally want a page shell without the resolver can
+pass `RenderOptions(include_theme_resolver=False)`; `kpress.yml` does not expose that
+page-level opt-out. The page’s inline pre-paint bootstrap remains in either case.
 
 **Theme engine vs. settings widget.** These are two layers, deliberately separate (see
 [Extension and Injection Model](#extension-and-injection-model)):
@@ -1029,14 +1044,15 @@ bootstrap; `theme.js` is the standalone resolver behind the same attribute.
   `prefers-color-scheme`, set `data-kpress-theme` / `data-kpress-resolved-theme`,
   persist through `kpress.storage` (key `kpress.theme`), notify change listeners, and
   track OS theme changes.
-  Engine *init* runs as the registered `theme` behavior at apply time: its first storage
-  read goes through whatever adapter the host installed before `DOMContentLoaded`, and a
-  host that owns theme resolution overrides the behavior rather than fighting it.
-  The pre-paint bootstrap (`theme-bootstrap.js`, inlined render-blocking in `<head>`)
-  applies persisted state attrs before first paint (theme, and the same pattern for the
-  other persisted reader preferences (`kpress.proseFont` → `data-kpress-prose-font`,
-  `kpress.fontSet` → `data-kpress-font-set`), so there is no flash regardless of which
-  widget (if any) presents the controls.
+  Engine *init* runs as the registered `theme` behavior at apply time.
+  Standalone pages include it automatically; fragments include it only through explicit
+  `include_theme_resolver=True`. Its first storage read goes through whatever adapter
+  the consumer installed before `DOMContentLoaded`. The pre-paint bootstrap
+  (`theme-bootstrap.js`, inlined render-blocking in `<head>`) applies persisted state
+  attrs before first paint (theme, and the same pattern for the other persisted reader
+  preferences (`kpress.proseFont` → `data-kpress-prose-font`, `kpress.fontSet` →
+  `data-kpress-font-set`), so there is no flash regardless of which widget (if any)
+  presents the controls.
 - **The settings menu is a built-in chrome widget** (registry id `settings`): the
   default *presentation* over those engines: a gear button opening a menu
   (`.kpress-menu`) of segmented icon choosers (`.kpress-menu-seg`), client-rendered into
@@ -1050,9 +1066,12 @@ bootstrap; `theme.js` is the standalone resolver behind the same attribute.
   Config selects and orders the choosers:
   `widgets: {settings: {choosers: [theme, reading-font]}}`, default `[theme]`; unknown
   chooser ids warn and are skipped.
-  A host that wants a different presentation (a bare dark/light toggle, its own menu)
-  turns the widget off and writes a few lines over `kpress.theme`. The engine is the
-  contract, the gear only its default face.
+  Theme controls live in the behavior-neutral `theme-controls.js` layer and emit
+  `theme:request`; the standalone resolver handles that event, while an embedding host
+  may handle the same request without loading the resolver.
+  A host that wants a different presentation turns the widget off and uses the same
+  request/change event contract.
+  The resolver and gear are independently optional.
 
 The widget’s mount is emitted **inside** `.kpress-viewport` so it inherits the document
 tokens (rather than living outside `.kpress` where tokens would not resolve); its
@@ -1103,13 +1122,12 @@ own `html`/`body` stay untouched.
 
 It is standalone-only: an embedding host renders the KPress *fragment* (the `.kpress`
 article), not the page shell, so neither the settings menu nor `.kpress-page-main`
-appears in the host.
+appears in the host unless the host explicitly enables and mounts the settings widget.
 The host owns its own pane background and drives the embedded document’s theme by
-setting `data-kpress-theme` / `data-kpress-resolved-theme`. The host loads the declared
-reader modules and can replace the registered `theme` behavior before runtime apply; see
+setting `data-kpress-resolved-theme`. Automatic fragment manifests omit the resolver;
+explicit settings controls request `system | light | dark` through `theme:request`, and
+the host announces applied state through `theme:change`. See
 [Host Integration](kpress-operations-and-host-integration.md#host-integration).
-The `system | light | dark` attribute contract is the shared seam; the gear chrome
-itself is per-layer.
 
 ### Document Actions Widget
 
@@ -1426,8 +1444,9 @@ The server emits everything a widget needs to compute itself:
   This replaces any temptation toward “Python callbacks computing chrome from a render
   context”: KPress publishes the context; JS computes whatever it wants.
 - **State attrs:** the `data-kpress-*` family (`-theme`, `-resolved-theme`,
-  `-prose-font`, `-font-set`, `-fonts`, …): the shared seam widgets write and CSS keys
-  off. The pre-paint bootstrap applies persisted values before first paint.
+  `-prose-font`, `-font-set`, `-fonts`, …): the shared state seam.
+  CSS keys theme only from `-resolved-theme`; the pre-paint bootstrap applies standalone
+  persisted values before first paint.
 - **Tokens:** the CSS-var contract (see [CSS Contract](#css-contract)), including
   per-widget position tokens (`--kpress-<widget>-inset-*`).
 
@@ -1436,15 +1455,19 @@ The server emits everything a widget needs to compute itself:
 The genuinely complex machinery ships built-in, headless, and reusable, separate from
 any presentation:
 
-- `kpress.theme`: resolve system preference, set and persist mode, apply the pre-paint
-  state, and notify change listeners through the public `theme.js` exports.
+- `kpress.theme`: the optional standalone resolver: resolve system preference, set and
+  persist mode, apply the pre-paint state, and notify change listeners through the
+  public `theme.js` exports.
+- Theme controls: normalize and synchronize choices, emit `theme:request`, and remain
+  independent of root mutation, persistence, and OS-theme listeners through the public
+  `theme-controls.js` exports.
 - `kpress.storage`: persistence with a pluggable adapter (`{get, set}`; localStorage
   default; an embedding host can supply cookies for cross-port sharing).
 - `kpress.menu`: popover behavior: open/close, outside-click/Escape dismiss,
   `aria-checked` segment marking.
 
-A host that wants a bare dark/light toggle writes a few lines over `kpress.theme`; the
-gear menu is only the default presentation of that engine.
+A host-owned resolver handles `theme:request` directly; a KPress-resolved surface uses
+`kpress.theme`. The gear menu is only the default presentation.
 
 ### Layer C: Widget and Behavior Registries (Named, Optional, Replaceable)
 
@@ -1456,10 +1479,10 @@ no framework:
   (`<div data-kpress-widget="<id>">`); the widget renders into it (no-JS rule).
   Position stays CSS (the inset tokens).
 - **Behaviors:** JS bindings over *server-rendered document markup*: `toc`, `tooltip`,
-  `footnote-preview`, `code-copy`, `video`, `tables`, `tabs`, `diagrams` (plus `theme`,
-  which binds the theme engine’s init to the root element).
-  The HTML contract is the binding surface; KPress’s defaults bind to it, a host can
-  rebind the same markup, and HTML injected by the host (slots, markdown, build
+  `footnote-preview`, `code-copy`, `video`, `tables`, `tabs`, `diagrams` (plus the
+  standalone/explicit-opt-in `theme`, which binds resolver initialization to the root
+  element). The HTML contract is the binding surface; KPress’s defaults bind to it, a
+  host can rebind the same markup, and HTML injected by the host (slots, markdown, build
   transforms) becomes interactive the same way.
 
 ```js
@@ -1479,6 +1502,7 @@ Runtime mutation semantics are uniform:
 | `configure(id, config)` | Merges config and reapplies immediately after ready. |
 | `register(id, implementation)` | Replaces the implementation and remounts/rebinds existing targets after ready. |
 | Explicit mount before ready | The ready pass sees the bound marker and does not mount twice. |
+| `theme:request` | Announces a control’s requested theme mode without choosing or mutating the owning scope. The resolver owner applies state. |
 | `theme:change` / `palette:change` | Reapplies presentation widgets and behaviors, except a widget containing keyboard focus is preserved mid-interaction. The theme behavior is excluded and nested presentation changes are ignored to prevent recursion. |
 
 Widget mounts may return a disposer; KPress calls it before remounting.
@@ -1844,16 +1868,21 @@ file; they never need to parse CSS or JavaScript to discover dependencies.
 
 - `auto` (default) includes the base styles and fonts, then adds only the entry points
   required by rendered features and their declared transitive dependencies.
-  The feature checks cover settings, system-theme resolution, a rendered TOC, footnote
-  previews, code copy, enhanced tables, tabs, diagrams, video popovers, and math.
+  The feature checks cover explicitly requested settings and theme resolution, a
+  rendered TOC, footnote previews, code copy, enhanced tables, tabs, diagrams, video
+  popovers, and math. Standalone pages request their default settings and resolver;
+  fragments do not.
 - `none` returns an empty manifest for a host that supplies every required style and
   behavior itself.
-- `all` returns the complete reader and KaTeX closure, independent of document content.
+- `all` returns the complete reader and KaTeX closure, independent of document content
+  or feature flags. It therefore includes the theme resolver; a host-owned fragment uses
+  `auto` or `none`.
 
-A host-controlled plain fragment can therefore be CSS-only under `auto`: set
-`theme_mode` to the host-resolved `light` or `dark` value and disable the `settings`
-widget. A standalone page keeps the default system-theme and settings behavior, so its
-automatic manifest includes those modules.
+A host-controlled plain fragment is therefore CSS-only under `auto` without extra
+configuration. A fragment may opt into settings presentation without pulling in the
+resolver, or set `include_theme_resolver=True` to request KPress ownership explicitly.
+A standalone page keeps the default system-theme and settings behavior, so its automatic
+manifest includes both modules.
 
 ### Static Asset Caching
 

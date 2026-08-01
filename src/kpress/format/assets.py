@@ -143,6 +143,7 @@ TRANSITIVE_JS_ASSETS = [
     "js/icons.js",
     "js/menu.js",
     "js/overlay.js",
+    "js/theme-controls.js",
     "js/viewport.js",
 ]
 PACKAGE_JS_DEPENDENCIES: dict[str, tuple[str, ...]] = {
@@ -159,11 +160,12 @@ PACKAGE_JS_DEPENDENCIES: dict[str, tuple[str, ...]] = {
         "js/icons.js",
         "js/menu.js",
         "js/runtime.js",
-        "js/theme.js",
+        "js/theme-controls.js",
     ),
     "js/tables.js": ("js/runtime.js",),
     "js/tabs.js": ("js/runtime.js",),
-    "js/theme.js": ("js/runtime.js",),
+    "js/theme-controls.js": ("js/runtime.js",),
+    "js/theme.js": ("js/runtime.js", "js/theme-controls.js"),
     "js/toc.js": ("js/overlay.js", "js/runtime.js", "js/viewport.js"),
     "js/tooltips.js": ("js/overlay.js", "js/runtime.js", "js/viewport.js"),
     "js/video-popover.js": ("js/runtime.js",),

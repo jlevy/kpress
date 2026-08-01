@@ -269,15 +269,63 @@ def test_auto_policy_plain_fragment_has_css_and_no_javascript() -> None:
             source_path="plain.md",
             body_markdown=markdown,
         ),
-        RenderOptions(
-            include_toc="off",
-            theme_mode="light",
-            widgets={"settings": "off"},
-        ),
+        RenderOptions(include_toc="off"),
     )
 
     assert any(asset.loading == "stylesheet" for asset in rendered.assets.assets)
     assert not any(asset.loading in {"module", "classic"} for asset in rendered.assets.assets)
+
+
+def test_auto_policy_fragment_can_explicitly_include_theme_resolver() -> None:
+    markdown = "# Themed\n"
+    rendered = render_fragment(
+        DocumentInput(
+            title="Themed",
+            source_text=markdown,
+            source_path="themed.md",
+            body_markdown=markdown,
+        ),
+        RenderOptions(include_toc="off", include_theme_resolver=True),
+    )
+
+    assets = rendered.assets.by_id()
+    assert assets["js/theme.js"].entry_point is True
+    assert "js/settings-widget.js" not in assets
+
+
+def test_auto_policy_fragment_settings_do_not_pull_in_theme_resolver() -> None:
+    markdown = "# Settings\n"
+    rendered = render_fragment(
+        DocumentInput(
+            title="Settings",
+            source_text=markdown,
+            source_path="settings.md",
+            body_markdown=markdown,
+        ),
+        RenderOptions(include_toc="off", widgets={"settings": "on"}),
+    )
+
+    assets = rendered.assets.by_id()
+    assert assets["js/settings-widget.js"].entry_point is True
+    assert assets["js/theme-controls.js"].entry_point is False
+    assert "js/theme.js" not in assets
+
+
+def test_auto_policy_rejects_invalid_theme_resolver_flag() -> None:
+    markdown = "# Themed\n"
+    with pytest.raises(KPressPublishError, match="include_theme_resolver"):
+        render_fragment(
+            DocumentInput(
+                title="Themed",
+                source_text=markdown,
+                source_path="themed.md",
+                body_markdown=markdown,
+            ),
+            RenderOptions(
+                include_toc="off",
+                include_theme_resolver=cast("bool | None", "on"),
+            ),
+        )
 
 
 def test_none_policy_returns_empty_manifest() -> None:

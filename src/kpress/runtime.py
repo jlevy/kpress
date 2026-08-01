@@ -201,6 +201,11 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
     """Render a document through KPress and return a JSON-ready host payload."""
 
     profile = normalize_print_profile(request.view, request.profile)
+    resolver_option: Any = request.include_theme_resolver
+    if not isinstance(resolver_option, bool):
+        raise KPressInvalidRequestError(
+            f"Invalid include_theme_resolver: {resolver_option!r}; expected a boolean"
+        )
     # Treat the dataclass field as an untrusted runtime value: Python callers can
     # construct it without a static type checker, and this boundary must reject
     # bool/float/string values with a KPress error rather than leaking TypeError.
@@ -227,12 +232,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         request.mtime_hash,
         request.size,
         __version__,
-        # Fragment SSR is theme-agnostic (no baked theme/palette attributes),
-        # so theme state is NOT part of the render identity: light and dark
-        # requests share one entry. The single payload-relevant derivative is
-        # whether `system` mode ships the theme.js resolver in the declared
-        # assets.
-        request.theme_mode == "system",
+        request.include_theme_resolver,
         request.asset_url_prefix,
         source_digest,
         # Widgets affect the echoed payload (and any widget-dependent render),
@@ -296,8 +296,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         print_profile=profile,
         view=request.view,
         host=request.host,
-        theme_mode=request.theme_mode,
-        resolved_theme=request.resolved_theme,
+        include_theme_resolver=request.include_theme_resolver,
         asset_url_prefix=(
             request.asset_url_prefix.rstrip("/") + "/" + _ASSET_VERSION_SEGMENT + "/"
         ),
@@ -325,10 +324,10 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         result,
         profile=profile,
     )
-    # Echo the resolved widget map (defaults merged, "off" removed, config
-    # verbatim) so host-mounted widgets read the same data the standalone
-    # page model carries. The fragment itself has no #kpress-page-model block.
-    resolved_widgets = resolve_widgets(widgets)
+    # Echo the explicitly requested widgets ("off" removed, config verbatim)
+    # so host-mounted widgets read the same model KPress used for asset selection.
+    # The fragment itself has no #kpress-page-model block.
+    resolved_widgets = resolve_widgets(widgets, include_defaults=False)
     normalized["widgets"] = resolved_widgets
     # Embeds get the full page model in the payload (same keys and builder as
     # the static #kpress-page-model block), so e.g. a minimap widget reading
