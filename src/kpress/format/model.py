@@ -19,6 +19,9 @@ DocumentProfile = PrintProfile
 # entry-point → mode mapping.
 TrustMode = Literal["trusted", "sanitized"]
 TocMode = Literal["off", "auto", "on"]
+# Whether the wide band's TOC sidebar track is a consequence of the TOC or a
+# fixed part of the layout. See RenderOptions.toc_rail.
+TocRail = Literal["auto", "reserved"]
 MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
@@ -144,6 +147,27 @@ class RenderOptions:
     asset_policy: AssetPolicy = "auto"
     include_toc: TocMode = "auto"
     toc_min_headings: int = 4
+    # Wide band (>= 75rem of pane width) only: whether the TOC sidebar track is
+    # part of the layout or a consequence of the TOC.
+    #
+    # "auto" (the default, and the historical behavior) grids the reading column
+    # beside the sidebar only when a TOC was actually rendered. A document under
+    # toc_min_headings gets no TOC and therefore no grid, so it falls back to the
+    # centred, measure-capped single column — a different horizontal position
+    # AND a narrower measure than its longer neighbours. Readers moving between
+    # documents see the prose jump sideways and change width.
+    #
+    # "reserved" holds the rail open whenever TOCs are enabled at all
+    # (include_toc != "off"), so the reading column keeps one position and one
+    # measure whether or not the heading count earned a sidebar. The TOC itself
+    # is still omitted — only the empty track remains. Browsers and multi-page
+    # sites want this; a single standalone document usually does not.
+    #
+    # Stamped as data-kpress-toc-rail="reserved" on the layout wrapper in the
+    # held-open-but-empty case; a rendered TOC needs no stamp because the CSS
+    # already keys off the nav. See the "Document layout + Table of Contents"
+    # block in format/static/css/components.css.
+    toc_rail: TocRail = "auto"
     # Collapsible TOC: deepest normalized TOC depth (TocEntry.level, 1-based;
     # in the common one-H1-title document depth 1 is H2) that stays visible
     # when collapsed. None (default) disables collapse entirely and keeps the

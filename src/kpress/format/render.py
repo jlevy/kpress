@@ -84,6 +84,19 @@ def _should_include_toc(tree: DocumentTree, options: RenderOptions) -> bool:
     return len(tree.toc) >= options.toc_min_headings
 
 
+def _reserves_toc_rail(tree: DocumentTree, options: RenderOptions) -> bool:
+    """Whether the wide band holds the TOC rail open for a document with no TOC.
+
+    Only the held-open-but-empty case is stamped: when a TOC is rendered the CSS
+    already keys off the nav element, and when TOCs are switched off entirely the
+    document wants its centred single column back.
+    """
+
+    if options.toc_rail != "reserved" or options.include_toc == "off":
+        return False
+    return not _should_include_toc(tree, options)
+
+
 def _has_css_class(html: str, css_class: str) -> bool:
     """Return whether rendered HTML has a class token, independent of token order."""
 
@@ -239,6 +252,10 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
     if options.transform_tree is not None:
         tree = options.transform_tree(tree)
     toc = _render_toc(tree, options)
+    # Held-open-but-empty rail (RenderOptions.toc_rail): the wide-band grid keys
+    # off this stamp so the reading column keeps the sidebar layout's position
+    # and measure even though this document earned no TOC.
+    toc_rail_attr = ' data-kpress-toc-rail="reserved"' if _reserves_toc_rail(tree, options) else ""
     frontmatter_error = _render_frontmatter_error(document)
     frontmatter = _render_frontmatter(document) if options.show_frontmatter else ""
     thumbnail = _render_thumbnail(document, str(title))
@@ -287,7 +304,7 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
         f"{doc_header}"
         f"{frontmatter_error}"
         f"{frontmatter}"
-        '<div class="kpress-doc-layout kpress-content-with-toc">'
+        f'<div class="kpress-doc-layout kpress-content-with-toc"{toc_rail_attr}>'
         f"{toc}"
         f"{thumbnail}"
         f'<div class="kpress-prose kpress-long-text">{tree.html}</div>'

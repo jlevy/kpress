@@ -216,6 +216,25 @@ override per page via
 apply (a `collapseDepth` of `0` turns collapse off), and the expand-all control is
 server-rendered chrome — no host-injected markup.
 
+### Reserved TOC Rail
+
+A host that shows one document after another — a file browser, a docs site — usually
+wants the reading column in the same place on every document, whether or not that
+document earned a TOC sidebar (full contract:
+[Reserved TOC Rail](kpress-design.md#reserved-toc-rail)):
+
+- **Static publish:** `format.toc_rail: reserved` in `kpress.yml`.
+- **Python render:** `RenderOptions(toc_rail="reserved")`.
+- **Dynamic path:** `KPressRenderRequest(toc_rail="reserved")`; any other value fails
+  the request with `KPressInvalidRequestError`.
+
+Without it, documents under `format.toc_min_headings` fall back to a centred column that
+is both offset and 5rem narrower than their TOC-bearing neighbours.
+The default (`auto`) keeps that fallback and renders byte-identical markup, so enabling
+this is a pure opt-in.
+It has no effect below the 75rem wide band (no rail exists to reserve) or when
+`format.toc` is `off`.
+
 ### Client Runtime (`window.kpress`)
 
 The client runtime (`static/js/runtime.js`, loaded first in the default JS assets) is
@@ -309,6 +328,7 @@ JSON-ready dict. Fields and semantics:
 | `show_doc_header` | no | Whether a document-profile fragment renders its title header; defaults to `true` |
 | `toc_collapse_depth` | no | Deepest normalized TOC depth left expanded; defaults to `None` (fully expanded) |
 | `toc_expand_on_scroll` | no | Whether scroll-follow expands the active collapsed branch; defaults to `true` |
+| `toc_rail` | no | `"reserved"` keeps the wide-band reading column in the sidebar layout’s position and measure on documents that earned no TOC; defaults to `"auto"` (centred fallback) |
 | `widgets` | no | Widget presence + opaque config map (same shape as `format.widgets`); defaults to `{}` for fragments and is echoed in the response payload so host-mounted widgets read the same config the standalone page model carries |
 | `extra_tags` | no | Additional inert HTML/XML tags admitted by the sanitized render path |
 | `extra_attributes` | no | Additional inert attributes admitted only on pass-through tags |
