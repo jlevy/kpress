@@ -219,6 +219,13 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
             f"Invalid toc_collapse_depth: {collapse_depth!r}; "
             f"expected an integer >= 1 (or None to disable collapse)"
         )
+    # Closed value set, membership-checked at the boundary for the same reason:
+    # a typo must fail loudly here rather than silently render the other layout.
+    toc_rail: Any = request.toc_rail
+    if toc_rail not in ("auto", "reserved"):
+        raise KPressInvalidRequestError(
+            f"Invalid toc_rail: {toc_rail!r}; expected 'auto' or 'reserved'"
+        )
     # Same normalization as the static dialects (presence scalars to
     # "on"/"off"/"auto", typos raise): static and dynamic hosts must publish
     # identical widget data, and an invalid value must not be kept truthy.
@@ -248,6 +255,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         request.show_doc_header,
         request.toc_collapse_depth,
         request.toc_expand_on_scroll,
+        request.toc_rail,
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -303,6 +311,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         show_doc_header=request.show_doc_header,
         toc_collapse_depth=request.toc_collapse_depth,
         toc_expand_on_scroll=request.toc_expand_on_scroll,
+        toc_rail=toc_rail,
         widgets=widgets,
         extra_tags=tuple(request.extra_tags),
         extra_attributes=tuple(request.extra_attributes),

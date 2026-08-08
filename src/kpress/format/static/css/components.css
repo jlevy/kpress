@@ -65,6 +65,20 @@
          nav.kpress-toc                        the TOC (sidebar OR drawer)
          div.kpress-prose.kpress-long-text     the article body
 
+   THE RAIL IS A LAYOUT SLOT, NOT A CONSEQUENCE OF THE TOC. Three conditions
+   select the wide band's two-column grid, and every wide-band rule that keys
+   off the TOC must list all three or the layouts split apart:
+     .has-toc                              host-forced (embedding escape hatch)
+     :has(.kpress-toc)                     a TOC was rendered
+     [data-kpress-toc-rail="reserved"]     rail held open, no TOC rendered
+   The third is stamped by render.py when RenderOptions.toc_rail = "reserved"
+   and the document fell under toc_min_headings. Without it such a document
+   drops out of the grid and back to the centred single column — which moves
+   the prose sideways AND narrows it (the unguarded 2.5rem
+   `.kpress-content-with-toc .kpress-long-text` inset is sized for the 53rem
+   grid track, so against the 48rem cap it eats 5rem of measure). Under
+   toc_rail "auto" (the default) nothing is stamped and that fallback stands.
+
    TWO elements carry the reading-measure cap and BOTH centre via
    margin:auto (in document.css): `.kpress-doc` (max-width measure + 2rem)
    and the inner `.kpress-doc-layout` (max-width = measure). Plain single-
@@ -1698,7 +1712,9 @@
      past the cap to the right). Uncap both so the sidebar + content span
      the pane, left-aligned. */
   .kpress-doc:has(.kpress-toc),
-  .kpress-doc-layout:has(.kpress-toc) {
+  .kpress-doc:has(> [data-kpress-toc-rail="reserved"]),
+  .kpress-doc-layout:has(.kpress-toc),
+  .kpress-doc-layout[data-kpress-toc-rail="reserved"] {
     margin-inline: 0;
     max-width: none;
   }
@@ -1712,9 +1728,14 @@
      left-aligning pins the TOC + content to the start so all extra pane width
      becomes a single trailing margin -- no empty band to the left of the TOC. */
   .kpress-content-with-toc.has-toc,
-  .kpress-content-with-toc:has(.kpress-toc) {
+  .kpress-content-with-toc:has(.kpress-toc),
+  .kpress-content-with-toc[data-kpress-toc-rail="reserved"] {
     align-items: start;
     column-gap: 3rem;
+    /* The two TOC-bearing conditions are already grid from the base rule
+       above; the reserved rail is not, and only becomes a grid inside this
+       band — narrow bands have no rail to reserve and stay single-column. */
+    display: grid;
     grid-template-columns: 15rem 53rem;
     justify-content: start;
     min-height: 100dvh;
@@ -1736,7 +1757,9 @@
      pane widens; align its content instead. Only the inline centering is
      cancelled: the footer keeps its block gap above. */
   .kpress-page-main:has(.kpress-toc) .kpress-site-header,
-  .kpress-page-main:has(.kpress-toc) .kpress-site-footer {
+  .kpress-page-main:has(.kpress-toc) .kpress-site-footer,
+  .kpress-page-main:has([data-kpress-toc-rail="reserved"]) .kpress-site-header,
+  .kpress-page-main:has([data-kpress-toc-rail="reserved"]) .kpress-site-footer {
     margin-inline: 0;
     max-width: none;
     padding-inline-start: 21.5rem;
@@ -1747,6 +1770,16 @@
     margin: 0;
     max-width: none;
     padding-inline: 2.5rem;
+  }
+
+  /* The optional thumbnail is the layout's third child and the only one with
+     no explicit track, so grid auto-placement drops it into whichever cell is
+     free — the rail itself once the rail is reserved and empty. Pin it to the
+     reading column with the prose it belongs to. Child combinator: an author's
+     own .thumbnail inside the prose is not a grid item and must not be
+     re-placed. */
+  .kpress-content-with-toc > .thumbnail {
+    grid-column: 2;
   }
 
   .kpress-toc {
@@ -1790,7 +1823,8 @@
      they pass the pane edge. `100cqw` is the pane, so the table never centres
      on / spills past the window. */
   .kpress-content-with-toc.has-toc .kpress-table-wrap,
-  .kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap {
+  .kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap,
+  .kpress-content-with-toc[data-kpress-toc-rail="reserved"] .kpress-table-wrap {
     left: 0;
     margin-inline: 0;
     max-width: 100%;
@@ -1800,12 +1834,15 @@
   }
 
   .kpress-content-with-toc.has-toc .kpress-table-wrap[data-kpress-table-scale="wide"],
-  .kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap[data-kpress-table-scale="wide"] {
+  .kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap[data-kpress-table-scale="wide"],
+  .kpress-content-with-toc[data-kpress-toc-rail="reserved"]
+    .kpress-table-wrap[data-kpress-table-scale="wide"] {
     max-width: calc(100cqw - 23rem);
   }
 
   .kpress-content-with-toc.has-toc .kpress-table,
-  .kpress-content-with-toc:has(.kpress-toc) .kpress-table {
+  .kpress-content-with-toc:has(.kpress-toc) .kpress-table,
+  .kpress-content-with-toc[data-kpress-toc-rail="reserved"] .kpress-table {
     max-width: none;
     width: 100%;
   }

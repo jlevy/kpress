@@ -15,6 +15,7 @@ from kpress.format.model import (
     OptimizerMode,
     ProseFont,
     TocMode,
+    TocRail,
     parse_widgets,
 )
 from kpress.format.sanitize import (
@@ -62,6 +63,10 @@ class FormatConfig:
     toc_collapse_depth: int | None = None
     # Scroll-follow expansion (see RenderOptions.toc_expand_on_scroll).
     toc_expand_on_scroll: bool = True
+    # Wide-band TOC rail (see RenderOptions.toc_rail). "reserved" keeps every
+    # page's reading column in one place across a site whose pages differ in
+    # heading count; "auto" keeps the centred fallback on the pages with no TOC.
+    toc_rail: TocRail = "auto"
     math: MathMode = "auto"
     diagrams: str = "auto"
     show_frontmatter: bool = True
@@ -212,6 +217,7 @@ def _string_list(value: object, default: list[str]) -> list[str]:
 # dialects accept and reject exactly the same values. Open strings (theme,
 # palette — hosts may ship their own preset CSS) are deliberately absent.
 _TOC_MODES = ("off", "auto", "on")
+_TOC_RAILS = ("auto", "reserved")
 _MATH_MODES = ("off", "auto")
 _DIAGRAM_MODES = ("off", "auto", "mermaid")
 _COLOR_MODES = ("system", "light", "dark")
@@ -368,6 +374,7 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "toc_min_headings",
         "toc_collapse_depth",
         "toc_expand_on_scroll",
+        "toc_rail",
         "math",
         "diagrams",
         "show_frontmatter",
@@ -457,6 +464,7 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     for method in config.optimizer.precompress:
         _ = _checked_choice("optimizer.precompress method", method, _PRECOMPRESS_METHODS)
     _ = _checked_choice("format.toc", config.format.toc, _TOC_MODES)
+    _ = _checked_choice("format.toc_rail", config.format.toc_rail, _TOC_RAILS)
     _ = _checked_choice("format.math", config.format.math, _MATH_MODES)
     _ = _checked_choice("format.diagrams", config.format.diagrams, _DIAGRAM_MODES)
     _ = _checked_choice("format.color_mode", config.format.color_mode, _COLOR_MODES)
@@ -541,6 +549,11 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
     # publishing risk and inconsistent with KPress's elsewhere-strict
     # reserved-path / collision / unsafe-asset stance.
     toc = _checked_choice("format.toc", fmt.get("toc"), _TOC_MODES) if "toc" in fmt else "auto"
+    toc_rail = (
+        _checked_choice("format.toc_rail", fmt.get("toc_rail"), _TOC_RAILS)
+        if "toc_rail" in fmt
+        else "auto"
+    )
     math = _checked_choice("format.math", fmt.get("math"), _MATH_MODES) if "math" in fmt else "auto"
     diagrams = (
         _checked_choice("format.diagrams", fmt.get("diagrams"), _DIAGRAM_MODES)
@@ -594,6 +607,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             toc_min_headings=_int_value(fmt.get("toc_min_headings"), 4),
             toc_collapse_depth=_validated_toc_collapse_depth(fmt.get("toc_collapse_depth")),
             toc_expand_on_scroll=_bool_value(fmt.get("toc_expand_on_scroll"), True),
+            toc_rail=cast(TocRail, toc_rail),
             math=cast(MathMode, math),
             diagrams=diagrams,
             show_frontmatter=_bool_value(fmt.get("show_frontmatter"), True),

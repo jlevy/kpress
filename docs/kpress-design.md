@@ -1350,6 +1350,40 @@ rows, and resets an existing control’s ARIA label and expanded state before re
 There are no per-entry disclosure toggles and no cross-page persistence; deep entries
 stay in the markup and the page model — collapse is visibility only.
 
+### Reserved TOC Rail
+
+In the wide band (≥ 75rem of *pane* width) the TOC is a sticky left sidebar and the
+reading column is grid track 2, left-aligned: a constant 48rem of text at a constant
+distance from the pane’s left edge.
+A document that falls under `format.toc_min_headings` gets no TOC, so by default it also
+gets no grid and reverts to the centred, measure-capped single column.
+That fallback moves the prose sideways **and** narrows it — the 2.5rem inset on
+`.kpress-content-with-toc .kpress-long-text` is sized for the 53rem grid track, so
+against the 48rem cap it costs 5rem of measure.
+Across a set of documents with varying heading counts the column visibly jumps.
+
+`format.toc_rail` (`RenderOptions.toc_rail`, also on `KPressRenderRequest`) chooses
+which behavior a surface wants:
+
+- `auto` — the default and the historical behavior: the rail exists only when a TOC
+  does. Renders are byte-identical to before this option existed.
+- `reserved` — the rail is a fixed part of the layout whenever TOCs are enabled at all
+  (`format.toc != "off"`), so the reading column keeps one position and one measure with
+  or without the sidebar.
+  The TOC itself is still omitted on short documents; only the empty track remains.
+
+Reserving suits surfaces that show one document after another — a file browser, a
+multi-page site — where a stable column matters more than centring any single page.
+A lone standalone document usually wants `auto`.
+
+Mechanically, `render.py` stamps `data-kpress-toc-rail="reserved"` on the layout wrapper
+in the held-open-but-empty case only; a rendered TOC needs no stamp because the CSS
+already keys off the nav, and `format.toc: off` is never stamped.
+Every wide-band rule that keys off the TOC therefore selects on three conditions —
+`.has-toc`, `:has(.kpress-toc)`, and `[data-kpress-toc-rail="reserved"]` — and adding a
+rule that lists fewer splits the two layouts apart again.
+The layout comment at the top of `components.css` is the binding reference.
+
 ### Component Authoring Contract
 
 These conventions are binding for every interactive document component.

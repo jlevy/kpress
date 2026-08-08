@@ -247,6 +247,9 @@ def test_table_css_contract_covers_responsive_reader_parity() -> None:
         ".kpress-table tbody tr:nth-child(even)",
         ".kpress-content-with-toc.has-toc .kpress-table-wrap",
         ".kpress-content-with-toc:has(.kpress-toc) .kpress-table-wrap",
+        # The reserved rail left-aligns the column too, so it needs the same
+        # neutralisation of the column-centred bleed as the other two.
+        '.kpress-content-with-toc[data-kpress-toc-rail="reserved"] .kpress-table-wrap',
         "@container kpress-doc (max-width: 47.99rem)",
         ".kpress-table code",
         "font-size: var(--kpress-font-size-mono-small);",

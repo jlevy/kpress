@@ -26,6 +26,7 @@ from kpress.format.model import (
     RenderResult,
     TocEntry,
     TocMode,
+    TocRail,
     TrustMode,
 )
 from kpress.format.render import render_document_from_text, render_fragment, render_page
@@ -53,6 +54,7 @@ __all__ = [
     "ThemeSpec",
     "TocEntry",
     "TocMode",
+    "TocRail",
     "TrustMode",
     "materialize_package_assets",
     "normalize_theme_mode",

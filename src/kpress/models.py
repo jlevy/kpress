@@ -8,6 +8,10 @@ from typing import Any, Literal
 
 PrintProfile = Literal["document", "source", "table", "tree", "plain"]
 ThemeMode = Literal["system", "light", "dark"]
+# Mirrors format.model.TocRail. Declared here rather than imported so the host
+# request models stay independent of the format package, as PrintProfile and
+# ThemeMode already are; runtime.py membership-checks the value either way.
+TocRail = Literal["auto", "reserved"]
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,12 @@ class KPressRenderRequest:
     # fully expanded TOC; an int >= 1 collapses deeper entries (validated).
     toc_collapse_depth: int | None = None
     toc_expand_on_scroll: bool = True
+    # Wide-band TOC rail — the dynamic-path counterpart of RenderOptions.toc_rail.
+    # "reserved" keeps the reading column in the sidebar layout's position and
+    # measure on documents that earned no TOC, which is what a browsing host
+    # showing one document after another wants; "auto" (default) preserves the
+    # centred single-column fallback. Validated as a closed choice.
+    toc_rail: TocRail = "auto"
     # Widget presence + opaque config map (same shape as format.widgets);
     # echoed in the render payload so host-mounted widgets read the same
     # config the standalone page model carries.
