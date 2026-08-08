@@ -11,7 +11,7 @@ tbd is authoritative for issue status and dependencies.
 This file is the maintained view across both.
 Update all three together when a public capability changes.
 
-Last reconciled: 2026-07-31.
+Last reconciled: 2026-08-08.
 
 ## Release Status
 
@@ -25,6 +25,15 @@ Trusted Publishing. The exact registry wheel passed clean version, help, doctor,
 and bundled-example smokes; its wheel and sdist hashes match the detached-tag preflight
 artifacts. KPress `0.2.4` remains the previous public alpha and `0.1.0` the first.
 Alpha status is conveyed by package metadata and release notes, not by a version suffix.
+
+KPress `0.3.1` is the prepared next release candidate, a compatible maintenance release
+for the `0.3` line. It adds the opt-in reserved TOC rail (`format.toc_rail`) and carries
+the PostCSS advisory patch.
+The change is purely additive: `auto` is the default and reproduces `0.3.0` rendering
+byte for byte. Lint, the full Python and browserless JavaScript suites, real-Chromium
+reader checks, distribution inspection, and the clean-room wheel install all pass on
+exact `main`; tagging, GitHub release creation, and PyPI Trusted Publishing remain a
+separate explicit release action.
 
 Completed release gates:
 
