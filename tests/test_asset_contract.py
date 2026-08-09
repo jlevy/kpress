@@ -257,6 +257,35 @@ def test_table_css_contract_covers_responsive_reader_parity() -> None:
         assert required in css
 
 
+def test_table_code_steps_down_a_mono_tier_at_every_width() -> None:
+    """Table code is a base rule, not a band rule.
+
+    The size ramps pair by index (mono/normal, mono-small/smaller,
+    mono-tiny/tiny), so code holds one optical weight against the text around
+    it. A table reduces its text to ``small`` but used to leave code at ``mono``
+    everywhere except the narrow band — 0.863 of its own cell, heavier than the
+    same span in prose at 0.820.
+
+    The narrow band looked right only because it ALSO drops table text to
+    ``smaller``; the pairing came from the text side. So scoping this
+    declaration to a band is precisely the bug, and the guard is that it lives
+    at nesting depth 0.
+    """
+
+    css = get_static_asset("css/components.css").content.decode("utf-8")
+
+    index = css.index(".kpress-table code")
+    depth = css[:index].count("{") - css[:index].count("}")
+
+    assert depth == 0, (
+        "`.kpress-table code` is nested inside an at-rule block, so it applies "
+        "at some widths only; the tier step belongs to tables at every width"
+    )
+
+    rule = css[index : css.index("}", index)]
+    assert "--kpress-font-size-mono-small" in rule
+
+
 def test_tab_css_contract_covers_authoring_and_print_policy() -> None:
     css = "\n".join(
         get_static_asset(path).content.decode("utf-8")

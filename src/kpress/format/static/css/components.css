@@ -931,6 +931,29 @@
   word-break: break-word;
 }
 
+/* Code inside a table steps down a mono tier, at EVERY width.
+   The two ramps in style-tokens.css pair by index — mono/normal 0.82,
+   mono-small/smaller 0.833, mono-tiny/tiny 0.824 — so code keeps one optical
+   weight against whatever text surrounds it. A table is the one surface whose
+   text is reduced (`small`) while its code was not, leaving code at 0.863 of
+   its own cell: heavier inside a table than the identical span in prose, which
+   mono's larger x-height exaggerates further.
+
+   `small` has no mono partner (the text ramp has four tiers, mono has three),
+   so neither choice is exact; mono-small at 0.789 lands closer to the ramp's
+   0.82 than mono's 0.863, and reads as subordinate rather than competing.
+
+   This rule was previously scoped inside the narrow band, where it looked
+   correct only because that band ALSO drops table text to `smaller` — the
+   pairing came from the text side, not from this declaration. Unscoped, the
+   narrow band keeps the same result and no longer needs its own copy.
+   Load order matters: `.kpress code` (document.css) ties on specificity, and
+   components.css is loaded after it. */
+.kpress-table code,
+.kpress-table pre {
+  font-size: var(--kpress-font-size-mono-small);
+}
+
 .kpress-table th,
 .kpress-table td {
   max-width: 40rem;
@@ -2062,11 +2085,6 @@
     max-width: none;
     min-width: 100%;
     width: auto;
-  }
-
-  .kpress-table code,
-  .kpress-table pre {
-    font-size: var(--kpress-font-size-mono-small);
   }
 }
 
