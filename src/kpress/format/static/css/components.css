@@ -131,7 +131,12 @@
   padding: 1rem 1.5rem;
 }
 
-@media (min-width: 768px) {
+/* Container, not viewport: the phone band that undoes this
+   (`@container kpress-doc (max-width: 47.99rem)`, far below) keys off the
+   scroll pane, so a viewport query here disagrees with it whenever the two
+   differ — which is every embedded host. 48rem is the same boundary from the
+   other side. */
+@container kpress-doc (min-width: 48rem) {
   .kpress-long-text {
     padding-inline: 4rem;
   }
@@ -147,8 +152,16 @@
    `format.content_card` stamps data-kpress-card on the article ("on" is the
    default); embedding hosts stamp the same attribute on the fragment wrapper
    themselves. Chrome tokens: --kpress-card-border / --kpress-card-shadow
-   (style-tokens.css). */
-@media (min-width: 768px) {
+   (style-tokens.css).
+
+   Container-queried at the same 48rem boundary as the inline padding above,
+   and for the same reason: the card's whole premise is that the geometry is
+   already the card's. Keyed to the viewport instead, a host pane narrower
+   than 48rem inside a window wider than 768px drew the border around the
+   phone band's 0.75rem gutter — a hairline pressed against the text and
+   through the disclosure chevrons. Narrow stays full-bleed, as textpress
+   does; "narrow" just has to mean the pane, not the window. */
+@container kpress-doc (min-width: 48rem) {
   .kpress[data-kpress-card="on"] .kpress-long-text {
     border: var(--kpress-card-border);
     box-shadow: var(--kpress-card-shadow);
