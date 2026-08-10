@@ -916,12 +916,13 @@ enforce “always use CSS vars”).
   the card’s geometry; the card adds chrome only, no layout properties, so the coupled
   TOC/table width system is untouched).
   Chrome is `--kpress-card-border` + `--kpress-card-shadow` (dark themes deepen the
-  shadow), appears only at md+ widths (narrow screens read full-bleed), and never
-  prints. Shown or flat is a render-time setting: `RenderOptions.content_card` /
-  `format.content_card`, stamped as `data-kpress-card="on|off"` on the document article,
-  and the shipped default is **on**. Set the option to `false` for a flat, full-bleed
-  page. Low-level fragment callers pass the same option; dynamic `render_view` uses the
-  default content-card setting.
+  shadow), appears only from 48rem of *pane* width (a narrow pane reads full-bleed even
+  inside a wide window, which is why this is a container query and not a media query),
+  and never prints. Shown or flat is a render-time setting: `RenderOptions.content_card`
+  / `format.content_card`, stamped as `data-kpress-card="on|off"` on the document
+  article, and the shipped default is **on**. Set the option to `false` for a flat,
+  full-bleed page. Low-level fragment callers pass the same option; dynamic `render_view`
+  uses the default content-card setting.
 
 Three shared interaction primitives are documented so every component reuses them rather
 than re-styling:
