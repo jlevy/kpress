@@ -57,7 +57,10 @@ class FormatConfig:
     # already shows the title) pass False.
     show_doc_header: bool = True
     toc: TocMode = "auto"
-    toc_min_headings: int = 4
+    # Both thresholds gate the "auto" TOC (see RenderOptions.toc_min_headings
+    # for why either alone is the wrong test).
+    toc_min_headings: int = 7
+    toc_min_words: int = 800
     # Collapsible TOC depth (see RenderOptions.toc_collapse_depth): None keeps
     # the fully expanded TOC; an int >= 1 collapses deeper entries.
     toc_collapse_depth: int | None = None
@@ -372,6 +375,7 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "show_doc_header",
         "toc",
         "toc_min_headings",
+        "toc_min_words",
         "toc_collapse_depth",
         "toc_expand_on_scroll",
         "toc_rail",
@@ -604,7 +608,8 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             content_card=_bool_value(fmt.get("content_card"), True),
             show_doc_header=_bool_value(fmt.get("show_doc_header"), True),
             toc=cast(TocMode, toc),
-            toc_min_headings=_int_value(fmt.get("toc_min_headings"), 4),
+            toc_min_headings=_int_value(fmt.get("toc_min_headings"), 7),
+            toc_min_words=_int_value(fmt.get("toc_min_words"), 800),
             toc_collapse_depth=_validated_toc_collapse_depth(fmt.get("toc_collapse_depth")),
             toc_expand_on_scroll=_bool_value(fmt.get("toc_expand_on_scroll"), True),
             toc_rail=cast(TocRail, toc_rail),

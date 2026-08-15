@@ -1307,6 +1307,35 @@ tests cover interactive state.
 The [end-to-end validation runbook](kpress-validation.runbook.md) owns visual and
 real-engine acceptance.
 
+### When a Document Earns a TOC
+
+A table of contents is navigation, and navigation only earns its space on a document a
+reader cannot take in by scrolling.
+`include_toc="auto"` (the default) therefore tests two independent properties and
+requires both:
+
+- `format.toc_min_headings` (`RenderOptions.toc_min_headings`, also on
+  `KPressRenderRequest`): TOC entries the document must have.
+  Default 7.
+- `format.toc_min_words` (`RenderOptions.toc_min_words`, also on `KPressRenderRequest`):
+  words of visible rendered text the document must have.
+  Default 800, between one and two printed pages.
+
+Either test alone admits documents a TOC does not help.
+A count-only rule gives one to a half-screen note whose every section is already on
+screen; a length-only rule gives one to a long unbroken essay with three headings.
+The pairing asks the question that actually matters: is this long enough to scroll past,
+and divided finely enough that scrolling is a poor way to reach a part of it?
+
+Length is measured on the **rendered HTML’s visible text**, not the Markdown source, so
+table cells and list items count while link targets, attributes, and fence syntax do not
+— a page of one-line sections full of long URLs cannot buy a TOC it has no reading
+length to justify. The count is `DocumentTree.word_count`.
+
+`include_toc="on"` and `"off"` bypass both thresholds.
+A host that wants the historical count-only behavior sets `toc_min_words: 0` and
+`toc_min_headings: 4`.
+
 ### Collapsible TOC
 
 Long documents overflow the TOC pane, so the TOC supports depth collapse, off by
@@ -1356,8 +1385,8 @@ stay in the markup and the page model — collapse is visibility only.
 In the wide band (≥ 75rem of *pane* width) the TOC is a sticky left sidebar and the
 reading column is grid track 2, left-aligned: a constant 48rem of text at a constant
 distance from the pane’s left edge.
-A document that falls under `format.toc_min_headings` gets no TOC, so by default it also
-gets no grid and reverts to the centred, measure-capped single column.
+A document that misses either TOC threshold gets no TOC, so by default it also gets no
+grid and reverts to the centred, measure-capped single column.
 That fallback moves the prose sideways **and** narrows it — the 2.5rem inset on
 `.kpress-content-with-toc .kpress-long-text` is sized for the 53rem grid track, so
 against the 48rem cap it costs 5rem of measure.

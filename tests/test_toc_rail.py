@@ -24,8 +24,12 @@ from kpress.runtime import render_view
 
 STAMP = 'data-kpress-toc-rail="reserved"'
 
-# Six H2s clears the default toc_min_headings of 4; one does not.
-LONG = "# Title\n\nintro\n\n" + "".join(f"## Section {i}\n\nbody\n\n" for i in range(6))
+# An "auto" TOC takes both a heading count and a length (see
+# RenderOptions.toc_min_headings), so the long fixture clears both: eight
+# sections and comfortably more body than toc_min_words. The short one clears
+# neither.
+_SECTION_BODY = " ".join(["body"] * 120)
+LONG = "# Title\n\nintro\n\n" + "".join(f"## Section {i}\n\n{_SECTION_BODY}\n\n" for i in range(8))
 SHORT = "# Title\n\nintro\n\n## Only section\n\nbody\n"
 
 

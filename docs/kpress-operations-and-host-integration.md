@@ -216,6 +216,26 @@ override per page via
 apply (a `collapseDepth` of `0` turns collapse off), and the expand-all control is
 server-rendered chrome — no host-injected markup.
 
+### Suppressing the TOC in an Embedded Document
+
+A host that embeds a document inside its own navigation — a README shown in a folder
+summary, a description panel beside a list — usually wants no TOC in the embed at all.
+The surrounding chrome is the navigation there, and a second one inside the document
+competes with it.
+Suppress it rather than hiding it with host CSS, so the layout is never
+built and then covered up (full contract:
+[When a Document Earns a TOC](kpress-design.md#when-a-document-earns-a-toc)):
+
+- **Static publish:** `format.toc: off` in `kpress.yml`.
+- **Python render:** `RenderOptions(include_toc="off")`.
+- **Dynamic path:** `KPressRenderRequest(include_toc="off")`; any value outside
+  `auto`/`on`/`off` fails the request with `KPressInvalidRequestError`.
+
+The same three surfaces carry `toc_min_headings` and `toc_min_words` for hosts that want
+a different bar rather than no TOC. Both are validated as integers ≥ 0 on the dynamic
+path, and both take part in the render cache identity, so two hosts rendering one
+document under different TOC settings do not share a cache entry.
+
 ### Reserved TOC Rail
 
 A host that shows one document after another — a file browser, a docs site — usually
@@ -228,7 +248,7 @@ document earned a TOC sidebar (full contract:
 - **Dynamic path:** `KPressRenderRequest(toc_rail="reserved")`; any other value fails
   the request with `KPressInvalidRequestError`.
 
-Without it, documents under `format.toc_min_headings` fall back to a centred column that
+Without it, documents that miss either TOC threshold fall back to a centred column that
 is both offset and 5rem narrower than their TOC-bearing neighbours.
 The default (`auto`) keeps that fallback and renders byte-identical markup, so enabling
 this is a pure opt-in.

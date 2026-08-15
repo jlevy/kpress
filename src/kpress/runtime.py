@@ -226,6 +226,21 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         raise KPressInvalidRequestError(
             f"Invalid toc_rail: {toc_rail!r}; expected 'auto' or 'reserved'"
         )
+    include_toc: Any = request.include_toc
+    if include_toc not in ("auto", "on", "off"):
+        raise KPressInvalidRequestError(
+            f"Invalid include_toc: {include_toc!r}; expected 'auto', 'on', or 'off'"
+        )
+    # Same untrusted-runtime-value treatment as toc_collapse_depth above: a
+    # bool is an int in Python, and a negative threshold would silently mean
+    # "always", so both are rejected here rather than at the render.
+    for name, threshold in (
+        ("toc_min_headings", request.toc_min_headings),
+        ("toc_min_words", request.toc_min_words),
+    ):
+        value: Any = threshold
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise KPressInvalidRequestError(f"Invalid {name}: {value!r}; expected an integer >= 0")
     # Same normalization as the static dialects (presence scalars to
     # "on"/"off"/"auto", typos raise): static and dynamic hosts must publish
     # identical widget data, and an invalid value must not be kept truthy.
@@ -253,6 +268,9 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         # Presentation settings change the rendered markup, so they are part
         # of the cache identity.
         request.show_doc_header,
+        request.include_toc,
+        request.toc_min_headings,
+        request.toc_min_words,
         request.toc_collapse_depth,
         request.toc_expand_on_scroll,
         request.toc_rail,
@@ -309,6 +327,9 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
             request.asset_url_prefix.rstrip("/") + "/" + _ASSET_VERSION_SEGMENT + "/"
         ),
         show_doc_header=request.show_doc_header,
+        include_toc=include_toc,
+        toc_min_headings=request.toc_min_headings,
+        toc_min_words=request.toc_min_words,
         toc_collapse_depth=request.toc_collapse_depth,
         toc_expand_on_scroll=request.toc_expand_on_scroll,
         toc_rail=toc_rail,

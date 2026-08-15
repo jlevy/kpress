@@ -31,8 +31,9 @@ FILLER = "\n\n".join(f"Paragraph {index} of filler prose." for index in range(40
 def test_hash_history_and_viewport_restoration_in_real_browser(tmp_path: Path) -> None:
     sync_api = pytest.importorskip("playwright.sync_api")
     (tmp_path / "content").mkdir()
-    sections = "\n\n".join(f"## Part {index}\n\n{FILLER}" for index in range(1, 4))
-    # Enough headings for the TOC (toc_min_headings) so the Contents link exists.
+    sections = "\n\n".join(f"## Part {index}\n\n{FILLER}" for index in range(1, 6))
+    # Seven headings and forty paragraphs a section clears both TOC thresholds
+    # (toc_min_headings, toc_min_words), so the Contents link exists.
     (tmp_path / "content" / "index.md").write_text(
         "# History smoke\n\n"
         f"[Jump to details](#details)\n\n## Early\n\n{FILLER}\n\n"
@@ -150,6 +151,11 @@ def test_unicode_anchor_consumers_agree_in_real_browser(tmp_path: Path) -> None:
         f"## Café Notes\n\n{FILLER}\n\n"
         f"## Café Notes\n\n{FILLER}\n\n"
         f"## Привет 世界\n\n{FILLER}\n\n"
+        # Padding sections: the anchors under test are the three above, but the
+        # TOC they are read from is only rendered once the document clears
+        # toc_min_headings.
+        f"## Padding One\n\n{FILLER}\n\n"
+        f"## Padding Two\n\n{FILLER}\n\n"
         "## Last\n\nDone.\n",
         encoding="utf-8",
     )
