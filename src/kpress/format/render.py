@@ -81,7 +81,8 @@ def _should_include_toc(tree: DocumentTree, options: RenderOptions) -> bool:
         return False
     if options.include_toc == "on":
         return bool(tree.toc)
-    return len(tree.toc) >= options.toc_min_headings
+    # Both thresholds, deliberately: see RenderOptions.toc_min_headings.
+    return len(tree.toc) >= options.toc_min_headings and tree.word_count >= options.toc_min_words
 
 
 def _reserves_toc_rail(tree: DocumentTree, options: RenderOptions) -> bool:

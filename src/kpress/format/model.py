@@ -146,7 +146,20 @@ class RenderOptions:
     # complete reader closure.
     asset_policy: AssetPolicy = "auto"
     include_toc: TocMode = "auto"
-    toc_min_headings: int = 4
+    # "auto" earns a TOC only by clearing BOTH thresholds. Either alone admits
+    # documents a TOC does not help: a heading count alone gives one to a
+    # half-screen note whose every section is already visible, and a word count
+    # alone gives one to a long unbroken essay with three headings. A reader
+    # needs a TOC when the document is long enough to scroll past and divided
+    # finely enough that scrolling is a poor way to reach a part of it.
+    #
+    # 7 headings is the first count that reliably outruns a screen of nav.
+    # 800 words is between one and two printed pages -- past the point where a
+    # reader can take in the shape of the document by scrolling it once.
+    # A host that wants the old always-on-for-4-headings behavior sets
+    # toc_min_words=0 and toc_min_headings=4.
+    toc_min_headings: int = 7
+    toc_min_words: int = 800
     # Wide band (>= 75rem of pane width) only: whether the TOC sidebar track is
     # part of the layout or a consequence of the TOC.
     #
@@ -298,6 +311,10 @@ class DocumentTree:
     footnotes: list[Footnote] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
     has_math: bool = False
+    # Words of visible rendered text, the length half of the TOC threshold
+    # (see RenderOptions.toc_min_words). Zero for trees built outside the
+    # Markdown parser, which is the source profile's raw-source path.
+    word_count: int = 0
 
 
 @dataclass(frozen=True)

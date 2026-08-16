@@ -8,10 +8,12 @@ from typing import Any, Literal
 
 PrintProfile = Literal["document", "source", "table", "tree", "plain"]
 ThemeMode = Literal["system", "light", "dark"]
-# Mirrors format.model.TocRail. Declared here rather than imported so the host
-# request models stay independent of the format package, as PrintProfile and
-# ThemeMode already are; runtime.py membership-checks the value either way.
+# Mirror format.model.TocRail / TocMode. Declared here rather than imported so
+# the host request models stay independent of the format package, as
+# PrintProfile and ThemeMode already are; runtime.py membership-checks the
+# values either way.
 TocRail = Literal["auto", "reserved"]
+TocMode = Literal["auto", "on", "off"]
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,14 @@ class KPressRenderRequest:
     # Hosts that show the document title in their own chrome suppress the
     # rendered <h1> doc header (default keeps it, as standalone pages want it).
     show_doc_header: bool = True
+    # TOC presence — the dynamic-path counterpart of RenderOptions.include_toc
+    # and its two "auto" thresholds. A host that embeds a document inside its
+    # own navigation (a README shown in a folder summary, say) passes "off":
+    # the surrounding chrome is the navigation there, and a second one inside
+    # the embed competes with it. Validated as a closed choice.
+    include_toc: TocMode = "auto"
+    toc_min_headings: int = 7
+    toc_min_words: int = 800
     # Collapsible TOC — the dynamic-path counterpart of
     # RenderOptions.toc_collapse_depth / toc_expand_on_scroll, so a host's
     # embeds collapse the same way its static publish does. None keeps the

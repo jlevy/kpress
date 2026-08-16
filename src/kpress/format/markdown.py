@@ -50,6 +50,13 @@ TABLE_WIDE_MIN_COLUMNS = 6
 TABLE_WIDE_MIN_ROW_CHARS = 100
 _INLINE_CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 _FOOTNOTE_REF_RE = re.compile(r"(?<!\\)\[\^([^\]\s]+)\]")
+# Reader-facing length, used by the TOC threshold (see
+# RenderOptions.toc_min_words). Measured on the rendered HTML rather than the
+# Markdown source so it counts what the reader actually scrolls past: table
+# cells and list items count, while link targets, attributes, and fence syntax
+# do not. Deliberately crude — the threshold it feeds is a coarse "is this
+# long enough to navigate" question, not a reading-time estimate.
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 # Module-level singleton is safe to share across threads: Pygments'
 # `HtmlFormatter.format()` reads instance config but does not mutate it,
 # and writes into a per-call StringIO inside `pygments.highlight()`. The
@@ -1040,6 +1047,12 @@ def _footnote_diagnostics(tokens: list[Token], env: dict[str, Any]) -> list[Diag
     return diagnostics
 
 
+def _visible_word_count(html: str) -> int:
+    """Count whitespace-separated words in rendered HTML's visible text."""
+
+    return len(unescape(_HTML_TAG_RE.sub(" ", html)).split())
+
+
 def _toc_entries(headings: list[Heading]) -> list[TocEntry]:
     toc_headings = headings
     if headings and headings[0].level == 1 and sum(item.level == 1 for item in headings) == 1:
@@ -1140,4 +1153,5 @@ def parse_markdown(
         footnotes=footnotes,
         diagnostics=diagnostics,
         has_math=bool(env.get("kpress_has_math")),
+        word_count=_visible_word_count(html),
     )

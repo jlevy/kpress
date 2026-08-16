@@ -545,6 +545,7 @@ def build_site(
                 show_doc_header=config.format.show_doc_header,
                 include_toc=config.format.toc,
                 toc_min_headings=config.format.toc_min_headings,
+                toc_min_words=config.format.toc_min_words,
                 toc_rail=config.format.toc_rail,
                 toc_collapse_depth=config.format.toc_collapse_depth,
                 toc_expand_on_scroll=config.format.toc_expand_on_scroll,
