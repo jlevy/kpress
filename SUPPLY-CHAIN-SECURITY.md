@@ -86,6 +86,27 @@ patch):
 The first-party exemption above is the only standing carve-out and does not require a
 per-install sign-off.
 
+### Granted Exceptions
+
+| Package | Advisory | Published | Adopted | Reviewed-by |
+| --- | --- | --- | --- | --- |
+| `nanoid@3.3.18` | [GHSA-2v37-7h3g-55p8](https://github.com/advisories/GHSA-2v37-7h3g-55p8) | 2026-08-07 | 2026-08-15 (8 days old) | Joshua Levy <joshua@cal.berkeley.edu> |
+
+`nanoid@3.3.18` is the only version that fixes GHSA-2v37-7h3g-55p8, which covers every
+release below it, so `npm audit` failed the `lint` job on every pull request until it
+landed. The flaw is a denial of service (CVSS 5.9, CWE-835): a custom generator loops
+forever when asked for size zero.
+It enters this repository only as a development dependency (`vitest` → `vite` →
+`postcss` → `nanoid`), and postcss calls `nanoid(6)` with a fixed nonzero size, so the
+exposure here is nil.
+The alternative was to leave every pull request red until 2026-08-21, when the version
+clears the cool-off on its own and this entry becomes history.
+
+Checked against the registry before adoption: `npm view nanoid@3.3.18` returns a live
+`dist.tarball` with no `deprecated` field and the version still listed, and its
+published integrity hash matches the `package-lock.json` entry, so the release was not
+yanked.
+
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
 -->
