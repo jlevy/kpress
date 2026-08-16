@@ -15,25 +15,26 @@ Last reconciled: 2026-08-08.
 
 ## Release Status
 
-KPress `0.3.0` is published on PyPI as the current public alpha.
-It makes typography root-independent, makes light and dark theme selection symmetric at
-one host-chosen scope, keeps fragment HTML theme-agnostic, and makes automatic fragment
-assets host-owned by default.
-The release shipped without compatibility shims after exact-main review, full local and
-GitHub release gates, artifact inspection, downstream metabrowser integration, and PyPI
-Trusted Publishing. The exact registry wheel passed clean version, help, doctor, README,
-and bundled-example smokes; its wheel and sdist hashes match the detached-tag preflight
-artifacts. KPress `0.2.4` remains the previous public alpha and `0.1.0` the first.
+KPress `0.3.3` is the current public alpha on PyPI, the third compatible maintenance
+release on the `0.3` declarative-embedding line.
+It makes an automatic TOC take both a heading count and a document length, and gives
+dynamic hosts the `include_toc` control the static path already had.
+Its one observable change is which documents earn a TOC; see
+[the release notes](docs/releases/0.3.3.md).
+
+The `0.3` line begins at `0.3.0`, which made typography root-independent, made light and
+dark theme selection symmetric at one host-chosen scope, kept fragment HTML
+theme-agnostic, and made automatic fragment assets host-owned by default.
+`0.3.1` added the opt-in reserved TOC rail, and `0.3.2` fixed two typographic rules
+scoped to the wrong box.
+`0.2.4` remains the last `0.2` alpha and `0.1.0` the first.
 Alpha status is conveyed by package metadata and release notes, not by a version suffix.
 
-KPress `0.3.1` is the prepared next release candidate, a compatible maintenance release
-for the `0.3` line. It adds the opt-in reserved TOC rail (`format.toc_rail`) and carries
-the PostCSS advisory patch.
-The change is purely additive: `auto` is the default and reproduces `0.3.0` rendering
-byte for byte. Lint, the full Python and browserless JavaScript suites, real-Chromium
-reader checks, distribution inspection, and the clean-room wheel install all pass on
-exact `main`; tagging, GitHub release creation, and PyPI Trusted Publishing remain a
-separate explicit release action.
+Every release on this line shipped without compatibility shims, through the same route:
+exact-`main` review, the full local and GitHub gates, artifact inspection, and PyPI
+Trusted Publishing, with the exact registry wheel re-smoked afterward.
+Tagging, GitHub release creation, and publication remain a separate explicit action
+rather than a consequence of merging.
 
 Completed release gates:
 
