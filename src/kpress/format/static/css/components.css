@@ -79,25 +79,54 @@
    grid track, so against the 48rem cap it eats 5rem of measure). Under
    toc_rail "auto" (the default) nothing is stamped and that fallback stands.
 
-   TWO elements carry the reading-measure cap and BOTH centre via
-   margin:auto (in document.css): `.kpress-doc` (max-width measure + 2rem)
-   and the inner `.kpress-doc-layout` (max-width = measure). Plain single-
-   column reading wants both caps. Any layout that needs the full pane must
-   uncap BOTH — uncapping only the article leaves `.kpress-doc-layout`
-   centred at the measure, which reads as a large left margin with the
-   grid tracks spilling off its right edge.
+   THE WIDTH CHAIN. `--kpress-measure` is the width of the TEXT, padding
+   excluded. Three nested elements bound the column, and each adds back exactly
+   the padding that sits between it and the text:
+
+     .kpress-doc         measure + 2x inset + 2x gutter   (document.css)
+     .kpress-doc-layout  measure + 2x inset               (document.css)
+     .kpress-long-text   measure + 2x inset, padded by the inset
+
+   so the text lands at the measure in every band. `--kpress-column-inset` is
+   the band's inline padding inside the column (1.5rem phone / 4rem single
+   column / 2.5rem in the wide TOC grid) and `--kpress-doc-gutter` is the page
+   margin outside it; the bands reset those two tokens on `.kpress-doc` and the
+   caps follow. Nothing in the chain restates a length the tokens already carry.
+
+   Write any new cap the same way. The bug this shape replaced was three caps
+   that each added a different subset of the padding: `.kpress-long-text` used a
+   literal `48rem` that duplicated the measure and omitted the inset, so the
+   same token meant "the text" in the wide band and "the text plus 8rem" in the
+   single-column one — a 10rem step in reading width across the 75rem boundary —
+   and a host that set the token moved almost nothing, because two of the three
+   caps and the grid track never read it.
+
+   All three cap elements centre via margin:auto. Plain single-column reading
+   wants all of them. Any layout that needs the full pane must uncap the outer
+   two — uncapping only the article leaves `.kpress-doc-layout` centred at the
+   measure, which reads as a large left margin with the grid tracks spilling off
+   its right edge.
 
    Everything responsive keys off `@container kpress-doc` — the width of the
    scroll pane (`.kpress-viewport`), NOT the window — so it is correct both
    standalone and embedded in a host pane narrower than the window. Three
    mutually exclusive bands, each defined once below:
 
-     >= 75rem   WIDE     TOC is a sticky left sidebar. Uncaps both caps;
-                         grid is `15rem 53rem`, left-aligned (justify-
-                         content: start) so the reading column is a constant
-                         48rem and all extra width is one right-hand margin.
+     >= 75rem   WIDE     TOC is a sticky left sidebar. Uncaps the outer two
+                         caps; grid is `15rem <column box>`, left-aligned
+                         (justify-content: start) so the reading text is a
+                         constant measure and all extra width is one right-hand
+                         margin. Column inset 2.5rem.
      48-75rem   TABLET   Single column; TOC is a fixed drawer + toggle.
-     < 48rem    MOBILE   Single column; drawer; tighter type.
+                         Column inset 4rem.
+     < 48rem    MOBILE   Single column; drawer; tighter type. Column inset
+                         1.5rem.
+
+   The band conditions are literal lengths because a container query cannot read
+   var(). They are therefore the one part of this system that does NOT follow
+   the measure: a host that changes the measure changes the reading width, not
+   where the bands switch. The wide band's track carries a `min()` guard so an
+   over-large measure degrades instead of overflowing the pane at the floor.
 
    TABLE INVARIANT: only tables marked `data-kpress-table-scale="wide"`
    (stamped by the renderer / tables.js past the TABLE_WIDE_MIN_* cutoff)
@@ -124,11 +153,17 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Cap #3 of the width chain: the column itself. max-width is a border box, so
+   it is the measure PLUS the inset; the padding then gives the measure back as
+   text. The two must be written from the same token or they drift -- this rule
+   previously capped at a literal `48rem` that duplicated the measure and did
+   not add the inset, so the text came out one inset-pair narrower than the
+   measure asked for, and the literal ignored a host that set the token. */
 .kpress-long-text {
   background: var(--kpress-doc-bg);
   margin-inline: auto;
-  max-width: min(100%, 48rem);
-  padding: 1rem 1.5rem;
+  max-width: min(100%, calc(var(--kpress-measure) + 2 * var(--kpress-column-inset)));
+  padding: 1rem var(--kpress-column-inset);
 }
 
 /* Container, not viewport: the phone band that undoes this
@@ -137,8 +172,11 @@
    differ — which is every embedded host. 48rem is the same boundary from the
    other side. */
 @container kpress-doc (min-width: 48rem) {
-  .kpress-long-text {
-    padding-inline: 4rem;
+  /* Set on .kpress-doc, not on the column: all three caps in the chain read the
+     inset, so a band that changed only the column's padding would move the text
+     inside a box the outer two still sized for 1.5rem. */
+  .kpress-doc {
+    --kpress-column-inset: 4rem;
   }
 }
 
@@ -1755,14 +1793,34 @@
     max-width: none;
   }
 
-  /* BOTH columns are fixed widths, and the pair is left-aligned with
-     justify-content. Neither track contains a pane-coupled term (no cqw/vw, no
-     1fr), so the content column is a hard constant 48rem at every pane width.
+  /* The gridded column carries a tighter inset than the single-column bands:
+     the 3rem TOC gap and the trailing margin already hold it off its
+     surroundings, so 2.5rem is enough for the content card's chrome to breathe.
+     Conditioned exactly like the grid above -- a wide pane with no TOC and no
+     reserved rail stays single-column and keeps the 4rem band inset. */
+  .kpress-doc:has(.kpress-toc),
+  .kpress-doc:has(> [data-kpress-toc-rail="reserved"]) {
+    --kpress-column-inset: 2.5rem;
+  }
+
+  /* BOTH columns are width-bounded and the pair is left-aligned with
+     justify-content, so the content column is a constant at every pane width.
      The earlier `clamp(.., 15cqw, ..)` TOC column grew with the pane and, under
      a fixed 68rem group cap, ate into the 1fr content column -- so the text got
-     narrower the wider you dragged. Fixed tracks remove that coupling entirely;
-     left-aligning pins the TOC + content to the start so all extra pane width
-     becomes a single trailing margin -- no empty band to the left of the TOC. */
+     narrower the wider you dragged. Left-aligning pins the TOC + content to the
+     start so all extra pane width becomes a single trailing margin -- no empty
+     band to the left of the TOC.
+
+     The content track is the column box, measure + 2x inset, so the TEXT lands
+     at exactly the measure. The `min()` against the pane is a guard, not a
+     resize: this band's floor is the literal 75rem below (a container query
+     cannot read var()), so a host that raises the measure past what the floor
+     assumed would otherwise overflow the pane rather than fit in it. At the
+     default the guard never binds -- at the 75rem floor it evaluates to 55rem
+     against a 50rem track -- so the column stays the promised constant and only
+     an over-large measure degrades, gracefully, instead of spilling.
+     100cqw - 20rem is the pane less the 15rem rail, the 3rem gap and the two
+     1rem page gutters. */
   .kpress-content-with-toc.has-toc,
   .kpress-content-with-toc:has(.kpress-toc),
   .kpress-content-with-toc[data-kpress-toc-rail="reserved"] {
@@ -1772,20 +1830,13 @@
        above; the reserved rail is not, and only becomes a grid inside this
        band — narrow bands have no rail to reserve and stay single-column. */
     display: grid;
-    grid-template-columns: 15rem 53rem;
+    grid-template-columns:
+      15rem
+      min(calc(var(--kpress-measure) + 2 * var(--kpress-column-inset)), calc(100cqw - 20rem));
     justify-content: start;
     min-height: 100dvh;
   }
 
-  /* The content track is 53rem = the 48rem reading measure + 2×2.5rem inset.
-     The base md rule pads .kpress-long-text by 4rem inline (kash's md:px-16,
-     meant to inset text from the screen edge in a full-width single-column
-     view). Here the column is already inset by the 3rem TOC gap and a large
-     symmetric outer margin, so we trim that padding back to 2.5rem (enough
-     inner margin for the content-card chrome to breathe); with the widened
-     track the *text* lands at the full 48rem measure (border-box), not the
-     40rem it shrank to under 4rem padding. The 75rem band floor still fits:
-     15 + 3 + 53 = 71rem + the 2×2rem page gutters = 75rem exactly. */
   /* The site header/footer rows follow the same geometry as the doc grid: with a
      TOC the grid left-anchors inside .kpress-doc (1rem doc pad + 15rem track +
      3rem gap) and .kpress-long-text pads 2.5rem, so the reading text's inline
@@ -1801,11 +1852,14 @@
     padding-inline-start: 21.5rem;
   }
 
+  /* The track above is already the column box, so the column fills it and the
+     inset comes from the token the article set for this band -- the padding is
+     not restated here, or it would be a second place to keep in step with the
+     track. */
   .kpress-content-with-toc .kpress-long-text {
     grid-column: 2;
     margin: 0;
     max-width: none;
-    padding-inline: 2.5rem;
   }
 
   /* The optional thumbnail is the layout's third child and the only one with
@@ -1917,8 +1971,11 @@
      where the 1rem base padding leaves the first characters covered. Hosts
      that add their own pane inset shrink the reservation through the
      clearance variable (their inset already contributes to the gutter). */
+  /* Set the gutter token, not padding-inline: .kpress-doc's cap adds the gutter
+     (box-sizing is border-box), so widening the padding alone would take the
+     extra room out of the reading column instead of out of the page margin. */
   .kpress-doc {
-    padding-inline: max(1rem, var(--kpress-toc-toggle-clearance));
+    --kpress-doc-gutter: max(1rem, var(--kpress-toc-toggle-clearance));
   }
 
   .kpress-toc-backdrop {

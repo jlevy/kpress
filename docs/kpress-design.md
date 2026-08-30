@@ -830,10 +830,12 @@ The supported fragment variables are:
   deliberate design departure from the derived ratio (for example aligning mono or label
   sizes with host chrome), never as the way to scale the document.
   See “Sizing policy” below.
-- measure and host spacing: `--kpress-measure`, `--kpress-page-margin-inline`,
+- measure and host spacing: `--kpress-measure`, `--kpress-column-inset`,
+  `--kpress-doc-gutter`, `--kpress-page-margin-inline`,
   `--kpress-page-margin-block-start`, and `--kpress-toc-toggle-clearance` (the inline
   gutter the document reserves for the floating TOC toggle in the narrow band; a host
-  whose pane inset already contributes to that gutter shrinks it accordingly)
+  whose pane inset already contributes to that gutter shrinks it accordingly).
+  See “Reading measure” below for what the first three mean and how they compose.
 - print: `--kpress-print-page-margin`, `--kpress-print-font-size`, and
   `--kpress-print-footer`
 
@@ -983,18 +985,61 @@ size, silently changing ratios in nested contexts like captions and footnotes.
 - **Print** re-roots the base at `--kpress-print-font-size` inside `@media print`, so
   paper output keeps the designed ratios to the print body size regardless of the screen
   root or a host-pinned base.
-- **Deliberately root-relative** (not derived from the base): layout lengths — the
-  `--kpress-measure` reading measure, container-query band conditions (where `var()` is
-  not valid CSS), TOC grid tracks, tooltip width caps, and page margins.
-  Container bands and the type they resize therefore key off the same root only when the
-  base is left at its default; a host that pins the base accepts that band boundaries
-  stay root-relative.
+- **Deliberately root-relative** (not derived from the base): container-query band
+  conditions (where `var()` is not valid CSS), tooltip width caps, and page margins.
+  A host that pins the base accepts that band boundaries stay root-relative.
+  The reading measure is the exception and is derived from the base — see “Reading
+  measure” below.
 - **Contributors:** new sizes must be expressed relative to the base
   (`calc(var(--kpress-font-size-base) * ratio)`); intentionally context-relative
   `em`/`%` sizes (the summary chevron, the task-list checkbox, `sup`/`sub`) are the
   exception, not the pattern.
   The no-`rem` invariant is enforced by `devtools/public_hygiene.py` and a two-root
   real-browser regression test.
+
+### Reading Measure
+
+`--kpress-measure` is the width of the **text**, padding excluded.
+It defaults to `calc(var(--kpress-font-size-base) * 45)`, so the column tracks the type
+it holds: a host that pins `--kpress-host-font-size-base` keeps the same characters per
+line at any size, where a root-relative length would hold the pixels and change the
+line.
+
+Three nested elements bound the column, each adding back the padding between it and the
+text, so the text lands at the measure in every band:
+
+| Element | Cap |
+| --- | --- |
+| `.kpress-doc` | measure + 2× inset + 2× gutter |
+| `.kpress-doc-layout` | measure + 2× inset |
+| `.kpress-long-text` | measure + 2× inset, padded by the inset |
+
+`--kpress-column-inset` is the inline padding inside the column and varies by band
+(1.5rem phone, 4rem single column, 2.5rem in the wide TOC grid); `--kpress-doc-gutter`
+is the page margin outside it.
+The bands reset those two on `.kpress-doc` and every cap follows.
+A host setting the measure sets one value and gets one reading width; it should not
+restate the caps.
+
+Write the measure as `calc(base × N)`, not `N em`. An `em` inside a custom property
+resolves at each *consuming* element, and the measure is read on three elements that do
+not share a font-size, so `45em` would silently mean three different lengths.
+
+**Characters per line.** The measure is a length, not a character count, because the
+conversion depends on the face.
+Measured over 507 characters of representative English prose, the average glyph advance
+is 0.4335 em/char for PT Serif and 0.4039 em/char for Source Sans 3, so the 45 default
+reads about 104 and 111 characters respectively.
+Eight common proportional text faces span 0.392–0.434 em/char, which puts `45em` in the
+104–115 character range for any of them.
+Note this is the *average advance*, not the CSS `ch` unit: `ch` is the advance of “0”
+and overstates a proportional face by roughly 23%, and its relation to the average
+varies far more across faces (0.66–1.0) than the average itself does.
+
+KPress ships no per-face constants, because `--kpress-host-font-prose` lets a host swap
+the face and invalidate them.
+A host that wants a true character count knows its own pinned face: measure that face
+once and set the measure from it.
 
 ## Theme and Fonts
 

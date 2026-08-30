@@ -15,10 +15,19 @@
   box-sizing: inherit;
 }
 
+/* Cap #1 of the width chain (see components.css "the width chain"): the article
+   holds the reading column plus its inset plus the page gutter. Every term is
+   named, because the failure this fixes was a cap that added some of them and
+   not others -- the measure then meant "text" at one width and "text minus
+   padding" at another. box-sizing is border-box (.kpress above), so the gutter
+   belongs inside the cap. */
 .kpress-doc {
   margin: 0 auto;
-  max-width: min(100%, calc(var(--kpress-measure, 76ch) + 2rem));
-  padding: 2rem 1rem 3rem;
+  max-width: min(
+    100%,
+    calc(var(--kpress-measure) + 2 * var(--kpress-column-inset) + 2 * var(--kpress-doc-gutter))
+  );
+  padding: 2rem var(--kpress-doc-gutter) 3rem;
 }
 
 .kpress-print-surface {
@@ -75,9 +84,13 @@
   margin-bottom: 0.15rem;
 }
 
+/* Cap #2 of the width chain: the column box, text plus its inset. Capping this
+   at the bare measure is what clamped the column below the measure in the
+   single-column bands -- the inset was then subtracted from a box already
+   sized to the text. */
 .kpress-doc-layout {
   margin: 0 auto;
-  max-width: var(--kpress-measure, 76ch);
+  max-width: calc(var(--kpress-measure) + 2 * var(--kpress-column-inset));
 }
 
 .kpress-prose {

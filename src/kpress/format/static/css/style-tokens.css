@@ -141,9 +141,48 @@
   );
 
   /* ========================= 2. SPACING & LAYOUT ========================= */
-  /* Prose reading measure. 48rem (~768px) matches kash's --content-width; the
-     earlier 76ch (~640px in serif) read narrower than the reference. */
-  --kpress-measure: 48rem;
+  /* Prose reading measure: the width of the TEXT itself, padding excluded.
+     Every element that bounds the reading column derives from this token and
+     the inset below -- see "the width chain" in components.css. It is the one
+     knob a host turns to change how wide documents read.
+
+     Derived from the type base rather than the root, `calc(base * 45)`, so the
+     column tracks the text it holds: a host that pins
+     --kpress-host-font-size-base gets the same characters per line at any size,
+     where a root-relative length would hold the pixels and change the line.
+     Written as calc(base * N) rather than `45em` deliberately -- an `em` in a
+     custom property resolves at each CONSUMING element, and this token is read
+     on .kpress-doc, .kpress-doc-layout and .kpress-long-text, which do not
+     share a font-size. calc(base * N) is the same idiom the type ramp uses and
+     resolves to one length everywhere.
+
+     45 is a character-count decision, converted. Measured over 507 characters
+     of representative English prose at 100px (the average glyph advance, not
+     the `ch` unit -- `ch` is the advance of "0" and overstates a proportional
+     face by ~23%):
+
+       PT Serif (prose default)  0.4335 em/char -> 45em reads ~104 chars
+       Source Sans 3 (sans mode) 0.4039 em/char -> 45em reads ~111 chars
+
+     Eight common proportional text faces (PT Serif, Source Sans, Georgia,
+     Times, system-ui, Helvetica, Palatino, Charter) span 0.392-0.434 em/char,
+     so ~45em lands in the 104-115 character range for any of them. KPress does
+     not carry per-face constants: a host may swap the face through
+     --kpress-host-font-prose, which would invalidate them. A host that wants a
+     true character count measures its own pinned face and sets this token. */
+  --kpress-measure: calc(var(--kpress-font-size-base) * 45);
+  /* Inline padding inside the reading column, between the text and the content
+     card's edge. Band-dependent (the three bands reset it in components.css),
+     and paired with the measure everywhere the column is bounded: a cap that
+     forgot to add it is what made the measure mean "text" in one band and
+     "text + padding" in another. Declared here on the foundation scope and
+     reset per band on .kpress-doc -- the same element as .kpress, so the reset
+     wins on cascade order (components.css loads after this file) -- and it
+     inherits down to the layout and the column, which read the one value. */
+  --kpress-column-inset: 1.5rem;
+  /* Inline padding on the article, outside the column: the page gutter. Paired
+     with the measure in .kpress-doc's cap for the same reason as the inset. */
+  --kpress-doc-gutter: 1rem;
   --kpress-page-margin-inline: 2rem;
   --kpress-page-margin-block-start: 2.5rem;
   /* Settings gear position (standalone page shell only). The gear is `position:

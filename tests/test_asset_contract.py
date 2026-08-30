@@ -506,17 +506,23 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
         # §3.7/§3.8 tooltip stacking above TOC + the fade-in visible class
         "z-index: 300",
         "kpress-tooltip-visible",
-        # §3.6 TOC sidebar breakpoint (75rem ≈ kash 1200px). Both grid tracks are
-        # FIXED widths (no cqw/vw/1fr) so the content column is a hard constant
-        # 48rem at every pane width; the pair is left-aligned with justify-content
-        # so extra pane width becomes a single trailing margin (no empty band left
-        # of the TOC). A pane-coupled term in the column math (the old
-        # clamp(.., 15cqw, ..) TOC under a fixed group cap) made the content shrink
-        # as the pane widened.
+        # §3.6 TOC sidebar breakpoint (75rem ≈ kash 1200px). The content track is
+        # the column box — the reading measure plus its two insets — so the TEXT
+        # lands at exactly the measure; the pair is left-aligned with
+        # justify-content so extra pane width becomes a single trailing margin (no
+        # empty band left of the TOC). Neither track grows with the pane: a
+        # pane-coupled term in the column math (the old clamp(.., 15cqw, ..) TOC
+        # under a fixed group cap) made the content shrink as the pane widened.
+        # The min() against 100cqw is a floor guard, not a resize — it does not
+        # bind at the default measure — so an over-large host measure degrades
+        # instead of overflowing the pane.
         "@container kpress-doc (min-width: 75rem)",
-        # 53rem = 48rem reading measure + 2×2.5rem inset (content-card inner
-        # breathing room; was 51rem at 1.5rem inset).
-        "grid-template-columns: 15rem 53rem;",
+        # Pinned as the derivation, not as a literal width: a literal here is what
+        # let the track drift out of step with --kpress-measure, so that setting
+        # the public token moved the article and left the text where it was. The
+        # rail track stays 15rem; only the content track is derived.
+        "grid-template-columns:",
+        "min(calc(var(--kpress-measure) + 2 * var(--kpress-column-inset)), calc(100cqw - 20rem))",
         "justify-content: start",
         # The grid wrapper carries its own reading-measure cap + margin:auto
         # (`.kpress-doc-layout`), so it must be uncapped alongside the article

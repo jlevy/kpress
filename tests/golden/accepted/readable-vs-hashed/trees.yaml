@@ -1,17 +1,17 @@
 readable:
   files:
     _kpress/assets/css/components.css:
-      bytes: 68365
-      sha256_16: 763595ddf1a251e9
+      bytes: 71853
+      sha256_16: c36160206466acd8
     _kpress/assets/css/document.css:
-      bytes: 12505
-      sha256_16: d86525c4bb370b43
+      bytes: 13301
+      sha256_16: 49d55a2dbac06488
     _kpress/assets/css/print.css:
       bytes: 8033
       sha256_16: 86c6396bc77060cd
     _kpress/assets/css/style-tokens.css:
-      bytes: 29950
-      sha256_16: 0554b3a1d96a854f
+      bytes: 32482
+      sha256_16: 8aeaaafb77d8ec54
     _kpress/assets/css/syntax.css:
       bytes: 7789
       sha256_16: 807cf5be35b5a8dd
@@ -67,25 +67,25 @@ readable:
       json:
         files:
         - applied_pipeline: []
-          content_hash: 763595ddf1a251e9
+          content_hash: c36160206466acd8
           kind: css
           path: _kpress/assets/css/components.css
-          size: 68365
+          size: 71853
         - applied_pipeline: []
-          content_hash: d86525c4bb370b43
+          content_hash: 49d55a2dbac06488
           kind: css
           path: _kpress/assets/css/document.css
-          size: 12505
+          size: 13301
         - applied_pipeline: []
           content_hash: 86c6396bc77060cd
           kind: css
           path: _kpress/assets/css/print.css
           size: 8033
         - applied_pipeline: []
-          content_hash: 0554b3a1d96a854f
+          content_hash: 8aeaaafb77d8ec54
           kind: css
           path: _kpress/assets/css/style-tokens.css
-          size: 29950
+          size: 32482
         - applied_pipeline: []
           content_hash: 807cf5be35b5a8dd
           kind: css
@@ -187,13 +187,13 @@ readable:
           path: robots.txt
           size: 23
         assets:
-        - content_hash: 763595ddf1a251e9
+        - content_hash: c36160206466acd8
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/components.css
           path: css/components.css
           source: package
-        - content_hash: d86525c4bb370b43
+        - content_hash: 49d55a2dbac06488
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/document.css
@@ -205,7 +205,7 @@ readable:
           output_path: _kpress/assets/css/print.css
           path: css/print.css
           source: package
-        - content_hash: 0554b3a1d96a854f
+        - content_hash: 8aeaaafb77d8ec54
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/style-tokens.css
@@ -665,30 +665,30 @@ readable:
         Allow: /
 hashed:
   files:
-    _kpress/assets/css/components.763595ddf1a251e9.css:
-      bytes: 68365
-      sha256_16: 763595ddf1a251e9
-    _kpress/assets/css/components.763595ddf1a251e9.css.gz:
-      bytes: 17953
-      sha256_16: d4cd6a3585888b43
-    _kpress/assets/css/document.d86525c4bb370b43.css:
-      bytes: 12505
-      sha256_16: d86525c4bb370b43
-    _kpress/assets/css/document.d86525c4bb370b43.css.gz:
-      bytes: 3457
-      sha256_16: 174968be8dffc956
+    _kpress/assets/css/components.c36160206466acd8.css:
+      bytes: 71853
+      sha256_16: c36160206466acd8
+    _kpress/assets/css/components.c36160206466acd8.css.gz:
+      bytes: 19083
+      sha256_16: 194541bbbffabc83
+    _kpress/assets/css/document.49d55a2dbac06488.css:
+      bytes: 13301
+      sha256_16: 49d55a2dbac06488
+    _kpress/assets/css/document.49d55a2dbac06488.css.gz:
+      bytes: 3780
+      sha256_16: 6bdc8a55c5ea76af
     _kpress/assets/css/print.86c6396bc77060cd.css:
       bytes: 8033
       sha256_16: 86c6396bc77060cd
     _kpress/assets/css/print.86c6396bc77060cd.css.gz:
       bytes: 2278
       sha256_16: 6d380fc126e842e8
-    _kpress/assets/css/style-tokens.0554b3a1d96a854f.css:
-      bytes: 29950
-      sha256_16: 0554b3a1d96a854f
-    _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz:
-      bytes: 8901
-      sha256_16: f699745feecabfb0
+    _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css:
+      bytes: 32482
+      sha256_16: 8aeaaafb77d8ec54
+    _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css.gz:
+      bytes: 9843
+      sha256_16: 15de0c96b7f15d31
     _kpress/assets/css/syntax.807cf5be35b5a8dd.css:
       bytes: 7789
       sha256_16: 807cf5be35b5a8dd
@@ -777,29 +777,29 @@ hashed:
       json:
         files:
         - applied_pipeline: []
-          content_hash: 763595ddf1a251e9
+          content_hash: c36160206466acd8
           kind: css
-          path: _kpress/assets/css/components.763595ddf1a251e9.css
-          size: 68365
+          path: _kpress/assets/css/components.c36160206466acd8.css
+          size: 71853
         - applied_pipeline: []
           compression: gzip
-          content_hash: d4cd6a3585888b43
+          content_hash: 194541bbbffabc83
           kind: gz
-          path: _kpress/assets/css/components.763595ddf1a251e9.css.gz
-          size: 17953
-          source_path: _kpress/assets/css/components.763595ddf1a251e9.css
+          path: _kpress/assets/css/components.c36160206466acd8.css.gz
+          size: 19083
+          source_path: _kpress/assets/css/components.c36160206466acd8.css
         - applied_pipeline: []
-          content_hash: d86525c4bb370b43
+          content_hash: 49d55a2dbac06488
           kind: css
-          path: _kpress/assets/css/document.d86525c4bb370b43.css
-          size: 12505
+          path: _kpress/assets/css/document.49d55a2dbac06488.css
+          size: 13301
         - applied_pipeline: []
           compression: gzip
-          content_hash: 174968be8dffc956
+          content_hash: 6bdc8a55c5ea76af
           kind: gz
-          path: _kpress/assets/css/document.d86525c4bb370b43.css.gz
-          size: 3457
-          source_path: _kpress/assets/css/document.d86525c4bb370b43.css
+          path: _kpress/assets/css/document.49d55a2dbac06488.css.gz
+          size: 3780
+          source_path: _kpress/assets/css/document.49d55a2dbac06488.css
         - applied_pipeline: []
           content_hash: 86c6396bc77060cd
           kind: css
@@ -813,17 +813,17 @@ hashed:
           size: 2278
           source_path: _kpress/assets/css/print.86c6396bc77060cd.css
         - applied_pipeline: []
-          content_hash: 0554b3a1d96a854f
+          content_hash: 8aeaaafb77d8ec54
           kind: css
-          path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
-          size: 29950
+          path: _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css
+          size: 32482
         - applied_pipeline: []
           compression: gzip
-          content_hash: f699745feecabfb0
+          content_hash: 15de0c96b7f15d31
           kind: gz
-          path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz
-          size: 8901
-          source_path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
+          path: _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css.gz
+          size: 9843
+          source_path: _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css
         - applied_pipeline: []
           content_hash: 807cf5be35b5a8dd
           kind: css
@@ -987,28 +987,28 @@ hashed:
           size: 1682
           source_path: _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
         - applied_pipeline: []
-          content_hash: dc1a363a192f7470
+          content_hash: f9a2ea6b3a8da724
           kind: html
           path: about.html
           size: 10600
         - applied_pipeline: []
           compression: gzip
-          content_hash: 98cf6f2dad6dc06f
+          content_hash: 1d089ffa2af639c8
           kind: gz
           path: about.html.gz
           size: 3397
           source_path: about.html
         - applied_pipeline: []
-          content_hash: e121d25fea81a79f
+          content_hash: 5269b8bde422969a
           kind: html
           path: index.html
           size: 11369
         - applied_pipeline: []
           compression: gzip
-          content_hash: d5c4053f1677d329
+          content_hash: ab60057d11e58881
           kind: gz
           path: index.html.gz
-          size: 3612
+          size: 3611
           source_path: index.html
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
@@ -1016,16 +1016,16 @@ hashed:
           path: robots.txt
           size: 23
         assets:
-        - content_hash: 763595ddf1a251e9
+        - content_hash: c36160206466acd8
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/components.763595ddf1a251e9.css
+          output_path: _kpress/assets/css/components.c36160206466acd8.css
           path: css/components.css
           source: package
-        - content_hash: d86525c4bb370b43
+        - content_hash: 49d55a2dbac06488
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/document.d86525c4bb370b43.css
+          output_path: _kpress/assets/css/document.49d55a2dbac06488.css
           path: css/document.css
           source: package
         - content_hash: 86c6396bc77060cd
@@ -1034,10 +1034,10 @@ hashed:
           output_path: _kpress/assets/css/print.86c6396bc77060cd.css
           path: css/print.css
           source: package
-        - content_hash: 0554b3a1d96a854f
+        - content_hash: 8aeaaafb77d8ec54
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
+          output_path: _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css
           path: css/style-tokens.css
           source: package
         - content_hash: 807cf5be35b5a8dd
@@ -1223,10 +1223,10 @@ hashed:
         })();
         </script>
           <script type="importmap">{"imports": {"/_kpress/assets/js/icons.js": "/_kpress/assets/js/icons.0240229bae537638.js", "/_kpress/assets/js/menu.js": "/_kpress/assets/js/menu.25be240a6ae709b9.js", "/_kpress/assets/js/runtime.js": "/_kpress/assets/js/runtime.17fe05340c4c6480.js", "/_kpress/assets/js/settings-widget.js": "/_kpress/assets/js/settings-widget.29aa1292b1757639.js", "/_kpress/assets/js/theme-controls.js": "/_kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js", "/_kpress/assets/js/theme.js": "/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"}}</script>
-        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.0554b3a1d96a854f.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css">
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/document.d86525c4bb370b43.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/components.763595ddf1a251e9.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/document.49d55a2dbac06488.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/components.c36160206466acd8.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.86c6396bc77060cd.css">
         <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.29aa1292b1757639.js"></script>
@@ -1320,7 +1320,7 @@ hashed:
         </html>
     about.html.gz:
       bytes: 3397
-      sha256_16: 98cf6f2dad6dc06f
+      sha256_16: 1d089ffa2af639c8
     index.html:
       text: |
         <!doctype html>
@@ -1393,10 +1393,10 @@ hashed:
         })();
         </script>
           <script type="importmap">{"imports": {"/_kpress/assets/js/history.js": "/_kpress/assets/js/history.9cf96b2ecad0462a.js", "/_kpress/assets/js/icons.js": "/_kpress/assets/js/icons.0240229bae537638.js", "/_kpress/assets/js/menu.js": "/_kpress/assets/js/menu.25be240a6ae709b9.js", "/_kpress/assets/js/overlay.js": "/_kpress/assets/js/overlay.319f55d3699ca5f1.js", "/_kpress/assets/js/runtime.js": "/_kpress/assets/js/runtime.17fe05340c4c6480.js", "/_kpress/assets/js/settings-widget.js": "/_kpress/assets/js/settings-widget.29aa1292b1757639.js", "/_kpress/assets/js/theme-controls.js": "/_kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js", "/_kpress/assets/js/theme.js": "/_kpress/assets/js/theme.eef4b6281e1a2cdd.js", "/_kpress/assets/js/tooltips.js": "/_kpress/assets/js/tooltips.d427e1160ca7c8cb.js", "/_kpress/assets/js/viewport.js": "/_kpress/assets/js/viewport.acab9e9c3e7e92ce.js"}}</script>
-        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.0554b3a1d96a854f.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css">
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/document.d86525c4bb370b43.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/components.763595ddf1a251e9.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/document.49d55a2dbac06488.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/components.c36160206466acd8.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.86c6396bc77060cd.css">
         <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.29aa1292b1757639.js"></script>
@@ -1496,18 +1496,18 @@ hashed:
         </body>
         </html>
     index.html.gz:
-      bytes: 3612
-      sha256_16: d5c4053f1677d329
+      bytes: 3611
+      sha256_16: ab60057d11e58881
     robots.txt:
       text: |
         User-agent: *
         Allow: /
 categories:
   hashed:
-  - _kpress/assets/css/components.763595ddf1a251e9.css
-  - _kpress/assets/css/document.d86525c4bb370b43.css
+  - _kpress/assets/css/components.c36160206466acd8.css
+  - _kpress/assets/css/document.49d55a2dbac06488.css
   - _kpress/assets/css/print.86c6396bc77060cd.css
-  - _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
+  - _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css
   - _kpress/assets/js/history.9cf96b2ecad0462a.js
   - _kpress/assets/js/icons.0240229bae537638.js
@@ -1520,10 +1520,10 @@ categories:
   - _kpress/assets/js/tooltips.d427e1160ca7c8cb.js
   - _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
   compressed:
-  - _kpress/assets/css/components.763595ddf1a251e9.css.gz
-  - _kpress/assets/css/document.d86525c4bb370b43.css.gz
+  - _kpress/assets/css/components.c36160206466acd8.css.gz
+  - _kpress/assets/css/document.49d55a2dbac06488.css.gz
   - _kpress/assets/css/print.86c6396bc77060cd.css.gz
-  - _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz
+  - _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css.gz
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
   - _kpress/assets/js/history.9cf96b2ecad0462a.js.gz
   - _kpress/assets/js/icons.0240229bae537638.js.gz
@@ -1538,10 +1538,10 @@ categories:
   - about.html.gz
   - index.html.gz
   hashed_only:
-  - _kpress/assets/css/components.763595ddf1a251e9.css.gz
-  - _kpress/assets/css/document.d86525c4bb370b43.css.gz
+  - _kpress/assets/css/components.c36160206466acd8.css.gz
+  - _kpress/assets/css/document.49d55a2dbac06488.css.gz
   - _kpress/assets/css/print.86c6396bc77060cd.css.gz
-  - _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz
+  - _kpress/assets/css/style-tokens.8aeaaafb77d8ec54.css.gz
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
   - _kpress/assets/js/history.9cf96b2ecad0462a.js.gz
   - _kpress/assets/js/icons.0240229bae537638.js.gz
