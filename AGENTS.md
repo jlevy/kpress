@@ -11,7 +11,7 @@ Before adding, upgrading, or running any dependency—including zero-install run
   flowmark-rs, repren, pprose) skip the cool-off but are still pinned to exact versions.
 - Full policy: `tbd guidelines supply-chain-hardening`.
 
-<!-- BEGIN TBD INTEGRATION format=f06 surface=agents-md -->
+<!-- BEGIN TBD INTEGRATION format=f08 surface=agents-md -->
 ## tbd
 
 This repository uses **tbd** for git-native issue tracking (beads), spec-driven
