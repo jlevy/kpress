@@ -1793,13 +1793,25 @@
     max-width: none;
   }
 
-  /* The gridded column carries a tighter inset than the single-column bands:
-     the 3rem TOC gap and the trailing margin already hold it off its
-     surroundings, so 2.5rem is enough for the content card's chrome to breathe.
-     Conditioned exactly like the grid above -- a wide pane with no TOC and no
-     reserved rail stays single-column and keeps the 4rem band inset. */
-  .kpress-doc:has(.kpress-toc),
-  .kpress-doc:has(> [data-kpress-toc-rail="reserved"]) {
+  /* The whole wide band carries a tighter inset than the single-column bands:
+     the large outer margin (and, with a TOC, the 3rem rail gap) already holds
+     the column off its surroundings, so 2.5rem is enough for the content card's
+     chrome to breathe.
+
+     UNCONDITIONAL, and it must stay that way. This is the band's inset, not the
+     grid's: 0.3.3 applied it through `.kpress-content-with-toc .kpress-long-text`,
+     a selector that matches whether or not a TOC was rendered, because
+     `.kpress-content-with-toc` is on the layout wrapper always. 0.3.4 briefly
+     gated this on the rail conditions, which quietly moved every TOC-less wide
+     document from 2.5rem to 4rem -- the text still landed at the measure, since
+     the caps follow the inset, but the card's inner padding changed and a host
+     sizing its own surfaces to `measure + 2 x 2.5rem` (the documented wide track)
+     no longer matched the document inside them.
+
+     Do not add the rail conditions back here. The neighbouring rules carry them
+     because they build the two-column grid, which genuinely needs a rail; the
+     inset is the band's and applies to a single column too. */
+  .kpress-doc {
     --kpress-column-inset: 2.5rem;
   }
 
