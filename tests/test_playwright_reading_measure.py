@@ -43,7 +43,13 @@ class _QuietHandler(SimpleHTTPRequestHandler):
         _ = (format, args)
 
 
-def _page_html(pane_px: int, measure: str | None = None, host_base: str | None = None) -> str:
+def _page_html(
+    pane_px: int,
+    measure: str | None = None,
+    host_base: str | None = None,
+    include_toc: str = "auto",
+    toc_rail: str = "reserved",
+) -> str:
     """Render the long fixture in a pane, with optional host overrides.
 
     ``measure`` goes on the ``.kpress`` scope, which is where kpress-design.md
@@ -60,7 +66,11 @@ def _page_html(pane_px: int, measure: str | None = None, host_base: str | None =
             trust_mode="sanitized",
             metadata={},
         ),
-        RenderOptions(widgets={"settings": "off"}, toc_rail="reserved"),
+        RenderOptions(
+            widgets={"settings": "off"},
+            toc_rail=toc_rail,  # pyright: ignore[reportArgumentType]
+            include_toc=include_toc,  # pyright: ignore[reportArgumentType]
+        ),
     )
     css = "\n".join(
         read_package_text(rel_path)
@@ -91,7 +101,9 @@ _PROBE = """(() => {
 })()"""
 
 
-def _measure_text_widths(tmp_path: Path, pages: dict[str, str]) -> dict[str, Any]:
+def _run_probe(tmp_path: Path, pages: dict[str, str], probe: str) -> dict[str, Any]:
+    """Serve each named page, evaluate ``probe`` in Chromium, return the results."""
+
     sync_api = pytest.importorskip("playwright.sync_api")
     for name, html in pages.items():
         (tmp_path / f"{name}.html").write_text(html, encoding="utf-8")
@@ -114,13 +126,17 @@ def _measure_text_widths(tmp_path: Path, pages: dict[str, str]) -> dict[str, Any
                 measured: dict[str, Any] = {}
                 for name in pages:
                     page.goto(f"http://127.0.0.1:{server.server_address[1]}/{name}.html")
-                    measured[name] = page.evaluate(_PROBE)
+                    measured[name] = page.evaluate(probe)
                 return measured
             finally:
                 browser.close()
     finally:
         server.shutdown()
         thread.join()
+
+
+def _measure_text_widths(tmp_path: Path, pages: dict[str, str]) -> dict[str, Any]:
+    return _run_probe(tmp_path, pages, _PROBE)
 
 
 def test_the_reading_measure_is_the_same_width_in_every_band(tmp_path: Path) -> None:
@@ -195,3 +211,56 @@ def test_the_measure_tracks_the_type_base_not_the_root(tmp_path: Path) -> None:
     assert measured["small_base"] == pytest.approx(measured["default_base"] * 0.75, rel=0.02), (
         measured
     )
+
+
+# The reading column's inner padding, which a host sizing its own surfaces to
+# the documented wide track ("measure + 2 x 2.5rem") has to be able to rely on.
+_INSET_PROBE = """(() => {
+  const prose = document.querySelector('.kpress-long-text');
+  const styles = getComputedStyle(prose);
+  return Math.round(parseFloat(styles.paddingLeft));
+})()"""
+
+
+def _measure_insets(tmp_path: Path, pages: dict[str, str]) -> dict[str, Any]:
+    return _run_probe(tmp_path, pages, _INSET_PROBE)
+
+
+def test_the_wide_band_inset_does_not_depend_on_whether_a_toc_was_rendered(
+    tmp_path: Path,
+) -> None:
+    """The wide band's inset is the band's, not the grid's.
+
+    0.3.3 applied it through a selector that matched with or without a TOC.
+    Gating it on ``:has(.kpress-toc)`` moved every TOC-less wide document from
+    2.5rem to 4rem: the text still landed at the measure, because the caps
+    follow the inset, so only a host sizing its own surfaces to the documented
+    wide track saw it -- its panels no longer lined up with the document inside
+    them. Embedding a README with ``include_toc="off"`` is exactly that case.
+    """
+
+    measured = _measure_insets(
+        tmp_path,
+        {
+            "with_toc": _page_html(WIDE_PANE_PX),
+            "no_toc": _page_html(WIDE_PANE_PX, include_toc="off", toc_rail="auto"),
+        },
+    )
+
+    assert measured["no_toc"] == measured["with_toc"], measured
+    # 2.5rem against the 16px default root.
+    assert measured["with_toc"] == 40, measured
+
+
+def test_a_toc_less_wide_document_still_reads_at_the_measure(tmp_path: Path) -> None:
+    """The band-consistency claim, for the embedding case specifically."""
+
+    measured = _measure_text_widths(
+        tmp_path,
+        {
+            "wide_no_toc": _page_html(WIDE_PANE_PX, include_toc="off", toc_rail="auto"),
+            "tablet_no_toc": _page_html(TABLET_PANE_PX, include_toc="off", toc_rail="auto"),
+        },
+    )
+
+    assert abs(measured["wide_no_toc"] - measured["tablet_no_toc"]) <= 1, measured
