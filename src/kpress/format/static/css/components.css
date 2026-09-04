@@ -1186,6 +1186,41 @@
   max-width: 100%;
 }
 
+/* KaTeX sizing. The vendored `katex/katex.min.css` is a pinned upstream bundle
+   and stays byte-identical through the next KaTeX bump, so the correction lives
+   here instead. Upstream sets `.katex { font-size: 1.21em }` to seat KaTeX_Main
+   beside a Times-like body face; KPress reads in PT Serif, whose larger x-height
+   makes that lift roughly a fifth too much, and worse inside the small Source
+   Sans contexts, where the surrounding text is already below prose size. The
+   ratios are the `--kpress-katex-size-*` tokens (style-tokens.css); this is the
+   KaTeX counterpart of the `1.02em` nudge `.kpress-math math` gives the MathML
+   fallback.
+
+   SPECIFICITY: katex.min.css is linked AFTER these stylesheets (KaTeX is a lazy
+   per-document asset merged onto the end of the manifest), so a bare `.katex`
+   rule here would lose the tie to upstream's own `.katex`. Every selector below
+   therefore carries at least one extra class or type. For the same reason the
+   sans-context rule comes after the prose and display rules: it ties them at
+   (0,3,0) and wins on order, which is what puts math in a caption at caption
+   size. */
+.kpress .katex {
+  font-size: var(--kpress-katex-size-prose);
+}
+
+.kpress .katex-display .katex {
+  font-size: var(--kpress-katex-size-display);
+}
+
+.kpress .kpress-figcaption .katex,
+.kpress .sans-text .katex,
+.kpress .kpress-toc-title .katex,
+.kpress .kpress-table th .katex,
+.kpress .tab-button .katex,
+.kpress .kpress-tab-button .katex,
+.kpress summary .katex {
+  font-size: var(--kpress-katex-size-sans);
+}
+
 /* KaTeX progressive enhancement: the semantic MathML renders by default and
    as the no-JS fallback; the TeX source node stays hidden until KaTeX
    replaces it. Once rendered, KaTeX is shown and the MathML is kept in the
