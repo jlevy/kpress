@@ -724,11 +724,17 @@
   visibility: visible;
 }
 
+/* Footnotes take the small rung of the ramp, not a bare ratio. `0.9em` scaled
+   whatever font-size it happened to inherit and compounded with it -- the prose
+   size in a standalone page, but a card, a table cell or an embedding host can
+   hand the block something else. It also named no rung: against an 18px base it
+   resolved to 16.2px, while `--kpress-font-size-small`, the size every other
+   small surface uses, is 17.1px. */
 .kpress-footnotes {
   border-top: 1px solid var(--kpress-doc-border);
   color: var(--kpress-doc-muted);
   font-family: var(--kpress-font-footnote);
-  font-size: 0.9em;
+  font-size: var(--kpress-font-size-small);
   margin-top: 2rem;
   padding-top: 1rem;
 }
