@@ -170,6 +170,9 @@ The only theme control is a gear-icon popover in the top-right; there is **no te
   viewport.
 - **[Human]** The footnotes section at the bottom renders in **sans** (matching the
   tooltip), with its top border and muted color.
+- **[Agent]/[Human]** Scroll the document with a tooltip open → the popover travels with
+  the paragraph, staying beside the reference that opened it (on a phone-width viewport
+  the bottom sheet instead holds the bottom of the screen).
 - **[Agent]/[Human]** Resize the window with a tooltip open → it dismisses.
 
 ## Internal-Link Tooltips

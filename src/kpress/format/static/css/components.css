@@ -16,6 +16,13 @@
   block-size: 100dvh;
   overflow-y: auto;
   container: kpress-doc / inline-size;
+  /* The containing block for the popover layer: footnote and link previews are
+     appended here and placed with `position: absolute` in PAGE coordinates, so
+     they scroll with the paragraph they belong to (tooltips.js,
+     `tooltipParent`). `position: relative` is not one of the properties the
+     warning above names: it does NOT make this a containing block for
+     `position: fixed` descendants, so that rule stands unchanged. */
+  position: relative;
   /* In-document hash navigation (TOC and section links) is native browser
      navigation; the glide lives here so it also honors the reduced-motion
      override below. */
@@ -788,7 +795,12 @@
   overflow-wrap: break-word;
   padding: 0.5rem 0.75rem;
   pointer-events: none;
-  position: fixed;
+  /* A callout belongs to a place in the text, not to a place on the screen.
+     tooltips.js appends it inside the `.kpress-viewport` scroller and writes
+     page coordinates (screen position + the scroller's scroll offset), so it
+     stays beside the word that opened it while the reader scrolls. The one
+     exception is the mobile sheet below, which goes back to `fixed`. */
+  position: absolute;
   transition:
     opacity 0.6s ease-in-out,
     visibility 0.6s ease-in-out;
@@ -921,11 +933,18 @@
   transform: translateY(-50%);
 }
 
+/* The narrow-screen presentation is a sheet across the bottom of the pane, not
+   a callout beside an anchor: it has no anchor to stay beside, and a bar that
+   slid up the screen as the reader scrolled would read as broken. So it keeps
+   the window-fixed frame (and is appended to the body, outside the scroller, by
+   tooltips.js) while every other placement scrolls with the text. This rule
+   ties with `.kpress-tooltip` on specificity and wins on source order. */
 .kpress-tooltip-mobile-bottom {
   box-shadow: 0 -4px 16px oklch(0.00% 0 0 / 0.18);
   box-sizing: border-box;
   max-width: none;
   padding: 0.75rem 1rem;
+  position: fixed;
   text-align: left;
 }
 

@@ -849,10 +849,18 @@ features.
 The host must not hide the settings widget with CSS, rebuild the table wrapper,
 or reach for selectors and variables outside these pinned subsets.
 
-**Body-level overlays.** Tooltips and footnote previews are appended to `<body>`
-(outside the `.kpress` subtree) so their `position: fixed` resolves against the
-non-scrolling `.kpress-frame` (the standalone shell marks `<body>` itself as the frame)
-rather than scrolling away inside the `.kpress-viewport` scroller.
+**Overlay parenting.** Tooltips and footnote previews render outside the `.kpress`
+subtree, and which element carries them is a placement decision rather than a detail.
+A callout preview is appended inside the `.kpress-viewport` scroller and placed with
+`position: absolute` in page coordinates — the on-screen placement plus the scroller’s
+scroll offset — so it holds its place beside the word that opened it while the reader
+scrolls, instead of hanging in the window as the text moves underneath it.
+The narrow-screen sheet (`kpress-tooltip-mobile-bottom`) is the deliberate exception: it
+is a bar across the bottom of the pane, not a callout beside an anchor, so it keeps
+`position: fixed` on `<body>`, resolving against the non-scrolling `.kpress-frame` (the
+standalone shell marks `<body>` itself as the frame).
+A document that scrolls in the window rather than in a marked pane has no scroller
+element to append to, so `<body>` carries both.
 The document tokens above are scoped to `.kpress`, so those overlay selectors
 (`.kpress-tooltip`) must be listed alongside `.kpress` in the token-defining rules
 (`style-tokens.css`, `theme-light.css`, `theme-dark.css`); otherwise they resolve no
@@ -1070,9 +1078,12 @@ one render is cacheable across themes and the embedder contract is exactly:
   emit `theme:change` with the resulting `{mode, resolved}`;
 - combined palette × theme states bind fully when both attributes sit on the same scope
   element;
-- body-portaled overlays (tooltips, footnote previews) escape a non-`:root` wrapper
-  scope: a wrapper-scoped host should stamp `:root` as well, or stamp overlays
-  individually (overlay theme inheritance is tracked as `kpr-gssj`).
+- the overlays still portaled to `<body>` — the mobile tooltip sheet, and every preview
+  in a window-scrolled document — escape a non-`:root` wrapper scope: a wrapper-scoped
+  host should stamp `:root` as well, or stamp overlays individually (overlay theme
+  inheritance is tracked as `kpr-gssj`). A callout preview in a pane-scrolled document
+  is appended inside the pane, so it inherits a wrapper- or pane-level stamp like the
+  rest of the document.
 
 The standalone page shell stamps `<html>` from the template plus the pre-paint
 bootstrap; `theme.js` is the standalone resolver behind the same attribute.

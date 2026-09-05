@@ -5,7 +5,12 @@ import {
   OVERLAY_VIEWPORT_MARGIN_PX,
 } from "./overlay.js";
 import { behaviors } from "./runtime.js";
-import { rectRelativeToViewport, resolveKpressViewport, viewportBounds } from "./viewport.js";
+import {
+  isDocumentViewport,
+  rectRelativeToViewport,
+  resolveKpressViewport,
+  viewportBounds,
+} from "./viewport.js";
 
 const TOOLTIP_VIEWPORT_MARGIN_PX = OVERLAY_VIEWPORT_MARGIN_PX;
 const TOOLTIP_GAP_PX = OVERLAY_DEFAULT_GAP_PX;
@@ -368,6 +373,82 @@ function setPositionClass(tooltip, position) {
 }
 
 /**
+ * The element a popover is parented to — which is also the coordinate frame the
+ * offsets below are written in.
+ *
+ * A callout goes INSIDE the KPress scroller. An absolutely-positioned child of
+ * a scroll container travels with the scrolled content, so the preview keeps
+ * its place beside the word that opened it instead of hanging still in the
+ * window while the text slides underneath it. (This is the same mechanic the
+ * viewport comment in components.css warns about for the TOC toggle and the
+ * settings menu — chrome must stay pinned; a callout must not.)
+ *
+ * The mobile sheet is the deliberate exception: it is a bar across the bottom
+ * of the pane, not a callout beside an anchor, so it keeps `position: fixed`
+ * on the body and stays put while the document scrolls under it.
+ *
+ * When the document itself is the scroller there is no pane to append to
+ * (`resolveKpressViewport` hands back the scrolling element), so the body
+ * carries the popover: the initial containing block plus the page scroll
+ * offset is that same page coordinate frame.
+ *
+ * @param {HTMLElement} viewport
+ * @param {string} position
+ * @returns {HTMLElement}
+ */
+function tooltipParent(viewport, position) {
+  if (position === "mobile-bottom" || isDocumentViewport(viewport)) {
+    return document.body;
+  }
+  return viewport;
+}
+
+/**
+ * Scroll offset of the popover's coordinate frame: what a viewport-relative
+ * (client-space) position must be shifted by to become a page position.
+ *
+ * @param {HTMLElement} viewport
+ * @returns {{ top: number; left: number }}
+ */
+function viewportScrollOffset(viewport) {
+  if (isDocumentViewport(viewport)) {
+    return {
+      top: window.pageYOffset || viewport.scrollTop || 0,
+      left: window.pageXOffset || viewport.scrollLeft || 0,
+    };
+  }
+  return { top: viewport.scrollTop || 0, left: viewport.scrollLeft || 0 };
+}
+
+/**
+ * The width a popover has to fit inside: the frame's client box, which excludes
+ * the scrollbar gutter that the border-box rect from `viewportBounds` includes.
+ *
+ * The distinction only started to matter when the popover moved inside the
+ * scroller. A box overhanging the right edge used to be a `position: fixed` box
+ * hanging off the window, clipped and invisible; the same overhang in the
+ * scroller is scrollable width, and puts a horizontal scrollbar under the
+ * reader's document.
+ *
+ * @param {HTMLElement} viewport
+ * @param {{ width: number }} bounds
+ * @returns {number}
+ */
+function viewportInnerWidth(viewport, bounds) {
+  const box = isDocumentViewport(viewport) ? document.documentElement : viewport;
+  return box?.clientWidth || bounds.width;
+}
+
+/**
+ * Place a popover beside its anchor and parent it to the frame that placement
+ * is expressed in (see `tooltipParent`).
+ *
+ * Every placement is chosen and clamped in viewport-relative coordinates, as
+ * the reader sees it. The last step converts: a callout adds the scroller's
+ * scroll offset, which turns "10px below the anchor on screen" into the page
+ * position that is 10px below the anchor for as long as the popover lives; the
+ * mobile sheet keeps window coordinates because it is `position: fixed`.
+ *
  * @param {HTMLAnchorElement} anchor
  * @param {HTMLElement} tooltip
  */
@@ -386,9 +467,18 @@ export function positionTooltip(anchor, tooltip) {
 
   const position = chooseTooltipPosition(anchor);
   setPositionClass(tooltip, position);
+  // Parenting is part of placing: it selects the coordinate frame. Done before
+  // the tooltip is measured below, so the measurement happens in the frame the
+  // popover will live in (and so a caller may hand this an unmounted element).
+  const parent = tooltipParent(viewport, position);
+  if (tooltip.parentNode !== parent) {
+    parent.append(tooltip);
+  }
   if (position === "mobile-bottom") {
     // The bottom bar spans the viewport (minus margins); width comes from the two
-    // insets, and the bar legitimately fills the width.
+    // insets, and the bar legitimately fills the width. These are window
+    // coordinates: the sheet is the one placement that stays `position: fixed`
+    // on the body, so it holds the bottom of the screen while the page scrolls.
     tooltip.style.maxWidth = `${Math.max(0, bounds.width - margin * 2)}px`;
     tooltip.style.insetInlineStart = `${bounds.left + margin}px`;
     tooltip.style.insetInlineEnd = `${Math.max(0, window.innerWidth - bounds.right + margin)}px`;
@@ -397,6 +487,10 @@ export function positionTooltip(anchor, tooltip) {
   }
 
   const rect = rectRelativeToViewport(anchor.getBoundingClientRect(), viewport);
+  // The one conversion: viewport-relative (what the reader sees) to page
+  // coordinates (what the popover is positioned in, inside the scroller).
+  const scroll = viewportScrollOffset(viewport);
+  const inner = viewportInnerWidth(viewport, bounds);
 
   if (position === "wide-right") {
     const readingColumn = resolveReadingColumn(anchor);
@@ -404,17 +498,27 @@ export function positionTooltip(anchor, tooltip) {
       ? rectRelativeToViewport(readingColumn.getBoundingClientRect(), viewport)
       : null;
     // Reserve the margin tooltip's own width so its right edge never crosses the
-    // viewport, then cap the width to the room actually left beside the column.
-    const maxLeft = Math.max(margin, bounds.width - WIDE_RIGHT_TOOLTIP_MAX_WIDTH_PX - margin);
-    const left = Math.min((contentRect?.right || rect.right) + WIDE_RIGHT_TOOLTIP_GAP_PX, maxLeft);
+    // pane, then cap the width to the room actually left beside the column.
+    const maxLeft = Math.max(margin, inner - WIDE_RIGHT_TOOLTIP_MAX_WIDTH_PX - margin);
+    const preferredLeft = Math.min(
+      (contentRect?.right || rect.right) + WIDE_RIGHT_TOOLTIP_GAP_PX,
+      maxLeft,
+    );
     tooltip.style.maxWidth = `${Math.min(
       WIDE_RIGHT_TOOLTIP_MAX_WIDTH_PX,
-      Math.max(0, bounds.width - left - margin),
+      Math.max(0, inner - preferredLeft - margin),
     )}px`;
     const tooltipRect = tooltip.getBoundingClientRect();
-    tooltip.style.insetInlineStart = `${bounds.left + left}px`;
+    // That reservation is a content-box cap; the laid-out box is wider by its
+    // padding and border, so the final clamp uses the measured box, as the
+    // adjacent placement below already did.
+    const left = Math.min(
+      preferredLeft,
+      Math.max(margin, inner - (tooltipRect.width || WIDE_RIGHT_TOOLTIP_MAX_WIDTH_PX) - margin),
+    );
+    tooltip.style.insetInlineStart = `${scroll.left + left}px`;
     tooltip.style.top = `${
-      bounds.top + Math.max(margin, rect.top + rect.height / 2 - (tooltipRect.height || 160) / 2)
+      scroll.top + Math.max(margin, rect.top + rect.height / 2 - (tooltipRect.height || 160) / 2)
     }px`;
     return;
   }
@@ -425,17 +529,17 @@ export function positionTooltip(anchor, tooltip) {
   const componentMaxPx = tooltip.classList.contains("kpress-tooltip-footnote")
     ? FOOTNOTE_TOOLTIP_MAX_WIDTH_PX
     : TOOLTIP_MAX_WIDTH_PX;
-  tooltip.style.maxWidth = `${Math.min(componentMaxPx, Math.max(0, bounds.width - margin * 2))}px`;
+  tooltip.style.maxWidth = `${Math.min(componentMaxPx, Math.max(0, inner - margin * 2))}px`;
   const tooltipRect = tooltip.getBoundingClientRect();
   const left = Math.min(
     Math.max(margin, rect.left),
-    Math.max(margin, bounds.width - (tooltipRect.width || componentMaxPx) - margin),
+    Math.max(margin, inner - (tooltipRect.width || componentMaxPx) - margin),
   );
-  tooltip.style.insetInlineStart = `${bounds.left + left}px`;
+  tooltip.style.insetInlineStart = `${scroll.left + left}px`;
   tooltip.style.top =
     position === "top-right"
-      ? `${bounds.top + Math.max(margin, rect.top - (tooltipRect.height || 160) - TOOLTIP_GAP_PX)}px`
-      : `${bounds.top + Math.max(margin, rect.bottom + TOOLTIP_GAP_PX)}px`;
+      ? `${scroll.top + Math.max(margin, rect.top - (tooltipRect.height || 160) - TOOLTIP_GAP_PX)}px`
+      : `${scroll.top + Math.max(margin, rect.bottom + TOOLTIP_GAP_PX)}px`;
 }
 
 /**
@@ -559,7 +663,8 @@ function showKpressTooltip(anchor) {
     }
   });
 
-  document.body.append(tooltip);
+  // positionTooltip mounts the popover as part of placing it: a callout goes
+  // inside the scroller, in page coordinates; the mobile sheet goes on the body.
   positionTooltip(anchor, tooltip);
 
   // Apply mobile-bottom specific inline styles (section 3.34).
