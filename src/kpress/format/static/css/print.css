@@ -123,12 +123,24 @@
 
   /* The @page margin is the reading margin on paper: the margin boxes
      (@bottom-left footer, @bottom-right page number) sit exactly at it, so
-     the shells drop their screen-side inline gutters to align the text
-     column with them. Without this the text sits 1rem (embedded) to 3rem
-     (standalone) inside the margin boxes. */
+     the shells drop their screen-side gutters to align the text column with
+     them. Without this the text sits 1rem (embedded) to 3rem (standalone)
+     inside the margin boxes.
+
+     The block axis is dropped for the same reason and was previously missed.
+     `.kpress-page-main` carries `padding-block-start` as a screen gutter, and
+     it survived into print stacked on top of the @page margin, pushing the
+     first page's content down by that much for no reason a reader can see.
+     Measured on a 13-page document at Letter with a 1in margin: 40px of it,
+     which cost a whole page. Removing it took the document to 12 pages and
+     premature whitespace from 25.51in to 17.58in, because a heading and its
+     paragraph that no longer fit above a full-page figure now do. No page
+     grows and nothing is stranded; on A4, whose taller box never produced the
+     shape, the change is a no-op. */
   .kpress-doc,
   .kpress-page-main {
     padding-inline: 0;
+    padding-block-start: 0;
   }
 
   .kpress blockquote,

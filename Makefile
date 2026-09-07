@@ -63,12 +63,14 @@ lint:
 	$(UV_RUN) python -m devtools.lint
 	$(UV_RUN) python -m devtools.check_supply_chain
 	$(UV_RUN) python -m devtools.public_hygiene
+	$(UV_RUN) python -m devtools.katex_text_metrics --check
 
 # Check-only lint, matching CI (does not modify files).
 lint-check:
 	$(UV_RUN) python -m devtools.lint --check
 	$(UV_RUN) python -m devtools.check_supply_chain
 	$(UV_RUN) python -m devtools.public_hygiene
+	$(UV_RUN) python -m devtools.katex_text_metrics --check
 	$(FLOWMARK) --auto --check .
 
 test:

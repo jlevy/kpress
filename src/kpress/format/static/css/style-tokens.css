@@ -108,6 +108,21 @@
   --kpress-font-size-mono-small: calc(var(--kpress-font-size-base) * 0.75);
   --kpress-font-size-mono-tiny: calc(var(--kpress-font-size-base) * 0.7);
 
+  /* KaTeX sizing. Context-relative (em) on purpose, like the sup/sub sizes the
+     policy above exempts and for the same reason: these are ratios against
+     whatever face surrounds the math, not another rung of the base-derived ramp.
+     KaTeX ships `.katex { font-size: 1.21em }`, a compensation tuned so its own
+     KaTeX_Main sits right beside a Times-like body face. PT Serif -- the prose
+     face here -- carries a notably larger x-height, so 1.21 reads about a fifth
+     too big against it, and further out of scale inside the small Source Sans
+     contexts (figure captions, section labels, tab labels), which start below
+     the prose size to begin with. Display math keeps a little more of the
+     upstream lift because it stands alone rather than sitting in a line of
+     text. See components.css "KaTeX sizing" for where each one applies. */
+  --kpress-katex-size-prose: 1.05em;
+  --kpress-katex-size-sans: 1em;
+  --kpress-katex-size-display: 1.1em;
+
   /* Prose section-heading sizes (H2-H4; H1 and H5/H6 keep their literals).
      These narrow/medium defaults step up on wide panes only (the >=64rem
      container band in components.css); phones and embedded panes keep the

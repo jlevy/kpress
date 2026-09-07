@@ -71,7 +71,11 @@ format:
     output_dir = tmp_path / "public"
     html = (output_dir / "index.html").read_text(encoding="utf-8")
 
-    assert "kpress-math" not in html
+    # The math markup, not every string starting "kpress-math": the page shell
+    # always stamps `data-kpress-math-text` (the math text face switch), which
+    # costs nothing and pulls in no asset.
+    assert 'class="kpress-math' not in html
+    assert "data-kpress-math=" not in html
     assert "katex" not in html.lower()
     assert "<math " not in html
 
@@ -118,6 +122,12 @@ def test_math_document_emits_vendored_katex_bundle(tmp_path: Path) -> None:
     assert "/_kpress/assets/katex/katex.min.css" in html
     assert "/_kpress/assets/katex/katex.min.js" in html
     assert "/_kpress/assets/katex/katex-init.js" in html
+    # The math text face ships with KaTeX and only with KaTeX: the composite
+    # stylesheet after katex.min.css, the metric tables before katex-init.js.
+    assert "/_kpress/assets/katex/katex-text-face.css" in html
+    assert "/_kpress/assets/katex/katex-text-metrics.js" in html
+    assert html.index("katex/katex.min.css") < html.index("katex/katex-text-face.css")
+    assert html.index("katex/katex-text-metrics.js") < html.index("katex/katex-init.js")
 
     assert KATEX_VERSION == "0.16.45"  # pinned: last KaTeX before the cutoff
     for rel in (*KATEX_CSS_ASSETS, *KATEX_JS_ASSETS, *KATEX_FONT_ASSETS):

@@ -198,6 +198,77 @@ describe("settings widget", () => {
     expect(localStorage.getItem("kpress.fontSet")).toBe("system");
   });
 
+  // The font set is also the switch for the math text face, and that face is
+  // half CSS and half metrics: katex-init.js hands KaTeX its tables once, at
+  // load, through a setter with no getter, over TeX that is gone as soon as it
+  // has been typeset. Flipping the CSS alone would leave every rendered fraction
+  // and accent laid out for the face it is no longer drawn in, so a page that has
+  // typeset math completes the switch by reloading into the persisted choice.
+  async function switchFontSet(value) {
+    await importFresh("settings-widget.js");
+    const el = settingsMount();
+    sharedWidgets.mount("settings", el, { choosers: ["font-set"] });
+    const select = /** @type {HTMLSelectElement} */ (el.querySelector("select.kpress-menu-select"));
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  it("reloads into the persisted choice when the page has typeset math", async () => {
+    const reload = vi.spyOn(globalThis.location, "reload").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<article class="kpress" data-kpress-fonts="custom"><span class="katex">4</span></article>';
+
+    await switchFontSet("system");
+
+    expect(localStorage.getItem("kpress.fontSet")).toBe("system");
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("reloads in the other direction too, back to the reading face", async () => {
+    const reload = vi.spyOn(globalThis.location, "reload").mockImplementation(() => {});
+    document.documentElement.dataset.kpressFontSet = "system";
+    document.body.innerHTML =
+      '<article class="kpress" data-kpress-fonts="system"><span class="katex">4</span></article>';
+
+    await switchFontSet("custom");
+
+    expect(localStorage.getItem("kpress.fontSet")).toBe("custom");
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("switches in place with no math to re-lay-out, and never on a no-op", async () => {
+    const reload = vi.spyOn(globalThis.location, "reload").mockImplementation(() => {});
+    document.body.innerHTML = '<article class="kpress" data-kpress-fonts="custom"></article>';
+
+    await switchFontSet("system");
+
+    expect(document.documentElement.dataset.kpressFontSet).toBe("system");
+    expect(reload).not.toHaveBeenCalled();
+
+    // Nothing changed, so nothing to rebuild even with math on the page.
+    document.body.innerHTML =
+      '<article class="kpress" data-kpress-fonts="system"><span class="katex">4</span></article>';
+    await switchFontSet("system");
+
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("switches in place when the text face is off page-wide", async () => {
+    // Nothing on the page is laid out from the reading face's tables, so the
+    // reload would buy nothing. katex-init.js stamps this itself when the tables
+    // cannot be applied, which lands in the same branch.
+    const reload = vi.spyOn(globalThis.location, "reload").mockImplementation(() => {});
+    document.documentElement.dataset.kpressMathText = "katex";
+    document.body.innerHTML =
+      '<article class="kpress" data-kpress-fonts="custom"><span class="katex">4</span></article>';
+
+    await switchFontSet("system");
+
+    expect(document.documentElement.dataset.kpressFontSet).toBe("system");
+    expect(reload).not.toHaveBeenCalled();
+    document.documentElement.removeAttribute("data-kpress-math-text");
+  });
+
   it("changing the reading font leaves the active theme segment checked", async () => {
     await importFresh("settings-widget.js");
     const el = settingsMount();

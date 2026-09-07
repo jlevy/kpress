@@ -58,8 +58,10 @@ _METRICS_SCRIPT = """(() => {
   const px = (value) => parseFloat(value);
   const prose = document.querySelector('.kpress-prose > p, .kpress-prose p');
   const li = document.querySelector('.kpress-prose ul > li');
-  // Overlays portal to document.body, outside any wrapper scope: the :root
-  // host hook must still size them (a .kpress-scoped override cannot).
+  // The overlays that still portal to document.body (the mobile tooltip sheet,
+  // and any preview in a window-scrolled document) sit outside any wrapper
+  // scope: the :root host hook must still size them (a .kpress-scoped override
+  // cannot). The probe stands in for one of those.
   let tooltip = document.querySelector('#portal-probe');
   if (!tooltip) {
     tooltip = document.createElement('aside');

@@ -1020,6 +1020,9 @@ def test_render_page_respects_math_and_diagram_off_modes() -> None:
         RenderOptions(math="off", diagrams="off"),
     )
 
-    assert "kpress-math" not in page.html
+    # The page root carries data-kpress-math-text whatever the math mode; only the
+    # math markup itself must be absent.
+    assert 'class="kpress-math' not in page.html
+    assert "data-kpress-math=" not in page.html
     assert "kpress-mermaid" not in page.html
     assert 'class="language-mermaid"' in page.html

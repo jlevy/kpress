@@ -16,6 +16,13 @@
   block-size: 100dvh;
   overflow-y: auto;
   container: kpress-doc / inline-size;
+  /* The containing block for the popover layer: footnote and link previews are
+     appended here and placed with `position: absolute` in PAGE coordinates, so
+     they scroll with the paragraph they belong to (tooltips.js,
+     `tooltipParent`). `position: relative` is not one of the properties the
+     warning above names: it does NOT make this a containing block for
+     `position: fixed` descendants, so that rule stands unchanged. */
+  position: relative;
   /* In-document hash navigation (TOC and section links) is native browser
      navigation; the glide lives here so it also honors the reduced-motion
      override below. */
@@ -724,40 +731,61 @@
   visibility: visible;
 }
 
+/* Footnotes take the small rung of the ramp, not a bare ratio. `0.9em` scaled
+   whatever font-size it happened to inherit and compounded with it -- the prose
+   size in a standalone page, but a card, a table cell or an embedding host can
+   hand the block something else. It also named no rung: against an 18px base it
+   resolved to 16.2px, while `--kpress-font-size-small`, the size every other
+   small surface uses, is 17.1px. */
 .kpress-footnotes {
   border-top: 1px solid var(--kpress-doc-border);
   color: var(--kpress-doc-muted);
   font-family: var(--kpress-font-footnote);
-  font-size: 0.9em;
+  font-size: var(--kpress-font-size-small);
   margin-top: 2rem;
   padding-top: 1rem;
 }
 
+/* Footnote controls. The reference in the text, the ↑ after its footnote and the ↓
+   in its hover preview are one family: each takes the reader to or from a footnote,
+   so they look alike at rest and answer a hover the same way the document's other
+   small controls do -- the link colour on the glyph, a link-coloured border, and the
+   link wash behind it. The border is present at rest, transparent, so nothing moves
+   on hover; the wash is the same `--kpress-doc-surface-hover` every hover here uses.
+
+   `.kpress a.…backref` and `.kpress-tooltip …nav-link` carry a class beyond the bare
+   one: the generic `.kpress a:hover` underline is (0,2,1) and a bare
+   `.kpress-footnote-backref:hover` (0,2,0) would lose to it and underline. */
 .kpress-footnote-ref a,
-.kpress-footnote-backref {
+.kpress a.kpress-footnote-backref,
+.kpress-tooltip .kpress-footnote-nav-link {
   background-color: var(--color-bg-meta-solid);
+  border: 1px solid transparent;
   border-radius: var(--kpress-radius-md);
   color: var(--color-hint-strong);
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
   font-style: normal;
   font-weight: 600;
-  margin-right: 0.15rem;
   padding: 0 0.15rem;
   text-decoration: none;
   /* Hover properties only, never `all` (late-applied styles must not animate). */
   transition:
     color var(--kpress-transition-fast),
-    background-color var(--kpress-transition-fast);
+    background-color var(--kpress-transition-fast),
+    border-color var(--kpress-transition-fast);
 }
 
-/* `a.…backref` qualifier: the generic `.kpress a:hover` underline is specificity
-   (0,2,1); a bare `.kpress-footnote-backref:hover` is only (0,2,0) and loses, so the
-   ↑ back-link would underline on hover. Adding the `a` type wins it back. */
+.kpress-footnote-ref a {
+  margin-right: 0.15rem;
+}
+
 .kpress-footnote-ref a:hover,
-.kpress a.kpress-footnote-backref:hover {
+.kpress a.kpress-footnote-backref:hover,
+.kpress-tooltip .kpress-footnote-nav-link:hover {
   background-color: var(--color-hover-bg);
-  color: var(--color-primary-light);
+  border-color: var(--kpress-doc-link);
+  color: var(--kpress-doc-link);
   text-decoration: none;
 }
 
@@ -782,7 +810,12 @@
   overflow-wrap: break-word;
   padding: 0.5rem 0.75rem;
   pointer-events: none;
-  position: fixed;
+  /* A callout belongs to a place in the text, not to a place on the screen.
+     tooltips.js appends it inside the `.kpress-viewport` scroller and writes
+     page coordinates (screen position + the scroller's scroll offset), so it
+     stays beside the word that opened it while the reader scrolls. The one
+     exception is the mobile sheet below, which goes back to `fixed`. */
+  position: absolute;
   transition:
     opacity 0.6s ease-in-out,
     visibility 0.6s ease-in-out;
@@ -915,11 +948,18 @@
   transform: translateY(-50%);
 }
 
+/* The narrow-screen presentation is a sheet across the bottom of the pane, not
+   a callout beside an anchor: it has no anchor to stay beside, and a bar that
+   slid up the screen as the reader scrolled would read as broken. So it keeps
+   the window-fixed frame (and is appended to the body, outside the scroller, by
+   tooltips.js) while every other placement scrolls with the text. This rule
+   ties with `.kpress-tooltip` on specificity and wins on source order. */
 .kpress-tooltip-mobile-bottom {
   box-shadow: 0 -4px 16px oklch(0.00% 0 0 / 0.18);
   box-sizing: border-box;
   max-width: none;
   padding: 0.75rem 1rem;
+  position: fixed;
   text-align: left;
 }
 
@@ -930,14 +970,6 @@
 .kpress-footnote-nav {
   float: right;
   margin-inline-start: 0.5rem;
-}
-
-.kpress-tooltip .kpress-footnote-nav-link {
-  text-decoration: none;
-}
-
-.kpress-tooltip .kpress-footnote-nav-link:hover {
-  text-decoration: none;
 }
 
 /* Tables: only tables marked wide (data-kpress-table-scale="wide", stamped by
@@ -1184,6 +1216,51 @@
 .kpress-math-display math {
   display: inline-block;
   max-width: 100%;
+}
+
+/* KaTeX sizing. The vendored `katex/katex.min.css` is a pinned upstream bundle
+   and stays byte-identical through the next KaTeX bump, so the correction lives
+   here instead. Upstream sets `.katex { font-size: 1.21em }` to seat KaTeX_Main
+   beside a Times-like body face; KPress reads in PT Serif, whose larger x-height
+   makes that lift roughly a fifth too much, and worse inside the small Source
+   Sans contexts, where the surrounding text is already below prose size. The
+   ratios are the `--kpress-katex-size-*` tokens (style-tokens.css); this is the
+   KaTeX counterpart of the `1.02em` nudge `.kpress-math math` gives the MathML
+   fallback.
+
+   SPECIFICITY: katex.min.css is linked AFTER these stylesheets (KaTeX is a lazy
+   per-document asset merged onto the end of the manifest), so a bare `.katex`
+   rule here would lose the tie to upstream's own `.katex`. Every selector below
+   therefore carries at least one extra class or type. For the same reason the
+   sans-context rule comes after the prose and display rules: it ties them at
+   (0,3,0) and wins on order, which is what puts math in a caption at caption
+   size.
+
+   THE PREVIEW OVERLAY takes the same tokens. A footnote or section preview is a
+   clone of already-rendered math that tooltips.js mounts on the viewport pane or
+   the body, outside every `.kpress`, so without a scope of its own it would fall
+   back to upstream's 1.21em while the document beside it reads at the token. The
+   token's value comes from wherever the overlay sits in the cascade: 1em when
+   katex-text-face.css matches the overlay's stamped math mode, style-tokens.css's
+   1.05em otherwise, which is exactly the document's own rule. */
+.kpress .katex,
+.kpress-tooltip .katex {
+  font-size: var(--kpress-katex-size-prose);
+}
+
+.kpress .katex-display .katex,
+.kpress-tooltip .katex-display .katex {
+  font-size: var(--kpress-katex-size-display);
+}
+
+.kpress .kpress-figcaption .katex,
+.kpress .sans-text .katex,
+.kpress .kpress-toc-title .katex,
+.kpress .kpress-table th .katex,
+.kpress .tab-button .katex,
+.kpress .kpress-tab-button .katex,
+.kpress summary .katex {
+  font-size: var(--kpress-katex-size-sans);
 }
 
 /* KaTeX progressive enhancement: the semantic MathML renders by default and

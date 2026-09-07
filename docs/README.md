@@ -16,6 +16,10 @@ Use this index for implementation, maintenance, and release work.
   (issues #37/#38/#42); its durable contracts live in KPress Design and the 0.3.0 notes
 - [Content-Size Indicators](content-size-indicators.plan.md): proposed word-count and
   reading-time indicators
+- [Math Text Face](math-text-face.plan.md): the letters and digits inside KaTeX
+  mathematics drawn from the reading face, with matching metrics; on by default
+- [Math Text Face Research](project/research/research-2026-09-07-math-text-face.md): the
+  measurements, prior art and prototypes behind it
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
   interaction, accessibility, asset, and verification contract for pinnable evidence
   previews

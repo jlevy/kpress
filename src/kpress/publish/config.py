@@ -12,6 +12,7 @@ from kpress.format.model import (
     AssetMode,
     DocumentTree,
     MathMode,
+    MathTextFont,
     OptimizerMode,
     ProseFont,
     TocMode,
@@ -50,6 +51,10 @@ class FormatConfig:
     # Site default for the reading-font chooser (see RenderOptions.prose_font):
     # readers' persisted choices still win.
     prose_font: ProseFont = "serif"
+    # Faces for the letters and digits inside KaTeX mathematics (see
+    # RenderOptions.math_text_font): "prose" draws them from the reading face,
+    # "katex" keeps KaTeX's own. Independent of prose_font.
+    math_text_font: MathTextFont = "prose"
     # Content card on the reading column (see RenderOptions.content_card).
     content_card: bool = True
     # Render the doc-title <h1> header (see RenderOptions.show_doc_header).
@@ -225,6 +230,7 @@ _MATH_MODES = ("off", "auto")
 _DIAGRAM_MODES = ("off", "auto", "mermaid")
 _COLOR_MODES = ("system", "light", "dark")
 _PROSE_FONTS = ("serif", "sans")
+_MATH_TEXT_FONTS = ("prose", "katex")
 _ASSET_MODES = ("hosted", "linked", "hashed")
 _OPTIMIZER_MODES = ("none", "full")
 _PRECOMPRESS_METHODS = ("gzip", "br")
@@ -371,6 +377,7 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "palette",
         "color_mode",
         "prose_font",
+        "math_text_font",
         "content_card",
         "show_doc_header",
         "toc",
@@ -473,6 +480,7 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     _ = _checked_choice("format.diagrams", config.format.diagrams, _DIAGRAM_MODES)
     _ = _checked_choice("format.color_mode", config.format.color_mode, _COLOR_MODES)
     _ = _checked_choice("format.prose_font", config.format.prose_font, _PROSE_FONTS)
+    _ = _checked_choice("format.math_text_font", config.format.math_text_font, _MATH_TEXT_FONTS)
     extra_tags = _validated_extra_tags(list(config.format.extra_tags))
     extra_attributes = _validated_extra_attributes(list(config.format.extra_attributes))
     widgets = parse_widgets(config.format.widgets)
@@ -574,6 +582,11 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         if "prose_font" in fmt
         else "serif"
     )
+    math_text_font = (
+        _checked_choice("format.math_text_font", fmt.get("math_text_font"), _MATH_TEXT_FONTS)
+        if "math_text_font" in fmt
+        else "prose"
+    )
     if "asset_mode" in publish:
         asset_mode = publish.get("asset_mode")
         # `inline` is rejected at the config surface until it is truly
@@ -605,6 +618,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             palette=str(fmt.get("palette", "neutral")),
             color_mode=color_mode,
             prose_font=cast(ProseFont, prose_font),
+            math_text_font=cast(MathTextFont, math_text_font),
             content_card=_bool_value(fmt.get("content_card"), True),
             show_doc_header=_bool_value(fmt.get("show_doc_header"), True),
             toc=cast(TocMode, toc),
