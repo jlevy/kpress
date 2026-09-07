@@ -165,6 +165,22 @@ can use this for a serif/sans reading-font toggle, which sets
 `--kpress-host-font-prose`. Hosts customize colors by setting the public
 `--kpress-doc-*` tokens on the document scope.
 
+Mathematics carries two further font seams, both for a host that has pinned a reading
+face of its own (full contract: [Math Text Face](kpress-design.md#math-text-face)). The
+first is CSS: redeclare the `KPress Math Text` faces after KPress’s
+`katex/katex-text-face.css`, and the host’s faces win for the Latin and digit ranges
+they declare while KPress’s KaTeX fallbacks keep the symbols.
+The second is JS: regenerate `globalThis.kpressKatexTextMetrics` for that face with
+`devtools/katex_text_metrics.py` and load it before `katex-init.js`, since KaTeX lays
+out from those tables and faces swapped without them leave Computer Modern boxes around
+the host’s glyphs. A host that inlines assets into one self-contained file has two
+obligations beyond the usual: when it inlines `@font-face` sources it must rewrite the
+composite’s KaTeX-face URLs as well as the `../fonts/…` reading-face ones, and it must
+include `katex-text-metrics.js` before any script of its own that calls `katex.render` —
+the tables have to be set before the first render.
+Inlining also pays for a second copy of each reading face the composite names, roughly
+44 KB per face as base64.
+
 Document sizing is one knob, not many: every KPress font size derives from
 `--kpress-font-size-base` (default `1rem`), so a host that pins its own typography
 (px-based app chrome, for example) sets `--kpress-host-font-size-base: 17px` once on
