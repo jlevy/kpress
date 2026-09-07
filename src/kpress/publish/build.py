@@ -541,6 +541,7 @@ def build_site(
                 asset_mode=asset_mode,
                 palette=config.format.palette,
                 prose_font=config.format.prose_font,
+                math_text_font=config.format.math_text_font,
                 content_card=config.format.content_card,
                 show_doc_header=config.format.show_doc_header,
                 include_toc=config.format.toc,

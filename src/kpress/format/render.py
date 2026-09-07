@@ -739,6 +739,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         resolved_theme=options.resolved_theme,
         palette=options.palette,
         prose_font=options.prose_font,
+        math_text_font=options.math_text_font,
         title=title,
         page_reset=_standalone_page_reset(),
         social_meta=social_meta,

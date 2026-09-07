@@ -26,6 +26,7 @@ MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
 ProseFont = Literal["serif", "sans"]
+MathTextFont = Literal["prose", "katex"]
 AssetMode = Literal["hosted", "linked", "hashed", "inline"]
 AssetPolicy = Literal["none", "auto", "all"]
 OptimizerMode = Literal["none", "full"]
@@ -121,6 +122,19 @@ class RenderOptions:
     # selector would tie with the root one and the reader could never switch
     # back. Embedding hosts stamp their own root attribute instead.
     prose_font: ProseFont = "serif"
+    # Which faces draw the letters and digits inside KaTeX mathematics. "prose"
+    # draws the Latin letters and digits from the reading face (PT Serif), in
+    # every weight and style, and scales KaTeX's Greek to it, with KaTeX laid
+    # out from matching metrics; operators, relations, delimiters and the rest
+    # stay in the KaTeX faces. "katex" keeps KaTeX's own faces throughout.
+    # Stamped as data-kpress-math-text on <html> by the standalone page shell
+    # only; fragments bake no attribute and the CSS reads the absence of the
+    # attribute as "prose" (the feature is on by default), so an embedding host
+    # that wants KaTeX's faces stamps data-kpress-math-text="katex" on its own
+    # root. Independent of prose_font: the reader's serif/sans reading choice
+    # does not change the math face. See "Math Text Face" in
+    # docs/kpress-design.md.
+    math_text_font: MathTextFont = "prose"
     # Content card: render the reading column as a bordered sheet floating over
     # the page (textpress's long-text card; chrome only appears at md+ widths).
     # Stamped as data-kpress-card on the document article; the CSS lives in
