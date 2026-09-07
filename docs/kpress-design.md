@@ -1246,6 +1246,40 @@ from its own `[depth, height, italic, skew, width]` table, so swapping the drawn
 alone leaves fraction boxes, script positions and italic corrections computed for
 Computer Modern. The tables are complete because KaTeX exports a setter and no getter.
 
+**Paints once.** KaTeX renders into the live DOM, so an expression is painted in
+whatever faces have decoded by then, and the composite’s slots are separate `@font-face`
+rules from the prose PT Serif, fetched only when a formula first asks for them.
+Rendering as soon as the DOM is ready therefore paints the letters and digits in the
+next family of the stack and repaints them from the reading face a moment later, which a
+reader sees as the digits in every formula changing font: measured on a twenty-formula
+page over loopback, the first `.katex` node was inserted at 70ms and the composite’s
+slots decoded between 111ms and 116ms. So `katex-init.js` loads the faces the mode will
+draw from before the first render — the composite’s four slots when the face is on, and
+`KaTeX_Main` and `KaTeX_Math` in either mode — with a sample string (`a1αΩ`) that
+reaches both faces of every slot, since `document.fonts.load` loads a face only for a
+code point its `unicode-range` covers and the upright slots carry the Greek capitals
+alone. It renders when they settle, or after three seconds, whichever comes first; the
+same page then inserts its first expression at 129ms, after every face.
+Where the page inlines its fonts the wait costs tens of milliseconds; in hosted mode it
+delays the mathematics by a font round trip instead of flashing it.
+The composite carries `font-display: block`, like the prose faces and unlike the KaTeX
+bundle’s `swap`, for the case the wait does not cover: a slot that is somehow still not
+ready hides its glyphs for the block period rather than painting them twice.
+A browser with no `document.fonts` has no `font-display` either, and renders as it did
+before.
+
+No `<link rel="preload" as="font">` hints go with this.
+Preload would start the fetches earlier than `DOMContentLoaded`, which is the one thing
+the wait cannot do, but it has to name the font URLs in the page shell, a second copy of
+the list `katex-text-face.css` already owns, and it would have to be gated on the
+document containing math so that documents without any do not fetch the closure the lazy
+emission exists to avoid.
+Worse for the contract below: a host that declares its own `KPress Math Text` faces
+replaces the `@font-face` rules but not the shell’s hints, so the hints would fetch
+KPress’s PT Serif files its pages never draw from.
+A host that wants the earlier start can emit its own hints for the faces its documents
+actually use.
+
 **Size.** `--kpress-katex-size-prose` is `1em` when the feature is on — with the letters
 in the reading face, inline math is the prose size — and `1.05em` when it is off, the
 lift that compensated for Computer Modern’s smaller x-height.

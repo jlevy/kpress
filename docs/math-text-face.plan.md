@@ -302,6 +302,17 @@ Tracked under epic `kpr-b4mq`:
 - `kpr-2tmj`: draw the list marker as a box, not a glyph.
 - `kpr-asj4`: retire the LocalPunct borrowing so PT Serif sets its own quotation marks,
   keeping the borrowing only as an explicit host hook.
+- `kpr-yxtu`, done on this branch: the mathematics paints once.
+  `katex-init.js` loads the faces the mode will draw from before the first render, and
+  the composite carries `font-display: block`, so a formula is never painted in
+  KaTeX_Main and repainted in PT Serif.
+  On a twenty-formula page over loopback the first `.katex` node was inserted at 70ms
+  against composite slots decoding at 111–116ms; with the wait it is inserted at 129ms,
+  after all of them. `rel=preload` hints were considered and refused: they would name the
+  font URLs a second time in the page shell, would have to be gated on the document
+  containing math, and would fetch KPress’s reading face on a host that has declared its
+  own composite faces.
+  See [kpress-design.md](kpress-design.md#math-text-face).
 - `kpr-hhdc`: ship the composite’s faces as subsets.
   On an inlined page the six composite faces are 216 KB of base64, every byte a
   duplicate of a PT Serif or KaTeX blob already inlined under its own family; subsets

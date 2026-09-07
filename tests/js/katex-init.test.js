@@ -46,8 +46,32 @@ function mathNodes() {
   return document.querySelectorAll(".kpress-math-render");
 }
 
+// happy-dom ships no `document.fonts`, which is the script's own no-font-loading
+// path: it renders straight away, exactly as it did before the wait existed. The
+// tests that exercise the wait install this stub, whose promises settle only when
+// the test says so, and every other test in the file runs without it.
+function stubFontFaceSet() {
+  /** @type {{ spec: string, text: string, settle: (ok: boolean) => void }[]} */
+  const loads = [];
+  const fonts = {
+    load: vi.fn(
+      (spec, text) =>
+        new Promise((resolve, reject) => {
+          loads.push({
+            spec,
+            text,
+            settle: (ok) => (ok ? resolve([]) : reject(new Error("the face did not load"))),
+          });
+        }),
+    ),
+  };
+  Object.defineProperty(document, "fonts", { value: fonts, configurable: true });
+  return loads;
+}
+
 beforeEach(() => {
   document.body.innerHTML = "";
+  Reflect.deleteProperty(document, "fonts");
   document.documentElement.removeAttribute("data-kpress-math-text");
   document.documentElement.removeAttribute("data-kpress-font-set");
   globalThis.kpressKatexTextMetrics = METRICS;
@@ -146,5 +170,93 @@ describe("katex-init.js math text metrics", () => {
 
     expect(document.documentElement.dataset.kpressMathText).toBe("katex");
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("katex-init.js paints the mathematics once", () => {
+  it("renders only once the composite and the KaTeX faces have loaded", async () => {
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    // KaTeX renders into the live DOM, so a formula typeset before its faces
+    // decode is painted in the next family of the stack and repainted when the
+    // reading face arrives. Nothing is typeset while the loads are pending.
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+
+    const specs = loads.map((load) => load.spec);
+    // The composite's four slots, and the two KaTeX families every rule in
+    // katex-text-face.css names after it.
+    expect(specs.filter((spec) => spec.includes("KPress Math Text"))).toHaveLength(4);
+    expect(specs.filter((spec) => spec.includes("KaTeX_Main"))).toHaveLength(4);
+    expect(specs.filter((spec) => spec.includes("KaTeX_Math"))).toHaveLength(2);
+    // `document.fonts.load` loads a face only for a code point its
+    // `unicode-range` covers, so the sample reaches both faces of every slot:
+    // Latin and digits for the reading face, and Greek in both cases for the
+    // KaTeX halves, whose upright slots carry the capitals alone.
+    for (const load of loads) {
+      expect(load.text).toMatch(/[a-z]/);
+      expect(load.text).toMatch(/[0-9]/);
+      expect(load.text).toContain("α");
+      expect(load.text).toContain("Ω");
+    }
+
+    for (const load of loads) {
+      load.settle(true);
+    }
+
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+    expect(globalThis.katex.__setFontMetrics).toHaveBeenCalledTimes(FACES.length);
+  });
+
+  it("waits for no composite face when the document opts out", async () => {
+    document.documentElement.dataset.kpressMathText = "katex";
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    expect(loads).toHaveLength(6);
+    expect(loads.map((load) => load.spec).join(" ")).not.toContain("KPress Math Text");
+
+    for (const load of loads) {
+      load.settle(true);
+    }
+
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+  });
+
+  it("renders anyway when a face fails to load", async () => {
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    loads[0].settle(false);
+    for (const load of loads.slice(1)) {
+      load.settle(true);
+    }
+
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+  });
+
+  it("renders straight away where there is no font loading API", () => {
+    // No stub: a browser without `document.fonts` has no `font-display` either,
+    // and behaves exactly as it did before the wait existed.
+    mountMath();
+
+    runInitScript();
+
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads no face on a page with no mathematics", () => {
+    const loads = stubFontFaceSet();
+
+    runInitScript();
+
+    expect(loads).toHaveLength(0);
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
   });
 });
