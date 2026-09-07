@@ -27,14 +27,18 @@ const OPTIONS = {
 // `globalThis.kpressKatexTextMetrics`, keyed by KaTeX face name plus a `scale`
 // entry that belongs to the stylesheet's `size-adjust`, not to KaTeX.
 //
-// The tables are one setting for the whole page: `__setFontMetrics` replaces a
-// table in the KaTeX singleton, so a page cannot lay out one document with the
-// reading face's numbers and another with Computer Modern's. The decision is
-// therefore taken over every math host on the page, under the same three
-// opt-outs the stylesheet honours on any ancestor: `data-kpress-math-text="katex"`,
+// WHETHER to use the tables is one setting for the whole page. The decision is
+// taken over every math host on the page, under the same three opt-outs the
+// stylesheet honours on any ancestor: `data-kpress-math-text="katex"`,
 // `data-kpress-fonts="system"` and the reader's persisted
 // `data-kpress-font-set="system"`. A page that mixes opted-in and opted-out
 // hosts is unsupported; the metrics follow the opted-in ones.
+//
+// WHICH tables is decided per rendered node, because a serif document's captions
+// and tables are set in the sans (below). `__setFontMetrics` replaces a table in
+// the KaTeX singleton, so only one set exists at a time and it has to be the right
+// one at the moment `render` is called: the loop installs the node's set, renders,
+// and leaves the serif set behind for whatever runs after it.
 //
 // If a host wants the face and the tables cannot be applied -- the asset did not
 // load, or a KaTeX bump renamed its private setter -- the face is turned off as
@@ -42,7 +46,57 @@ const OPTIONS = {
 // without metrics is the one state the design forbids.
 const TEXT_FACE_OPT_OUT =
   '[data-kpress-math-text="katex"], [data-kpress-fonts="system"], [data-kpress-font-set="system"]';
+
+// There are two composites and two table sets. `KPress Math Text` draws from the reading
+// face; `KPress Math Text Sans` draws from Source Sans 3 inside the document's sans roles
+// and under the reader's sans reading face, so the mathematics in a caption is set in the
+// caption's own face. The tables for the sans composite live under the asset's `sans`
+// key; the serif ones are its own face keys.
+//
+// SANS_CONTEXT is the same list katex-text-face.css scopes its sans rules on, spelled
+// again here because a selector cannot be shared across the two languages;
+// tests/test_sans_math_face_css.py pins the two copies together. The last entry is the
+// reader's sans reading face, which is stamped on <html> or on the wrapper, and which
+// `closest` finds either way.
+const SANS_CONTEXT =
+  '.kpress-figcaption, .kpress-footnotes, .kpress-table, .sans-text, .description, .key-claims, .summary, .concepts, .claim, .para-caption, .tab-button, summary, [data-kpress-prose-font="sans"]';
+const SERIF_SET = "prose";
+const SANS_SET = "sans";
+const SCALE_KEY = "scale";
 let metricsApplied = false;
+// Which set KaTeX is currently holding: null until one is installed, which is also how
+// the render loop knows the tables are ours to switch.
+let installedSet = null;
+
+// `__setFontMetrics` replaces a table in the KaTeX singleton, so only one set can be
+// installed at a time and it has to be the right one at the moment `render` is called.
+// Switching is six calls with the tables already in memory, so it is done per node.
+function tablesFor(set) {
+  const metrics = globalThis.kpressKatexTextMetrics;
+  const tables = set === SANS_SET ? metrics?.[SANS_SET] : metrics;
+  return tables && typeof tables === "object" ? tables : null;
+}
+
+function installTables(set) {
+  if (installedSet === set) {
+    return true;
+  }
+  const tables = tablesFor(set);
+  const katex = globalThis.katex;
+  const install = katex?.__setFontMetrics;
+  if (!tables || typeof install !== "function") {
+    return false;
+  }
+  for (const [face, table] of Object.entries(tables)) {
+    // Neither the nested sans set nor the stylesheet's size-adjust factors is a face.
+    if (face === SANS_SET || face === SCALE_KEY) {
+      continue;
+    }
+    install.call(katex, face, table);
+  }
+  installedSet = set;
+  return true;
+}
 
 function applyTextMetrics(nodes) {
   if (metricsApplied) {
@@ -59,22 +113,20 @@ function applyTextMetrics(nodes) {
     return;
   }
   metricsApplied = true;
-  const metrics = globalThis.kpressKatexTextMetrics;
-  const katex = globalThis.katex;
-  const install = katex?.__setFontMetrics;
-  if (!metrics || typeof metrics !== "object" || typeof install !== "function") {
+  // Both sets are required: a page that has the sans faces without the sans tables would
+  // draw Source Sans and lay out PT Serif inside every caption, which is the one state
+  // the design forbids just as firmly as faces without metrics anywhere else.
+  if (!tablesFor(SANS_SET) || !installTables(SERIF_SET)) {
+    installedSet = null;
     document.documentElement.dataset.kpressMathText = "katex";
     console.warn(
       "kpress: the math text face metrics are unavailable; KaTeX's own faces are restored",
     );
-    return;
   }
-  for (const [face, table] of Object.entries(metrics)) {
-    if (face === "scale") {
-      continue;
-    }
-    install.call(katex, face, table);
-  }
+}
+
+function textMetricsSet(node) {
+  return node.closest(SANS_CONTEXT) ? SANS_SET : SERIF_SET;
 }
 
 function enhanceMath() {
@@ -89,12 +141,20 @@ function enhanceMath() {
     if (!host || host.dataset.kpressMathRendered === "true") {
       continue;
     }
+    if (installedSet) {
+      installTables(textMetricsSet(node));
+    }
     try {
       render(node, OPTIONS);
       host.dataset.kpressMathRendered = "true";
     } catch {
       // Leave the semantic MathML fallback in place on failure.
     }
+  }
+  // The tables outlive this loop, so leave the serif set in place: a host that calls
+  // katex.render afterwards gets the reading face's numbers, which is the default.
+  if (installedSet) {
+    installTables(SERIF_SET);
   }
 }
 

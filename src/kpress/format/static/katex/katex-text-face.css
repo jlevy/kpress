@@ -286,3 +286,476 @@
   font-family: "KPress Math Text", KaTeX_Main, serif;
   font-style: normal;
 }
+
+/* ============================ KPRESS MATH TEXT SANS ================================ */
+
+/* A second composite, for the sans roles of a serif document -- a caption, a footnote,
+ * a table, the dialect boxes -- and for the reader's sans reading face. Same idea and
+ * same slot structure as `KPress Math Text` above; Source Sans 3 draws the Latin ranges
+ * instead of PT Serif, and the KaTeX faces are scaled to Source Sans's own measures.
+ * The mathematics in a caption is then set in the caption's face rather than the
+ * document's, which is what the size token beside it (`--kpress-katex-size-sans`, 1em)
+ * has always assumed.
+ *
+ * PINNED WEIGHTS. Each slot declares a SINGLE `font-weight`, not the variable face's
+ * whole 200-900 axis, and its metric table is built at that weight. A KaTeX metric
+ * table describes one face and one weight, and Source Sans's advances travel along the
+ * axis -- a median 7.1% and a worst 20.5% between 370 and 700, against 0.035em of
+ * movement in the tallest ink height. CSS Fonts 4 clamps a variable face to the range
+ * its `@font-face` declares, so a single value draws the weight the table was built at
+ * whatever the context asks for, and KaTeX never lays out glyphs it has no numbers for.
+ *
+ * The two weights:
+ *
+ *   400  the regular slots. Upstream's `.katex { font: normal 1.21em ... }` resets
+ *        font-weight, so mathematics in a sans context is set at 400 today and stays
+ *        there; a host's 410-weight caption gets a 400-weight mathematics, 0.15% off
+ *        in advance and exactly described by the table.
+ *   650  the bold slots, `--kpress-font-weight-sans-bold`, which is what bold means in
+ *        every other sans context kpress ships. The `.mathbf` and `.boldsymbol` rules
+ *        below ask for the token rather than upstream's 700, so `\mathbf{D}` in a
+ *        caption reaches the same bold as a bold word in the caption beside it.
+ *
+ * PRINT. The screen draws the Latin ranges from the variable faces; a printed page
+ * cannot, because Chromium's PDF writer turns a variable face away from its default
+ * position into Type3 outline paths (see css/print-fonts.css, which does the same for
+ * the plain sans role). The `@media print` block at the end of this section layers the
+ * static instances at the same two weights over the same ranges, LAST, so CSS Fonts 4's
+ * last-defined-face rule gives them to print and leaves the screen alone. The two agree
+ * to the unit: instancing the variable face at 400 and 650 reproduces every Latin
+ * advance of the shipped instance exactly, so one metric table is true of both.
+ *
+ * The rules are separate from the ones above rather than folded into them, and each
+ * scope is its own rule, to keep every selector well inside the 400-character budget a
+ * consuming host's stylesheet check applies.
+ */
+
+/* ================== SANS SLOT 1: normal 400 (KaTeX_Main-Regular) =================== */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  /* Greek to Source Sans's cap height; `katex_text_metrics --print-scale` (Main-Regular).
+     Below 100%: Computer Modern's Greek capitals are taller than Source Sans's. */
+  size-adjust: 96.6%;
+  src: url("../katex/fonts/KaTeX_Main-Regular.woff2") format("woff2");
+  unicode-range: U+0391-03A9;
+}
+
+/* =================== SANS SLOT 2: italic 400 (KaTeX_Math-Italic) =================== */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2");
+  unicode-range: U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  /* Greek to Source Sans's x-height; `katex_text_metrics --print-scale` (Math-Italic). */
+  size-adjust: 110.2%;
+  src: url("../katex/fonts/KaTeX_Math-Italic.woff2") format("woff2");
+  unicode-range: U+0370-03FF;
+}
+
+/* ==================== SANS SLOT 3: normal 650 (KaTeX_Main-Bold) ==================== */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 650;
+  font-display: swap;
+  src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 650;
+  font-display: swap;
+  /* Greek to Source Sans's cap height; `katex_text_metrics --print-scale` (Main-Bold). */
+  size-adjust: 96.2%;
+  src: url("../katex/fonts/KaTeX_Main-Bold.woff2") format("woff2");
+  unicode-range: U+0391-03A9;
+}
+
+/* ================= SANS SLOT 4: italic 650 (KaTeX_Math-BoldItalic) ================= */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 650;
+  font-display: swap;
+  src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2");
+  unicode-range: U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 650;
+  font-display: swap;
+  /* Greek to Source Sans's x-height; `--print-scale` (Math-BoldItalic). */
+  size-adjust: 109.3%;
+  src: url("../katex/fonts/KaTeX_Math-BoldItalic.woff2") format("woff2");
+  unicode-range: U+0370-03FF;
+}
+
+/* The static instances, over the same ranges, declared last so print gets them and the
+   screen keeps the variable faces. Same reason and same files as css/print-fonts.css. */
+@media print {
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/source-sans-3-latin-400-normal.woff2") format("woff2");
+    unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+  }
+
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/source-sans-3-latin-400-italic.woff2") format("woff2");
+    unicode-range: U+0041-005A, U+0061-007A;
+  }
+
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: normal;
+    font-weight: 650;
+    font-display: swap;
+    src: url("../fonts/source-sans-3-latin-650-normal.woff2") format("woff2");
+    unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+  }
+
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: italic;
+    font-weight: 650;
+    font-display: swap;
+    src: url("../fonts/source-sans-3-latin-650-italic.woff2") format("woff2");
+    unicode-range: U+0041-005A, U+0061-007A;
+  }
+}
+
+/* ---------------------------- THE SANS FEATURE RULES ------------------------------ */
+
+/* Two scopes, one composite. The first reaches the sans roles of any document: the
+   roles below are every place a kpress stylesheet sets `--kpress-font-sans`,
+   `--kpress-font-footnote` or `--kpress-font-table` on running author text. Headings
+   and the TOC are sans roles too and are deliberately NOT here: both are set at the
+   sans bold weight, where a table built at 400 does not describe the glyphs and the
+   pinned 400 would set the mathematics a step lighter than the words. The second scope
+   is the reader's sans reading face, where the whole document is sans.
+
+   Both carry the same three opt-outs as the serif rules above, and both land one class
+   above them -- (0,5,0) against (0,4,0), and (0,4,0) against (0,3,0) for the root rule
+   -- so the sans composite wins inside a sans context and does not exist outside one.
+   The scopes are separate rules rather than one selector list to keep each selector
+   inside the 400-character budget a consuming host's stylesheet check applies; the
+   longest below is 358.
+
+   `katex-init.js` selects the matching metric table set per rendered node with the same
+   role list; `tests/test_sans_math_face_css.py` pins the two lists together. */
+
+/* --- sans roles --- */
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  ) :is(
+    .kpress-figcaption,
+    .kpress-footnotes,
+    .kpress-table,
+    .sans-text,
+    .description,
+    .key-claims,
+    .summary,
+    .concepts,
+    .claim,
+    .para-caption,
+    .tab-button,
+    summary
+  )
+  .katex {
+  font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  :is(
+    .kpress-figcaption,
+    .kpress-footnotes,
+    .kpress-table,
+    .sans-text,
+    .description,
+    .key-claims,
+    .summary,
+    .concepts,
+    .claim,
+    .para-caption,
+    .tab-button,
+    summary
+  )
+  .katex
+  .mathnormal {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  :is(
+    .kpress-figcaption,
+    .kpress-footnotes,
+    .kpress-table,
+    .sans-text,
+    .description,
+    .key-claims,
+    .summary,
+    .concepts,
+    .claim,
+    .para-caption,
+    .tab-button,
+    summary
+  )
+  .katex
+  .mathit {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: italic;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  :is(
+    .kpress-figcaption,
+    .kpress-footnotes,
+    .kpress-table,
+    .sans-text,
+    .description,
+    .key-claims,
+    .summary,
+    .concepts,
+    .claim,
+    .para-caption,
+    .tab-button,
+    summary
+  )
+  .katex
+  .mathbf {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-weight: var(--kpress-font-weight-sans-bold, 650);
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  :is(
+    .kpress-figcaption,
+    .kpress-footnotes,
+    .kpress-table,
+    .sans-text,
+    .description,
+    .key-claims,
+    .summary,
+    .concepts,
+    .claim,
+    .para-caption,
+    .tab-button,
+    summary
+  )
+  .katex
+  .boldsymbol {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+  font-weight: var(--kpress-font-weight-sans-bold, 650);
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  :is(
+    .kpress-figcaption,
+    .kpress-footnotes,
+    .kpress-table,
+    .sans-text,
+    .description,
+    .key-claims,
+    .summary,
+    .concepts,
+    .claim,
+    .para-caption,
+    .tab-button,
+    summary
+  )
+  .katex
+  .textrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: normal;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  :is(
+    .kpress-figcaption,
+    .kpress-footnotes,
+    .kpress-table,
+    .sans-text,
+    .description,
+    .key-claims,
+    .summary,
+    .concepts,
+    .claim,
+    .para-caption,
+    .tab-button,
+    summary
+  )
+  .katex
+  .mainrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: normal;
+}
+
+/* --- sans reading face --- */
+
+:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  .katex {
+  font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
+}
+
+:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  .katex
+  .mathnormal {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+}
+
+:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  .katex
+  .mathit {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: italic;
+}
+
+:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  .katex
+  .mathbf {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-weight: var(--kpress-font-weight-sans-bold, 650);
+}
+
+:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  .katex
+  .boldsymbol {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+  font-weight: var(--kpress-font-weight-sans-bold, 650);
+}
+
+:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  .katex
+  .textrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: normal;
+}
+
+:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
+    [data-kpress-fonts="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  .katex
+  .mainrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: normal;
+}
