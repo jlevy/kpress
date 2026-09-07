@@ -516,6 +516,30 @@ def test_print_css_leads_the_sans_stack_with_the_static_family() -> None:
     assert '"Source Sans 3",' not in tokens
 
 
+def test_prose_stack_does_not_borrow_the_readers_punctuation() -> None:
+    """PT Serif sets its own quotation marks; the Georgia borrowing is opt-in.
+
+    ``LocalPunct`` is ``local("Georgia")`` over the quote and apostrophe code points. It
+    used to lead ``--kpress-font-prose``, so a document's punctuation came from the
+    reader's machine when they had Georgia and from PT Serif when they did not, and a
+    printed page could not embed it either way. The face is still declared, because the
+    host hook is useless without it -- but no default stack may name it.
+    """
+    css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
+    collapsed = re.sub(r"\s+", " ", css)
+
+    prose = collapsed[collapsed.index("--kpress-font-prose: var(") :]
+    prose = prose[: prose.index(");")]
+    assert "LocalPunct" not in prose, prose
+    assert '"PT Serif"' in prose
+
+    # Declared, and reachable only through the documented hook.
+    assert 'font-family: "LocalPunct"; src: local("Georgia");' in collapsed
+    assert '--kpress-font-punctuation: var(--kpress-host-font-punctuation, "LocalPunct")' in (
+        collapsed
+    )
+
+
 def test_list_markers_are_drawn_not_set() -> None:
     """No stylesheet asks a font for the list marker.
 

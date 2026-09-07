@@ -66,14 +66,7 @@
     "Segoe UI",
     sans-serif
   );
-  --kpress-font-prose: var(
-    --kpress-host-font-prose,
-    "LocalPunct",
-    "PT Serif",
-    Georgia,
-    "Times New Roman",
-    serif
-  );
+  --kpress-font-prose: var(--kpress-host-font-prose, "PT Serif", Georgia, "Times New Roman", serif);
   --kpress-font-sans: var(
     --kpress-host-font-sans,
     "Source Sans 3 Variable",
@@ -94,7 +87,25 @@
   );
   --kpress-font-footnote: var(--kpress-host-font-footnote, var(--kpress-font-sans));
   --kpress-font-table: var(--kpress-host-font-table, var(--kpress-font-sans));
-  --kpress-font-punctuation: "LocalPunct";
+  /* The punctuation slot: a family that answers only the quote and apostrophe
+     code points, and nothing else. It used to LEAD --kpress-font-prose, so every
+     quotation mark and apostrophe on screen came from the reader's Georgia when
+     they had it and from PT Serif when they did not. Georgia's marks were
+     preferred, and the preference is real: PT Serif sets its curly doubles 16%
+     wider (7.584px against 6.563px at a 16px base) and hangs the opening pair
+     1.26px higher than it sets the closing pair, where Georgia's open and close
+     sit level. But it made a document's punctuation depend on the reader's
+     machine, and it is not what a printed page got, since the borrowed face
+     cannot be embedded. PT Serif now sets its own.
+
+     The borrowing remains available as an explicit opt-in, one line on a host's
+     :root, and the LocalPunct @font-face below is kept for it:
+
+       --kpress-host-font-prose:
+         var(--kpress-font-punctuation), "PT Serif", Georgia, serif;
+
+     --kpress-host-font-punctuation points that slot at some other family. */
+  --kpress-font-punctuation: var(--kpress-host-font-punctuation, "LocalPunct");
   --kpress-font-features-sans: normal;
 
   /* Weights (Source Sans variable axis): light 370, medium 550, bold 650. */
@@ -634,6 +645,11 @@
     U+FFFD;
 }
 
+/* LocalPunct is Georgia's quote and apostrophe glyphs and nothing else. It is
+   declared but NOT in any default stack: a host opts in through
+   --kpress-host-font-prose, as the punctuation token above shows. Kept as a
+   declaration rather than deleted because the hook is useless without it, and
+   `local()` downloads nothing when no one asks. */
 @font-face {
   font-family: "LocalPunct";
   src: local("Georgia");

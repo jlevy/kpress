@@ -283,8 +283,8 @@ The Type3 paths carry the right weight (a 410 stem is 0.083 em in the PDF and on
 screen), but Preview smooths text drawn through the font machinery and not paths: with
 Quartz font smoothing on, embedded faces gain 5–20% ink at 24–36 px and the paths gain
 none, so the sans read a step lighter than the serif and the mathematics beside it.
-On screen, LocalPunct borrows Georgia’s quotation marks into the prose stack when the
-reader has Georgia, which the squares shell already refuses in print for the same
+On screen, LocalPunct borrowed Georgia’s quotation marks into the prose stack when the
+reader had Georgia, which the squares shell already refused in print for the same
 reason.
 
 Tracked under epic `kpr-b4mq`:
@@ -308,8 +308,13 @@ Tracked under epic `kpr-b4mq`:
   Every marker is within 0.02px of the size the glyph drew and 0.08px of its position,
   measured in Chromium at a 16px base; the one deliberate move is the sans `.claim`
   marker, whose own fallback had been drawing it 60% oversized.
-- `kpr-asj4`: retire the LocalPunct borrowing so PT Serif sets its own quotation marks,
-  keeping the borrowing only as an explicit host hook.
+- `kpr-asj4`, done: `LocalPunct` no longer leads the prose stack, so PT Serif sets its
+  own quotation marks.
+  The `@font-face` stays for the opt-in, which is one line on a host’s `:root` through
+  `--kpress-font-punctuation`; `--kpress-host-font-punctuation` points that slot
+  elsewhere. What the borrowing was buying is recorded rather than lost: PT Serif sets
+  its curly doubles 16% wider than Georgia and hangs the opening pair 2px higher than it
+  sets the closing pair, where Georgia’s sit level.
 - `kpr-hhdc`: ship the composite’s faces as subsets.
   On an inlined page the six composite faces are 216 KB of base64, every byte a
   duplicate of a PT Serif or KaTeX blob already inlined under its own family; subsets

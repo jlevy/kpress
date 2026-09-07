@@ -1351,6 +1351,45 @@ of `--kpress-host-font-sans` in the print token.
 A host that overrides the sans weight tokens needs instances at its own weights; see
 [Host Integration](kpress-operations-and-host-integration.md#print-sans-faces-and-host-weights).
 
+### Quotation Marks
+
+Quotation marks and apostrophes come from **PT Serif**, like every other glyph in the
+reading face.
+
+They did not always.
+`style-tokens.css` declares a family `LocalPunct` whose `src` is `local("Georgia")` and
+whose `unicode-range` is six code points — the straight and curly quotes and the
+apostrophe — and that family used to *lead* `--kpress-font-prose`. So a reader with
+Georgia installed saw Georgia’s marks in Georgia’s metrics, a reader without saw PT
+Serif’s, and a printed page saw PT Serif’s either way, because a `local()` face cannot
+be embedded. One document, three answers.
+
+**Why it was there.** Georgia’s marks were preferred, and the preference is a real one,
+not an accident. Measured in Chromium at a 16px base: PT Serif sets its curly doubles
+7.584px wide against Georgia’s 6.563px, 16% more, and hangs the opening pair 13.184px
+above the baseline while setting the closing pair at 11.184px — a 2px difference in
+height between the marks that open a quotation and the ones that close it, where
+Georgia’s sit level at 11.92 and 11.95. PT Serif’s opening single quote reads as a
+near-vertical tapered tick rather than a comma.
+Georgia’s marks are quieter and more even.
+
+That is a fair criticism of PT Serif and not a reason to draw a document’s punctuation
+from the reader’s machine.
+The rule wins: one face, one document, on screen and on paper.
+
+**Opting back in.** The `LocalPunct` face is still declared, and a host that wants it
+takes it in one line:
+
+```css
+:root {
+  --kpress-host-font-prose: var(--kpress-font-punctuation), "PT Serif", Georgia, serif;
+}
+```
+
+`--kpress-font-punctuation` is that slot, and `--kpress-host-font-punctuation` points it
+at some family other than `LocalPunct`. Nothing in KPress reads the slot by default, so
+a page that does not ask for the borrowing does not get it.
+
 ### List Markers
 
 The bulleted list marker is a **drawn box**, not a glyph: `content: ""` on the
@@ -1476,7 +1515,7 @@ override any single role on its own, and otherwise the vendored reader faces app
 
 | Variable | Default (vendored) | Used by | Host hook |
 | --- | --- | --- | --- |
-| `--kpress-font-prose` | serif: PT Serif (`LocalPunct` punctuation) | reading body (`.kpress-prose`), H1/H2 | `--kpress-host-font-prose` |
+| `--kpress-font-prose` | serif: PT Serif | reading body (`.kpress-prose`), H1/H2 | `--kpress-host-font-prose` |
 | `--kpress-font-sans` | sans: Source Sans 3 | UI chrome: TOC, captions, H3–H6, code-copy, **tooltips** | `--kpress-host-font-sans` |
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
