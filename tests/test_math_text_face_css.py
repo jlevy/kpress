@@ -83,7 +83,9 @@ def _css() -> str:
     return read_package_text("katex/katex-text-face.css")
 
 
-def _parse_faces(css: str) -> list[FontFace]:
+def _parse_faces(css: str, family: str = FAMILY) -> list[FontFace]:
+    """Every `@font-face` of one family; the stylesheet also carries the sans composite,
+    which `tests/test_sans_math_face_css.py` covers."""
     faces: list[FontFace] = []
     for match in _FONT_FACE_RE.finditer(_COMMENT_RE.sub("", css)):
         declarations: dict[str, str] = {}
@@ -96,7 +98,8 @@ def _parse_faces(css: str) -> list[FontFace]:
             (int(start, 16), int(end or start, 16))
             for start, end in _RANGE_RE.findall(declarations.get("unicode-range", ""))
         )
-        faces.append(FontFace(declarations=declarations, ranges=ranges))
+        if declarations.get("font-family") == family:
+            faces.append(FontFace(declarations=declarations, ranges=ranges))
     return faces
 
 

@@ -21,10 +21,20 @@ function runInitScript() {
   return new Function(`${source}\nreturn { enhanceMath, applyTextMetrics };`)();
 }
 
+// Two sets, as the generated asset ships them: the serif tables as the object's own face
+// keys and the sans ones nested under `sans`. The digits differ because the faces do --
+// PT Serif sets `0` on 0.533em and Source Sans on 0.497em -- which is what the per-node
+// selection below is checked against.
 const METRICS = {
   "Main-Regular": { 48: [0, 0.64444, 0, 0, 0.53299] },
   "Main-Bold": { 48: [0, 0.64444, 0, 0, 0.5748] },
   "Math-Italic": { 97: [0, 0.43056, 0, 0, 0.52859] },
+  sans: {
+    "Main-Regular": { 48: [0, 0.638, 0, 0, 0.497] },
+    "Main-Bold": { 48: [0, 0.636, 0, 0, 0.52] },
+    "Math-Italic": { 97: [0, 0.498, 0, 0, 0.525] },
+    scale: { "Main-Regular": 0.966, "Math-Italic": 1.102 },
+  },
   scale: { "Main-Regular": 1.025, "Math-Italic": 1.15 },
 };
 
@@ -40,6 +50,34 @@ function mountMath({ fonts = "custom", wrapper = "" } = {}) {
     <div ${wrapper}>
       <article class="kpress" data-kpress-fonts="${fonts}">${MATH}</article>
     </div>`;
+}
+
+// A prose paragraph and a caption, in that DOM order, so one page asks for both sets.
+function mountProseAndCaption({ wrapper = "" } = {}) {
+  document.body.innerHTML = `
+    <div ${wrapper}>
+      <article class="kpress" data-kpress-fonts="custom">
+        <p>${MATH}</p>
+        <figure><figcaption class="kpress-figcaption">${MATH}</figcaption></figure>
+      </article>
+    </div>`;
+}
+
+// Which set was installed when the n-th render ran: `__setFontMetrics` replaces a table
+// in the KaTeX singleton, so what matters is the last table handed over before the call.
+function setInstalledForRender(index) {
+  const installs = globalThis.katex.__setFontMetrics.mock;
+  const renderedAt = globalThis.renderMathInElement.mock.invocationCallOrder[index];
+  let table = null;
+  installs.calls.forEach(([face, value], call) => {
+    if (face === "Main-Regular" && installs.invocationCallOrder[call] < renderedAt) {
+      table = value;
+    }
+  });
+  if (table === METRICS.sans["Main-Regular"]) {
+    return "sans";
+  }
+  return table === METRICS["Main-Regular"] ? "prose" : null;
 }
 
 function mathNodes() {
@@ -146,5 +184,62 @@ describe("katex-init.js math text metrics", () => {
 
     expect(document.documentElement.dataset.kpressMathText).toBe("katex");
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("katex-init.js per-node table selection", () => {
+  it("lays out a caption from the sans tables and prose from the reading face's", () => {
+    mountProseAndCaption();
+
+    runInitScript();
+
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(2);
+    expect(setInstalledForRender(0)).toBe("prose");
+    expect(setInstalledForRender(1)).toBe("sans");
+  });
+
+  it("leaves the serif set installed once the page is rendered", () => {
+    // The tables outlive the loop, so a host that calls katex.render afterwards gets
+    // the default rather than whichever node happened to be last.
+    mountProseAndCaption();
+
+    runInitScript();
+
+    const installs = globalThis.katex.__setFontMetrics.mock.calls;
+    const last = installs.filter(([face]) => face === "Main-Regular").at(-1);
+    expect(last[1]).toBe(METRICS["Main-Regular"]);
+  });
+
+  it("uses the sans tables throughout under the reader's sans reading face", () => {
+    mountProseAndCaption({ wrapper: 'data-kpress-prose-font="sans"' });
+
+    runInitScript();
+
+    expect(setInstalledForRender(0)).toBe("sans");
+    expect(setInstalledForRender(1)).toBe("sans");
+  });
+
+  it("installs no face called `sans` or `scale`", () => {
+    mountProseAndCaption();
+
+    runInitScript();
+
+    const faces = globalThis.katex.__setFontMetrics.mock.calls.map(([face]) => face);
+    expect(faces).not.toContain("sans");
+    expect(faces).not.toContain("scale");
+    expect(new Set(faces)).toEqual(new Set(FACES));
+  });
+
+  it("turns the face off when only the serif tables are shipped", () => {
+    // Sans faces without sans metrics is the same forbidden state as faces without
+    // metrics anywhere else: Source Sans drawn, PT Serif laid out, inside every caption.
+    globalThis.kpressKatexTextMetrics = { ...METRICS, sans: undefined };
+    mountProseAndCaption();
+
+    runInitScript();
+
+    expect(globalThis.katex.__setFontMetrics).not.toHaveBeenCalled();
+    expect(document.documentElement.dataset.kpressMathText).toBe("katex");
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(2);
   });
 });

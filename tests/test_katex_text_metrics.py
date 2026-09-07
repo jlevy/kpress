@@ -12,6 +12,9 @@ from devtools.katex_text_metrics import (
     LETTERS_AND_DIGITS,
     MATH_ITALIC_SCALE,
     PRECISION,
+    SANS_KEY,
+    SANS_MATH_ITALIC_SCALE,
+    SANS_SCALE_FACTORS,
     SCALE_FACTORS,
     SCALE_KEY,
     MetricsError,
@@ -25,6 +28,13 @@ from devtools.katex_text_metrics import (
 # tall on a 0.552em advance with a 6/1000 overshoot below the baseline.
 PT_SERIF_DIGIT_ONE = [0, 0.712, 0, 0, 0.533]
 PT_SERIF_ITALIC_N = [0.006, 0.512, 0, 0, 0.552]
+
+# The same, from Source Sans 3 at the two weights the sans slots pin. The pair is the
+# point: a KaTeX table describes one weight, and `1` is 4.6% wider at 650 than at 400,
+# so a single table built at one of them would misdescribe the other.
+SOURCE_SANS_DIGIT_ONE = [0, 0.638, 0, 0, 0.497]
+SOURCE_SANS_BOLD_DIGIT_ONE = [0, 0.636, 0, 0, 0.52]
+SOURCE_SANS_ITALIC_N = [0, 0.498, 0, 0, 0.525]
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +61,7 @@ def test_asset_declares_the_public_global(asset: dict[str, Any]) -> None:
 
     assert text.startswith(ASSET_HEADER)
     assert f"globalThis.{GLOBAL_NAME} = {{" in text
-    assert set(asset) == {*SCALE_FACTORS, SCALE_KEY}
+    assert set(asset) == {*SCALE_FACTORS, SANS_KEY, SCALE_KEY}
 
 
 def test_swapped_digit_carries_pt_serif_metrics(asset: dict[str, Any]) -> None:
@@ -110,3 +120,62 @@ def test_parse_katex_table_rejects_an_unexpected_shape() -> None:
 def test_parse_katex_table_rejects_a_short_row() -> None:
     with pytest.raises(MetricsError, match="expected 5"):
         parse_katex_table('{"Main-Regular":{32:[0,0,0,.25]}}', "Main-Regular")
+
+
+# ---- The sans set ----
+#
+# `KPress Math Text Sans` draws the same ranges from Source Sans 3 for the sans roles of
+# a document and for the reader's sans reading face, so it needs its own tables under the
+# asset's `sans` key. `katex-init.js` installs one set or the other per rendered node.
+
+
+@pytest.fixture(scope="module")
+def sans(asset: dict[str, Any]) -> dict[str, Any]:
+    return cast("dict[str, Any]", asset[SANS_KEY])
+
+
+def test_sans_set_carries_the_same_faces_and_its_own_factors(sans: dict[str, Any]) -> None:
+    assert set(sans) == {*SANS_SCALE_FACTORS, SCALE_KEY}
+    assert sans[SCALE_KEY] == SANS_SCALE_FACTORS
+    # Below 1 for the upright slots, which the serif factors never are: Computer Modern's
+    # Greek capitals are taller than Source Sans's and shorter than PT Serif's.
+    assert SANS_SCALE_FACTORS["Main-Regular"] < 1 < SCALE_FACTORS["Main-Regular"]
+
+
+def test_sans_digits_come_from_the_weight_its_slot_pins(sans: dict[str, Any]) -> None:
+    """The regular table is built at 400 and the bold one at 650, which is what lets the
+    composite pin each slot's `font-weight` and still describe what it draws."""
+    assert _table(sans, "Main-Regular")["49"] == SOURCE_SANS_DIGIT_ONE
+    assert _table(sans, "Main-Bold")["49"] == SOURCE_SANS_BOLD_DIGIT_ONE
+    assert _table(sans, "Math-Italic")["110"] == SOURCE_SANS_ITALIC_N
+
+
+def test_sans_and_serif_sets_disagree_where_the_faces_do(
+    sans: dict[str, Any], asset: dict[str, Any]
+) -> None:
+    """One asset, two sets, and installing the wrong one is the failure this guards."""
+    assert _table(sans, "Main-Regular")["49"] != _table(asset, "Main-Regular")["49"]
+
+
+def test_sans_operators_are_untouched(sans: dict[str, Any], bundle: str) -> None:
+    """Source Sans centres its operators 0.080em above KaTeX's axis and has no `<=`, so
+    the composite leaves them to KaTeX and the table must say so."""
+    original = parse_katex_table(bundle, "Main-Regular")[0x2B]
+
+    assert _table(sans, "Main-Regular")["43"] == list(original)
+
+
+def test_sans_greek_is_scaled_by_the_sans_factor(sans: dict[str, Any], bundle: str) -> None:
+    original = parse_katex_table(bundle, "Math-Italic")[0x3B8]
+    expected = [round(value * SANS_MATH_ITALIC_SCALE, PRECISION) + 0.0 for value in original]
+
+    assert _table(sans, "Math-Italic")["952"] == expected
+
+
+def test_sans_tables_are_complete(sans: dict[str, Any], bundle: str) -> None:
+    """`__setFontMetrics` replaces a whole table, and the sans set replaces the serif one
+    in place, so a dropped code point would survive from whichever ran last."""
+    for face in SANS_SCALE_FACTORS:
+        original = parse_katex_table(bundle, face)
+
+        assert {int(code) for code in _table(sans, face)} >= set(original)
