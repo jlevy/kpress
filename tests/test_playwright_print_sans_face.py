@@ -35,7 +35,9 @@ from .test_print_sans_faces import match_weight
 #: font is reported by its default instance, and Source Sans 3 Variable's default
 #: position is 200, which its own name table calls ExtraLight.
 VARIABLE_FACE = "Source Sans 3 ExtraLight"
-VARIABLE_POSTSCRIPT = "SourceSans3-Roman_Regular"
+#: The variable face's own PostScript name. macOS appends the named instance
+#: (``SourceSans3-Roman_Regular``); Linux reports it bare, so only the prefix is fixed.
+VARIABLE_POSTSCRIPT = "SourceSans3-Roman"
 
 #: The footnote body: sans by default (--kpress-font-footnote derives from the sans
 #: token), plain text, and no image or math asset needed to put it on the page.
@@ -153,4 +155,4 @@ def test_print_media_draws_the_sans_from_a_static_instance(tmp_path: Path) -> No
     # Screen: unchanged, still the variable face at whatever weight the context asks for.
     assert screen["isCustomFont"], screen
     assert screen["familyName"] == VARIABLE_FACE, screen
-    assert screen["postScriptName"] == VARIABLE_POSTSCRIPT, screen
+    assert screen["postScriptName"].startswith(VARIABLE_POSTSCRIPT), screen
