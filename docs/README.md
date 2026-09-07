@@ -18,8 +18,8 @@ Use this index for implementation, maintenance, and release work.
   reading-time indicators
 - [Math Text Face](math-text-face.plan.md): the letters and digits inside KaTeX
   mathematics drawn from the reading face, with matching metrics; on by default
-- [Math Text Face Research](math-text-face.research.md): the measurements, prior art and
-  prototypes behind it
+- [Math Text Face Research](project/research/research-2026-09-07-math-text-face.md): the
+  measurements, prior art and prototypes behind it
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
   interaction, accessibility, asset, and verification contract for pinnable evidence
   previews

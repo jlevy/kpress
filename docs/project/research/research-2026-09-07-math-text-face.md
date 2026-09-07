@@ -7,8 +7,10 @@ author: Claude (agent), for samanthadrakova@gmail.com
 
 **Date:** 2026-09-07 (last updated 2026-09-07)
 
-**Status:** Complete; the feature it recommends is planned in
-[Math Text Face](math-text-face.plan.md).
+**Author:** Claude (agent), for samanthadrakova@gmail.com
+
+**Status:** Complete; the feature it recommends is planned and shipped in
+[Math Text Face](../../math-text-face.plan.md).
 
 ## Overview
 
@@ -488,6 +490,76 @@ faces’ own ascents never decide a line.
 | Browser floor | any | any | any | any | Chrome 109, Firefox 149, Safari 26.2 for `math` |
 | Risk | none | low; Safari and Firefox to verify | low; a KaTeX bump re-runs the generator | high | high |
 
+## Options Considered
+
+### Option A: Leave KPress as it is
+
+**Description:** Keep the three size tokens and Computer Modern throughout.
+
+**Pros:**
+- No change, no cross-browser verification.
+
+**Cons:**
+- The x-height and weight mismatch stays, and it is most visible in dense sentences.
+
+### Option E: Route Latin letters and digits to the reading face in CSS, at 1em
+
+**Description:** A composite family (the reading face for digits and A–Z, a–z; the KaTeX
+face for the rest) as the root `.katex` family, class rules sending `.mathnormal` and
+`.mathit` to the italic, `.mathbf` to the bold, `.boldsymbol` to the bold italic, and
+`.textrm`, `.mainrm` to the upright; `--kpress-katex-size-prose` at 1em.
+
+**Pros:**
+- One face for every letter and digit on the page; symbols keep their axis.
+- CSS only; the same scope `unicode-math`’s `range=` and `mathspec` take in LaTeX.
+
+**Cons:**
+- KaTeX still lays out with Computer Modern’s heights: a pixel of overflow on tall
+  glyphs in fractions.
+- A text italic has no italic correction; a function name against a parenthesis wants a
+  thin kern.
+
+### Option G: E plus metrics from the reading face
+
+**Description:** Complete metric tables for the swapped code points, generated with
+fontTools from the same woff2 files and applied through `katex.__setFontMetrics` before
+rendering.
+
+**Pros:**
+- Layout matches the glyphs that are drawn; the display overflow disappears.
+- Data-driven; re-runs on a KaTeX bump; the vendored bundle stays byte-identical.
+
+**Cons:**
+- A generated asset and a check that its inputs still have the expected shape.
+- fontTools as a dev dependency.
+
+### Option J: G plus scaled Greek
+
+**Description:** Inside the composite, the KaTeX face over the Greek range with a
+`size-adjust` to the reading face’s x-height (lowercase) or cap height (capitals), and
+the same factor on those entries of the metric tables.
+
+**Pros:**
+- `θ`, `π` and `μ` reach the height and nearly the weight of the letters beside them.
+- Two `@font-face` rules per slot and one parameter in the generator.
+
+**Cons:**
+- Needs `size-adjust` (Chrome 92, Firefox 92, Safari 17); below that the Greek is drawn
+  unscaled while laid out scaled.
+
+### Eliminated Options
+
+- **F, `size-adjust` on the math italic:** matching x-heights by scaling Computer Modern
+  makes capitals and ascenders too tall and leaves the strokes thin.
+  Seen and rejected.
+- **H, operators from the reading face:** the axis mismatch of 0.094em and the missing
+  `≤ ≥` rule it out on measurement, and the screenshot confirms it.
+- **Switching to MathJax 4:** cannot redirect digits or `\mathrm`; a font family and a
+  pipeline for less than E gives.
+- **Switching to Temml or native MathML:** the correct long-term web answer, but a 380
+  KB math font, browser bugs Temml itself lists, and a browser floor that shipped this
+  year.
+
 ## Recommendations
 
 Route E with route G’s metrics, as a KPress feature that is on by default: a composite
@@ -495,7 +567,17 @@ family for the reading face’s letters and digits, the class rules pointed at i
 math at 1em, and complete metric tables for the swapped code points applied through
 `katex.__setFontMetrics` before rendering.
 Operators, relations, delimiters, big operators and Greek stay in the KaTeX faces.
-The design and its phases are in [Math Text Face](math-text-face.plan.md).
+The design and its phases are in [Math Text Face](../../math-text-face.plan.md), and
+they shipped with option J’s Greek scaling included.
+
+## Next Steps
+
+- [x] Plan and implement the feature: [Math Text Face](../../math-text-face.plan.md).
+- [ ] Check Safari and Firefox by hand: the composite fall-through, `size-adjust`, and
+  `\mathit{1}`, `\mathrm{\alpha}` and a Greek line.
+- [ ] Sans math, when the reader chooses the sans reading face (`kpr-7f9z`).
+- [ ] Subset the composite’s faces to cut the cost of a page that inlines every asset
+  (`kpr-hhdc`).
 
 ## Methodology
 

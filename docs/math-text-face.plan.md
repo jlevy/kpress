@@ -22,12 +22,12 @@ hook), `kpr-mot3` (tests, goldens, docs); deferred `kpr-7f9z` (sans math) and `k
 
 KPress sets prose in PT Serif and mathematics in KaTeX, whose faces derive from Computer
 Modern. The two disagree in x-height and stroke weight, and no size token can reconcile
-both. The [research brief](math-text-face.research.md) measured the difference,
-prototyped eight routes on a rendered paper, surveyed what LaTeX and the web renderers
-do, and settled on one: draw every Latin letter and digit inside mathematics from the
-reading face, keep operators, relations, delimiters, radicals and Greek in the KaTeX
-faces, set inline math at the prose size, and give KaTeX the reading face’s own glyph
-metrics so its layout matches what it draws.
+both. The [research brief](project/research/research-2026-09-07-math-text-face.md)
+measured the difference, prototyped eight routes on a rendered paper, surveyed what
+LaTeX and the web renderers do, and settled on one: draw every Latin letter and digit
+inside mathematics from the reading face, keep operators, relations, delimiters,
+radicals and Greek in the KaTeX faces, set inline math at the prose size, and give KaTeX
+the reading face’s own glyph metrics so its layout matches what it draws.
 
 This plan makes that a KPress feature: on by default, switchable off per document, and
 defined by a contract a host can satisfy with a reading face other than PT Serif.
@@ -278,7 +278,7 @@ draw the Greek unscaled while laying it out scaled.
 
 ## References
 
-- [Research: Harmonizing the Reading Face with KaTeX Mathematics](math-text-face.research.md).
+- [Research: Harmonizing the Reading Face with KaTeX Mathematics](project/research/research-2026-09-07-math-text-face.md).
 - Commit `ef3074c` (KaTeX sizing tokens), `components.css` “KaTeX sizing”, `assets.py`
   (`KATEX_JS_ASSETS`, the lazy math closure), `katex-init.js`.
 - [KPress Design: Theme and Fonts](kpress-design.md#theme-and-fonts);
