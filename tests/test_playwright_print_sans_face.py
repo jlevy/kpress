@@ -65,44 +65,40 @@ def _build_fixture_site(tmp_path: Path) -> Path:
     return tmp_path / "public"
 
 
-def _platform_font(page: Any, selector: str) -> dict[str, Any]:
+def _platform_font(session: Any, selector: str) -> dict[str, Any]:
     """The face Chromium drew most of a node's glyphs with, as it reports it."""
-    session = page.context.new_cdp_session(page)
-    try:
-        session.send("DOM.enable")
-        session.send("CSS.enable")
-        root = cast(dict[str, Any], session.send("DOM.getDocument", {"depth": -1}))
-        found = cast(
-            dict[str, Any],
-            session.send(
-                "DOM.querySelector", {"nodeId": root["root"]["nodeId"], "selector": selector}
-            ),
-        )
-        assert found["nodeId"], f"no node for {selector}"
-        result = cast(
-            dict[str, Any],
-            session.send("CSS.getPlatformFontsForNode", {"nodeId": found["nodeId"]}),
-        )
-        fonts = cast(list[dict[str, Any]], result["fonts"])
-        assert fonts, f"no platform fonts reported for {selector}"
-        return max(fonts, key=lambda font: cast(int, font["glyphCount"]))
-    finally:
-        session.detach()
+    root = cast(dict[str, Any], session.send("DOM.getDocument", {"depth": -1}))
+    found = cast(
+        dict[str, Any],
+        session.send("DOM.querySelector", {"nodeId": root["root"]["nodeId"], "selector": selector}),
+    )
+    assert found["nodeId"], f"no node for {selector}"
+    result = cast(
+        dict[str, Any],
+        session.send("CSS.getPlatformFontsForNode", {"nodeId": found["nodeId"]}),
+    )
+    fonts = cast(list[dict[str, Any]], result["fonts"])
+    assert fonts, f"no platform fonts reported for {selector}"
+    return max(fonts, key=lambda font: cast(int, font["glyphCount"]))
 
 
-def _settled(page: Any, selector: str, media: str) -> dict[str, Any]:
-    """Switch media, let the faces the new layout needs load, and read the face back."""
+def _settled(page: Any, session: Any, selector: str, media: str) -> dict[str, Any]:
+    """Switch media, let the faces the new layout needs load, and read the face back.
+
+    One session serves every read: detaching one resets the emulated media on the
+    tested Chromium, so a fresh session per read would measure the page back on screen.
+    """
     page.emulate_media(media=media)
     page.evaluate("document.fonts.ready")
     # A face declared inside `@media print` only starts loading once print media
     # matches and a layout asks for it, so the first report can still name a fallback.
     for _ in range(30):
-        font = _platform_font(page, selector)
+        font = _platform_font(session, selector)
         if font["isCustomFont"]:
             return font
         page.wait_for_timeout(100)
         page.evaluate("document.fonts.ready")
-    return _platform_font(page, selector)
+    return _platform_font(session, selector)
 
 
 def test_print_media_draws_the_sans_from_a_static_instance(tmp_path: Path) -> None:
@@ -127,13 +123,22 @@ def test_print_media_draws_the_sans_from_a_static_instance(tmp_path: Path) -> No
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
                 page.wait_for_selector(_FOOTNOTE)
 
-                screen = _settled(page, _FOOTNOTE, "screen")
-                printed = _settled(page, _FOOTNOTE, "print")
-                weight = int(
-                    page.evaluate(
-                        f"getComputedStyle(document.querySelector({_FOOTNOTE!r})).fontWeight"
+                session = context.new_cdp_session(page)
+                try:
+                    session.send("DOM.enable")
+                    session.send("CSS.enable")
+                    screen = _settled(page, session, _FOOTNOTE, "screen")
+                    printed = _settled(page, session, _FOOTNOTE, "print")
+                    # Read the weight while print media still holds, so the assertion
+                    # below compares the printed face against the printed request.
+                    assert page.evaluate("matchMedia('print').matches")
+                    weight = int(
+                        page.evaluate(
+                            f"getComputedStyle(document.querySelector({_FOOTNOTE!r})).fontWeight"
+                        )
                     )
-                )
+                finally:
+                    session.detach()
             finally:
                 browser.close()
     finally:
