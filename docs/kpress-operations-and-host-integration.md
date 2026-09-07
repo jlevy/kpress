@@ -177,11 +177,22 @@ they declare while KPress’s KaTeX fallbacks keep the symbols.
 The second is JS: regenerate `globalThis.kpressKatexTextMetrics` for that face with
 `devtools/katex_text_metrics.py` and load it before `katex-init.js`, since KaTeX lays
 out from those tables and faces swapped without them leave Computer Modern boxes around
-the host’s glyphs. A host that inlines assets into one self-contained file has two
-obligations beyond the usual: when it inlines `@font-face` sources it must rewrite the
-composite’s KaTeX-face URLs as well as the `../fonts/…` reading-face ones, and it must
-include `katex-text-metrics.js` before any script of its own that calls `katex.render` —
-the tables have to be set before the first render.
+the host’s glyphs. Both seams have a sans twin, `KPress Math Text Sans` and the
+generator’s `sans` table set, which is what a caption, a footnote, a table and the
+reader’s sans reading face draw from.
+A host that pins only its serif leaves them alone and keeps Source Sans there; a host
+that pins its sans as well redeclares both families and regenerates both sets, and must
+keep the `sans` key present — `katex-init.js` treats a missing sans set the way it
+treats missing tables anywhere else and turns the whole face off, since sans faces laid
+out from serif numbers is the state the design forbids.
+A host that redeclares the sans faces gives each slot a single `font-weight`, not a
+range: the table it ships describes one weight, and a variable face is clamped to the
+range its `@font-face` declares.
+A host that inlines assets into one self-contained file has two obligations beyond the
+usual: when it inlines `@font-face` sources it must rewrite the composite’s KaTeX-face
+URLs as well as the `../fonts/…` reading-face ones, and it must include
+`katex-text-metrics.js` before any script of its own that calls `katex.render` — the
+tables have to be set before the first render.
 Inlining also pays for a second copy of each reading face the composite names, roughly
 44 KB per face as base64.
 
