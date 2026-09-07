@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from devtools.public_hygiene import (
@@ -206,3 +207,39 @@ def test_third_party_skill_runners_use_exact_versions() -> None:
         text = (ROOT / relative).read_text(encoding="utf-8")
         assert pin in text
         assert "@latest" not in text
+
+
+# Reader-facing documents name no release. A version written into prose is a
+# maintenance obligation with no reader benefit: pyproject.toml, uv.lock and the
+# PyPI project page are authoritative, and a sentence restating one only goes
+# stale. Both of these had: the README named the release four times and
+# docs/installation.md sat two versions behind. The release checklist carried a
+# step for keeping them in step, which is the cost this removes.
+#
+# docs/publishing.md is not listed: it names `v0.1.0` as the tag shape for the
+# first alpha, which is history rather than a current version. Release notes
+# under docs/releases/ are exempt for the obvious reason -- a release note is
+# *about* a version -- as are dated research and plan documents, which record
+# what was true when they were written.
+VERSIONLESS_DOCS = ("README.md", "docs/installation.md")
+# Any three-part version, but not one inside a longer dotted run: the README
+# quickstart prints `http://127.0.0.1:8080/`, and a naive \d+\.\d+\.\d+ matches
+# the address. Two-part versions are left alone -- "Python 3.12 or newer" is a
+# requirement, not a release of ours.
+_FROZEN_VERSION = re.compile(r"(?<![\d.])v?\d+\.\d+\.\d+(?![\d.])")
+
+
+def test_reader_facing_docs_do_not_freeze_a_version() -> None:
+    offenders: dict[str, list[str]] = {}
+    for relative in VERSIONLESS_DOCS:
+        path = ROOT / relative
+        if not path.exists():
+            continue
+        found = sorted(set(_FROZEN_VERSION.findall(path.read_text(encoding="utf-8"))))
+        if found:
+            offenders[relative] = found
+
+    assert not offenders, (
+        f"documents froze a version: {offenders}. Use a <version> placeholder and point "
+        f"at PyPI or the lockfile; see docs/publishing.md."
+    )
