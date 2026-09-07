@@ -1262,22 +1262,57 @@ KaTeX’s faces stamps `data-kpress-math-text="katex"` on its own root.
 The attribute is independent of `data-kpress-prose-font`: a reader switching the reading
 face between serif and sans does not change the math face.
 The feature rules are scoped positively, to a `.kpress` that has not opted out, so an
-opted-out wrapper keeps KaTeX’s own rules and the `1.05em` token exactly; the scope
-excludes `data-kpress-math-text="katex"` on the wrapper or any ancestor, the wrapper’s
+opted-out wrapper keeps KaTeX’s own rules and the `1.05em` token exactly.
+There are three ways out — `data-kpress-math-text="katex"`, the wrapper’s
 `data-kpress-fonts="system"`, and the reader’s persisted `data-kpress-font-set="system"`
 (both system modes load no reading face, so there would be nothing to draw the letters
-from). The metrics follow the same three conditions and are one setting for the whole
-page: KaTeX keeps one table per face, so a page that mixes opted-in and opted-out
-wrappers is unsupported, and the metrics follow the opted-in ones.
+from) — and each is honoured **on the element it is stamped on and on any ancestor**.
+`katex-init.js` reads them with `closest()`, which matches the element itself, so the
+stylesheet lists each one twice, bare and as an ancestor: a scope that admitted one
+placement the script refused would draw the composite over KaTeX’s own metrics, the one
+state this design forbids.
+The metrics follow the same three conditions and are one setting for the whole page:
+KaTeX keeps one table per face, so a page that mixes opted-in and opted-out wrappers is
+unsupported, and the metrics follow the opted-in ones.
 When a wrapper wants the face but the tables cannot be applied, `katex-init.js` stamps
 the opt-out on `<html>` and says so on the console, so the faces are turned off with the
 metrics rather than drawn without them.
-`\mathit` follows `KaTeX_Main`, the face it replaces, after the composite; its Greek
-capitals are drawn by the italic slot’s scaled `KaTeX_Math-Italic` face and laid out
-from the `Main-Italic` table, which the generator scales by that same factor.
+`\mathit` follows `KaTeX_Main`, the face it replaces, after the composite; its Greek is
+drawn by the italic slot’s scaled `KaTeX_Math-Italic` face, so the generator copies
+those rows from the `Math-Italic` table — not from `Main-Italic`, whose advances and
+accent skews belong to a face this slot never draws — and scales them by that face’s
+factor.
+`\textrm` and `\text` take the family only: KaTeX emits one `.mord.textrm.textit`
+leaf for `\textrm{\textit{x}}` and lays it out from the italic table, and upstream
+leaves `.textrm` without a `font-style` precisely so that nesting still resolves to
+italic. Pinning the upright slot there would draw one face over another’s metrics;
+`.mainrm`, which upstream does pin, keeps its pin.
 Browsers without `size-adjust` (before Chrome 92, Firefox 92 and Safari 17) draw the
-Greek unscaled while laying it out scaled; the `:not()` list the scope uses needs Chrome
-88, Firefox 84 or Safari 9.
+Greek unscaled while laying it out scaled; the scope needs `:not()` with a selector list
+(Chrome 88, Firefox 84, Safari 9) and `:is()` (Chrome 88, Firefox 88, Safari 14).
+
+**Live preferences and overlays.** Two things outlive the first render, and both have to
+keep the drawn face and the metric tables together.
+
+- **The reader’s font-set control** (the settings widget’s `font-set` chooser) is also
+  the switch for this feature.
+  The CSS flips instantly, but the metric tables were handed to KaTeX once, at load,
+  through a setter with no getter, over TeX that is gone as soon as it has been typeset
+  — so they cannot be swapped in place.
+  The widget therefore persists the choice and reloads, and `theme-bootstrap.js` stamps
+  it on `<html>` before first paint, so the page returns whole in the new mode.
+  The reload is taken only where it buys something: a page with no typeset math, or one
+  where the text face is off page-wide, switches in place.
+  A host that stamps `data-kpress-font-set` through its own control owns the same
+  reload.
+- **Footnote and section previews** are clones of already-rendered math that
+  `tooltips.js` mounts on the viewport pane or the body, outside every `.kpress`, so the
+  scoped rules above would stop applying to them and the overlay would draw KaTeX’s own
+  faces over boxes measured for the reading face.
+  The overlay therefore carries the originating wrapper’s resolved mode as
+  `data-kpress-math-text`, and both the composite scope in `katex-text-face.css` and the
+  `--kpress-katex-size-*` consumers in `components.css` admit `.kpress-tooltip`
+  alongside `.kpress`.
 
 **A host with another reading face.** The face is a contract, tuned for PT Serif and
 open to another. A host that pins its own reading face satisfies it in two places:
