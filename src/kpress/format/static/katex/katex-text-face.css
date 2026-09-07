@@ -169,11 +169,13 @@
    and (0,4,0) against upstream's (0,1,0) and (0,2,0), and the size token at (0,2,0)
    against style-tokens.css's (0,1,0): link order decides nothing here. */
 
-/* With the letters and digits in the reading face, inline math is the prose
+/* With the letters and digits in the reading face, mathematics is the prose
    size: upstream's 1.21em lift exists to seat Computer Modern beside a
-   Times-like body face, and there is nothing left to seat. The sans (1em) and
-   display (1.1em) tokens keep their values; the consumer is `.kpress .katex` in
-   components.css. */
+   Times-like body face, and there is nothing left to seat. That goes for
+   display math too: TeX sets a displayed equation at the text size, and the
+   1.1em the display token carries for Computer Modern read, once the letters
+   were the reading face, as a paragraph set a size larger. The sans token
+   (1em) already agrees; the consumers are in components.css. */
 .kpress:not(
   [data-kpress-fonts="system"],
   [data-kpress-math-text="katex"],
@@ -182,6 +184,7 @@
   [data-kpress-math-text="katex"] *
 ) {
   --kpress-katex-size-prose: 1em;
+  --kpress-katex-size-display: 1em;
 }
 
 /* The root rule reaches digits, operator names, `\text{}` and `\mathrm{}`,

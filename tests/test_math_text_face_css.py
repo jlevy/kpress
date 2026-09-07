@@ -236,6 +236,7 @@ def test_inline_math_takes_the_prose_size_inside_the_scope() -> None:
     css = _COMMENT_RE.sub("", _css())
     body = _rule_block(css, "")
     assert "--kpress-katex-size-prose: 1em" in body
-    # The sans and display tokens are style-tokens.css's business, not this file's.
+    # Display math is the prose size too once the letters are the reading face.
+    assert "--kpress-katex-size-display: 1em" in body
+    # The sans token already agrees and stays style-tokens.css's business.
     assert "--kpress-katex-size-sans" not in css
-    assert "--kpress-katex-size-display" not in css

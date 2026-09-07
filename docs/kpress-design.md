@@ -1249,7 +1249,9 @@ Computer Modern. The tables are complete because KaTeX exports a setter and no g
 **Size.** `--kpress-katex-size-prose` is `1em` when the feature is on — with the letters
 in the reading face, inline math is the prose size — and `1.05em` when it is off, the
 lift that compensated for Computer Modern’s smaller x-height.
-`--kpress-katex-size-sans` and `--kpress-katex-size-display` are unchanged.
+`--kpress-katex-size-display` is `1em` as well when the feature is on, since TeX sets a
+displayed equation at the text size and the 1.1em lift read as a size jump once the
+letters were the reading face; `--kpress-katex-size-sans` is unchanged.
 
 **The option.** `MathTextFont` is `"prose" | "katex"`; `RenderOptions.math_text_font`
 (`format.math_text_font`) defaults to `prose` and is stamped as `data-kpress-math-text`

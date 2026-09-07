@@ -120,8 +120,9 @@ CSS Fonts 4 checks the last-defined face first, so the host’s faces win for th
 they declare and KPress’s KaTeX fallbacks keep the rest.
 
 Sizes: with the letters in the prose face, inline math is the prose size.
-`--kpress-katex-size-prose` becomes `1em` when the feature is on; the sans and display
-tokens keep their values (`1em`, `1.1em`) and the display value is an open question.
+`--kpress-katex-size-prose` and `--kpress-katex-size-display` both become `1em` when the
+feature is on, since TeX sets displayed equations at the text size and the display lift
+read as a size jump once the letters were the reading face; the sans token already is.
 
 Metrics: a generated asset, `katex/katex-text-metrics.js`, that defines
 `globalThis.kpressKatexTextMetrics` as complete tables for the six affected faces
@@ -241,8 +242,6 @@ contract. Upstreaming to `main` is decided after a consuming site has shipped wi
 
 ## Open Questions
 
-- Display size: keep `--kpress-katex-size-display` at `1.1em` (display math standing a
-  little larger than the prose) or set it to `1em` with the inline token.
 - Sans contexts: captions and labels set in Source Sans carry PT Serif math letters.
   Consistency of the math face across the document is the usual choice; restricting the
   scope to prose contexts is one selector if captions read better with the KaTeX faces.
