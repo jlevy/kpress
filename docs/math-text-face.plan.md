@@ -294,9 +294,14 @@ Tracked under epic `kpr-b4mq`:
   declared in the generated `print-fonts.css`, led by `print.css` under print media.
   Hosts that override the weight tokens instance their own set; a host that inlines
   assets may supply them only at PDF time so its page’s bytes do not change.
-- `kpr-v731`: vendor Source Code Pro, static 400 and 700, as the mono face and lead the
-  mono stack with it; re-tune the mono size token by x-height; a fonts README recording
-  provenance and licence for every vendored face.
+- `kpr-v731`, done: Source Code Pro, static 400 and 700, vendored from
+  `@fontsource/source-code-pro` 5.3.0 and leading the mono stack.
+  The size token moved from `0.82` to `0.925` of the base, set by x-height rather than
+  by eye: code’s x-height now sits at 89.9% of PT Serif’s, which is where Menlo at
+  `0.82` had been sitting (89.7%), so the change is one of face and not of apparent
+  size. `static/fonts/README.md` records provenance, sha256 and licence for all eight
+  vendored files; the four that predate the record turned out to be byte-identical to
+  the Fontsource packages of the same names, so their origin is no longer guesswork.
   `kpr-aq8o` decides the final mono face against stated criteria; Source Code Pro stays
   until it does.
 - `kpr-2tmj`: draw the list marker as a box, not a glyph.

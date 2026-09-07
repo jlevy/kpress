@@ -17,7 +17,15 @@ independent of KPress’s license.
   ParaType). woff2 subsets vendored under `src/kpress/format/static/fonts/`.
 - **Source Sans 3** ([SIL Open Font License 1.1](src/kpress/licenses/source-sans-3.txt),
   Adobe, [adobe-fonts/source-sans](https://github.com/adobe-fonts/source-sans)).
-  Variable woff2 subsets vendored under `src/kpress/format/static/fonts/`.
+  Variable woff2 subsets vendored under `src/kpress/format/static/fonts/`; the static
+  print instances are generated from them by `devtools/instance_sans.py`.
+- **Source Code Pro**
+  ([SIL Open Font License 1.1](src/kpress/licenses/source-code-pro.txt), Adobe,
+  [adobe-fonts/source-code-pro](https://github.com/adobe-fonts/source-code-pro)). Static
+  woff2 subsets at 400 and 700 vendored under `src/kpress/format/static/fonts/`.
+
+Per-file provenance and sha256 for every vendored face are recorded in
+[`src/kpress/format/static/fonts/README.md`](src/kpress/format/static/fonts/README.md).
 - **github-slugger** v2.0.0 ([ISC License](src/kpress/licenses/github-slugger.txt),
   [Flet/github-slugger](https://github.com/Flet/github-slugger)). KPress’s
   dependency-free heading slugger and pinned Unicode exclusion data derive from commit

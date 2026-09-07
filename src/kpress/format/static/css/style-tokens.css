@@ -50,8 +50,13 @@
   --kpress-font-size-base: var(--kpress-host-font-size-base, 1rem);
 
   /* Families. body = UI/chrome sans; prose = serif reading face; sans = the sans
-     stack; mono = code; footnote/table default to sans; punctuation borrows a
-     serif's quote glyphs. Each reads a --kpress-host-* hook so a host can swap it. */
+     stack; mono = Source Code Pro, the shipped code face; footnote/table default
+     to sans. Each reads a --kpress-host-* hook so a host can swap it.
+     Every family leads with a face KPress ships, so a document draws the same
+     glyphs on every machine and a printed page embeds them; the system stacks
+     behind each one are the fallback for a face that failed to load, not the
+     design. The one place the platform is asked for a font on purpose is
+     font_mode="system", which replaces all four stacks below. */
   --kpress-font-body: var(
     --kpress-host-font-body,
     "Source Sans 3 Variable",
@@ -80,6 +85,7 @@
   );
   --kpress-font-mono: var(
     --kpress-host-font-mono,
+    "Source Code Pro",
     ui-monospace,
     SFMono-Regular,
     Menlo,
@@ -98,15 +104,37 @@
 
   /* Sizes. One ramp for prose + UI; the mono sizes are a touch smaller so code
      aligns visually with surrounding text. `normal` is the base itself --
-     derived, not a second knob: hosts set the base, not normal. */
+     derived, not a second knob: hosts set the base, not normal.
+
+     THE MONO SCALE is set by x-height, not by eye. Inline code interrupts a line
+     of PT Serif, so what has to agree is the height of a lowercase letter, and
+     the em box the two faces measure that against is not the same box. Measured
+     from the shipped faces (OS/2 sxHeight over unitsPerEm): PT Serif 500/1000,
+     Source Code Pro 486/1000, Source Sans 3 486/1000 -- the two Source faces are
+     siblings and share an x-height by design.
+
+     The rule: inline code's x-height sits at 90% of the prose x-height around
+     it, one deliberate step below rather than level with it, because a
+     monospaced face set to the serif's x-height reads wider and heavier than the
+     line it interrupts (every advance is 600/1000, against PT Serif's 519 for
+     the same `x`). 0.925 * 486/1000 = 0.4496 of the base against PT Serif's
+     0.500, so 89.9%.
+
+     This is a change of face, not of apparent size: the 0.82 it replaces was
+     tuned for the system monos, and Menlo -- what a Mac actually drew -- carries
+     a 0.5468 em x-height, so 0.82 landed at 7.175px against the prose's 8.000px,
+     89.7%. Source Code Pro at 0.925 draws 7.193px. Measured in Chromium at a
+     16px base; the cost is a 12% wider advance, so a code block fits about one
+     character in nine fewer per line. The small and tiny rungs keep their old
+     proportions to the mono size (0.9146 and 0.8537) to within half a percent. */
   --kpress-font-size-large: calc(var(--kpress-font-size-base) * 1.2);
   --kpress-font-size-normal: var(--kpress-font-size-base);
   --kpress-font-size-small: calc(var(--kpress-font-size-base) * 0.95);
   --kpress-font-size-smaller: calc(var(--kpress-font-size-base) * 0.9);
   --kpress-font-size-tiny: calc(var(--kpress-font-size-base) * 0.85);
-  --kpress-font-size-mono: calc(var(--kpress-font-size-base) * 0.82);
-  --kpress-font-size-mono-small: calc(var(--kpress-font-size-base) * 0.75);
-  --kpress-font-size-mono-tiny: calc(var(--kpress-font-size-base) * 0.7);
+  --kpress-font-size-mono: calc(var(--kpress-font-size-base) * 0.925);
+  --kpress-font-size-mono-small: calc(var(--kpress-font-size-base) * 0.846);
+  --kpress-font-size-mono-tiny: calc(var(--kpress-font-size-base) * 0.79);
 
   /* KaTeX sizing. Context-relative (em) on purpose, like the sup/sub sizes the
      policy above exempts and for the same reason: these are ratios against
@@ -365,6 +393,7 @@
   --kpress-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --kpress-font-prose: Georgia, "Times New Roman", Times, serif;
   --kpress-font-punctuation: Georgia, "Times New Roman", Times, serif;
+  --kpress-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* Reading-font chooser (settings widget): "sans" flips the prose body from the
@@ -628,6 +657,36 @@
   font-display: block;
   font-weight: 200 900;
   src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}
+
+/* Source Code Pro, static at 400 and 700 -- the mono face. Static rather than
+   variable for the same reason the print sans instances are: Chromium's PDF
+   writer cannot embed a variable font away from its default position, and code
+   is one of the things a printed page is most likely to carry. Two static faces
+   embed like any other font, so no print-only instance set is needed here.
+   Provenance and licence: static/fonts/README.md. */
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url("../fonts/source-code-pro-latin-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-display: block;
+  font-weight: 700;
+  src: url("../fonts/source-code-pro-latin-700-normal.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
     U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,

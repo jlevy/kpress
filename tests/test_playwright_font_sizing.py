@@ -28,7 +28,9 @@ import pytest
 
 from kpress.publish import build_site
 
-DESIGN_RATIOS = {"h1": 1.7, "h2": 1.32, "code": 0.82, "bullet": 0.9, "tooltip": 0.95}
+#: The mono ratio is 0.925 rather than a rounder number because it is set from the
+#: shipped faces' x-heights, not by eye: see style-tokens.css "THE MONO SCALE".
+DESIGN_RATIOS = {"h1": 1.7, "h2": 1.32, "code": 0.925, "bullet": 0.9, "tooltip": 0.95}
 
 
 class _QuietHandler(SimpleHTTPRequestHandler):
