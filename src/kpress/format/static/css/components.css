@@ -1668,6 +1668,8 @@
   outline-offset: 3px;
 }
 
+/* One sans bold across the design system: these two carried a literal 700, the
+   only sans chrome above the bold token, until 2026-09-07. */
 .kpress .kpress-video-placeholder-action {
   align-items: center;
   background: oklch(100.00% 0 0 / 0.92);
@@ -1675,7 +1677,7 @@
   color: oklch(17.76% 0 0);
   display: inline-flex;
   font-size: var(--kpress-font-size-small);
-  font-weight: 700;
+  font-weight: var(--kpress-font-weight-sans-bold);
   height: 3rem;
   justify-content: center;
   line-height: 1;
@@ -1684,7 +1686,7 @@
 
 .kpress .kpress-video-placeholder-title {
   font-size: var(--kpress-font-size-small);
-  font-weight: 700;
+  font-weight: var(--kpress-font-weight-sans-bold);
 }
 
 .kpress-video-popover iframe {
@@ -1700,6 +1702,9 @@
   width: 100%;
 }
 
+/* The caps-label idiom, at the label weight the TOC title, the disclosure
+   summaries and the print tab label all use. It asked for a literal 600 until
+   2026-09-07, so the same label came out heavier on screen than on paper. */
 .kpress .tab-button,
 .kpress-tab-button {
   background: transparent;
@@ -1712,7 +1717,7 @@
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-caps-label-size);
   font-variant-caps: var(--kpress-caps-variant);
-  font-weight: 600;
+  font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: var(--kpress-caps-spacing);
   line-height: 1.2;
   max-width: 10rem;
