@@ -294,6 +294,9 @@ Tracked under epic `kpr-b4mq`:
   declared in the generated `print-fonts.css`, led by `print.css` under print media.
   Hosts that override the weight tokens instance their own set; a host that inlines
   assets may supply them only at PDF time so its page’s bytes do not change.
+  The exporter waits for the faces print layout asks for, and for the ones only the
+  `@page` footer asks for, before it prints; without that wait a slow face prints as
+  blank space.
 - `kpr-v731`, done: Source Code Pro, static 400 and 700, vendored from
   `@fontsource/source-code-pro` 5.3.0 and leading the mono stack.
   The size token moved from `0.82` to `0.925` of the base, set by x-height rather than

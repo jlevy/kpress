@@ -38,8 +38,13 @@ release.
    Run the README quickstart and all bundled examples outside the checkout when a
    release changes public behavior or packaged assets.
 
-4. Update `docs/releases/X.Y.Z.md` and confirm the README install command names the new
-   release.
+4. Write `docs/releases/X.Y.Z.md`, sized to the release: a patch that changes one rule
+   needs what broke, whether it affects the reader, and that it is fixed — not the
+   anatomy of a feature release.
+
+   No other document needs touching.
+   Reader-facing documentation names no version, so nothing outside `docs/releases/`
+   goes stale when this number changes.
 
 5. Create and publish a GitHub release with the exact tag `vX.Y.Z`. For the first alpha,
    use `v0.1.0`—no alpha suffix.

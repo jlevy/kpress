@@ -29,9 +29,41 @@ function applyProseFont(value) {
 }
 
 /**
+ * Whether typeset mathematics on the page would be left in the previous mode.
+ *
+ * The font set is also the switch for the math text face (katex-text-face.css),
+ * and that face is half CSS and half metrics: katex-init.js hands KaTeX the
+ * reading face's metric tables once, at load, through `__setFontMetrics`. That
+ * setter replaces a table in the KaTeX singleton and has no getter, so the
+ * tables cannot be read back and swapped for the other mode's in place; and the
+ * TeX a rendered expression came from is gone once KaTeX has typeset over it.
+ * Flipping the CSS alone would leave every fraction, script and accent on the
+ * page laid out for the face it is no longer drawn in.
+ *
+ * So the switch is completed by a reload. The choice is persisted first and
+ * theme-bootstrap.js stamps it on <html> before first paint, so the page comes
+ * back whole in the new mode rather than half-converted. It costs a reload only
+ * where it buys something: a page with no typeset math, or one where the text
+ * face is off page-wide (`data-kpress-math-text="katex"` on <html>, which
+ * katex-init.js also stamps when the tables cannot be applied), depends on
+ * nothing but the CSS and switches in place. A host that stamps
+ * `data-kpress-font-set` itself owns the same reload; see "Math Text Face" in
+ * docs/kpress-design.md.
+ *
+ * @returns {boolean}
+ */
+function fontSetSwitchNeedsReload() {
+  return (
+    document.documentElement.dataset.kpressMathText !== "katex" &&
+    document.querySelector(".katex") !== null
+  );
+}
+
+/**
  * @param {string} value "custom" | "system"
  */
 function applyFontSet(value) {
+  const previous = document.documentElement.dataset.kpressFontSet || "custom";
   document.documentElement.dataset.kpressFontSet = value;
   // Already-rendered documents stamped data-kpress-fonts at render time;
   // re-sync them so the switch applies without a re-render.
@@ -40,6 +72,9 @@ function applyFontSet(value) {
   }
   storage.set(FONT_SET_KEY, value);
   emit("widget:change", { id: "settings", key: "font-set", value });
+  if (value !== previous && fontSetSwitchNeedsReload()) {
+    globalThis.location.reload();
+  }
 }
 
 /**
