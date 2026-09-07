@@ -1,9 +1,10 @@
 """Real-PDF regression for the faces a printed page needs.
 
 The static print instances are declared inside ``@media print``, so they start loading
-only once print layout asks for them, and ``font-display: block`` draws nothing until
-they arrive. An export that switches to print media and prints immediately can therefore
-write a PDF with blank space where the sans text belongs. Two cases carry the risk:
+only once print layout asks for them. An export that switches to print media and prints
+immediately draws the page before they arrive, and prints the sans in the fallback the
+stack names -- the variable face, which is the Type3 condition this whole feature
+exists to remove. Two cases carry the risk:
 
 - text in the document, when the faces are still in flight at print time;
 - text in an ``@page`` margin box -- KPress's footer -- which sits outside the document
@@ -11,10 +12,9 @@ write a PDF with blank space where the sans text belongs. Two cases carry the ri
   land inside ``page.pdf()``, after the page it belongs to is drawn.
 
 Both are measured through the public ``render_pdf`` on the faces the PDF embeds.
-Chromium embeds a subset of a face only for glyphs it actually drew with it: text that
-never rendered leaves no font behind, and text that fell back to the variable face is
-written as outline paths rather than as an embedded ``SourceSans3-*`` instance. So the
-presence of the static instance is the assertion that the sans text survived the export.
+Chromium embeds a subset of a face only for glyphs it actually drew with it, so the
+presence of the static instance is the assertion that the sans text survived the export
+as a font; ``/Type3`` anywhere in the file is the assertion that nothing fell back.
 """
 
 from __future__ import annotations
@@ -28,19 +28,20 @@ from pathlib import Path
 
 import pytest
 
+from devtools.instance_sans import FAMILY
 from kpress.format.pdf import PdfOptions, render_pdf
 from kpress.workflow.format import format_document
 
 #: The static instance every default KPress page needs in print: the footer margin box
 #: names the sans stack at the root's own weight, which font matching lands on 400.
-FOOTER_FACE = "SourceSans3-400"
+FOOTER_FACE = f"{FAMILY.replace(' ', '')}-400"
 
 #: How long the delaying server holds a static instance back. Long enough that an export
 #: which does not wait prints before the face arrives (measured: it prints immediately),
 #: short enough to stay well inside the suite's per-test timeout.
 _FONT_DELAY_SECONDS = 0.7
 
-_INSTANCE_FILE = re.compile(r"/source-sans-3-latin-\d{3}-(?:normal|italic)\.woff2$")
+_INSTANCE_FILE = re.compile(r"/kpress-print-sans-latin-\d{3}-(?:normal|italic)\.woff2$")
 _BASE_FONT = re.compile(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)")
 
 
@@ -86,13 +87,20 @@ def test_page_footer_face_embeds_in_the_exported_pdf(tmp_path: Path) -> None:
     """The footer is the only sans on a serif-only page, so its face proves it printed."""
     _require_chromium()
     html = _formatted_page(
-        tmp_path, "# Serif only\n\nA paragraph of ordinary prose, all of it in the serif face.\n"
+        tmp_path,
+        "# Serif only\n\nA paragraph of ordinary prose, all of it in the serif face.\n\n"
+        "### One sans heading\n\nAnd a second paragraph after it.\n",
     )
     output = tmp_path / "doc.pdf"
 
     render_pdf(html, PdfOptions(output=output))
 
-    assert FOOTER_FACE in _embedded_fonts(output), _embedded_fonts(output)
+    fonts = _embedded_fonts(output)
+    assert FOOTER_FACE in fonts, fonts
+    # Nothing on the page reached the PDF as outline paths, which is the whole point of
+    # the static set, and the variable face was never drawn from.
+    assert b"/Type3" not in output.read_bytes(), fonts
+    assert not [name for name in fonts if name.startswith("SourceSans3")], fonts
 
 
 def test_slow_print_faces_still_embed_in_the_exported_pdf(tmp_path: Path) -> None:
