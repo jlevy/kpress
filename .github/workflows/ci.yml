@@ -5,9 +5,13 @@
 name: CI
 
 on:
+  # Pushes to main and to the squares/** integration branches. The base of a stack
+  # is where a bad merge resolution lands, and the merge commit a stacked pull
+  # request creates when it merges down is a push, not a pull request, so without
+  # the second pattern nothing ever builds it.
   push:
-    branches: ["main"]
-  # Pull requests into main, and into the squares/* integration branches, so a
+    branches: ["main", "squares/**"]
+  # Pull requests into main, and into the squares/** integration branches, so a
   # pull request stacked on one of those is checked before it merges down.
   pull_request:
     branches: ["main", "squares/**"]
