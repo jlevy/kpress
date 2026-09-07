@@ -10,7 +10,7 @@ load, not part of the design.
 The exception is `font_mode="system"`, where a page asks for the platform stack on
 purpose and downloads none of these files.
 
-All four families are under the
+All five families are under the
 [SIL Open Font License 1.1](https://openfontlicense.org), which permits bundling and
 redistribution; the license text for each ships in `src/kpress/licenses/`, and
 [`NOTICE.md`](../../../../../NOTICE.md) is the top-level record.
@@ -23,6 +23,7 @@ redistribution; the license text for each ships in `src/kpress/licenses/`, and
 | Source Sans 3 Variable | sans on screen, at whatever weight a context asks for | 2 variable, `wght` x normal/italic |
 | Source Sans 3 | sans in print, one static instance per weight | 12 generated, see below |
 | Source Code Pro | mono: code fences, inline code, math error text | 2 static, 400/700 normal |
+| KPress Quotes | the quotation marks and the apostrophe inside prose | 1 generated, 6 glyphs of Source Serif 4 |
 
 ## Provenance
 
@@ -62,6 +63,39 @@ The twelve `source-sans-3-latin-<weight>-<style>.woff2` files are **generated, n
 vendored**. `devtools/instance_sans.py` instances them from the variable faces above,
 and `python -m devtools.instance_sans --check` verifies the shipped bytes against a
 fresh run, so they carry no hash here.
+
+## The Quote Face
+
+`kpress-quotes.woff2` is also generated, from a source that is **not** vendored.
+PT Serif draws its own quotation marks badly, so KPress ships six glyphs of Source Serif
+4 in their place and leads the prose stack with them over that `unicode-range`; the
+reasoning is in [Quotation Marks](../../../../../docs/kpress-design.md#quotation-marks).
+The 20 KB upstream face is a build input, and only the 724-byte subset is committed.
+
+| Field | Value |
+| --- | --- |
+| Package | `@fontsource/source-serif-4` |
+| Version | 5.3.0, published 2026-07-19 (OFL-1.1) |
+| Source file | `package/files/source-serif-4-latin-400-normal.woff2`, 20,088 bytes |
+| Source sha256 | `02194deb92d3975dd30e11a3824a1f1db32b48c93654e60560cb81ce8e7b5f95` |
+| Command | `python -m devtools.subset_quotes` |
+| Output | `kpress-quotes.woff2`, 724 bytes, 6 glyphs plus `.notdef` |
+| Output sha256 | `c1b4e25238045596fcee7c888f5cc589d5294f59ab8feb2745c57824682df570` |
+
+Fetch the source once, then generate:
+
+```bash
+mkdir -p ~/.cache/kpress/fonts && cd ~/.cache/kpress/fonts
+npm pack @fontsource/source-serif-4@5.3.0 --ignore-scripts
+tar xzOf fontsource-source-serif-4-5.3.0.tgz \
+    package/files/source-serif-4-latin-400-normal.woff2 \
+    > source-serif-4-latin-400-normal.woff2
+```
+
+`python -m devtools.subset_quotes --check` rebuilds the subset and compares it byte for
+byte when that file is present, and falls back to checking the shipped file against the
+output sha256 above when it is not.
+Both hashes are pinned in the tool.
 
 ## Two Naming Quirks Worth Knowing
 

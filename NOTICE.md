@@ -23,6 +23,12 @@ independent of KPress’s license.
   ([SIL Open Font License 1.1](src/kpress/licenses/source-code-pro.txt), Adobe,
   [adobe-fonts/source-code-pro](https://github.com/adobe-fonts/source-code-pro)). Static
   woff2 subsets at 400 and 700 vendored under `src/kpress/format/static/fonts/`.
+- **Source Serif 4**
+  ([SIL Open Font License 1.1](src/kpress/licenses/source-serif-4.txt), Adobe,
+  [adobe-fonts/source-serif](https://github.com/adobe-fonts/source-serif)). Six glyphs
+  of it — the quotation marks and the apostrophe — are subset into
+  `src/kpress/format/static/fonts/kpress-quotes.woff2` by `devtools/subset_quotes.py`.
+  The face itself is not vendored.
 
 Per-file provenance and sha256 for every vendored face are recorded in
 [`src/kpress/format/static/fonts/README.md`](src/kpress/format/static/fonts/README.md).
