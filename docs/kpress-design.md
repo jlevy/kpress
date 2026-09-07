@@ -219,6 +219,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   long-form measure.
 - **Lists.** Screen markers plus a print ordered-list grid and nested-list print resets,
   including long-list handling.
+  The bulleted marker is a drawn `currentColor` box, not a glyph: see
+  [List Markers](#list-markers).
 - **Links, selection, scrollbars.** Reader-grade selection and scrollbar styling.
 - **Details, metadata, and frontmatter blocks.** Collapsible metadata with a defined
   print policy; a visible, accessible frontmatter parse-error affordance.
@@ -826,7 +828,7 @@ The supported fragment variables are:
 - typography: `--kpress-font-body`, `--kpress-font-prose`, `--kpress-font-sans`,
   `--kpress-font-mono`, `--kpress-font-footnote`, and `--kpress-font-table`
 - sizing: `--kpress-font-size-base`, the one knob the entire type ramp derives from
-  (default `1rem`; every internal font size, the bullet glyph, and its offsets are
+  (default `1rem`; every internal font size, the bullet square, and its offsets are
   `calc(base × ratio)`). Hosts set it once — preferably through the
   `--kpress-host-font-size-base` hook on `:root`, which also reaches the body-level
   overlays. The derived tier is the sanctioned divergence seam: `--kpress-font-size-h2`,
@@ -1348,6 +1350,34 @@ downloads one, and `print-fonts.css` is registered right after `print.css` in
 of `--kpress-host-font-sans` in the print token.
 A host that overrides the sans weight tokens needs instances at its own weights; see
 [Host Integration](kpress-operations-and-host-integration.md#print-sans-faces-and-host-weights).
+
+### List Markers
+
+The bulleted list marker is a **drawn box**, not a glyph: `content: ""` on the
+`::before`, sized in em of `--kpress-bullet-size`, filled with `currentColor`. It was
+`\25AA\FE0E`, and U+25AA is in none of the faces KPress ships, so it fell down whichever
+stack its rule inherited — Georgia on a Mac, 16 KB of embedded Georgia in a printed PDF
+for 48 bullets, and a different mark on a machine without Georgia.
+A box depends on no font and is identical everywhere.
+
+The size and offsets reproduce what the glyph drew, measured in Chromium at a 16px base:
+a 3.255 × 3.255 px square whose centre sat 11.05px left of and 13.14px below the item’s
+top-left corner. `0.226em` of the marker size is that square, and the offsets carry the
+box from the old text origin onto the ink the glyph put there; both are in em of the
+marker size, so the same pair of numbers serves `print.css`’s smaller nested marker.
+After the change every marker is within 0.02px of its former size and 0.08px of its
+former position.
+
+The one deliberate move is `.claim`. Its rule is sans, so its U+25AA resolved a
+different fallback and drew 5.20px against the prose marker’s 3.26px — 60% larger, under
+a token whose stated purpose is that every bulleted list matches.
+All three rules now draw the one square.
+
+Three rules own the marker: `.kpress-prose ul > li::before` and
+`.kpress .concepts ul > li::before` in `document.css`, `.kpress .claim::before` in
+`components.css`, and `.kpress ol ul > li::before` under `@media print`. A host that
+replaces the marker sets `content` **and** clears `background`, since an empty box still
+paints.
 
 ### Mono Face
 

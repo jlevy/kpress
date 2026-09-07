@@ -304,7 +304,10 @@ Tracked under epic `kpr-b4mq`:
   the Fontsource packages of the same names, so their origin is no longer guesswork.
   `kpr-aq8o` decides the final mono face against stated criteria; Source Code Pro stays
   until it does.
-- `kpr-2tmj`: draw the list marker as a box, not a glyph.
+- `kpr-2tmj`, done: the list marker is a drawn `currentColor` box.
+  Every marker is within 0.02px of the size the glyph drew and 0.08px of its position,
+  measured in Chromium at a 16px base; the one deliberate move is the sans `.claim`
+  marker, whose own fallback had been drawing it 60% oversized.
 - `kpr-asj4`: retire the LocalPunct borrowing so PT Serif sets its own quotation marks,
   keeping the borrowing only as an explicit host hook.
 - `kpr-hhdc`: ship the composite’s faces as subsets.

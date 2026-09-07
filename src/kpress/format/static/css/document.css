@@ -195,13 +195,34 @@
   margin-block-end: 0;
 }
 
+/* The square is DRAWN, not set. It used to be the glyph U+25AA, which no face
+   KPress ships carries: it fell down the prose stack to whatever the reader had
+   (Georgia on a Mac, something else elsewhere) and put 16 KB of embedded Georgia
+   into a printed PDF for 48 bullets. A currentColor box depends on no font and
+   is the same mark on every machine.
+
+   The numbers reproduce what Georgia drew, measured in Chromium at a 16px base:
+   a 3.255 x 3.255 px square whose ink began 0.921px right of the pen and whose
+   centre sat 11.051px left of and 13.143px below the item's top-left corner.
+   0.226em of the marker size is that square; the two added offsets move the box
+   from the old text origin onto the ink the glyph actually put there, and both
+   are in em of the marker size, so the same pair serves the print rule at its
+   smaller size. See print.css and the .claim rule in components.css.
+
+   One consequence beyond the face: .claim's marker used to come out 60% larger
+   than this one, because its stack is the sans and a different fallback answered
+   it. All three bulleted lists now draw the one square --kpress-bullet-size
+   describes. */
 .kpress-prose ul > li::before,
 .kpress .concepts ul > li::before {
-  content: "\25AA\FE0E";
+  background: currentColor;
+  content: "";
   font-size: var(--kpress-bullet-size);
-  left: calc(var(--kpress-font-size-base) * -0.85);
+  height: 0.226em;
+  left: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
   position: absolute;
-  top: calc(var(--kpress-font-size-base) * 0.1);
+  top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
+  width: 0.226em;
 }
 
 .kpress-prose ol {

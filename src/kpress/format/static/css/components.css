@@ -1557,12 +1557,20 @@
   position: relative;
 }
 
+/* The same drawn square as the prose and concepts markers; document.css carries
+   the measurement it reproduces. This rule is where the glyph cost most: .claim
+   is sans, so U+25AA fell through a different stack than the prose one and came
+   out 5.20px against the prose marker's 3.26px at a 16px base -- 60% larger,
+   for a token whose whole purpose is that every bulleted list matches. */
 .kpress .claim::before {
-  content: "\25AA\FE0E";
+  background: currentColor;
+  content: "";
   font-size: var(--kpress-bullet-size);
-  left: calc(var(--kpress-font-size-base) * -0.85);
+  height: 0.226em;
+  left: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
   position: absolute;
-  top: calc(var(--kpress-font-size-base) * 0.1);
+  top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
+  width: 0.226em;
 }
 
 .kpress .full-text {

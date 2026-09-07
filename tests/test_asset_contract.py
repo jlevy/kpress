@@ -516,6 +516,38 @@ def test_print_css_leads_the_sans_stack_with_the_static_family() -> None:
     assert '"Source Sans 3",' not in tokens
 
 
+def test_list_markers_are_drawn_not_set() -> None:
+    """No stylesheet asks a font for the list marker.
+
+    U+25AA is in none of the faces KPress ships, so the glyph fell down whichever stack
+    the rule inherited: Georgia on a Mac, 16 KB of it embedded in a printed PDF, and a
+    different mark elsewhere. A ``currentColor`` box is the same square everywhere.
+    """
+    sheets = {
+        name: get_static_asset(f"css/{name}").content.decode("utf-8")
+        for name in ("document.css", "components.css", "print.css")
+    }
+
+    # The CSS escape, not the bare codepoint: the rules' own comments name U+25AA.
+    glyph_escape = re.compile(r"\\0*25aa", re.IGNORECASE)
+    for name, css in sheets.items():
+        assert not glyph_escape.search(css), f"{name} still sets the marker as a glyph"
+
+    for name, selector in (
+        ("document.css", ".kpress-prose ul > li::before"),
+        ("components.css", ".kpress .claim::before"),
+        ("print.css", ".kpress ol ul > li::before"),
+    ):
+        css = sheets[name]
+        rule = css[css.index(selector) :]
+        rule = rule[: rule.index("}")]
+        assert 'content: "";' in rule, (name, selector)
+        assert "background: currentColor;" in rule, (name, selector)
+        # Sized from the rule's own marker font size, so one pair of numbers serves
+        # both the screen size and print's smaller one.
+        assert rule.count("0.226em") == 2, (name, selector)
+
+
 def test_mono_stack_leads_with_the_vendored_face() -> None:
     """Code is drawn by a face KPress ships, not by whatever mono the machine has.
 

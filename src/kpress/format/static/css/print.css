@@ -344,12 +344,18 @@
     content: none;
   }
 
+  /* The drawn square, at this rule's own smaller marker size; document.css
+     carries the measurement, and the em offsets there are why one pair of
+     numbers serves both sizes. */
   .kpress ol ul > li::before {
-    content: "\25AA\FE0E";
+    background: currentColor;
+    content: "";
     font-size: calc(var(--kpress-font-size-base) * 0.7);
-    left: calc(var(--kpress-font-size-base) * -0.85);
+    height: 0.226em;
+    left: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
     position: absolute;
-    top: calc(var(--kpress-font-size-base) * 0.1);
+    top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
+    width: 0.226em;
   }
 
   .kpress .kpress-long-list,
