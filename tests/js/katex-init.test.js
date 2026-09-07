@@ -30,21 +30,30 @@ const METRICS = {
 
 const FACES = ["Main-Regular", "Main-Bold", "Math-Italic"];
 
-function mountMath({ fonts = "custom" } = {}) {
+const MATH = `
+  <span class="kpress-math kpress-math-inline" data-kpress-math="inline">
+    <span class="kpress-math-render">\\(x^2\\)</span>
+  </span>`;
+
+function mountMath({ fonts = "custom", wrapper = "" } = {}) {
   document.body.innerHTML = `
-    <article class="kpress" data-kpress-fonts="${fonts}">
-      <span class="kpress-math kpress-math-inline" data-kpress-math="inline">
-        <span class="kpress-math-render">\\(x^2\\)</span>
-      </span>
-    </article>`;
+    <div ${wrapper}>
+      <article class="kpress" data-kpress-fonts="${fonts}">${MATH}</article>
+    </div>`;
+}
+
+function mathNodes() {
+  return document.querySelectorAll(".kpress-math-render");
 }
 
 beforeEach(() => {
   document.body.innerHTML = "";
   document.documentElement.removeAttribute("data-kpress-math-text");
+  document.documentElement.removeAttribute("data-kpress-font-set");
   globalThis.kpressKatexTextMetrics = METRICS;
   globalThis.katex = { __setFontMetrics: vi.fn() };
   globalThis.renderMathInElement = vi.fn();
+  vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
 describe("katex-init.js math text metrics", () => {
@@ -65,6 +74,7 @@ describe("katex-init.js math text metrics", () => {
       render.mock.invocationCallOrder[0],
     );
     expect(document.querySelector("[data-kpress-math]").dataset.kpressMathRendered).toBe("true");
+    expect(document.documentElement.dataset.kpressMathText).toBeUndefined();
   });
 
   it("applies the tables once even when the script is driven again", () => {
@@ -72,7 +82,7 @@ describe("katex-init.js math text metrics", () => {
 
     const script = runInitScript();
     script.enhanceMath();
-    script.applyTextMetrics();
+    script.applyTextMetrics(mathNodes());
 
     expect(globalThis.katex.__setFontMetrics).toHaveBeenCalledTimes(FACES.length);
   });
@@ -87,8 +97,8 @@ describe("katex-init.js math text metrics", () => {
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves them alone in system font mode, where no reading face is loaded", () => {
-    mountMath({ fonts: "system" });
+  it("honours the opt-out on any ancestor, as the stylesheet does", () => {
+    mountMath({ wrapper: 'data-kpress-math-text="katex"' });
 
     runInitScript();
 
@@ -96,13 +106,45 @@ describe("katex-init.js math text metrics", () => {
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
   });
 
-  it("renders without the metrics asset rather than failing", () => {
+  it("leaves them alone in system font mode, where no reading face is loaded", () => {
+    mountMath({ fonts: "system" });
+
+    runInitScript();
+
+    expect(globalThis.katex.__setFontMetrics).not.toHaveBeenCalled();
+  });
+
+  it("leaves them alone under the reader's persisted system font set", () => {
+    document.documentElement.dataset.kpressFontSet = "system";
+    mountMath();
+
+    runInitScript();
+
+    expect(globalThis.katex.__setFontMetrics).not.toHaveBeenCalled();
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
+  it("turns the face off when the tables cannot be applied", () => {
+    // Faces without metrics is the state the design forbids: the stylesheet reads
+    // the stamped opt-out and restores KaTeX's own faces, and the page says why.
     globalThis.kpressKatexTextMetrics = undefined;
     mountMath();
 
     runInitScript();
 
     expect(globalThis.katex.__setFontMetrics).not.toHaveBeenCalled();
+    expect(document.documentElement.dataset.kpressMathText).toBe("katex");
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
+  it("turns the face off when KaTeX no longer exposes the setter", () => {
+    globalThis.katex = {};
+    mountMath();
+
+    runInitScript();
+
+    expect(document.documentElement.dataset.kpressMathText).toBe("katex");
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
   });
 });

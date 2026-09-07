@@ -24,7 +24,7 @@ import argparse
 import json
 import re
 import sys
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -83,10 +83,12 @@ ITALIC_GREEK: Final = tuple(range(0x370, 0x400))
 #   face             reading face (per 1000 em)     KaTeX face                factor
 #   Main-Regular     PT Serif cap 700             /  KaTeX_Main-Regular 683    1.025
 #   Main-Bold        PT Serif cap 700             /  KaTeX_Main-Bold 686       1.020
-#   Main-Italic      PT Serif Italic x 507        /  KaTeX_Main-Italic 442     1.147
-#   Main-BoldItalic  PT Serif Bold Italic x 509   /  KaTeX_Main-BoldItalic 451 1.129
 #   Math-Italic      PT Serif Italic x 507        /  KaTeX_Math-Italic 441     1.150
 #   Math-BoldItalic  PT Serif Bold Italic x 509   /  KaTeX_Math-BoldItalic 452 1.126
+#   Main-Italic      as Math-Italic: `\mathit` is laid out from this table, but the
+#                    composite's italic slot draws its Greek with KaTeX_Math-Italic,
+#                    so the table scales by the face that is drawn        1.150
+#   Main-BoldItalic  as Math-BoldItalic, for the same reason                1.126
 #
 # KaTeX_Math-BoldItalic is the one face whose OS/2 sxHeight is not its x-height: the
 # table says 532 while every lowercase glyph in the face tops out at 452, and 532 would
@@ -95,8 +97,6 @@ ITALIC_GREEK: Final = tuple(range(0x370, 0x400))
 # than OS2_INK_TOLERANCE, which is where 452 comes from.
 MAIN_REGULAR_SCALE: Final = 1.025
 MAIN_BOLD_SCALE: Final = 1.020
-MAIN_ITALIC_SCALE: Final = 1.147
-MAIN_BOLD_ITALIC_SCALE: Final = 1.129
 MATH_ITALIC_SCALE: Final = 1.150
 MATH_BOLD_ITALIC_SCALE: Final = 1.126
 
@@ -157,6 +157,15 @@ class FacePlan:
     reference_glyph: str
     """Glyph whose ink height the factor is measured from."""
 
+    drawn_font: str | None = None
+    """The woff2 the composite actually draws this table's Greek with, when it is not
+    `katex_font`: the factor is derived against the face that is drawn, so the
+    table and the glyphs scale together."""
+
+    @property
+    def scaled_against(self) -> str:
+        return self.drawn_font or self.katex_font
+
 
 PT_SERIF_REGULAR: Final = "pt-serif-latin-400-normal.woff2"
 PT_SERIF_BOLD: Final = "pt-serif-latin-700-normal.woff2"
@@ -188,8 +197,9 @@ FACE_PLANS: Final = (
         reading_font=PT_SERIF_ITALIC,
         swapped=LETTERS,
         greek=ITALIC_GREEK,
-        scale=MAIN_ITALIC_SCALE,
+        scale=MATH_ITALIC_SCALE,
         reference_glyph=X_HEIGHT_GLYPH,
+        drawn_font="KaTeX_Math-Italic.woff2",
     ),
     FacePlan(
         katex_face="Main-BoldItalic",
@@ -197,8 +207,9 @@ FACE_PLANS: Final = (
         reading_font=PT_SERIF_BOLD_ITALIC,
         swapped=LETTERS,
         greek=ITALIC_GREEK,
-        scale=MAIN_BOLD_ITALIC_SCALE,
+        scale=MATH_BOLD_ITALIC_SCALE,
         reference_glyph=X_HEIGHT_GLYPH,
+        drawn_font="KaTeX_Math-BoldItalic.woff2",
     ),
     FacePlan(
         katex_face="Math-Italic",
@@ -306,6 +317,8 @@ def read_face(path: Path) -> Face:
         cmap = cast("dict[int, str]", font.getBestCmap())
         glyph_set = font.getGlyphSet()
         horizontal_metrics = font["hmtx"]
+        if "OS/2" not in font:
+            raise MetricsError(f"{path.name} has no OS/2 table to read its heights from")
         os2 = font["OS/2"]
 
         glyphs: dict[int, Glyph] = {}
@@ -415,13 +428,13 @@ def derive_scale_factors() -> dict[str, float]:
     factors: dict[str, float] = {}
     for plan in FACE_PLANS:
         reading = read_face_cached(READING_FONTS / plan.reading_font)
-        katex = read_face_cached(KATEX_FONTS / plan.katex_font)
+        katex = read_face_cached(KATEX_FONTS / plan.scaled_against)
         if plan.reference_glyph == CAP_HEIGHT_GLYPH:
             numerator, denominator = reading.cap_height, katex.cap_height
         else:
             numerator, denominator = reading.x_height, katex.x_height
         if denominator <= 0:
-            raise MetricsError(f"{plan.katex_font} reports a non-positive vertical measure")
+            raise MetricsError(f"{plan.scaled_against} reports a non-positive vertical measure")
         factors[plan.katex_face] = round(numerator / denominator, 3)
     return factors
 
@@ -479,6 +492,9 @@ def parse_asset(text: str) -> dict[str, Any]:
 # ---- Checking ----
 
 _SIZE_ADJUST = re.compile(r"size-adjust\s*:\s*(?P<percentage>[0-9.]+)%")
+_SOURCE_FILE = re.compile(r"""src\s*:\s*url\(\s*["']?[^"')]*?(?P<file>[^/"')]+\.woff2)""")
+_FONT_FACE_BLOCK = re.compile(r"@font-face\s*\{(?P<body>[^}]*)\}")
+_CSS_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 
 
 def check() -> list[str]:
@@ -487,6 +503,7 @@ def check() -> list[str]:
     problems.extend(_check_scale_factors())
     problems.extend(_check_asset())
     problems.extend(_check_face_css())
+    problems.extend(_check_bundle_hook())
     return problems
 
 
@@ -512,29 +529,65 @@ def _check_asset() -> list[str]:
 
 
 def _check_face_css() -> list[str]:
-    """Verify the composite's `size-adjust` descriptors match the frozen factors.
+    """Verify each scaled face in the composite carries the factor of the font it draws.
 
     The stylesheet is written separately from this tool, so the two can drift apart
-    silently; the glyphs would then be drawn at one size and laid out at another. The
-    file is optional so this tool can land before it does.
+    silently; the glyphs would then be drawn at one size and laid out at another. So
+    the check is per face, not per value: every `@font-face` with a `size-adjust` is
+    matched by its `src` file to the plans that draw with that font, and the declared
+    percentage must equal theirs. A stylesheet that is missing is a problem too.
     """
     if not FACE_CSS_PATH.is_file():
-        return []
-    percentages = scale_percentages()
-    allowed = set(percentages.values())
-    expected = ", ".join(f"{face} {value:.1f}%" for face, value in percentages.items())
-    css = FACE_CSS_PATH.read_text(encoding="utf-8")
-    declared = _unique(round(float(match["percentage"]), 1) for match in _SIZE_ADJUST.finditer(css))
-    return [
-        f"{_relative(FACE_CSS_PATH)} declares `size-adjust: {value:g}%`, which is not one of "
-        f"the generated scale factors ({expected}). Run `{REGENERATE_COMMAND} --print-scale`."
-        for value in declared
-        if value not in allowed
-    ]
+        return [f"{_relative(FACE_CSS_PATH)} is missing; the composite has moved or gone"]
+    expected: dict[str, float] = {}
+    for plan in FACE_PLANS:
+        percentage = round(plan.scale * 100, 1)
+        if expected.setdefault(plan.scaled_against, percentage) != percentage:
+            raise MetricsError(f"{plan.scaled_against} is drawn at two factors in FACE_PLANS")
+    css = _CSS_COMMENT.sub("", FACE_CSS_PATH.read_text(encoding="utf-8"))
+    problems: list[str] = []
+    scaled_fonts: list[str] = []
+    for block in _FONT_FACE_BLOCK.finditer(css):
+        body = block.group("body")
+        adjust = _SIZE_ADJUST.search(body)
+        source = _SOURCE_FILE.search(body)
+        if adjust is None:
+            continue
+        if source is None or source["file"] not in expected:
+            problems.append(
+                f"{_relative(FACE_CSS_PATH)} scales a face this tool does not know: "
+                f"{source['file'] if source else body.strip()[:60]}"
+            )
+            continue
+        font = source["file"]
+        scaled_fonts.append(font)
+        declared = round(float(adjust["percentage"]), 1)
+        if declared != expected[font]:
+            problems.append(
+                f"{_relative(FACE_CSS_PATH)} scales {font} by {declared:g}%, but its metric "
+                f"tables are scaled by {expected[font]:.1f}%. Run `{REGENERATE_COMMAND} "
+                "--print-scale` and copy the value."
+            )
+    for font in sorted(expected):
+        if scaled_fonts.count(font) != 1:
+            problems.append(
+                f"{_relative(FACE_CSS_PATH)} declares {scaled_fonts.count(font)} scaled faces "
+                f"for {font}; the composite needs exactly one"
+            )
+    return problems
 
 
-def _unique(values: Iterable[float]) -> Sequence[float]:
-    return list(dict.fromkeys(values))
+def _check_bundle_hook() -> list[str]:
+    """The tables are installed through KaTeX's `__setFontMetrics`, a private export.
+
+    Nothing else pins it: a KaTeX bump that renamed it would leave the faces on and
+    the tables off, which `katex-init.js` now turns into a visible revert. This fails
+    the check first.
+    """
+    bundle = KATEX_BUNDLE.read_text(encoding="utf-8")
+    if "__setFontMetrics:" not in bundle:
+        return [f"{KATEX_BUNDLE.name} no longer exports __setFontMetrics; the hook has moved"]
+    return []
 
 
 def _relative(path: Path) -> str:
@@ -548,24 +601,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Generate the KaTeX metric tables the math text face lays out from."
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--check",
         action="store_true",
         help="Verify the shipped asset and stylesheet without writing anything.",
     )
-    parser.add_argument(
+    mode.add_argument(
         "--print-scale",
         action="store_true",
         help="Print the Greek scale factor per face, as a size-adjust percentage.",
     )
     args = parser.parse_args(argv)
+    try:
+        return _run(args.print_scale, args.check)
+    except MetricsError as exc:
+        print(exc, file=sys.stderr)
+        return 1
 
-    if args.print_scale:
+
+def _run(print_scale: bool, do_check: bool) -> int:
+    if print_scale:
         for face, percentage in scale_percentages().items():
             print(f"{face} {percentage:.1f}%")
         return 0
 
-    if args.check:
+    if do_check:
         problems = check()
         for problem in problems:
             print(problem, file=sys.stderr)

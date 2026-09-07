@@ -11,7 +11,8 @@ Two invariants, each measured on a rendered page:
 
 - a digit inside math advances by PT Serif's 0.533em rather than KaTeX_Main's
   0.500em, and reverts when the document opts out (``format.math_text_font:
-  katex``);
+  katex``) and when the reader's persisted font set is ``system``, which the
+  pre-paint bootstrap stamps on ``<html>`` and which loads no reading face;
 - a display fraction is laid out for the taller PT Serif digits: KaTeX sizes the
   fraction's vertical list from its metric table, so the list is taller with the
   reading face's table installed than with KaTeX's own, which is what the metrics
@@ -94,7 +95,7 @@ _PROBE = """(() => {
 FRACTION_GROWTH_EM = (0.03, 0.15)
 
 
-def _probe(tmp_path: Path, math_text_font: str | None) -> Probe:
+def _probe(tmp_path: Path, math_text_font: str | None, *, font_set: str | None = None) -> Probe:
     sync_api = pytest.importorskip("playwright.sync_api")
     public = _build_fixture_site(tmp_path, math_text_font=math_text_font)
     handler = partial(_QuietHandler, directory=str(public))
@@ -111,7 +112,11 @@ def _probe(tmp_path: Path, math_text_font: str | None) -> Probe:
                 except sync_api.Error as exc:
                     pytest.skip(f"No Playwright Chromium or system Chrome available: {exc}")
             try:
-                page = browser.new_page(viewport={"width": 900, "height": 900})
+                context = browser.new_context(viewport={"width": 900, "height": 900})
+                if font_set is not None:
+                    # What theme-bootstrap.js reads before first paint.
+                    context.add_init_script(f"localStorage.setItem('kpress.fontSet', '{font_set}')")
+                page = context.new_page()
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
                 page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
                 page.evaluate("document.fonts.ready")
@@ -135,6 +140,12 @@ def test_reading_face_draws_and_lays_out_the_digits(tmp_path: Path) -> None:
     assert "KPress Math Text" in default["family"]
     assert default["advance"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
     assert katex["advance"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+
+    # The reader's persisted system font set opts out too, faces and metrics alike.
+    system = _probe(tmp_path / "system", None, font_set="system")
+    assert system["rendered"] == 2
+    assert system["advance"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+    assert system["fractionHeightEm"] == pytest.approx(katex["fractionHeightEm"], abs=0.001)
 
     # Laid out: the metrics asset makes KaTeX size the fraction for the glyphs
     # it now draws, so the vertical list is taller than the opt-out's.

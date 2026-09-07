@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from devtools.katex_text_metrics import FACE_PLANS
 from kpress.format.assets import read_package_text
 
 FAMILY = '"KPress Math Text"'
@@ -157,8 +158,10 @@ def test_reading_face_takes_the_latin_ranges() -> None:
         assert "size-adjust" not in matches[0].declarations
 
 
-def test_greek_face_is_the_katex_face_scaled() -> None:
+def test_greek_face_is_the_katex_face_scaled_by_the_generator_factor() -> None:
+    """One source for the percentages: the generator's plans, keyed by the drawn font."""
     faces = _parse_faces(_css())
+    expected = {plan.scaled_against: round(plan.scale * 100, 1) for plan in FACE_PLANS}
     for slot, (_reading, katex, _latin, greek) in SLOTS.items():
         matches = [
             face
@@ -167,66 +170,72 @@ def test_greek_face_is_the_katex_face_scaled() -> None:
         ]
         assert len(matches) == 1, f"one scaled Greek face per slot: {slot}"
         assert matches[0].ranges == greek
-        # Provisional until `katex_text_metrics --print-scale` lands; that tool's
-        # --check pins the exact value, so only the shape is asserted here.
-        scale = matches[0].declarations["size-adjust"]
-        assert scale.endswith("%")
-        assert 100.0 <= float(scale.removesuffix("%")) <= 130.0
+        assert "../katex/fonts/" in matches[0].source
+        declared = float(matches[0].declarations["size-adjust"].removesuffix("%"))
+        assert declared == expected[katex], (slot, declared, expected[katex])
+
+
+SCOPE_EXCLUSIONS = (
+    '[data-kpress-fonts="system"]',
+    '[data-kpress-math-text="katex"]',
+    '[data-kpress-fonts="system"] *',
+    '[data-kpress-font-set="system"] *',
+    '[data-kpress-math-text="katex"] *',
+)
+
+
+def _rule_block(css: str, tail: str) -> str:
+    """The declarations of the feature rule whose selector ends with `tail`."""
+    # Biome breaks a long selector across lines, so any whitespace joins the parts.
+    parts = r"\s+".join(re.escape(part) for part in tail.split())
+    pattern = re.compile(r"\.kpress:not\([^)]*\)\s*" + parts + r"\s*\{(?P<body>[^}]*)\}")
+    match = pattern.search(css)
+    assert match, tail
+    return match.group("body")
 
 
 def test_every_feature_rule_names_the_katex_face_after_the_composite() -> None:
     """What the composite does not claim is drawn by the next family in the stack."""
     css = _COMMENT_RE.sub("", _css())
     expected = {
-        ".kpress .katex {": "KaTeX_Main",
-        ".kpress .katex .mathit {": "KaTeX_Math",
-        ".kpress .katex .mathbf {": "KaTeX_Main",
-        ".kpress .katex .boldsymbol {": "KaTeX_Math",
-        ".kpress .katex .mainrm {": "KaTeX_Main",
+        ".katex": "KaTeX_Main",
+        ".katex .mathnormal": "KaTeX_Math",
+        # `\mathit` is laid out from the Main-Italic table, so KaTeX_Main follows.
+        ".katex .mathit": "KaTeX_Main",
+        ".katex .mathbf": "KaTeX_Main",
+        ".katex .boldsymbol": "KaTeX_Math",
+        ".katex .mainrm": "KaTeX_Main",
     }
-    for selector, family in expected.items():
-        assert selector in css, selector
-        block = css.split(selector, 1)[1].split("}", 1)[0]
-        assert f"font-family: {FAMILY}, {family}" in block, (selector, block)
-
-
-def test_feature_rules_point_the_katex_classes_at_the_composite() -> None:
-    css = _css()
-    assert '.kpress .katex {\n  font-family: "KPress Math Text", KaTeX_Main' in css
-    for selector in (
-        ".kpress .katex .mathnormal",
-        ".kpress .katex .mathit",
-        ".kpress .katex .mathbf",
-        ".kpress .katex .boldsymbol",
-        ".kpress .katex .textrm",
-        ".kpress .katex .mainrm",
-    ):
-        assert f"{selector},\n" in css or f"{selector} {{" in css
+    for tail, family in expected.items():
+        body = _rule_block(css, tail)
+        assert f"font-family: {FAMILY}, {family}" in body, (tail, body)
     # Left to KaTeX: these inherit the root or keep their own families.
     for untouched in (".mathrm", ".delimsizing", ".op-symbol", ".mathbb", ".mathcal", ".mathtt"):
-        assert f".kpress .katex {untouched}" not in css
+        assert f".katex {untouched}" not in css
 
 
-def test_opt_out_and_system_reverts_exist() -> None:
-    css = _css()
-    assert '[data-kpress-math-text="katex"] .kpress .katex' in css
-    assert '.kpress[data-kpress-fonts="system"] .katex' in css
-    for selector in (
-        '[data-kpress-math-text="katex"] .kpress .katex .mathnormal',
-        '[data-kpress-math-text="katex"] .kpress .katex .mathbf',
-        '[data-kpress-math-text="katex"] .kpress .katex .boldsymbol',
-        '.kpress[data-kpress-fonts="system"] .katex .mathnormal',
-    ):
-        assert selector in css
-    # The reverts name the KaTeX families again, never the composite.
-    for block in css.split('[data-kpress-math-text="katex"]')[1:]:
-        assert FAMILY not in block.split("}", 1)[0]
+def test_feature_rules_are_scoped_to_wrappers_that_have_not_opted_out() -> None:
+    """Positive scoping: nothing to revert, and link order decides nothing.
+
+    Every feature rule hangs off one `:not()` that excludes the three ways out,
+    each on the wrapper or any ancestor; an opted-out wrapper keeps upstream's
+    rules and style-tokens.css's size untouched.
+    """
+    css = _COMMENT_RE.sub("", _css())
+    scopes = re.findall(r"\.kpress:not\(([^)]*)\)", css)
+    assert len(scopes) >= 7, "the size token, the root and five class rules"
+    for scope in scopes:
+        for exclusion in SCOPE_EXCLUSIONS:
+            assert exclusion in scope, (exclusion, scope)
+    # No revert restates upstream's families or the 1.05em token.
+    assert "1.05em" not in css
+    assert re.search(r"font-family:\s*KaTeX_Main,", css) is None
 
 
-def test_inline_math_takes_the_prose_size_and_reverts() -> None:
-    css = _css()
-    assert ".kpress {\n  --kpress-katex-size-prose: 1em;\n}" in css
-    assert "--kpress-katex-size-prose: 1.05em;" in css
+def test_inline_math_takes_the_prose_size_inside_the_scope() -> None:
+    css = _COMMENT_RE.sub("", _css())
+    body = _rule_block(css, "")
+    assert "--kpress-katex-size-prose: 1em" in body
     # The sans and display tokens are style-tokens.css's business, not this file's.
     assert "--kpress-katex-size-sans" not in css
     assert "--kpress-katex-size-display" not in css

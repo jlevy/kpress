@@ -1254,9 +1254,23 @@ the attribute as `prose`, so an embedded fragment gets the feature and a host th
 KaTeX’s faces stamps `data-kpress-math-text="katex"` on its own root.
 The attribute is independent of `data-kpress-prose-font`: a reader switching the reading
 face between serif and sans does not change the math face.
-`data-kpress-fonts="system"` reverts to the KaTeX faces and skips the metrics, because
-system mode does not load the vendored reading face and there would be nothing to draw
-the letters from.
+The feature rules are scoped positively, to a `.kpress` that has not opted out, so an
+opted-out wrapper keeps KaTeX’s own rules and the `1.05em` token exactly; the scope
+excludes `data-kpress-math-text="katex"` on the wrapper or any ancestor, the wrapper’s
+`data-kpress-fonts="system"`, and the reader’s persisted `data-kpress-font-set="system"`
+(both system modes load no reading face, so there would be nothing to draw the letters
+from). The metrics follow the same three conditions and are one setting for the whole
+page: KaTeX keeps one table per face, so a page that mixes opted-in and opted-out
+wrappers is unsupported, and the metrics follow the opted-in ones.
+When a wrapper wants the face but the tables cannot be applied, `katex-init.js` stamps
+the opt-out on `<html>` and says so on the console, so the faces are turned off with the
+metrics rather than drawn without them.
+`\mathit` follows `KaTeX_Main`, the face it replaces, after the composite; its Greek
+capitals are drawn by the italic slot’s scaled `KaTeX_Math-Italic` face and laid out
+from the `Main-Italic` table, which the generator scales by that same factor.
+Browsers without `size-adjust` (before Chrome 92, Firefox 92 and Safari 17) draw the
+Greek unscaled while laying it out scaled; the `:not()` list the scope uses needs Chrome
+88, Firefox 84 or Safari 9.
 
 **A host with another reading face.** The face is a contract, tuned for PT Serif and
 open to another. A host that pins its own reading face satisfies it in two places:

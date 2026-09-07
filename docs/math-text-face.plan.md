@@ -53,8 +53,7 @@ defined by a contract a host can satisfy with a reading face other than PT Serif
   face, or inside sans contexts.
   Recorded under Future Work.
 - Greek from the reading face; the vendored subset has none.
-  Resizing KaTeX’s Greek to sit beside PT Serif is a parameter of the same mechanism and
-  is recorded under Future Work with its own prototype.
+  KaTeX’s Greek is kept and scaled to the reading face instead (below).
 - Punctuation inside mathematics (`, .` `…`) from the reading face; a one-line range
   change if it is ever wanted.
 - Replacing KaTeX or rebuilding the KaTeX fonts.
@@ -137,18 +136,26 @@ same tool.
 The switch: a render option `math_text_font: Literal["prose", "katex"]`, default
 `"prose"`, stamped as `data-kpress-math-text` on `<html>` by the page shell (fragments
 bake no attribute; an embedding host stamps its own root, as with `prose_font`). The
-composite rules and the size token are scoped to `[data-kpress-math-text="prose"]`;
-`data-kpress-fonts="system"` reverts to the KaTeX faces, since the vendored reading face
-is not loaded in that mode, and the init script skips the metrics then.
+feature rules and the size token are scoped positively, to a `.kpress` that has not
+opted out, through one `:not()` that excludes three things wherever they are stamped:
+`data-kpress-math-text="katex"` on the wrapper or any ancestor, the wrapper’s baked
+`data-kpress-fonts="system"`, and the reader’s persisted
+`data-kpress-font-set="system"`, which the bootstrap stamps on `<html>`. An opted-out
+wrapper keeps KaTeX’s own rules and the `1.05em` token untouched, so there is nothing to
+revert and link order decides nothing.
+The init script applies the metrics under the same three conditions, decided over every
+math host on the page, since KaTeX’s tables are one setting per page; and when a host
+wants the face but the tables cannot be applied, it stamps the opt-out on `<html>` so
+the faces go with them.
 The reader’s serif or sans prose choice does not change the math face; that is the
 sans-math follow-up.
 
 ### Components
 
-- `static/css/style-tokens.css`: the eight `@font-face` rules for `KPress Math Text`,
-  the attribute-scoped size token, the `system` font-mode revert.
-- `static/css/components.css`: the root family and the class rules, under the attribute
-  scope, with the specificity note the existing KaTeX sizing block carries.
+- `static/katex/katex-text-face.css`: kpress-authored, lazy with the math closure; the
+  eight `@font-face` rules for `KPress Math Text`, the scoped size token, the scoped
+  root family and class rules, with the specificity note.
+  `style-tokens.css` and `components.css` are untouched.
 - `static/katex/katex-text-metrics.js`: generated; listed in `KATEX_JS_ASSETS` before
   `katex-init.js`; part of the lazy math closure, so a document without math still loads
   nothing.
@@ -195,9 +202,8 @@ One phase; the steps are small and each is testable on its own.
 
 - [x] Add fontTools to the dev group; write `devtools/katex_text_metrics.py` with
   `--check`; generate `katex/katex-text-metrics.js`; wire `--check` into `make lint`.
-- [x] Add the eight `KPress Math Text` faces, the attribute-scoped size token and the
-  `system` revert to `style-tokens.css`; the root family and class rules to
-  `components.css`.
+- [x] Add the eight `KPress Math Text` faces, the scoped size token, the root family and
+  the class rules in `katex/katex-text-face.css`.
 - [x] Add `math_text_font` to `RenderOptions`, the document options, the page shell
   attribute and the public contract; add the asset to `KATEX_JS_ASSETS`.
 - [x] Apply the metrics in `katex-init.js` before rendering when the attribute is
@@ -210,9 +216,10 @@ One phase; the steps are small and each is testable on its own.
 ## Testing Strategy
 
 - Unit: the default is `prose`; `katex` and `prose` stamp the attribute; the public
-  contract lists the option; `style-tokens.css` declares eight `KPress Math Text` faces
-  with the expected ranges; `components.css` points the six class rules at the
-  composite; the `system` revert exists.
+  contract lists the option; `katex-text-face.css` declares eight `KPress Math Text`
+  faces with the expected ranges and per-slot `size-adjust` values equal to the
+  generator’s, points the six class rules at the composite, and scopes every rule on the
+  three opt-outs.
 - Metrics: `devtools.katex_text_metrics --check` passes against the shipped asset; a
   spot check that `Main-Regular` U+0031 carries PT Serif’s height (0.712) and width
   (0.533) and that U+002B is unchanged from KaTeX.
@@ -242,30 +249,32 @@ contract. Upstreaming to `main` is decided after a consuming site has shipped wi
 - A `size-adjust` of 3–5% on the KaTeX faces inside the composite, so symbols keep a
   small lift while letters stay at prose size.
 - Byte cost in a page that inlines every asset: the explainer grew from 1,177 KB to
-  1,441 KB (three reading faces, three scaled Greek faces, the 32 KB metrics table).
+  1,441 KB (three reading faces and three scaled Greek faces, its bold-italic slot being
+  pruned as unreachable, plus the 32 KB metrics table).
   The upright Greek faces buy a 2–2.5% cap-height match for about 75 KB of that; if the
   cost matters more than the match, drop them and stop scaling the upright Greek entries
   in the generator together.
 - Whether to upstream to `main`, and under what option name.
+- The composite’s accents: the generator keeps KaTeX’s `skew` for the swapped italic
+  letters, so `\hat{x}` over a PT Serif Italic `x` is placed for Computer Modern’s
+  slant. Deriving skew from the reading face’s italic angle is a small follow-up if an
+  accent ever looks off.
 
 ## Future Work
 
-Recorded as deferred beads under the epic (`kpr-7f9z`, `kpr-c2tr`), not part of this
-plan:
+Recorded as a deferred bead under the epic (`kpr-7f9z`), not part of this plan:
 
 - **Sans math.** When the reader chooses the sans reading face, or inside sans contexts,
   draw the letters and digits from Source Sans 3 with its own metrics: a second set of
   composite faces keyed on `data-kpress-prose-font="sans"` and a second metrics table
   from the same generator.
-- **Greek sizing.** Keep KaTeX’s Greek but give the Greek ranges of `KaTeX_Math-Italic`
-  and `KaTeX_Main` their own faces inside the composite with a small `size-adjust`
-  (lowercase to PT Serif’s x-height, 113%; capitals to its cap height, 102.5%), with the
-  matching entries of the metrics table scaled by the same factor.
-  Mechanically it is two more `@font-face` rules and a scale parameter in the generator.
-  Prototyped as route J in the brief with those factors: `θ`, `π` and `μ` reach the
-  height and nearly the weight of the PT Serif letters beside them.
-  It can be pulled into the single phase above at the cost of one more rule per slot and
-  one parameter; the decision is visual and the owner’s.
+
+Greek sizing, once listed here, shipped inside the feature: the composite’s italic slots
+scale KaTeX’s Greek to PT Serif’s x-height (115.0% and 112.6%) and the upright slots its
+capitals to PT Serif’s cap height (102.5% and 102.0%), with the metric tables scaled by
+the same factors, `\mathit`’s table included since its Greek is drawn by the italic
+slot’s face. Browsers without `size-adjust` (before Chrome 92, Firefox 92 and Safari 17)
+draw the Greek unscaled while laying it out scaled.
 
 ## References
 
