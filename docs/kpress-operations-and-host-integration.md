@@ -549,12 +549,23 @@ Three consequences for a host:
   takes precedence over `--kpress-host-font-sans` under print only.
   A weight with no instance is not an error: CSS font matching falls to the nearest one
   KPress ships, so the printed page is a step off the screen rather than broken.
-- **A host that inlines assets into one self-contained file** pays about 180KB of base64
-  for faces that only a printed copy uses.
+- **A host that inlines assets into one self-contained file** pays for faces that only a
+  printed copy uses: the twelve instances are about 186KB of woff2, which is about 248KB
+  once base64 grows them by a third.
   Supplying them at PDF time (linked assets for the print or export path, inlined assets
   for the page) is a supported choice: without them the printed sans falls back to the
   variable face and its outline paths, which is exactly the behavior before this
   feature.
+- **A host that drives its own browser print** must let the print faces load before it
+  prints. A face declared inside `@media print` starts loading only when print layout
+  asks for it, and a face used by an `@page` margin box never enters
+  `document.fonts.ready` at all, so a print issued right after the media switch can
+  write blank space where the sans belongs.
+  After switching to print media, force layout, await `document.fonts.ready`, then
+  `document.fonts.load` the families the margin boxes name (`--kpress-font-sans` and
+  `--kpress-font-prose`, read from the root under print media) and await it again.
+  `kpress.format.pdf.render_pdf` does exactly this, so a host that exports through
+  KPress has nothing to do.
 
 ### Static Export Seam
 

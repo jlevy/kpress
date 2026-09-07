@@ -1326,8 +1326,10 @@ The measurements are recorded in
 is `Source Sans 3 Variable`, which are the upstream names of the two releases.
 Keeping them distinct means the two never share a weight range, so font matching never
 has to break a tie between them: under print the static family is first and answers
-every request it covers, and the variable face stays behind it as the fallback for a
-weight the set does not carry.
+every request, since a weight the set does not carry is matched to the nearest instance
+inside `Source Sans 3` rather than passed on to the next family.
+The variable face stays behind it for the case where the family cannot answer at all, a
+build that ships without the instances, which is the behavior before this feature.
 
 **The set.** Six weights (370, 400, 550, 600, 650, 700) in normal and italic, twelve
 files of about 15KB, generated from the vendored variable faces by
@@ -1343,6 +1345,18 @@ every landing place and fails if a stylesheet asks for a weight the set does not
 for. The `@font-face` rules sit inside `@media print`, so a reader on screen never
 downloads one, and `print-fonts.css` is registered right after `print.css` in
 `DEFAULT_CSS_ASSETS`.
+
+**Export readiness.** A face declared inside `@media print` starts loading only when
+print layout asks for it, and `font-display: block` draws nothing until it arrives, so
+an export that switches to print media and prints at once can write blank space where
+the sans belongs. [`format/pdf.py`](../src/kpress/format/pdf.py) forces print layout,
+waits for `document.fonts.ready`, and then asks for the families the `@page` margin
+boxes name (`--kpress-font-sans` and `--kpress-font-prose`) before calling `page.pdf()`:
+a margin box sits outside the document tree, so its face never enters
+`document.fonts.ready` on its own and the footer would otherwise print empty.
+`tests/test_playwright_print_pdf_fonts.py` pins both cases through the public
+`render_pdf`, one with the instances held back on the wire and one on a serif-only page
+where the footer is the only sans.
 
 **The host hook.** `--kpress-host-font-sans-print` is the print-only sans stack, ahead
 of `--kpress-host-font-sans` in the print token.
