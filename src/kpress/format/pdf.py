@@ -7,7 +7,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Protocol, cast
+from typing import Any, Final, Protocol, cast
 
 from kpress.errors import KPressMissingOptionalDependencyError
 from kpress.format.model import RenderedPage
@@ -36,6 +36,8 @@ class _PdfPage(Protocol):
     def goto(self, url: str, *, wait_until: str) -> None: ...
 
     def emulate_media(self, *, media: str) -> None: ...
+
+    def evaluate(self, expression: str, arg: object = None) -> object: ...
 
     def pdf(self, *, path: str, format: str, print_background: bool) -> None: ...
 
@@ -84,6 +86,61 @@ def _sync_playwright() -> _PdfPlaywrightContext:
     return cast(_PdfPlaywrightContext, cast(object, sync_api.sync_playwright()))
 
 
+#: The custom properties KPress's ``@page`` margin boxes name their families with. A
+#: margin box is outside the document tree, so a face used only there never enters
+#: ``document.fonts.ready``; its first request would land inside ``page.pdf()``, after
+#: the page it belongs to is drawn, and the footer would print empty. Reading the
+#: resolved value covers a host that redirects the tokens, since the print stack is
+#: what the root computes to under print media.
+_MARGIN_BOX_FONT_TOKENS: Final = ("--kpress-font-sans", "--kpress-font-prose")
+
+#: Latin letters and digits, which every KPress face covers with its ``unicode-range``:
+#: ``document.fonts.load`` fetches only the faces whose range answers the sample.
+_MARGIN_BOX_SAMPLE: Final = "Aa Gg 0123"
+
+#: How long the wait may take before the export prints with whatever has arrived. A face
+#: that never answers is a slow or broken asset, not a reason to hang the export: past
+#: this point the printed page is what it was before the wait existed.
+_PRINT_FONTS_TIMEOUT_MS: Final = 15_000
+
+#: Print layout asks for faces screen layout never did: the static sans instances are
+#: declared inside ``@media print``, so they start loading only once print layout
+#: requests them, and ``font-display: block`` leaves their text invisible until they
+#: arrive. Force print layout, wait for what it asked for, then request the margin-box
+#: families by name and wait again.
+_PRINT_FONTS_READY_JS: Final = """
+async ([tokens, sample, timeoutMs]) => {
+  const loaded = async () => {
+    document.documentElement.getBoundingClientRect();
+    await document.fonts.ready;
+    const root = getComputedStyle(document.documentElement);
+    const weight = root.fontWeight || "400";
+    const stacks = tokens
+      .map((token) => root.getPropertyValue(token).trim())
+      .filter((stack) => stack.length > 0);
+    await Promise.all(
+      stacks.map((stack) =>
+        document.fonts.load(`${weight} 1rem ${stack}`, sample).catch(() => undefined),
+      ),
+    );
+    await document.fonts.ready;
+    document.documentElement.getBoundingClientRect();
+    return true;
+  };
+  const expired = new Promise((resolve) => setTimeout(() => resolve(false), timeoutMs));
+  return await Promise.race([loaded(), expired]);
+}
+"""
+
+
+def _await_print_fonts(page: _PdfPage) -> None:
+    """Let every face the printed page needs finish loading before the PDF is written."""
+    _ = page.evaluate(
+        _PRINT_FONTS_READY_JS,
+        [list(_MARGIN_BOX_FONT_TOKENS), _MARGIN_BOX_SAMPLE, _PRINT_FONTS_TIMEOUT_MS],
+    )
+
+
 def _write_browser_pdf(
     *,
     html: str,
@@ -111,6 +168,7 @@ def _write_browser_pdf(
                 page = browser.new_page()
                 page.goto(html_path.as_uri(), wait_until="networkidle")
                 page.emulate_media(media="print")
+                _await_print_fonts(page)
                 page.pdf(
                     path=str(pdf_path),
                     format=options.page_size,
