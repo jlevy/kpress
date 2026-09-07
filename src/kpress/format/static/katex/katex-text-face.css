@@ -266,7 +266,11 @@
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
   ) .katex
-  .textrm,
+  .textrm {
+  font-family: "KPress Math Text", KaTeX_Main, serif;
+  font-style: normal;
+}
+
 .kpress:not(
     [data-kpress-fonts="system"],
     [data-kpress-math-text="katex"],
