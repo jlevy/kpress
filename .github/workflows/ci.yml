@@ -7,8 +7,10 @@ name: CI
 on:
   push:
     branches: ["main"]
+  # Pull requests into main, and into the squares/* integration branches, so a
+  # pull request stacked on one of those is checked before it merges down.
   pull_request:
-    branches: ["main"]
+    branches: ["main", "squares/**"]
 
 permissions:
   contents: read
