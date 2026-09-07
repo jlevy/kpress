@@ -156,24 +156,38 @@
 /* Scoped positively, so there is nothing to revert: every rule below applies to a
    `.kpress` that has not opted out, and one that has keeps upstream's `.katex`
    rules and style-tokens.css's 1.05em exactly as they are. Three ways out, each
-   honoured wherever it is stamped:
+   honoured on the wrapper itself and on any ancestor:
 
-   - `data-kpress-math-text="katex"` on the wrapper or on any ancestor. The page
-     shell stamps <html> from `RenderOptions.math_text_font`; an embedding host
-     stamps its own root; a fragment under neither gets the face.
-   - `data-kpress-fonts="system"`, the wrapper's baked font mode, on it or above.
+   - `data-kpress-math-text="katex"`. The page shell stamps <html> from
+     `RenderOptions.math_text_font`; an embedding host stamps its own root; a
+     fragment under neither gets the face.
+   - `data-kpress-fonts="system"`, the wrapper's baked font mode.
    - `data-kpress-font-set="system"`, the reader's persisted choice, which
      theme-bootstrap.js stamps on <html> before first paint.
 
    In either system mode the vendored reading face is not loaded, so the composite
    would have nothing to draw the Latin ranges with. `katex-init.js` applies the
-   metric tables under the same three conditions, and reverts the face itself when
-   the tables cannot be applied, so what KaTeX measures and what it draws agree.
+   metric tables under the same three conditions -- read with `closest()`, which
+   is why each one appears twice below, once for the element and once for its
+   descendants -- and reverts the face itself when the tables cannot be applied,
+   so what KaTeX measures and what it draws agree.
+
+   THE SECOND SCOPE ROOT is the footnote/section preview overlay. It carries a
+   clone of already-rendered math, and tooltips.js mounts it on the viewport pane
+   or the body, outside every `.kpress`. The metric tables are page-global, so the
+   clone is laid out from whichever mode the document is in; the overlay therefore
+   has to be drawn and sized in that same mode or the two disagree. tooltips.js
+   resolves the originating wrapper's mode against the same three opt-outs and
+   stamps it as `data-kpress-math-text`, so the overlay opts in explicitly rather
+   than by position. `.kpress-tooltip[data-kpress-math-text="prose"]` is (0,2,0),
+   the same as `.kpress:not(...)`, and `:is()` takes the higher of its arguments,
+   so the specificity notes below hold for both roots.
 
    `:not()` with a selector list and descendant combinators inside it: Chrome 88,
-   Firefox 84, Safari 9. The scope is (0,2,0), so the family rules land at (0,3,0)
-   and (0,4,0) against upstream's (0,1,0) and (0,2,0), and the size token at (0,2,0)
-   against style-tokens.css's (0,1,0): link order decides nothing here. */
+   Firefox 84, Safari 9. `:is()`: Chrome 88, Firefox 88, Safari 14. The scope is
+   (0,2,0), so the family rules land at (0,3,0) and (0,4,0) against upstream's
+   (0,1,0) and (0,2,0), and the size token at (0,2,0) against style-tokens.css's
+   (0,1,0): link order decides nothing here. */
 
 /* With the letters and digits in the reading face, mathematics is the prose
    size: upstream's 1.21em lift exists to seat Computer Modern beside a
@@ -181,13 +195,18 @@
    display math too: TeX sets a displayed equation at the text size, and the
    1.1em the display token carries for Computer Modern read, once the letters
    were the reading face, as a paragraph set a size larger. The sans token
-   (1em) already agrees; the consumers are in components.css. */
-.kpress:not(
-  [data-kpress-fonts="system"],
-  [data-kpress-math-text="katex"],
-  [data-kpress-fonts="system"] *,
-  [data-kpress-font-set="system"] *,
-  [data-kpress-math-text="katex"] *
+   (1em) already agrees; the consumers are in components.css, which applies them
+   inside the preview overlay as well as inside the document. */
+:is(
+  .kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  ),
+  .kpress-tooltip[data-kpress-math-text="prose"]
 ) {
   --kpress-katex-size-prose: 1em;
   --kpress-katex-size-display: 1em;
@@ -197,25 +216,34 @@
    which carry no font class of their own. The family after the composite is not a
    fallback for a missing download: it is where every code point the composite
    does not claim is drawn, so each rule names the KaTeX face its slot replaces. */
-.kpress:not(
-  [data-kpress-fonts="system"],
-  [data-kpress-math-text="katex"],
-  [data-kpress-fonts="system"] *,
-  [data-kpress-font-set="system"] *,
-  [data-kpress-math-text="katex"] *
-)
-.katex {
+:is(
+    .kpress:not(
+      [data-kpress-fonts="system"],
+      [data-kpress-font-set="system"],
+      [data-kpress-math-text="katex"],
+      [data-kpress-fonts="system"] *,
+      [data-kpress-font-set="system"] *,
+      [data-kpress-math-text="katex"] *
+    ),
+    .kpress-tooltip[data-kpress-math-text="prose"]
+  )
+  .katex {
   font-family: "KPress Math Text", KaTeX_Main, "Times New Roman", serif;
 }
 
 /* Variables (`n`, `t_k`): upstream draws them from KaTeX_Math. */
-.kpress:not(
-    [data-kpress-fonts="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  ) .katex
+:is(
+    .kpress:not(
+      [data-kpress-fonts="system"],
+      [data-kpress-font-set="system"],
+      [data-kpress-math-text="katex"],
+      [data-kpress-fonts="system"] *,
+      [data-kpress-font-set="system"] *,
+      [data-kpress-math-text="katex"] *
+    ),
+    .kpress-tooltip[data-kpress-math-text="prose"]
+  )
+  .katex
   .mathnormal {
   font-family: "KPress Math Text", KaTeX_Math, serif;
   font-style: italic;
@@ -223,27 +251,37 @@
 
 /* `\mathit`: upstream draws it from KaTeX_Main italic and lays it out from the
    Main-Italic table, so KaTeX_Main follows the composite here, not KaTeX_Math.
-   Its Greek capitals are drawn by the italic slot's Math-Italic face and laid
-   out from the Main-Italic table, which the generator therefore scales by the
-   same factor as the face that is drawn. */
-.kpress:not(
-    [data-kpress-fonts="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  ) .katex
+   Its Greek is drawn by the italic slot's Math-Italic face, so the generator
+   copies the Greek rows from the Math-Italic table -- not Main-Italic's, whose
+   advances and skews are a different face's -- and scales them by that face's
+   factor. */
+:is(
+    .kpress:not(
+      [data-kpress-fonts="system"],
+      [data-kpress-font-set="system"],
+      [data-kpress-math-text="katex"],
+      [data-kpress-fonts="system"] *,
+      [data-kpress-font-set="system"] *,
+      [data-kpress-math-text="katex"] *
+    ),
+    .kpress-tooltip[data-kpress-math-text="prose"]
+  )
+  .katex
   .mathit {
   font-family: "KPress Math Text", KaTeX_Main, serif;
   font-style: italic;
 }
 
-.kpress:not(
-    [data-kpress-fonts="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
+:is(
+    .kpress:not(
+      [data-kpress-fonts="system"],
+      [data-kpress-font-set="system"],
+      [data-kpress-math-text="katex"],
+      [data-kpress-fonts="system"] *,
+      [data-kpress-font-set="system"] *,
+      [data-kpress-math-text="katex"] *
+    ),
+    .kpress-tooltip[data-kpress-math-text="prose"]
   )
   .katex
   .mathbf {
@@ -251,12 +289,16 @@
   font-weight: 700;
 }
 
-.kpress:not(
-    [data-kpress-fonts="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
+:is(
+    .kpress:not(
+      [data-kpress-fonts="system"],
+      [data-kpress-font-set="system"],
+      [data-kpress-math-text="katex"],
+      [data-kpress-fonts="system"] *,
+      [data-kpress-font-set="system"] *,
+      [data-kpress-math-text="katex"] *
+    ),
+    .kpress-tooltip[data-kpress-math-text="prose"]
   )
   .katex
   .boldsymbol {
@@ -265,27 +307,39 @@
   font-weight: 700;
 }
 
-/* `font-style: normal` pins these to the composite's upright slot even inside
-   an italic run; `.mainrm` carries it upstream and `.textrm` gets it from
-   upstream's root `font` shorthand in practice. */
-.kpress:not(
-    [data-kpress-fonts="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  ) .katex
+/* `\textrm{}` and `\text{}` take the family only. Upstream gives `.textrm` no
+   `font-style`: the upright default reaches it from the root `.katex` `font`
+   shorthand at (0,1,0), which leaves an explicit `\textit` nested inside --
+   KaTeX emits one `.mord.textrm.textit` leaf for `\textrm{\textit{x}}` -- free to
+   win at (0,2,0). Pinning `font-style: normal` here would outrank `.textit` and
+   draw the upright slot over a run KaTeX laid out from the italic table. Only
+   `.mainrm` gets the pin, because upstream pins it too. */
+:is(
+    .kpress:not(
+      [data-kpress-fonts="system"],
+      [data-kpress-font-set="system"],
+      [data-kpress-math-text="katex"],
+      [data-kpress-fonts="system"] *,
+      [data-kpress-font-set="system"] *,
+      [data-kpress-math-text="katex"] *
+    ),
+    .kpress-tooltip[data-kpress-math-text="prose"]
+  )
+  .katex
   .textrm {
   font-family: "KPress Math Text", KaTeX_Main, serif;
-  font-style: normal;
 }
 
-.kpress:not(
-    [data-kpress-fonts="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
+:is(
+    .kpress:not(
+      [data-kpress-fonts="system"],
+      [data-kpress-font-set="system"],
+      [data-kpress-math-text="katex"],
+      [data-kpress-fonts="system"] *,
+      [data-kpress-font-set="system"] *,
+      [data-kpress-math-text="katex"] *
+    ),
+    .kpress-tooltip[data-kpress-math-text="prose"]
   )
   .katex
   .mainrm {

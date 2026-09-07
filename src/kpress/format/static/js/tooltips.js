@@ -141,6 +141,32 @@ function sanitizeText(text) {
     .replaceAll(">", "&gt;");
 }
 
+// The three ways out of the math text face, in the order katex-init.js reads
+// them with `closest()` and katex-text-face.css excludes them: an explicit
+// `data-kpress-math-text="katex"`, the wrapper's baked font mode, and the
+// reader's persisted font set.
+const MATH_TEXT_OPT_OUT =
+  '[data-kpress-math-text="katex"], [data-kpress-fonts="system"], [data-kpress-font-set="system"]';
+
+/**
+ * The math text mode the overlay must be drawn and sized in.
+ *
+ * A preview carries a CLONE of math KaTeX has already typeset, and the metric
+ * tables it was typeset from are one page-global setting (see katex-init.js).
+ * But the popover is mounted on the viewport pane or the body, outside every
+ * `.kpress`, so the composite family and the `--kpress-katex-size-*` tokens
+ * would stop applying and the overlay would draw KaTeX's own faces over boxes
+ * measured for the reading face. Resolving the ORIGINATING wrapper's mode and
+ * stamping it on the overlay is what keeps the two together: the stylesheets
+ * scope on the stamp rather than on where the node happens to sit.
+ *
+ * @param {Element} anchor the link the preview was opened from
+ * @returns {"prose" | "katex"}
+ */
+function resolvedMathTextFont(anchor) {
+  return anchor.closest(".kpress") && !anchor.closest(MATH_TEXT_OPT_OUT) ? "prose" : "katex";
+}
+
 /**
  * @param {Element} element
  * @returns {Element}
@@ -632,6 +658,9 @@ function showKpressTooltip(anchor) {
   // double-pump so the CSS transition from opacity:0 to opacity:1 fires.
   tooltip.className = "kpress-tooltip kpress-no-print";
   tooltip.setAttribute("role", "tooltip");
+  // Carried, not inherited: the overlay leaves the document's subtree, so the
+  // math mode has to travel with it (see resolvedMathTextFont).
+  tooltip.setAttribute("data-kpress-math-text", resolvedMathTextFont(anchor));
   if (content.footnoteId) {
     tooltip.classList.add("kpress-tooltip-footnote");
   }

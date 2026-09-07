@@ -87,7 +87,8 @@ ITALIC_GREEK: Final = tuple(range(0x370, 0x400))
 #   Math-BoldItalic  PT Serif Bold Italic x 509   /  KaTeX_Math-BoldItalic 452 1.126
 #   Main-Italic      as Math-Italic: `\mathit` is laid out from this table, but the
 #                    composite's italic slot draws its Greek with KaTeX_Math-Italic,
-#                    so the table scales by the face that is drawn        1.150
+#                    so both the Greek rows and the factor come from the face that
+#                    is drawn (`greek_source_face`)                        1.150
 #   Main-BoldItalic  as Math-BoldItalic, for the same reason                1.126
 #
 # KaTeX_Math-BoldItalic is the one face whose OS/2 sxHeight is not its x-height: the
@@ -159,12 +160,24 @@ class FacePlan:
 
     drawn_font: str | None = None
     """The woff2 the composite actually draws this table's Greek with, when it is not
-    `katex_font`: the factor is derived against the face that is drawn, so the
-    table and the glyphs scale together."""
+    `katex_font`: both the rows and the factor come from the face that is drawn, so the
+    table and the glyphs describe the same outlines."""
 
     @property
     def scaled_against(self) -> str:
         return self.drawn_font or self.katex_font
+
+    @property
+    def greek_source_face(self) -> str:
+        """The KaTeX table the Greek rows are copied from before scaling.
+
+        Its own table when the slot draws its own Greek, and the drawn face's table when
+        the composite routes the Greek elsewhere: `Main-Italic` is what `\\mathit` is
+        laid out from, but the italic slot draws its Greek with KaTeX_Math-Italic, whose
+        advances and skews are not Main-Italic's. Scaling Main-Italic's rows would lay
+        out one face's Greek for another's glyphs.
+        """
+        return self.scaled_against.removeprefix("KaTeX_").removesuffix(".woff2")
 
 
 PT_SERIF_REGULAR: Final = "pt-serif-latin-400-normal.woff2"
@@ -382,9 +395,17 @@ def read_face_cached(path: Path) -> Face:
 def build_tables() -> dict[str, MetricTable]:
     """Rebuild all six metric tables from the bundle and the reading faces."""
     bundle = KATEX_BUNDLE.read_text(encoding="utf-8")
+    parsed: dict[str, MetricTable] = {}
+
+    def table_for(face: str) -> MetricTable:
+        if face not in parsed:
+            parsed[face] = parse_katex_table(bundle, face)
+        return parsed[face]
+
     return {
         plan.katex_face: build_table(
-            parse_katex_table(bundle, plan.katex_face),
+            table_for(plan.katex_face),
+            table_for(plan.greek_source_face),
             read_face_cached(READING_FONTS / plan.reading_font),
             plan,
         )
@@ -392,8 +413,15 @@ def build_tables() -> dict[str, MetricTable]:
     }
 
 
-def build_table(base: MetricTable, reading: Face, plan: FacePlan) -> MetricTable:
-    """Swap the reading face's Latin metrics into one table and scale its Greek."""
+def build_table(
+    base: MetricTable, greek_source: MetricTable, reading: Face, plan: FacePlan
+) -> MetricTable:
+    """Swap the reading face's Latin metrics into one table and scale its Greek.
+
+    `greek_source` is the table of the face the composite's slot actually draws Greek
+    with (`plan.greek_source_face`), which is `base` for every slot that keeps its own
+    Greek and the Math-* table for the two `\\mathit` slots that do not.
+    """
     swapped = 0
     table = dict(base)
     for code_point in plan.swapped:
@@ -409,8 +437,11 @@ def build_table(base: MetricTable, reading: Face, plan: FacePlan) -> MetricTable
         raise MetricsError(f"{plan.reading_font} covers none of {plan.katex_face}'s swapped range")
 
     for code_point in plan.greek:
-        row = base.get(code_point)
+        row = greek_source.get(code_point)
         if row is None:
+            # The drawn face has no entry here, so the browser falls through to the
+            # KaTeX face this slot names after the composite -- which is the face `base`
+            # describes. Its own unscaled row is then the right one; leave it alone.
             continue
         table[code_point] = _round_row(cast(MetricRow, tuple(value * plan.scale for value in row)))
     return table

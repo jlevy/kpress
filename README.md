@@ -4,21 +4,24 @@ KPress is a Python library and CLI that turns Markdown into polished HTML docume
 static sites. It owns document rendering, typography, reader interactions, and the build
 pipeline while leaving site semantics and deployment to the consuming project.
 
-KPress `0.3.5` is an alpha for developers evaluating it in real projects.
+KPress is an alpha for developers evaluating it in real projects.
 The document and publishing paths are usable and tested, but public seams may change by
 hard cut before a stable release.
 
 KPress requires Python 3.12 or newer.
-KPress `0.3.5` supports macOS and Linux; native Windows support is tracked for a later
-alpha (`kpr-isp2`).
+It supports macOS and Linux; native Windows support is tracked for a later alpha
+(`kpr-isp2`).
 
 ## Install and Build a Site
 
-Install the released package into a project:
+Install the released package into a project, pinning the version you reviewed:
 
 ```bash
-uv add kpress==0.3.5
+uv add kpress==<version>
 ```
+
+Released versions are on [PyPI](https://pypi.org/project/kpress/), and the release notes
+for each are under [docs/releases](docs/releases).
 
 Create this minimal `kpress.yml`:
 
@@ -49,7 +52,7 @@ KPress copies eligible project-local media without rewriting its authored URLs a
 not fetch or verify external assets or seal a complete asset graph.
 Use `linked` for readable local asset names and `hosted` when an embedding application
 serves KPress assets itself.
-Truly self-contained single-file and verified offline output are not part of `0.3.5`.
+Truly self-contained single-file and verified offline output are not supported yet.
 
 ## Use KPress as a Library
 

@@ -31,10 +31,19 @@ const OPTIONS = {
 // table in the KaTeX singleton, so a page cannot lay out one document with the
 // reading face's numbers and another with Computer Modern's. The decision is
 // therefore taken over every math host on the page, under the same three
-// opt-outs the stylesheet honours on any ancestor: `data-kpress-math-text="katex"`,
+// opt-outs the stylesheet honours: `data-kpress-math-text="katex"`,
 // `data-kpress-fonts="system"` and the reader's persisted
-// `data-kpress-font-set="system"`. A page that mixes opted-in and opted-out
-// hosts is unsupported; the metrics follow the opted-in ones.
+// `data-kpress-font-set="system"`. `closest()` reads each of them on the
+// element itself as well as on any ancestor, and each appears in the
+// stylesheet's scope twice for the same reason, so the two guards agree wherever
+// an attribute is stamped -- on <html>, on an embedding host's root, or directly
+// on the wrapper. A page that mixes opted-in and opted-out hosts is unsupported;
+// the metrics follow the opted-in ones.
+//
+// The tables are also applied ONCE, at load. Nothing can read them back, so the
+// reader's font-set control completes a change of mode with a reload rather than
+// by rebuilding them in place; see `fontSetSwitchNeedsReload` in
+// js/settings-widget.js.
 //
 // If a host wants the face and the tables cannot be applied -- the asset did not
 // load, or a KaTeX bump renamed its private setter -- the face is turned off as
