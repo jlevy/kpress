@@ -7,6 +7,7 @@
       "!**/public",
       "!**/*.min.js",
       "!**/*.min.css",
+      "!src/kpress/format/static/katex/katex-text-metrics.js",
       "!tests/golden/accepted"
     ]
   },

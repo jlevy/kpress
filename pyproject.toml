@@ -84,6 +84,9 @@ dev = [
     "rich>=15.0.0",
     "basedpyright>=1.39.9",
     "funlog>=0.2.1",
+    # Reads the vendored woff2 faces for devtools/katex_text_metrics.py. Development
+    # only: the generated metric table ships, the generator's dependency does not.
+    "fonttools>=4.63.0",
 ]
 
 [project.scripts]
