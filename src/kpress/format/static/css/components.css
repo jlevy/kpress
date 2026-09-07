@@ -746,31 +746,46 @@
   padding-top: 1rem;
 }
 
+/* Footnote controls. The reference in the text, the ↑ after its footnote and the ↓
+   in its hover preview are one family: each takes the reader to or from a footnote,
+   so they look alike at rest and answer a hover the same way the document's other
+   small controls do -- the link colour on the glyph, a link-coloured border, and the
+   link wash behind it. The border is present at rest, transparent, so nothing moves
+   on hover; the wash is the same `--kpress-doc-surface-hover` every hover here uses.
+
+   `.kpress a.…backref` and `.kpress-tooltip …nav-link` carry a class beyond the bare
+   one: the generic `.kpress a:hover` underline is (0,2,1) and a bare
+   `.kpress-footnote-backref:hover` (0,2,0) would lose to it and underline. */
 .kpress-footnote-ref a,
-.kpress-footnote-backref {
+.kpress a.kpress-footnote-backref,
+.kpress-tooltip .kpress-footnote-nav-link {
   background-color: var(--color-bg-meta-solid);
+  border: 1px solid transparent;
   border-radius: var(--kpress-radius-md);
   color: var(--color-hint-strong);
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
   font-style: normal;
   font-weight: 600;
-  margin-right: 0.15rem;
   padding: 0 0.15rem;
   text-decoration: none;
   /* Hover properties only, never `all` (late-applied styles must not animate). */
   transition:
     color var(--kpress-transition-fast),
-    background-color var(--kpress-transition-fast);
+    background-color var(--kpress-transition-fast),
+    border-color var(--kpress-transition-fast);
 }
 
-/* `a.…backref` qualifier: the generic `.kpress a:hover` underline is specificity
-   (0,2,1); a bare `.kpress-footnote-backref:hover` is only (0,2,0) and loses, so the
-   ↑ back-link would underline on hover. Adding the `a` type wins it back. */
+.kpress-footnote-ref a {
+  margin-right: 0.15rem;
+}
+
 .kpress-footnote-ref a:hover,
-.kpress a.kpress-footnote-backref:hover {
+.kpress a.kpress-footnote-backref:hover,
+.kpress-tooltip .kpress-footnote-nav-link:hover {
   background-color: var(--color-hover-bg);
-  color: var(--color-primary-light);
+  border-color: var(--kpress-doc-link);
+  color: var(--kpress-doc-link);
   text-decoration: none;
 }
 
@@ -955,14 +970,6 @@
 .kpress-footnote-nav {
   float: right;
   margin-inline-start: 0.5rem;
-}
-
-.kpress-tooltip .kpress-footnote-nav-link {
-  text-decoration: none;
-}
-
-.kpress-tooltip .kpress-footnote-nav-link:hover {
-  text-decoration: none;
 }
 
 /* Tables: only tables marked wide (data-kpress-table-scale="wide", stamped by

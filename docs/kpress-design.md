@@ -243,6 +243,11 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Table of contents.** Desktop sticky rail with active-heading tracking and smooth
   scroll; mobile drawer with backdrop, body-scroll lock and restore, scrollbar-width
   compensation, outside-click and Escape close, and iOS overscroll handling.
+- **Footnote controls.** The reference in the text, the backref after its footnote, and
+  the navigation link in its preview are one control family: alike at rest, and
+  answering a hover the way the document’s other small controls do (link colour,
+  link-coloured border, the shared hover wash), so a host restyles them by setting the
+  link and surface tokens rather than by matching selectors.
 - **Footnote tooltips.** Hover, focus, and touch previews with truncation, a navigation
   link, delayed hide, and a trigger-to-tooltip hover bridge; accidental footnote
   navigation is prevented.

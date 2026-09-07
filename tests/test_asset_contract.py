@@ -226,16 +226,19 @@ def test_toc_and_footnote_transitions_are_property_scoped() -> None:
 
     assert "transition: all" not in css
     toc_rule = css.partition(".kpress-toc a {")[2].partition("}")[0]
-    footnote_rule = css.partition(".kpress-footnote-ref a,\n.kpress-footnote-backref {")[
-        2
-    ].partition("}")[0]
+    footnote_rule = css.partition(
+        ".kpress-footnote-ref a,\n.kpress a.kpress-footnote-backref,\n"
+        ".kpress-tooltip .kpress-footnote-nav-link {"
+    )[2].partition("}")[0]
     assert toc_rule
     assert footnote_rule
     for rule in [toc_rule, footnote_rule]:
         assert "color var(--kpress-transition-fast)" in rule
         assert "background-color var(--kpress-transition-fast)" in rule
         assert "background var(--kpress-transition-fast)" not in rule
-    assert "border-color var(--kpress-transition-fast)" in toc_rule
+        # The hover draws a border in the link colour; it is transparent at rest, so
+        # it animates in rather than appearing.
+        assert "border-color var(--kpress-transition-fast)" in rule
 
 
 def test_table_css_contract_covers_responsive_reader_parity() -> None:
