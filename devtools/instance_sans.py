@@ -48,11 +48,14 @@ WEIGHTS: Final[tuple[int, ...]] = (370, 400, 550, 600, 650, 700)
 STYLES: Final[tuple[str, ...]] = ("normal", "italic")
 
 #: The subset the variable faces cover, repeated verbatim so a static face is never
-#: asked for a glyph the variable one would have passed down the stack.
+#: asked for a glyph the variable one would have passed down the stack. The
+#: continuation lines carry the six-space indent Biome gives a wrapped value inside a
+#: rule nested in ``@media``, which is the only place :func:`face_rule` puts them; the
+#: repository's formatter checks the generated stylesheet like any other.
 UNICODE_RANGE: Final = (
     "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,\n"
-    "    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,\n"
-    "    U+FFFD"
+    "      U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,\n"
+    "      U+FFFD"
 )
 
 

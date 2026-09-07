@@ -20,6 +20,9 @@ Use this index for implementation, maintenance, and release work.
   mathematics drawn from the reading face, with matching metrics; on by default
 - [Math Text Face Research](project/research/research-2026-09-07-math-text-face.md): the
   measurements, prior art and prototypes behind it
+- [Print Sans Faces Research](project/research/research-2026-09-07-print-sans-faces.md):
+  why a variable font prints as outline paths, what a smoothing viewer does with them,
+  and the static instances that answer it
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
   interaction, accessibility, asset, and verification contract for pinnable evidence
   previews

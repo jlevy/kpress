@@ -164,6 +164,10 @@ font-role table under [Theme and Fonts](kpress-design.md#theme-and-fonts)); a ho
 can use this for a serif/sans reading-font toggle, which sets
 `--kpress-host-font-prose`. Hosts customize colors by setting the public
 `--kpress-doc-*` tokens on the document scope.
+The sans role has one further hook that applies under print only,
+`--kpress-host-font-sans-print`; a host that changes the sans weights owes its printed
+pages a set of static faces, described in
+[Print Sans Faces and Host Weights](#print-sans-faces-and-host-weights).
 
 Mathematics carries two further font seams, both for a host that has pinned a reading
 face of its own (full contract: [Math Text Face](kpress-design.md#math-text-face)). The
@@ -520,6 +524,37 @@ reuse the source profile with structural overrides.
 The host hides its own chrome (`.app-header`, `.tab-bar`, `.tree-pane`, `.file-header`)
 via its own `@media print` rules.
 KPress does not reach outside its `.kpress` container.
+
+### Print Sans Faces and Host Weights
+
+Under print the sans stack leads with the static `Source Sans 3` instances rather than
+the variable `Source Sans 3 Variable` used on screen, because Chromium’s PDF writer
+draws a variable face at a non-default weight as outline paths instead of embedding it,
+and a viewer that smooths embedded text leaves those paths thin.
+The full argument and the measurements are in
+[Print Sans Faces](kpress-design.md#print-sans-faces).
+Three consequences for a host:
+
+- **A host that keeps KPress’s weights has nothing to do.** The twelve instances ship as
+  package assets and `print-fonts.css` is part of the default stylesheet set, so linked
+  and hashed builds carry them and print correctly.
+- **A host that overrides the sans weight tokens** (`--kpress-font-weight-sans-light` /
+  `-medium` / `-bold`, or any `font-weight` of its own on a sans context) has three
+  options. Instance its own set: `devtools/instance_sans.py` is importable on its own
+  with fontTools as its only dependency, and `instance_face(variable, weight)` returns
+  the woff2 bytes while `face_rule(weight, style, url)` returns the matching
+  `@font-face` rule. Declare those faces for the `Source Sans 3` family inside
+  `@media print` after KPress’s stylesheets, which is enough on its own.
+  Or point the whole print stack elsewhere with `--kpress-host-font-sans-print`, which
+  takes precedence over `--kpress-host-font-sans` under print only.
+  A weight with no instance is not an error: CSS font matching falls to the nearest one
+  KPress ships, so the printed page is a step off the screen rather than broken.
+- **A host that inlines assets into one self-contained file** pays about 180KB of base64
+  for faces that only a printed copy uses.
+  Supplying them at PDF time (linked assets for the print or export path, inlined assets
+  for the page) is a supported choice: without them the printed sans falls back to the
+  variable face and its outline paths, which is exactly the behavior before this
+  feature.
 
 ### Static Export Seam
 

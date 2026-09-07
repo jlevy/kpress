@@ -3,10 +3,18 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from devtools.instance_sans import STYLES, WEIGHTS, instance_name
 from kpress.format.assets import package_asset_manifest, package_asset_refs
 from kpress.runtime import get_static_asset
 
 _KPRESS_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _one(pattern: str, text: str) -> str:
+    """The single capture of a pattern that must match exactly once."""
+    matches = re.findall(pattern, text)
+    assert len(matches) == 1, f"{pattern!r} matched {len(matches)} times in {text!r}"
+    return str(matches[0])
 
 
 def test_scroll_surfaces_share_the_minimal_scrollbar_token() -> None:
@@ -433,8 +441,76 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/pt-serif-latin-700-italic.woff2",
         "fonts/source-sans-3-latin-wght-normal.woff2",
         "fonts/source-sans-3-latin-wght-italic.woff2",
+        # The static print instances and the stylesheet that declares them.
+        "css/print-fonts.css",
+        "fonts/source-sans-3-latin-370-normal.woff2",
+        "fonts/source-sans-3-latin-400-normal.woff2",
+        "fonts/source-sans-3-latin-550-normal.woff2",
+        "fonts/source-sans-3-latin-600-normal.woff2",
+        "fonts/source-sans-3-latin-650-normal.woff2",
+        "fonts/source-sans-3-latin-700-normal.woff2",
+        "fonts/source-sans-3-latin-370-italic.woff2",
+        "fonts/source-sans-3-latin-400-italic.woff2",
+        "fonts/source-sans-3-latin-550-italic.woff2",
+        "fonts/source-sans-3-latin-600-italic.woff2",
+        "fonts/source-sans-3-latin-650-italic.woff2",
+        "fonts/source-sans-3-latin-700-italic.woff2",
     } <= asset_ids
     assert all("latest" not in asset.path for asset in manifest.assets)
+    # The shipped set and the generator cannot drift apart: the twelve names above are
+    # exactly the generator's weights crossed with its styles.
+    assert {
+        f"fonts/{instance_name(weight, style)}" for weight in WEIGHTS for style in STYLES
+    } <= asset_ids
+
+
+def test_print_font_faces_declare_the_static_instances_under_print_only() -> None:
+    """print-fonts.css is the generated declaration of the static Source Sans 3 set.
+
+    Twelve faces, one per weight and style, every one inside the single ``@media print``
+    block so no screen reader downloads them, every ``src`` naming a file that ships.
+    """
+    css = get_static_asset("css/print-fonts.css").content.decode("utf-8")
+
+    assert css.count("@media") == 1
+    media_start = css.index("@media print {")
+    faces = list(re.finditer(r"@font-face\s*\{(?P<body>[^}]*)\}", css))
+    assert len(faces) == len(WEIGHTS) * len(STYLES) == 12
+    assert all(face.start() > media_start for face in faces)
+
+    fonts_dir = _KPRESS_ROOT / "src/kpress/format/static/fonts"
+    declared: set[tuple[int, str]] = set()
+    for face in faces:
+        body = face.group("body")
+        assert re.search(r'font-family:\s*"Source Sans 3";', body), body
+        weight = int(_one(r"font-weight:\s*(\d+);", body))
+        style = _one(r"font-style:\s*(normal|italic);", body)
+        url = _one(r'src:\s*url\("\.\./fonts/([^"]+)"\)', body)
+        assert url == instance_name(weight, style)
+        assert (fonts_dir / url).is_file(), url
+        declared.add((weight, style))
+
+    assert declared == {(weight, style) for weight in WEIGHTS for style in STYLES}
+
+
+def test_print_css_leads_the_sans_stack_with_the_static_family() -> None:
+    """Under print the static family comes first and the variable face is the fallback.
+
+    Chromium's PDF writer draws the variable face at a non-default weight as Type3
+    outline paths, which a smoothing viewer leaves thin; the static instance embeds as a
+    font. Order is the whole mechanism, so it is what this pins.
+    """
+    css = get_static_asset("css/print.css").content.decode("utf-8")
+
+    assert "@media print {" in css
+    stack = css[css.index("@media print {") :]
+    assert "--kpress-host-font-sans-print" in stack
+    static = stack.index('"Source Sans 3"')
+    variable = stack.index('"Source Sans 3 Variable"')
+    assert static < variable, "the variable face must come after the static family"
+    # The screen stack is untouched: style-tokens.css still leads with the variable face.
+    tokens = get_static_asset("css/style-tokens.css").content.decode("utf-8")
+    assert '"Source Sans 3",' not in tokens
 
 
 def test_browser_assets_are_native_esm() -> None:

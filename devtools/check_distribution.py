@@ -57,6 +57,10 @@ def _inspect_wheel(wheel: Path) -> None:
             "kpress/format/static/css/document.css",
             "kpress/format/static/js/runtime.js",
             "kpress/format/static/fonts/pt-serif-latin-400-normal.woff2",
+            # Generated assets ship like any other: the print stylesheet and one of the
+            # static Source Sans 3 instances it declares (devtools/instance_sans.py).
+            "kpress/format/static/css/print-fonts.css",
+            "kpress/format/static/fonts/source-sans-3-latin-550-normal.woff2",
             "kpress/format/templates/page.html.jinja",
             "kpress/licenses/github-slugger.txt",
             "kpress/licenses/katex.txt",

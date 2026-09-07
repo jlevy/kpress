@@ -1290,6 +1290,65 @@ out Computer Modern boxes around the host’s glyphs, which is worse than not sw
 all. See [Host Integration](kpress-operations-and-host-integration.md#host-integration)
 for the inlining obligations.
 
+### Print Sans Faces
+
+On screen the sans role is drawn from one variable face, `Source Sans 3 Variable`, at
+whatever weight the context asks for.
+On paper it is drawn from a set of static instances declared as the family
+`Source Sans 3`, which the print stylesheet puts ahead of the variable face.
+The screen is unaffected; the whole change lives under `@media print`.
+
+**Why.** Chromium’s PDF writer cannot embed a variable font at any position but its
+default, so every glyph of the variable face in a printed page is written as a Type3
+outline path instead of set in an embedded font.
+The outlines carry the right weight: a caption `h` at weight 410 measures a 0.083em stem
+in the PDF and 0.083em on screen, against 0.030em for the ExtraLight default instance.
+But a viewer that smooths text drawn through the font machinery has no font to smooth
+and leaves the paths alone, so the sans reads a step lighter than the serif and the
+mathematics beside it.
+Measured with Quartz, the engine behind Preview, on one 12pt line, glyph `h`, as the
+fraction of the glyph box covered in ink, with font smoothing off then on:
+
+| How the glyph reaches the PDF | 3 px/pt | 2 px/pt |
+| --- | --- | --- |
+| Source Sans at 410, Type3 outline paths | 0.379 → 0.379 | 0.365 → 0.365 |
+| Source Sans at 410, static instance, embedded | 0.376 → 0.395 | 0.362 → 0.422 |
+| KaTeX_Main, embedded | 0.275 → 0.318 | 0.273 → 0.327 |
+
+A static instance embeds like any other font and gains the same ink the serif and the
+mathematics gain.
+MuPDF, which does not smooth, agrees with Quartz within 1% on all three
+rows, so the difference is the smoothing and not the outlines.
+The measurements are recorded in
+[Print Sans Faces Research](project/research/research-2026-09-07-print-sans-faces.md).
+
+**The family split.** The static set is the family `Source Sans 3` and the variable face
+is `Source Sans 3 Variable`, which are the upstream names of the two releases.
+Keeping them distinct means the two never share a weight range, so font matching never
+has to break a tie between them: under print the static family is first and answers
+every request it covers, and the variable face stays behind it as the fallback for a
+weight the set does not carry.
+
+**The set.** Six weights (370, 400, 550, 600, 650, 700) in normal and italic, twelve
+files of about 15KB, generated from the vendored variable faces by
+`devtools/instance_sans.py` into `static/fonts/` together with the stylesheet
+`static/css/print-fonts.css` that declares them.
+Both are generated files; `python -m devtools.instance_sans --check` verifies the
+shipped bytes and runs in `make lint`. The weights are the ones KPress’s own sans
+contexts request: the three weight tokens (370, 550, 650), the footnote controls’ 600,
+bold’s 700, and 400 for the resets.
+The two sans-mode headings ask for 380 and 440, which CSS weight matching lands on 370
+and 400; `.kpress-prose h4`’s 540 lands on 550. `tests/test_print_sans_faces.py` pins
+every landing place and fails if a stylesheet asks for a weight the set does not account
+for. The `@font-face` rules sit inside `@media print`, so a reader on screen never
+downloads one, and `print-fonts.css` is registered right after `print.css` in
+`DEFAULT_CSS_ASSETS`.
+
+**The host hook.** `--kpress-host-font-sans-print` is the print-only sans stack, ahead
+of `--kpress-host-font-sans` in the print token.
+A host that overrides the sans weight tokens needs instances at its own weights; see
+[Host Integration](kpress-operations-and-host-integration.md#print-sans-faces-and-host-weights).
+
 ### Document Actions Widget
 
 The `doc-actions` chrome widget renders small text badge buttons for taking the document
@@ -1374,7 +1433,8 @@ Footnotes and tables each carry their own stack (`--kpress-font-footnote`,
 footnote preview tooltips, so the two always agree.
 
 Vendored font files ship as package assets and static builds copy them into the output
-tree.
+tree. The sans role resolves to a different stack under print, through its own hook
+`--kpress-host-font-sans-print`: see [Print Sans Faces](#print-sans-faces).
 
 ## Document Components
 

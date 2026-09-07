@@ -373,6 +373,11 @@ PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-prose",
     "--kpress-host-font-prose-sans",
     "--kpress-host-font-sans",
+    # Print only: the sans stack the print stylesheet uses, which leads with the static
+    # "Source Sans 3" instances (see print.css and devtools/instance_sans.py) because a
+    # variable face cannot be embedded in a PDF away from its default weight. A host
+    # that overrides the sans weight tokens sets this to its own instanced family.
+    "--kpress-host-font-sans-print",
     "--kpress-host-font-size-base",
     "--kpress-host-font-table",
     "--kpress-host-settings-inset-block",
