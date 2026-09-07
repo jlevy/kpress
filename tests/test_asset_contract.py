@@ -385,6 +385,7 @@ def test_print_css_contract_covers_reader_parity_surfaces() -> None:
         """.kpress-doc,
   .kpress-page-main {
     padding-inline: 0;
+    padding-block-start: 0;
   }"""
         in css
     )
