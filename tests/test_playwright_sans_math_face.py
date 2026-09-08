@@ -126,9 +126,12 @@ class _QuietHandler(SimpleHTTPRequestHandler):
 def _build_fixture_site(tmp_path: Path, *, choosers: str | None = None) -> Path:
     """A document with the same expression in prose and in a sans role.
 
-    A table cell, not a figure caption: kpress escapes a figcaption's text, so the one
-    sans role a Markdown document cannot put mathematics into is the caption. The
-    footnote is the second role and rides along on the same page.
+    A table cell, not a figure caption: kpress escapes an image caption's text, so
+    `![... $x$ ...](img.png)` never produces mathematics at all, and the inline raw-HTML
+    forms of the other container roles leave `$x$` literal too. What a caption needs is
+    the BLOCK form, raw HTML with blank lines around the content. Table cells and
+    footnotes carry mathematics from plain Markdown, which is why they are the fixture.
+    The footnote is the second role and rides along on the same page.
 
     `choosers` renders the settings widget's menu, for the one test that switches the
     reading face through the control a reader has rather than by stamping the attribute.
