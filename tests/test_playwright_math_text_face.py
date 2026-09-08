@@ -156,6 +156,11 @@ def _probe(tmp_path: Path, math_text_font: str | None, *, font_set: str | None =
         thread.join(timeout=5)
 
 
+# Each of these builds a site and drives a real browser, and the heaviest measured
+# 22.8s on a warm Apple-silicon machine against the 60s `timeout` pyproject.toml sets
+# for every test. A shared runner with a cold font cache has no margin at that ceiling,
+# so this file takes the same allowance the sans one does.
+@pytest.mark.timeout(180)
 def test_reading_face_draws_and_lays_out_the_digits(tmp_path: Path) -> None:
     default = _probe(tmp_path / "prose", None)
     katex = _probe(tmp_path / "katex", "katex")
@@ -380,6 +385,7 @@ def _choose_font_set(page: Any, value: str) -> None:
     page.evaluate("document.fonts.ready")
 
 
+@pytest.mark.timeout(180)
 def test_the_font_set_chooser_carries_math_and_previews_with_it(tmp_path: Path) -> None:
     """Both directions through the real chooser, and the preview overlay with them.
 
@@ -718,6 +724,7 @@ def _required(probe: PaintProbe) -> list[FaceTiming]:
     return found
 
 
+@pytest.mark.timeout(180)
 def test_math_paints_once_in_its_final_faces(tmp_path: Path) -> None:
     """No expression reaches the page before the faces that draw it.
 
