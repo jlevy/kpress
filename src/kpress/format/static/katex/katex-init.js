@@ -165,9 +165,9 @@ const TEXT_FACE_FONTS = [
 // only thing that declares them, so their four and two rules are the complete
 // list and every one of them is wanted. Describing them instead -- `700 1em
 // 'KaTeX_Main'` and the rest -- would put the browser's face-matching between
-// the script and a face it already holds, and a match that comes back empty
-// buys a wait that loaded nothing. `FontFace.load()` names the face itself and
-// cannot miss.
+// the script and faces it already holds, and would leave the set the wait
+// covers implicit. Naming each face makes it exact, and the record below then
+// says which face every request was for.
 const KATEX_FAMILIES = ["KaTeX_Main", "KaTeX_Math"];
 
 // How long the wait may last, matching the block period `font-display: block`

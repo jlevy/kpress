@@ -456,6 +456,16 @@ def test_a_font_set_stamped_on_the_wrapper_opts_out_of_both_guards(tmp_path: Pat
 #: when the load settled and not when the probe happened to look -- an
 #: `requestAnimationFrame` poll would be a whole blocked frame late, and KaTeX
 #: blocks the frame it renders in.
+#:
+#: A face is recorded under its IDENTITY -- family, style, weight, unicode-range --
+#: and not per `FontFace` object, because a browser may hand out more than one
+#: object for the same `@font-face` rule. Chrome on Linux rebuilds the
+#: CSS-connected faces when the active stylesheet set changes, so a poll that lands
+#: between `katex.min.css` and `katex-text-face.css` catches a whole generation of
+#: objects that is then replaced and never loads: on that run `document.fonts`
+#: reported the KaTeX faces twice, the first copy pending forever. `objects` counts
+#: how many were seen for one identity, and `loaded` is the first of them to load,
+#: which is when the face's bytes were in fact ready.
 _PAINT_PROBE_INIT = """(() => {
   const probe = { firstKatex: null, faces: [] };
   globalThis.__kpressPaintProbe = probe;
@@ -471,21 +481,29 @@ _PAINT_PROBE_INIT = """(() => {
   }).observe(document, { childList: true, subtree: true });
 
   const watched = new WeakSet();
+  const byKey = new Map();
   const watch = () => {
     document.fonts.forEach((face) => {
       if (watched.has(face)) return;
       watched.add(face);
-      const record = {
-        family: face.family,
-        style: face.style,
-        weight: face.weight,
-        unicodeRange: face.unicodeRange,
-        loaded: null,
-      };
-      probe.faces.push(record);
+      const key = [face.family, face.style, face.weight, face.unicodeRange].join("|");
+      let record = byKey.get(key);
+      if (record === undefined) {
+        record = {
+          family: face.family,
+          style: face.style,
+          weight: face.weight,
+          unicodeRange: face.unicodeRange,
+          loaded: null,
+          objects: 0,
+        };
+        byKey.set(key, record);
+        probe.faces.push(record);
+      }
+      record.objects += 1;
       face.loaded.then(
         () => {
-          record.loaded = performance.now();
+          if (record.loaded === null) record.loaded = performance.now();
         },
         () => {},
       );
@@ -504,6 +522,7 @@ class FaceTiming(TypedDict):
     weight: str
     unicodeRange: str
     loaded: float | None
+    objects: int
 
 
 class WaitEntry(TypedDict):
@@ -597,7 +616,10 @@ def _report(probe: PaintProbe) -> str:
         for entry in probe["wait"]
     ] or ["  (nothing recorded)"]
     lines.append("every @font-face of the page, and when it loaded:")
-    lines += [f"  {face['loaded']} {_face_key(face)}" for face in probe["faces"]]
+    lines += [
+        f"  {face['loaded']} {_face_key(face)} ({face['objects']} object(s))"
+        for face in probe["faces"]
+    ]
     return "\n".join(lines)
 
 

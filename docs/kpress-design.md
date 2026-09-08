@@ -1265,12 +1265,13 @@ The two are asked for differently, and the difference is the host contract.
 The KaTeX faces come from the pinned bundle, which is the only thing that declares them,
 so the init takes every face of those two families off `document.fonts` and calls
 `FontFace.load()` on it: the bundle’s four and two rules are the complete list, all of
-them are wanted, and naming the face leaves no font matching between the script and a
-face the page already holds — a match that comes back empty buys a wait that loaded
-nothing. The composite is asked for by description instead (`700 1em 'KPress Math Text'`
-and the other three slots), with a sample string (`a1αΩ`) that reaches both faces of
-every slot, since `document.fonts.load` loads a face only for a code point its
-`unicode-range` covers and the upright slots carry the Greek capitals alone.
+them are wanted, and naming each face leaves no font matching between the script and
+faces the page already holds — which also makes the set the wait covers exact rather
+than implicit, so the record below can say which face every request was for.
+The composite is asked for by description instead (`700 1em 'KPress Math Text'` and the
+other three slots), with a sample string (`a1αΩ`) that reaches both faces of every slot,
+since `document.fonts.load` loads a face only for a code point its `unicode-range`
+covers and the upright slots carry the Greek capitals alone.
 That runs the same matching the renderer runs, which is what a host that declares its
 own `KPress Math Text` rules needs: its faces are fetched and the rules it replaced are
 not. Loading the family face by face would instead pull KPress’s PT Serif files onto a
