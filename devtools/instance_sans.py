@@ -48,11 +48,19 @@ CSS_PATH: Final = STATIC / "css" / "print-fonts.css"
 #: has to break a tie between two families over one weight.
 FAMILY: Final = "KPress Print Sans"
 
-#: The weights kpress's own sans contexts request: the three weight tokens, the two
-#: literal weights of the footnote controls and of bold, and 400 for the resets. The
-#: sans-mode headings at 380 and 440 land on 370 and 400, ten and forty units away,
-#: and ``tests/test_print_sans_faces.py`` pins every request's landing place.
-WEIGHTS: Final[tuple[int, ...]] = (370, 400, 550, 600, 650, 700)
+#: The weights kpress's own sans contexts request: the three weight tokens (370, 550
+#: and 650), the footnote controls' literal 600, and 400 for the resets. The two
+#: sans-mode headings ask for 380 and 440, which get no instance of their own and land
+#: on 370 and 400, ten and forty units away; ``tests/test_print_sans_faces.py`` pins
+#: every request's landing place.
+#:
+#: A 700 pair shipped here until 2026-09-07 and was dropped because no sans context asks
+#: for it. ``.kpress b, .kpress strong`` sets the bold token, so 650 is the heaviest
+#: weight any sans element resolves to, and the only 700s left in the stylesheets are
+#: the prose ``h5`` and the mono syntax rules -- neither family can resolve to this one.
+#: A host that raises a weight token above 650 lands on 650, which is the fallback
+#: ``docs/kpress-operations-and-host-integration.md`` documents.
+WEIGHTS: Final[tuple[int, ...]] = (370, 400, 550, 600, 650)
 STYLES: Final[tuple[str, ...]] = ("normal", "italic")
 
 #: The subset the variable faces cover, repeated verbatim so a static face is never
@@ -101,16 +109,16 @@ def instance_face(variable: Path, weight: int, family: str = FAMILY) -> bytes:
 def _rename(font: Any, weight: int, family: str) -> None:
     """Give a pinned instance a name-table identity of its own, by family and weight.
 
-    Twelve faces need twelve identities, so the pair legacy consumers read -- name IDs
-    1 and 2, which hold at most four styles per family -- names the weight, and the
-    typographic pair (16 and 17) carries the family the twelve share. The records are
-    set rather than rewritten in place: an instance of the italic face has no ID 17 to
-    overwrite, and none of the twelve has an ID 16.
+    Ten faces need ten identities, so the pair legacy consumers read -- name IDs 1 and
+    2, which hold at most four styles per family -- names the weight, and the
+    typographic pair (16 and 17) carries the family the ten share. The records are set
+    rather than rewritten in place: an instance of the italic face has no ID 17 to
+    overwrite, and none of the ten has an ID 16.
 
     Everything above ID 255 named the axes and named instances of the variable face,
     and ``STAT`` is what referred to them. The instance has neither an axis nor a named
-    instance left, and those style names -- ``Bold`` on the face this calls ``700`` --
-    would contradict the ones written here, so both go.
+    instance left, and those style names -- ``Semibold`` on the face this calls ``600``
+    -- would contradict the ones written here, so both go.
     """
     os2 = font["OS/2"]
     italic = bool(int(os2.fsSelection) & 1)

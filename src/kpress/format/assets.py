@@ -204,13 +204,11 @@ DEFAULT_FONT_ASSETS = [
     "fonts/kpress-print-sans-latin-550-normal.woff2",
     "fonts/kpress-print-sans-latin-600-normal.woff2",
     "fonts/kpress-print-sans-latin-650-normal.woff2",
-    "fonts/kpress-print-sans-latin-700-normal.woff2",
     "fonts/kpress-print-sans-latin-370-italic.woff2",
     "fonts/kpress-print-sans-latin-400-italic.woff2",
     "fonts/kpress-print-sans-latin-550-italic.woff2",
     "fonts/kpress-print-sans-latin-600-italic.woff2",
     "fonts/kpress-print-sans-latin-650-italic.woff2",
-    "fonts/kpress-print-sans-latin-700-italic.woff2",
 ]
 
 
