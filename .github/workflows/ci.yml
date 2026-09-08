@@ -122,10 +122,10 @@ jobs:
       - name: Install locked test dependencies
         run: uv --config-file uv.toml sync --locked --extra pdf --group dev
 
-      # The locked Playwright wheel selects this browser revision. Installing it
-      # is explicit because the CDN binary is outside the Python lock boundary.
-      - name: Install Chromium and operating system dependencies
-        run: uv --config-file uv.toml run --frozen --extra pdf python -m playwright install --with-deps chromium
+      # The locked Playwright wheel selects these browser revisions. Installing
+      # them is explicit because the CDN binaries are outside the Python lock.
+      - name: Install browsers and operating system dependencies
+        run: uv --config-file uv.toml run --frozen --extra pdf python -m playwright install --with-deps chromium firefox webkit
 
       - name: Verify real fonts and first visible mathematics
         run: make test-browser

@@ -489,6 +489,43 @@ _PAINT_PROBE_INIT = """(() => {
   const probe = { firstKatex: null, painted: [], faces: [] };
   globalThis.__kpressPaintProbe = probe;
   const seen = new WeakSet();
+  const requests = new Map();
+  const load = Object.getPrototypeOf(document.fonts).load;
+  const glyphRequests = node => {
+    const glyphs = [];
+    const html = node.querySelector('.katex-html');
+    if (!html) return glyphs;
+    const walker = document.createTreeWalker(html, NodeFilter.SHOW_TEXT);
+    for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+      if (!text.textContent || !text.parentElement) continue;
+      const css = getComputedStyle(text.parentElement);
+      // Fixture names have no commas. Keep this oracle independent of the
+      // runtime's parser and cache, and observe single-family load promises:
+      // WebKit can return check() true even with the required transfer held.
+      for (const family of css.fontFamily.split(',')) {
+        const spec = `${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${family.trim()}`;
+        const medium = matchMedia('print').matches ? 'print' : 'screen';
+        const key = JSON.stringify([medium, spec, text.textContent]);
+        if (!requests.has(key)) {
+          const record = { ready: false };
+          requests.set(key, record);
+          load.call(document.fonts, spec, text.textContent).then(
+            faces => { record.ready = faces.every(face => face.status === 'loaded'); },
+            () => {},
+          );
+        }
+        glyphs.push({ spec, text: text.textContent, ready: requests.get(key).ready });
+      }
+    }
+    return glyphs;
+  };
+  // Start the independent observations while markup is staged, before its
+  // first visible animation frame. Already-loaded promises settle in between.
+  new MutationObserver(() => {
+    for (const node of document.querySelectorAll('.kpress-math-render .katex')) {
+      glyphRequests(node);
+    }
+  }).observe(document, { childList: true, subtree: true, attributes: true });
   const paint = () => {
     for (const node of document.querySelectorAll('.kpress-math-render .katex')) {
       if (seen.has(node)) continue;
@@ -497,15 +534,7 @@ _PAINT_PROBE_INIT = """(() => {
       seen.add(node);
       const at = performance.now();
       if (probe.firstKatex === null) probe.firstKatex = at;
-      const glyphs = [];
-      const html = node.querySelector('.katex-html');
-      const walker = document.createTreeWalker(html, NodeFilter.SHOW_TEXT);
-      for (let text = walker.nextNode(); text; text = walker.nextNode()) {
-        if (!text.textContent || !text.parentElement) continue;
-        const css = getComputedStyle(text.parentElement);
-        const spec = `${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;
-        glyphs.push({ spec, text: text.textContent, ready: document.fonts.check(spec, text.textContent) });
-      }
+      const glyphs = glyphRequests(node);
       probe.painted.push({ at, text: node.textContent, glyphs });
     }
     requestAnimationFrame(paint);

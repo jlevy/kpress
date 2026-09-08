@@ -47,6 +47,63 @@ beforeEach(() => {
 });
 
 describe("the host math runtime", () => {
+  it("waits for a fallback family when the composite excludes the glyph", async () => {
+    const target = node();
+    let release;
+    const fonts = {
+      forEach: (callback) => callback({ family: "KPress Math Text" }),
+      // WebKit can accept the whole list and return no faces for ≥ because
+      // the first family's unicode-range excludes it, despite the pending Main.
+      check: () => true,
+      load: vi.fn((spec) =>
+        spec.endsWith("KaTeX_Main")
+          ? new Promise((resolveLoad) => {
+              release = resolveLoad;
+            })
+          : Promise.resolve([]),
+      ),
+    };
+    Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+    globalThis.katex.render.mockImplementation((_tex, el) => {
+      el.innerHTML =
+        '<span class="katex"><span class="katex-html">' +
+        '<span style="font-family:KPress Math Text,KaTeX_Main,serif">≥</span></span></span>';
+    });
+    const rendering = boot().render("\\ge", target);
+    expect(target.style.visibility).toBe("hidden");
+    expect(fonts.load.mock.calls.map(([spec]) => spec)).toHaveLength(3);
+    expect(fonts.load.mock.calls[1][0]).toMatch(/ KaTeX_Main$/);
+    release([{ family: "KaTeX_Main" }]);
+    expect(await rendering).toEqual({ status: "ready" });
+  });
+
+  it("keeps quoted commas inside one host font family", async () => {
+    const target = node();
+    const fonts = {
+      forEach: (callback) => callback({ family: "KPress Math Text" }),
+      check: () => false,
+      load: vi.fn(() => Promise.resolve([{ family: "host" }])),
+    };
+    Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+    // happy-dom strips quotes from this computed value; browsers retain them.
+    vi.spyOn(globalThis, "getComputedStyle").mockReturnValue({
+      fontStyle: "normal",
+      fontWeight: "400",
+      fontSize: "16px",
+      fontFamily: '"Host, Math",KaTeX_Main',
+    });
+    globalThis.katex.render.mockImplementation((_tex, el) => {
+      el.innerHTML =
+        '<span class="katex"><span class="katex-html">' +
+        "<span style='font-family:\"Host, Math\",KaTeX_Main'>1</span></span></span>";
+    });
+    await boot().render("1", target);
+    expect(fonts.load.mock.calls.map(([spec]) => spec)).toEqual([
+      'normal 400 16px "Host, Math"',
+      "normal 400 16px KaTeX_Main",
+    ]);
+  });
+
   it("lays out immediately without waiting for an unrelated declared face", async () => {
     const target = node();
     let releaseUnused;

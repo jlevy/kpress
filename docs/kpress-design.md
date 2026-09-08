@@ -203,8 +203,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   Native MathML is the fallback when scripting is unavailable or enhancement fails; it
   is temporarily suppressed while enhancement prepares the fonts.
   Once KaTeX has rendered, that MathML remains as the semantic and accessibility output.
-  Main/Math and composite faces are warmed before rendering; construct families are
-  fetched only when an expression needs them.
+  The runtime creates hidden math immediately, then waits for the rendered glyphs’
+  matching fonts before revealing each formula.
   By default the Latin letters and digits inside mathematics are drawn from the reading
   face and KaTeX lays them out from matching metrics; see
   [Math Text Face](#math-text-face).
@@ -1200,6 +1200,11 @@ the host announces applied state through `theme:change`. See
 
 ### Math Text Face
 
+The canonical
+[font and math loading architecture](project/architecture/arch-2026-09-08-font-and-math-loading.md)
+describes publication preparation, runtime readiness, hydration, failure, and print.
+This section retains the face construction and metric details.
+
 Prose is set in PT Serif and mathematics in KaTeX, whose faces derive from Computer
 Modern; the two disagree in x-height and stroke weight, and no size token reconciles
 both. The math text face draws the Latin letters and digits inside mathematics from the
@@ -2017,19 +2022,18 @@ Required document components:
   a vendored, self-hosted KaTeX bundle (pinned `katex.min.js` + `auto-render` + a small
   init shim, loaded as deferred classic scripts) replaces the TeX node in place on
   `DOMContentLoaded`, after the rest of the document has painted.
-  This is deliberate progressive enhancement: prose is never blocked on math, and math
-  is filled in once document layout is stable.
-  Build-time prerendering is explicitly **not** adopted: it would require a Node/JS or
-  python-katex toolchain at publish time, which conflicts with KPress’s toolchain-free,
-  self-contained sealing story.
+  This is progressive enhancement: prose does not wait for math.
+  Ordinary KPress generation remains browser-free.
+  Hosts can optionally prepare measured math geometry during publication and hydrate it
+  through the shared runtime; see the
+  [font and math loading architecture](project/architecture/arch-2026-09-08-font-and-math-loading.md).
   The cost is accepted: ~290K of KaTeX CSS+JS for documents that contain math (zero for
   documents that do not).
   The KaTeX font faces are not subsetted or bundled eagerly.
   KaTeX lays out using precomputed metrics, including the custom reading-face tables
-  where enabled. The shared runtime loads all six `KaTeX_Main` and `KaTeX_Math` faces up
-  front, with the selected composite’s four slots.
-  It then inspects each hidden rendered formula and waits for its required faces before
-  revealing it; see [Math Text Face](#math-text-face).
+  where enabled. The shared runtime inspects each hidden rendered formula and waits for
+  the faces matching its rendered glyph requests before revealing it; see
+  [Math Text Face](#math-text-face).
   Fraktur/Script/Caligraphic/SansSerif/Typewriter, AMS and Size1–4 are fetched only when
   used. An embedding host with a pruned, inlined set may explicitly request all its
   declared faces. All twenty faces are vendored (package size, not client transfer);

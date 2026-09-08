@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
@@ -21,19 +21,14 @@ from .test_playwright_math_text_face import (
 )
 
 _DELAY_ALL = """(() => {
-  let held = true;
   const gate = new Promise(resolve => {
-    globalThis.releaseMathFonts = () => { held = false; resolve(); };
+    globalThis.releaseMathFonts = resolve;
   });
   const faceLoad = FontFace.prototype.load;
   FontFace.prototype.load = function(...args) {
     return faceLoad.apply(this, args).then(face => gate.then(() => face));
   };
   const fontSet = Object.getPrototypeOf(document.fonts);
-  const check = fontSet.check;
-  fontSet.check = function(spec, text) {
-    return held ? false : check.call(this, spec, text);
-  };
   const setLoad = fontSet.load;
   fontSet.load = function(...args) {
     return setLoad.apply(this, args).then(faces => gate.then(() => faces));
@@ -63,7 +58,13 @@ def _omit_native(route: Any) -> None:
 
 @contextmanager
 def _page(
-    public: Path, *, script: str = "", javascript: bool = True, native: bool = True
+    public: Path,
+    *,
+    script: str = "",
+    javascript: bool = True,
+    native: bool = True,
+    browser_name: str = "chromium",
+    routes: tuple[tuple[str, Callable[[Any], None]], ...] = (),
 ) -> Generator[Any]:
     required = os.environ.get("KPRESS_REQUIRE_BROWSER") == "1"
     api = (
@@ -74,14 +75,17 @@ def _page(
     server, thread = _serve(public)
     try:
         with api.sync_playwright() as playwright:
-            browser = (
-                playwright.chromium.launch(headless=True) if required else _launch(playwright, api)
-            )
+            if required or browser_name != "chromium":
+                browser = getattr(playwright, browser_name).launch(headless=True)
+            else:
+                browser = _launch(playwright, api)
             try:
                 context = browser.new_context(java_script_enabled=javascript)
                 context.add_init_script(FONT_ADVANCE_INIT)
                 if not native:
                     context.route("**/katex-init.js", _omit_native)
+                for pattern, handler in routes:
+                    context.route(pattern, handler)
                 if script:
                     context.add_init_script(script)
                 page = context.new_page()
@@ -95,6 +99,42 @@ def _page(
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("browser_name", ["chromium", "firefox", "webkit"])
+def test_a_relation_waits_for_the_family_after_the_composite(
+    tmp_path: Path, browser_name: str
+) -> None:
+    """Unicode ranges exclude ≥ from the first family; the next face must settle."""
+    public = _build_fixture_site(tmp_path, math_text_font=None, markdown="# Relation\n\n$\\ge$.\n")
+    held: list[Any] = []
+    with _page(
+        public,
+        browser_name=browser_name,
+        routes=(("**/KaTeX_Main-Regular.woff2", lambda route: held.append(route)),),
+    ) as page:
+        page.wait_for_selector(".katex", state="attached")
+        page.wait_for_function(
+            "globalThis.kpressMathFaceWait?.length || !document.documentElement.dataset.kpressMathPending"
+        )
+        evidence = page.evaluate("""() => ({
+          faces: [...document.fonts].filter(f => f.family.includes('KaTeX_Main')).map(f => [f.family, f.style, f.weight, f.status]),
+          waits: globalThis.kpressMathFaceWait,
+          visibility: document.querySelector('.kpress-math-render').style.visibility
+        })""")
+        visible_before_release = page.locator(".katex").is_visible()
+        # Release before asserting so a failing negative control closes cleanly.
+        for route in held:
+            route.continue_()
+        assert held, "the test must hold a real fallback-font response"
+        assert evidence["visibility"] == "hidden", str(evidence)
+        assert not visible_before_release, str(evidence)
+        page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
+        assert page.locator(".katex").is_visible()
+        assert page.locator(".katex-html").inner_text() == "≥"
+        assert page.evaluate(
+            "[...document.fonts].some(face => face.family.includes('KaTeX_Main') && face.status === 'loaded')"
+        )
 
 
 def test_native_fallback_does_not_flash_during_font_preparation(tmp_path: Path) -> None:
@@ -351,7 +391,7 @@ def test_missing_composite_uses_matching_stock_fonts_and_metrics(
         actual: list[_MathFaceProbe] = page.evaluate(_FALLBACK_PROBE)
         assert page.locator('[data-kpress-math-rendered="true"]').count() == 2
         assert all(
-            entry["outcome"] == "loaded"
+            entry["outcome"] in {"loaded", "empty"}
             for entry in page.evaluate("globalThis.kpressMathFaceWait ?? []")
         )
 
@@ -364,12 +404,15 @@ def test_missing_composite_uses_matching_stock_fonts_and_metrics(
 
 
 @pytest.mark.parametrize("weight", ["400", "700"])
-def test_required_font_failure_differs_from_an_unused_weight(tmp_path: Path, weight: str) -> None:
+@pytest.mark.parametrize("browser_name", ["chromium", "firefox", "webkit"])
+def test_required_font_failure_differs_from_an_unused_weight(
+    tmp_path: Path, weight: str, browser_name: str
+) -> None:
     public = _build_fixture_site(
         tmp_path, math_text_font=None, markdown="# Fonts\n\n$\\frac{4001}{4000}$.\n"
     )
     (public / f"_kpress/assets/fonts/pt-serif-latin-{weight}-normal.woff2").unlink()
-    with _page(public) as page:
+    with _page(public, browser_name=browser_name) as page:
         page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
         requests = page.evaluate("globalThis.kpressMathFaceWait ?? []")
         if weight == "400":
@@ -377,7 +420,7 @@ def test_required_font_failure_differs_from_an_unused_weight(tmp_path: Path, wei
             assert page.locator('[data-kpress-math-rendered="true"]').count() == 0
             assert page.locator(".kpress-math-semantic").is_visible()
         else:
-            assert all(entry["outcome"] == "loaded" for entry in requests)
+            assert all(entry["outcome"] in {"loaded", "empty"} for entry in requests)
             assert page.locator('[data-kpress-math-rendered="true"]').count() == 1
             result = page.evaluate(_FALLBACK_PROBE)[0]
             assert result["profile"] == "prose"

@@ -1,9 +1,14 @@
 # Rendering Mathematics in a Host
 
+The
+[font and math loading architecture](project/architecture/arch-2026-09-08-font-and-math-loading.md)
+explains the publication and runtime phases, their ownership, and the layout guarantees.
+This reference defines the host-facing methods and attributes.
+
 Use `globalThis.kpressMathText.render()` for mathematics rendered by an embedding
-application. It selects the serif or sans metric tables, waits for the fonts, and
-restores the default tables after rendering.
-The native KPress initializer uses the same runtime.
+application. It selects the metric tables, renders hidden markup, and restores the
+default tables synchronously, then awaits the matching fonts before revealing the
+result. The native KPress initializer uses the same runtime.
 
 ## Assets and First Paint
 
@@ -33,8 +38,9 @@ await kpressMathText.render("x^2 + 1", node, { throwOnError: false });
 
 The node must be attached to the document so its CSS context can be resolved.
 The promise resolves with a `status` of `ready`, `superseded`, or `unavailable` when the
-browser has no font loading API. A parse error, or a required font that fails or exceeds
-the three-second wait, rejects the promise.
+browser has no font loading API. A parse error rejects when `throwOnError` is enabled;
+with `throwOnError: false`, KaTeX renders its error markup.
+A required font that fails or exceeds the three-second wait rejects the promise.
 A native KPress formula then keeps its semantic MathML; a host should provide its own
 readable fallback:
 
@@ -54,10 +60,14 @@ Metric installation, KaTeX rendering, and metric restoration run synchronously t
 as soon as the call starts.
 
 The runtime renders with visibility suppressed, reads the font descriptions and
-characters of the resulting HTML, and loads the faces those glyphs need before revealing
-the formula. This also covers large operators, delimiters, AMS symbols and explicit math
-alphabets. Already decoded faces need no additional wait; unused families, styles and
-weights do not delay a formula.
+characters of the resulting HTML, and awaits a separate native `document.fonts.load()`
+promise for each family in the computed fallback list.
+Each request uses the rendered run’s style, weight, size and characters.
+An empty result means that family has no matching declared face; the following families
+are still awaited independently.
+This also covers large operators, delimiters, AMS symbols and explicit math alphabets.
+Decoded faces and resolved requests reuse their cached results; families, styles and
+weights absent from the rendered requests do not delay a formula.
 
 If the selected composite family has no registered font declarations, the runtime uses
 stock KaTeX families and their original metric tables for that formula.
