@@ -1575,6 +1575,43 @@
   top: calc(var(--kpress-font-size-base) * 0.1);
 }
 
+/* Every heading inside a sans block takes the sans face, so its mathematics and its
+   words are set in the same one.
+
+   WHY THIS RULE IS NEEDED AT ALL: document.css re-declares the prose face directly on
+   the heading -- `.kpress-prose h1`, `h2`, `h5` and `h6` each carry their own
+   `font-family: var(--kpress-font-prose, ...)` -- and a declaration on the element
+   itself beats the sans family a container sets on an ancestor, which reaches the
+   heading only by inheritance. So `## Heading` inside one of these blocks drew PT
+   Serif while the block around it drew Source Sans.
+
+   WHY THAT MATTERS MORE THAN A FONT SLIP: the sans math composite is scoped by
+   CONTAINER, not by the heading's own face. katex-init.js resolves its `SANS_CONTEXT`
+   with `closest()` from each node it renders, which climbs straight past the heading
+   to `.description`, so mathematics in a heading here is laid out from the sans tables
+   and stamped for the sans rules in katex-text-face.css to draw from `KPress Math Text
+   Sans`. The heading therefore read as serif words wrapped around a sans formula,
+   which is the disagreement that whole mechanism exists to remove. Headings are
+   deliberately not sans-math roles of their own (katex-text-face.css records why: a
+   heading's sans weight is not the weight the pinned tables were built at), so the
+   agreement has to be reached from the text side, here.
+
+   `.sans-text` is in the list too. It already re-declares the sans family on its own
+   `h1` and `h2` above -- that pair is where this pattern comes from -- but it stops
+   there, so its `h5` and `h6` were on the prose face exactly like the other five
+   containers. `h3` and `h4` reach the sans face through the `.kpress-prose h1..h6`
+   group rule rather than a rule of their own; they are listed anyway so this states
+   the whole invariant and does not quietly depend on that group rule keeping them.
+
+   SPECIFICITY: (0,2,1), which clears `.kpress-prose h1` at (0,1,1). It ties the
+   `.sans-text` heading rules above at (0,2,1) and wins on source order, declaring the
+   same family they do -- their size, weight and margins are untouched. */
+.kpress :is(.sans-text, .description, .key-claims, .summary, .concepts, .claim)
+  :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
+}
+
 .kpress .full-text {
   margin: 1rem 0;
 }
