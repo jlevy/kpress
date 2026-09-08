@@ -156,6 +156,11 @@ def _probe(tmp_path: Path, math_text_font: str | None, *, font_set: str | None =
         thread.join(timeout=5)
 
 
+# Each of these builds a site and drives a real browser, and the heaviest measured
+# 22.8s on a warm Apple-silicon machine against the 60s `timeout` pyproject.toml sets
+# for every test. A shared runner with a cold font cache has no margin at that ceiling,
+# so this file takes the same allowance the sans one does.
+@pytest.mark.timeout(180)
 def test_reading_face_draws_and_lays_out_the_digits(tmp_path: Path) -> None:
     default = _probe(tmp_path / "prose", None)
     katex = _probe(tmp_path / "katex", "katex")
@@ -323,10 +328,23 @@ def test_textrm_does_not_suppress_an_explicit_nested_italic(tmp_path: Path) -> N
 
 _FOOTNOTE_MARKDOWN = (
     "# Previews and the reader's font set\n\n"
-    "Stromquist settled $s(10) = 3 + 1/\\sqrt{2}$ in 2003, with the mass in a "
-    "footnote[^mass].\n\n"
+    "Stromquist settled $s(10) = 3 + 1/\\sqrt{2}$ in 2003, and the mass is "
+    "$\\frac{4001}{4000}$, repeated in a footnote[^mass].\n\n"
     "[^mass]: The mass is $\\frac{4001}{4000}$ exactly.\n"
 )
+
+#: The same expression twice, because the two are set in different composites: prose
+#: takes the reading face, and a footnote is a sans role, so it takes `KPress Math Text
+#: Sans` (see katex-text-face.css). The reading face is therefore read where the reading
+#: face is, and the overlay -- a clone of the FOOTNOTE -- is compared against the
+#: footnote it was cloned from rather than against prose.
+PROSE_SCOPE = ".kpress-prose > p"
+FOOTNOTE_SCOPE = ".kpress-footnotes"
+
+#: Source Sans 3 sets its digits on 0.497em, which is 0.003 from KaTeX_Main's 0.500 and
+#: so cannot tell a mode change apart on its own; that is the whole reason the document
+#: reading below is taken in prose.
+SOURCE_SANS_DIGIT_ADVANCE = 0.497
 
 #: One reading of a math host: the advance of its `4001` digit run per em, whether the
 #: composite family drew it, and the ratio the KaTeX root was sized at against the prose
@@ -367,6 +385,7 @@ def _choose_font_set(page: Any, value: str) -> None:
     page.evaluate("document.fonts.ready")
 
 
+@pytest.mark.timeout(180)
 def test_the_font_set_chooser_carries_math_and_previews_with_it(tmp_path: Path) -> None:
     """Both directions through the real chooser, and the preview overlay with them.
 
@@ -375,6 +394,10 @@ def test_the_font_set_chooser_carries_math_and_previews_with_it(tmp_path: Path) 
     `fontSetSwitchNeedsReload` in settings-widget.js). Whatever mode the page ends
     up in, the footnote preview -- a clone mounted outside `.kpress` -- has to be
     drawn and sized in it too, or its glyphs sit in boxes measured for the others.
+
+    The clone comes from a footnote, which is a sans role, so the overlay is measured
+    against the footnote rather than against prose: matching prose would be the wrong
+    invariant and would put PT Serif glyphs on boxes measured for Source Sans.
     """
     public = _build_fixture_site(
         tmp_path,
@@ -383,16 +406,18 @@ def test_the_font_set_chooser_carries_math_and_previews_with_it(tmp_path: Path) 
         choosers="theme, font-set",
     )
     with _served_page(public) as page:
-        custom = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, ".kpress"))
+        custom = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+        custom_note = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, FOOTNOTE_SCOPE))
         custom_preview = _open_preview(page)
 
         _choose_font_set(page, "system")
-        system = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, ".kpress"))
+        system = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+        system_note = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, FOOTNOTE_SCOPE))
         system_preview = _open_preview(page)
         persisted = page.evaluate("localStorage.getItem('kpress.fontSet')")
 
         _choose_font_set(page, "custom")
-        back = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, ".kpress"))
+        back = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
 
     # The document: the reader's choice reaches the glyphs, not only the stylesheet.
     assert custom["advancePerDigit"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
@@ -403,20 +428,25 @@ def test_the_font_set_chooser_carries_math_and_previews_with_it(tmp_path: Path) 
     assert back["advancePerDigit"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
     assert back["composite"]
 
+    # The footnote follows the same switch, in the sans composite rather than the serif.
+    assert custom_note["advancePerDigit"] == pytest.approx(SOURCE_SANS_DIGIT_ADVANCE, abs=0.01)
+    assert custom_note["composite"]
+    assert not system_note["composite"]
+
     # The size follows too: the reading face needs no lift, KaTeX's own does.
     assert custom["katexSizeRatio"] == pytest.approx(1.0, abs=0.01)
     assert system["katexSizeRatio"] == pytest.approx(1.05, abs=0.01)
 
-    # The overlay matches the document it was opened from, in both modes.
-    for document_probe, preview in ((custom, custom_preview), (system, system_preview)):
+    # The overlay carries the mode of the document it was opened from and the metrics of
+    # the footnote it was cloned from, in both modes.
+    for document_probe, note, preview in (
+        (custom, custom_note, custom_preview),
+        (system, system_note, system_preview),
+    ):
         assert preview["mathText"] == ("prose" if document_probe["composite"] else "katex")
         assert preview["composite"] is document_probe["composite"]
-        assert preview["advancePerDigit"] == pytest.approx(
-            document_probe["advancePerDigit"], abs=0.005
-        )
-        assert preview["katexSizeRatio"] == pytest.approx(
-            document_probe["katexSizeRatio"], abs=0.01
-        )
+        assert preview["advancePerDigit"] == pytest.approx(note["advancePerDigit"], abs=0.005)
+        assert preview["katexSizeRatio"] == pytest.approx(note["katexSizeRatio"], abs=0.01)
 
 
 def test_a_font_set_stamped_on_the_wrapper_opts_out_of_both_guards(tmp_path: Path) -> None:
@@ -694,6 +724,7 @@ def _required(probe: PaintProbe) -> list[FaceTiming]:
     return found
 
 
+@pytest.mark.timeout(180)
 def test_math_paints_once_in_its_final_faces(tmp_path: Path) -> None:
     """No expression reaches the page before the faces that draw it.
 

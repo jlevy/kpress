@@ -30,15 +30,25 @@
  * inlined), so the relative `../fonts/` and `../katex/fonts/` URLs below resolve
  * in `hosted`, `linked`, `hashed` and `inline` alike.
  *
- * `font-display: block` throughout, as on the prose PT Serif faces in
- * style-tokens.css and unlike the vendored KaTeX bundle's `swap`. The bundle can
- * afford `swap` because a late KaTeX face repaints glyphs that were already
- * KaTeX's; a late slot here repaints them from the reading face to Computer
- * Modern and back, which a reader sees as the digits in every formula changing
- * font. `katex-init.js` waits for these faces before the first render, so in
- * practice no mathematics exists during the block period; `block` is what
- * decides the remaining case, where a slot is somehow still not ready -- hide
- * the glyphs briefly rather than paint them twice.
+ * `font-display: block` on every screen face of BOTH composites -- the serif
+ * `KPress Math Text` and the sans `KPress Math Text Sans` below -- as on the
+ * prose PT Serif faces in style-tokens.css and unlike the vendored KaTeX
+ * bundle's `swap`. The bundle can afford `swap` because a late KaTeX face
+ * repaints glyphs that were already KaTeX's; a late slot here repaints them from
+ * the reading face to Computer Modern and back, which a reader sees as the
+ * digits in every formula changing font, and a caption's or a table's digits
+ * flash exactly as prose's do. `katex-init.js` waits for the faces of whichever
+ * composites the page will draw from before the first render, so in practice no
+ * mathematics exists during the block period; `block` is what decides the
+ * remaining case, where a slot is somehow still not ready -- hide the glyphs
+ * briefly rather than paint them twice.
+ *
+ * The four static instances inside the `@media print` block keep `swap`, and
+ * deliberately: there is no first paint to protect in a printed page, the print
+ * path has already resolved its fonts before it composes a page, and `block`
+ * blanks a whole run rather than the code points the face claims -- a cost worth
+ * paying against a flash on screen and not worth paying against a blank run in a
+ * PDF.
  *
  * THE CONTRACT FOR A HOST WITH ANOTHER READING FACE. Two hooks, both additive:
  *
@@ -344,5 +354,418 @@
   .katex
   .mainrm {
   font-family: "KPress Math Text", KaTeX_Main, serif;
+  font-style: normal;
+}
+
+/* ============================ KPRESS MATH TEXT SANS ================================ */
+
+/* A second composite, for the sans roles of a serif document -- a caption, a footnote,
+ * a table, the dialect boxes -- and for the reader's sans reading face. Same idea and
+ * same slot structure as `KPress Math Text` above; Source Sans 3 draws the Latin ranges
+ * instead of PT Serif, and the KaTeX faces are scaled to Source Sans's own measures.
+ * The mathematics in a caption is then set in the caption's face rather than the
+ * document's, which is what the size token beside it (`--kpress-katex-size-sans`, 1em)
+ * has always assumed.
+ *
+ * PINNED WEIGHTS. Each slot declares a SINGLE `font-weight`, not the variable face's
+ * whole 200-900 axis, and its metric table is built at that weight. A KaTeX metric
+ * table describes one face and one weight, and Source Sans's advances travel along the
+ * axis -- a median 7.1% and a worst 20.5% between 370 and 700, against 0.035em of
+ * movement in the tallest ink height. CSS Fonts 4 clamps a variable face to the range
+ * its `@font-face` declares, so a single value draws the weight the table was built at
+ * whatever the context asks for, and KaTeX never lays out glyphs it has no numbers for.
+ *
+ * The two weights:
+ *
+ *   400  the regular slots. Upstream's `.katex { font: normal 1.21em ... }` resets
+ *        font-weight, so mathematics in a sans context is set at 400 today and stays
+ *        there; a host's 410-weight caption gets a 400-weight mathematics, 0.15% off
+ *        in advance and exactly described by the table.
+ *   650  the bold slots. 650 is the value of `--kpress-font-weight-sans-bold`, which is
+ *        what bold means in every other sans context kpress ships, so `\mathbf{D}` in a
+ *        caption reaches the same bold as a bold word in the caption beside it rather
+ *        than upstream's 700. The `.mathbf` and `.boldsymbol` rules below name 650
+ *        LITERALLY and do not read the token: the token is public and a host may set it,
+ *        the composite declares 400 and 650 only, and CSS Fonts 4 searches downward for a
+ *        desired weight in [400, 500] -- so a host that set it to 500 got the 400 face
+ *        under the 650 table, drawn 0.6153 em against 0.6300 em laid out. What a host
+ *        means by bold is a question about words; which face the table describes is not.
+ *
+ * PRINT. The screen draws the Latin ranges from the variable faces; a printed page
+ * cannot, because Chromium's PDF writer turns a variable face away from its default
+ * position into Type3 outline paths (see css/print-fonts.css, which does the same for
+ * the plain sans role). The `@media print` block at the end of this section layers the
+ * static instances at the same two weights over the same ranges, LAST, so CSS Fonts 4's
+ * last-defined-face rule gives them to print and leaves the screen alone. The two agree
+ * to the unit: instancing the variable face at 400 and 650 reproduces every Latin
+ * advance of the shipped instance exactly, so one metric table is true of both.
+ *
+ * The rules are separate from the ones above rather than folded into them, and each
+ * scope is its own rule, to keep every selector well inside the 400-character budget a
+ * consuming host's stylesheet check applies.
+ */
+
+/* ================== SANS SLOT 1: normal 400 (KaTeX_Main-Regular) =================== */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  /* Greek to the cap height Source Sans DRAWS; `katex_text_metrics --print-scale`
+     (Main-Regular). Source Sans declares `sCapHeight` 660 at every instance but draws its
+     `H` at 656 here and 653 at 650, so the generator measures the ink; the declaration is
+     true only at the variable face's own default position, which the composite never uses.
+     Below 100% because Computer Modern's LATIN cap is taller than Source Sans's, 683
+     against 656, which is what the factor equalizes. It does not equalize the Greek, and
+     no scalar could: after it, flat-topped capitals land within half a percent while the
+     pointed and round ones carry Computer Modern's optical overshoot, 5.7pp of spread
+     across the range. KaTeX's own table already declares one height for all of them. */
+  size-adjust: 96%;
+  src: url("../katex/fonts/KaTeX_Main-Regular.woff2") format("woff2");
+  unicode-range: U+0391-03A9;
+}
+
+/* =================== SANS SLOT 2: italic 400 (KaTeX_Math-Italic) =================== */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2");
+  unicode-range: U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  /* Greek to Source Sans's x-height; `katex_text_metrics --print-scale` (Math-Italic). */
+  size-adjust: 110.2%;
+  src: url("../katex/fonts/KaTeX_Math-Italic.woff2") format("woff2");
+  unicode-range: U+0370-03FF;
+}
+
+/* ==================== SANS SLOT 3: normal 650 (KaTeX_Main-Bold) ==================== */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 650;
+  font-display: block;
+  src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: normal;
+  font-weight: 650;
+  font-display: block;
+  /* Greek to the cap height Source Sans draws at 650, which is 653 rather than the 660 it
+     declares; `katex_text_metrics --print-scale` (Main-Bold). Lower than the regular
+     slot's factor because the ink shortens as the weight rises while the declaration does
+     not move -- which is why deriving from the declaration left this, the bold slot,
+     calibrated worse than the regular one. */
+  size-adjust: 95.2%;
+  src: url("../katex/fonts/KaTeX_Main-Bold.woff2") format("woff2");
+  unicode-range: U+0391-03A9;
+}
+
+/* ================= SANS SLOT 4: italic 650 (KaTeX_Math-BoldItalic) ================= */
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 650;
+  font-display: block;
+  src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2");
+  unicode-range: U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: "KPress Math Text Sans";
+  font-style: italic;
+  font-weight: 650;
+  font-display: block;
+  /* Greek to Source Sans's x-height; `--print-scale` (Math-BoldItalic). */
+  size-adjust: 109.3%;
+  src: url("../katex/fonts/KaTeX_Math-BoldItalic.woff2") format("woff2");
+  unicode-range: U+0370-03FF;
+}
+
+/* The static instances, over the same ranges, declared last so print gets them and the
+   screen keeps the variable faces. Same reason and same files as css/print-fonts.css. */
+@media print {
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/kpress-print-sans-latin-400-normal.woff2") format("woff2");
+    unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+  }
+
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/kpress-print-sans-latin-400-italic.woff2") format("woff2");
+    unicode-range: U+0041-005A, U+0061-007A;
+  }
+
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: normal;
+    font-weight: 650;
+    font-display: swap;
+    src: url("../fonts/kpress-print-sans-latin-650-normal.woff2") format("woff2");
+    unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+  }
+
+  @font-face {
+    font-family: "KPress Math Text Sans";
+    font-style: italic;
+    font-weight: 650;
+    font-display: swap;
+    src: url("../fonts/kpress-print-sans-latin-650-italic.woff2") format("woff2");
+    unicode-range: U+0041-005A, U+0061-007A;
+  }
+}
+
+/* ---------------------------- THE SANS FEATURE RULES ------------------------------ */
+
+/* Two scopes, one composite. The first is the document itself, reached by the mark
+   `katex-init.js` stamps on every math node it installs the sans metric tables for:
+   a caption, a footnote, a table cell, one of the semantic containers, a `<details>`,
+   a tab button -- and, when the reader has chosen the sans reading face, every node in
+   the document. The second is the footnote preview overlay, at the end of this section.
+
+   THE MARK RATHER THAN A ROLE LIST. These rules used to spell the twelve sans roles out,
+   once per repointed class and a second seven times for the reading face: fourteen copies
+   of a selector `katex-init.js` also has to spell, in a language where it cannot be
+   shared. Both costs were real. A role dropped from one of the fourteen drew Source Sans
+   over Computer Modern's numbers in that one role with the whole suite still green, since
+   only the first copy was ever pinned against the script. And the seven role selectors
+   ran to 477 characters against the 400 a consuming host's stylesheet check allows, so
+   the next role could not be added at all. Keying on the mark costs one attribute per
+   rendered math node and leaves ONE list, in the file that must have it anyway, since
+   only a script can install a metric table.
+
+   A page without JavaScript is unaffected. There is no `.katex` for any of these rules to
+   match until the script has rendered one, only the semantic MathML fallback.
+
+   The mark says nothing about the opt-outs, so the `:not()` stays, spelled the way the
+   serif rules above spell it: each attribute twice, once for the wrapper itself and once
+   for an ancestor, because `closest()` reads both. `katex-init.js` marks a node wherever
+   the sans set is what it installs, which includes a wrapper that opted out inside a page
+   that did not, so dropping the guard here would draw Source Sans over the Computer
+   Modern numbers that wrapper asked to keep.
+
+   Specificity is what it was before the mark: `.kpress:not(...)` at (0,2,0), plus the
+   mark, plus `.katex` lands the root rule at (0,4,0) against the serif root rule's
+   (0,3,0), and each leaf class one higher again, (0,5,0) against (0,4,0). Margin +1
+   everywhere, so the sans composite wins inside a sans context, does not exist outside
+   one, and neither result is a matter of source order.
+
+   Headings and the TOC are sans roles and are deliberately NOT marked, which
+   `katex-init.js` decides by leaving them out of `SANS_CONTEXT`, for two different
+   reasons. A heading sits a weight step away from the words around it -- `h3` at 550,
+   `h4` at 540, `h2` in the serif italic -- and a table built at 400 describes none of
+   those, so its mathematics would be a step off its own text whichever composite drew it.
+   The TOC carries no mathematics at all: `render.py` escapes entry titles when it builds
+   the TOC, so no `.katex` ever reaches it.
+
+   `.textrm` takes the family only here, for the reason the serif rule above records:
+   pinning `font-style: normal` at (0,5,0) would outrank the `.textit` nested inside a
+   `\textrm{\textit{x}}` leaf and draw the upright slot over an italic-measured run.
+   `.mainrm` keeps the pin, because upstream pins it too. */
+
+/* --- the document, by the mark katex-init.js stamps --- */
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  ) [data-kpress-math-face="sans"]
+  .katex {
+  font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  [data-kpress-math-face="sans"]
+  .katex
+  .mathnormal {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  [data-kpress-math-face="sans"]
+  .katex
+  .mathit {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: italic;
+}
+
+/* 650 as a literal, not `var(--kpress-font-weight-sans-bold, 650)`. The token is a pinned
+   public variable a host may override, the composite declares 400 and 650 only, and the
+   `\mathbf` table is built at 650. CSS Fonts 4 searches DOWNWARD for a desired weight in
+   [400, 500], so a host that set the token to 500 or less got the 400 face under the 650
+   table -- measured at 0.6153 em drawn against 0.6300 em laid out, 2.3% wrong, and
+   silently. What a host means by bold is a question about words; which face the table
+   describes is not. */
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  ) [data-kpress-math-face="sans"]
+  .katex
+  .mathbf {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-weight: 650;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  [data-kpress-math-face="sans"]
+  .katex
+  .boldsymbol {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+  font-weight: 650;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  [data-kpress-math-face="sans"]
+  .katex
+  .textrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+}
+
+.kpress:not(
+    [data-kpress-fonts="system"],
+    [data-kpress-font-set="system"],
+    [data-kpress-math-text="katex"],
+    [data-kpress-fonts="system"] *,
+    [data-kpress-font-set="system"] *,
+    [data-kpress-math-text="katex"] *
+  )
+  [data-kpress-math-face="sans"]
+  .katex
+  .mainrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: normal;
+}
+
+/* --- the footnote preview overlay --- */
+
+/* THE SECOND SCOPE. tooltips.js mounts a preview on the viewport pane or the body,
+   outside every `.kpress`, and stamps the originating wrapper's math mode on it so the
+   serif rules above can reach it by attribute rather than by position. But a preview is
+   a CLONE of math KaTeX has already typeset, and the only preview kind that carries
+   rendered math is the footnote one: every other kind is escaped text
+   (`internalTooltipContent` in js/tooltips.js), so no `.katex` reaches it at all.
+
+   A footnote is a sans role in every mode -- `.kpress-footnotes` is in `SANS_CONTEXT`,
+   and under the reader's sans reading face the whole document is sans -- so the clone's
+   boxes were measured from the SANS tables. Drawing it in the serif composite would put
+   PT Serif glyphs on Source Sans metrics, which is the same disagreement between what
+   KaTeX measures and what it draws that the whole file exists to prevent. The overlay
+   therefore takes the sans composite.
+
+   This scope keys on position and the mode stamp rather than on the mark the document
+   scope uses, and deliberately. The clone does carry the mark out of the document, since
+   `katex-init.js` writes it on the math node the overlay copies. But the clone is mounted
+   outside every `.kpress`, so the document rule cannot reach it whatever it carries, and
+   a rule that trusted the mark alone would draw the sans composite in any preview an
+   embedding host happened to mount -- including one whose serif original had never been
+   marked. Reaching the overlay by what it is keeps the third-party surface narrow.
+
+   `.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote` is (0,3,0),
+   one class above the serif overlay scope's (0,2,0), so these land at (0,5,0) against
+   (0,4,0) -- the same margin the document scope keeps, and again not a matter of order.
+   The mode stamp stays in the selector so the three opt-outs still apply: an overlay
+   opened from an opted-out wrapper is stamped `katex` and matches nothing here.
+
+   The size token needs no rule of its own: `--kpress-katex-size-sans` and the
+   `--kpress-katex-size-prose` the serif overlay scope sets are both 1em. */
+
+.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex {
+  font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
+}
+
+.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .mathnormal {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+}
+
+.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .mathit {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-style: italic;
+}
+
+.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .mathbf {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+  font-weight: 650;
+}
+
+.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .boldsymbol {
+  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
+  font-style: italic;
+  font-weight: 650;
+}
+
+.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .textrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
+}
+
+.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .mainrm {
+  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
   font-style: normal;
 }

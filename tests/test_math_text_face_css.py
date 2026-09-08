@@ -83,7 +83,28 @@ def _css() -> str:
     return read_package_text("katex/katex-text-face.css")
 
 
-def _parse_faces(css: str) -> list[FontFace]:
+#: The banner the sans composite's half of the stylesheet opens with. One file carries
+#: both composites, so a test that counts scopes has to say which half it is counting.
+SANS_BANNER = "KPRESS MATH TEXT SANS"
+
+
+def _serif_css() -> str:
+    """The stylesheet down to the sans composite's banner.
+
+    Split before the comments are stripped, since the banner is one. What follows is
+    `KPress Math Text Sans`, which `tests/test_sans_math_face_css.py` owns and which
+    carries scopes of its own -- including a third root, the preview overlay's, that the
+    serif rules reach through their `:is()` instead.
+    """
+    css = _css()
+    marker = css.find(SANS_BANNER)
+    assert marker > 0, "the sans composite's banner has moved"
+    return css[:marker]
+
+
+def _parse_faces(css: str, family: str = FAMILY) -> list[FontFace]:
+    """Every `@font-face` of one family; the stylesheet also carries the sans composite,
+    which `tests/test_sans_math_face_css.py` covers."""
     faces: list[FontFace] = []
     for match in _FONT_FACE_RE.finditer(_COMMENT_RE.sub("", css)):
         declarations: dict[str, str] = {}
@@ -96,7 +117,8 @@ def _parse_faces(css: str) -> list[FontFace]:
             (int(start, 16), int(end or start, 16))
             for start, end in _RANGE_RE.findall(declarations.get("unicode-range", ""))
         )
-        faces.append(FontFace(declarations=declarations, ranges=ranges))
+        if declarations.get("font-family") == family:
+            faces.append(FontFace(declarations=declarations, ranges=ranges))
     return faces
 
 
@@ -257,7 +279,7 @@ def test_feature_rules_are_scoped_to_wrappers_that_have_not_opted_out() -> None:
     them in katex-init.js; an opted-out wrapper keeps upstream's rules and
     style-tokens.css's size untouched.
     """
-    css = _COMMENT_RE.sub("", _css())
+    css = _COMMENT_RE.sub("", _serif_css())
     scopes = re.findall(_SCOPE, css)
     assert len(scopes) >= 7, "the size token, the root and five class rules"
     for scope in scopes:

@@ -20,35 +20,41 @@ const PROSE_FONT_KEY = "kpress.proseFont";
 const FONT_SET_KEY = "kpress.fontSet";
 
 /**
- * @param {string} value "serif" | "sans"
- */
-function applyProseFont(value) {
-  document.documentElement.dataset.kpressProseFont = value;
-  storage.set(PROSE_FONT_KEY, value);
-  emit("widget:change", { id: "settings", key: "reading-font", value });
-}
-
-/**
  * Whether typeset mathematics on the page would be left in the previous mode.
  *
- * The font set is also the switch for the math text face (katex-text-face.css),
- * and that face is half CSS and half metrics: katex-init.js hands KaTeX the
- * reading face's metric tables once, at load, through `__setFontMetrics`. That
- * setter replaces a table in the KaTeX singleton and has no getter, so the
- * tables cannot be read back and swapped for the other mode's in place; and the
- * TeX a rendered expression came from is gone once KaTeX has typeset over it.
- * Flipping the CSS alone would leave every fraction, script and accent on the
- * page laid out for the face it is no longer drawn in.
+ * BOTH font choosers move the page's mathematics, and neither can finish the
+ * move on its own: the math text face (katex-text-face.css) is half CSS and
+ * half metrics, and katex-init.js hands KaTeX the metric tables once, at load,
+ * through `__setFontMetrics`. That setter replaces a table in the KaTeX
+ * singleton and has no getter, so the tables cannot be read back and swapped
+ * for the other mode's in place; and the TeX a rendered expression came from is
+ * gone once KaTeX has typeset over it. Flipping the CSS alone would leave every
+ * fraction, script and accent on the page laid out for the face it is no longer
+ * drawn in.
  *
- * So the switch is completed by a reload. The choice is persisted first and
+ * The FONT SET turns the face on and off: `system` returns the page to KaTeX's
+ * own faces and its own boxes, and `custom` puts it back in the reading face's.
+ *
+ * The READING FACE selects between two table sets rather than between a set and
+ * none. There are two composites: `KPress Math Text`, drawn from PT Serif, and
+ * `KPress Math Text Sans`, drawn from Source Sans 3 -- and katex-init.js picks
+ * one per rendered node from a list of sans contexts that has
+ * `[data-kpress-prose-font="sans"]` in it. So stamping this attribute moves
+ * every expression on the page from one set to the other, while the tables
+ * KaTeX holds stay as they were. Measured on prose left un-reloaded after the
+ * switch, drawn against installed: an italic `s` 3.9% narrow, a `2` 6.8%, and
+ * `\mathbf{D}` 14.4% -- Source Sans glyphs on PT Serif boxes, the one state the
+ * face's design forbids.
+ *
+ * So either switch is completed by a reload. The choice is persisted first and
  * theme-bootstrap.js stamps it on <html> before first paint, so the page comes
  * back whole in the new mode rather than half-converted. It costs a reload only
  * where it buys something: a page with no typeset math, or one where the text
  * face is off page-wide (`data-kpress-math-text="katex"` on <html>, which
  * katex-init.js also stamps when the tables cannot be applied), depends on
  * nothing but the CSS and switches in place. A host that stamps
- * `data-kpress-font-set` itself owns the same reload; see "Math Text Face" in
- * docs/kpress-design.md.
+ * `data-kpress-font-set` or `data-kpress-prose-font` itself owns the same
+ * reload; see "Math Text Face" in docs/kpress-design.md.
  *
  * @returns {boolean}
  */
@@ -57,6 +63,21 @@ function fontSetSwitchNeedsReload() {
     document.documentElement.dataset.kpressMathText !== "katex" &&
     document.querySelector(".katex") !== null
   );
+}
+
+/**
+ * @param {string} value "serif" | "sans"
+ */
+function applyProseFont(value) {
+  // The unstamped default is serif, so a first click on `serif` is the no-op it
+  // looks like and buys no reload.
+  const previous = document.documentElement.dataset.kpressProseFont || "serif";
+  document.documentElement.dataset.kpressProseFont = value;
+  storage.set(PROSE_FONT_KEY, value);
+  emit("widget:change", { id: "settings", key: "reading-font", value });
+  if (value !== previous && fontSetSwitchNeedsReload()) {
+    globalThis.location.reload();
+  }
 }
 
 /**

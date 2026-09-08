@@ -9,12 +9,12 @@ author: Claude (agent), for samanthadrakova@gmail.com
 
 **Author:** Claude (agent), for samanthadrakova@gmail.com
 
-**Status:** Implemented on `squares/page-fixes` (2026-09-07); Safari and Firefox checks
-by hand remain.
+**Status:** Implemented on `squares/page-fixes` (2026-09-07), with the sans composite on
+`squares/sans-math`; Safari and Firefox checks by hand remain.
 
 **Tracking:** epic `kpr-sc4f`; tasks `kpr-g93o` (metrics generator and asset),
 `kpr-c4oz` (composite faces and rules), `kpr-ai4c` (option, attribute, wiring, init
-hook), `kpr-mot3` (tests, goldens, docs); deferred `kpr-7f9z` (sans math) and `kpr-c2tr`
+hook), `kpr-mot3` (tests, goldens, docs), `kpr-7f9z` (sans math); deferred `kpr-c2tr`
 (Greek sizing). Font consistency across screen and print is epic `kpr-b4mq`, below.
 The consuming repository that carries this branch (squares, epic `think-rk9v`, and
 `think-phgo` for fonts) tracks its own integration.
@@ -46,13 +46,20 @@ defined by a contract a host can satisfy with a reading face other than PT Serif
   option away.
 - The face is a contract, optimized for PT Serif and open to another: a host that
   supplies its own faces and metrics under the same names gets the same behaviour.
+- Where the words around the mathematics are sans -- a caption, a footnote, a table, the
+  reader’s sans reading face -- the letters and digits come from Source Sans 3 instead,
+  with its own metrics, so the mathematics is set in the face of the text it sits in.
 - The vendored `katex.min.js` and `katex.min.css` stay byte-identical.
 
 ## Non-Goals
 
-- Sans mathematics: letters from Source Sans 3 when the reader chooses the sans reading
-  face, or inside sans contexts.
-  Recorded under Future Work.
+- Mathematics in a heading or the TOC of a *serif* document from Source Sans 3. Both are
+  sans roles and both are left out, but for two unrelated reasons, and neither is the
+  “both are set at the sans bold weight” one this plan first gave: a sans heading is at
+  550 (`h3`) or 540 (`h4`) against tables built at 400, and the TOC receives no rendered
+  mathematics at all. Recorded under Future Work.
+  Under the sans reading face the whole document is sans and headings get the composite
+  with everything else.
 - Greek from the reading face; the vendored subset has none.
   KaTeX’s Greek is kept and scaled to the reading face instead (below).
 - Punctuation inside mathematics (`, .` `…`) from the reading face; a one-line range
@@ -89,7 +96,9 @@ text faces; MathJax and KaTeX have no supported route.
 
 ### Approach
 
-One composite CSS family, `KPress Math Text`, in four style and weight slots.
+One composite CSS family, `KPress Math Text`, in four style and weight slots; a second,
+`KPress Math Text Sans`, repeats it from Source Sans 3 for the sans roles and is
+described under [Sans Mathematics](#sans-mathematics) below.
 Each slot is two `@font-face` rules with the same descriptors and disjoint
 `unicode-range`s: the reading face for digits and Latin letters, and the KaTeX face that
 slot replaces over the Greek range, scaled with `size-adjust`. Everything else is
@@ -152,17 +161,138 @@ the faces go with them.
 The reader’s serif or sans prose choice does not change the math face; that is the
 sans-math follow-up.
 
+### Sans Mathematics
+
+A serif document sets its captions, footnotes, tables and dialect boxes in Source Sans
+3, and a reader can set the prose itself in it.
+A second composite, `KPress Math Text Sans`, draws the same Latin ranges there.
+The mechanism is the first one repeated; three things about it are new, and all three
+come out of one fact measured in the
+[sans brief](project/research/research-2026-09-07-sans-math-face.md): a KaTeX metric
+table describes one face *and one weight*, and Source Sans is a variable face.
+
+**Pinned weights.** Across the 370-700 axis the Latin advances move a median 7.1% and a
+worst 20.5%, while the tallest ink height moves 0.035 em and the median 0.005 em.
+The entries a metric table is for -- the heights and depths fractions, scripts and
+radicals are laid out from -- are therefore nearly weight-invariant, and the widths are
+not. So each slot declares a single `font-weight` rather than the whole axis, and its
+table is built at that weight: CSS Fonts 4 clamps a variable face to the range its
+`@font-face` declares, so the drawn weight is the table’s weight whatever the context
+asks for.
+
+The two weights are 400 for the regular slots -- upstream’s
+`.katex { font: normal 1.21em ... }` resets `font-weight`, so mathematics in a sans
+context is set at 400 either way -- and `--kpress-font-weight-sans-bold` (650) for the
+bold slots, which `.mathbf` and `.boldsymbol` ask for instead of upstream’s 700, so
+`\mathbf{D}` in a caption reaches the same bold as a bold word beside it.
+
+| Sans slot | Source Sans 3 | KaTeX face for Greek, scaled, and next in the stack | Factor |
+| --- | --- | --- | ---: |
+| normal 400 | Variable, clamped to 400 | KaTeX_Main-Regular | 96.0% |
+| italic 400 | Variable italic, clamped to 400 | KaTeX_Math-Italic | 110.2% |
+| normal 650 | Variable, clamped to 650 | KaTeX_Main-Bold | 95.2% |
+| italic 650 | Variable italic, clamped to 650 | KaTeX_Math-BoldItalic | 109.3% |
+
+The upright factors are below 1, which the serif composite’s never were: KaTeX_Main’s
+`H` is 683 per 1000 em against the 656 Source Sans 3 draws at 400, so the upright slots
+pull the Greek capitals down rather than up.
+That 4.1% is a ratio of *Latin* cap heights, which is what the generator derives the
+factor from, and not a measurement of the Greek outlines, whose own heights fall either
+side of it -- `devtools/katex_text_metrics.py` records the 5.7pp spread it leaves.
+The numerator is the drawn `H` rather than the declared `sCapHeight`, because Source
+Sans reports a weight-invariant 660 at every instance while the glyph it actually draws
+is 656 at 400 and 653 at 650; `OS2_INK_TOLERANCE` at 0.003 is what catches that.
+
+**Accents are outside every range and stay at 1.0.** No accent code point the bundle
+uses -- `^` U+005E for `\hat`, `~` U+007E for `\tilde`, U+02C9 for `\bar`, U+00A8 for
+`\ddot`, U+20D7 for `\vec`, U+02C7–U+02DA for the rest -- falls inside a slot’s ranges,
+so every accent draws from the KaTeX face unscaled and the generator leaves its metric
+row alone. Over a reading-face Latin base that is right.
+Over Greek the base is scaled and the accent is not: `\hat{\alpha}` in a sans role gets
+a correctly positioned circumflex 9.3% narrow for its base (1/1.102), and `\hat{\Gamma}`
+one 4.2% wide (1/0.960); the serif composite carries the same residual and a larger one,
+13.0% narrow (1/1.15) and 2.4% narrow (1/1.025). It is recorded rather than fixed.
+[kpress-design.md](kpress-design.md#math-text-face) has why widening the Greek ranges to
+cover the accent code points was the option not taken: one glyph and one table row serve
+both kinds of base, so scaling them repairs the rare construct at the common one’s
+expense, and scaling the drawn glyph without the row would put the accent in the one
+state this design forbids.
+
+**Print.** Chromium’s PDF writer turns a variable face away from its default position
+into Type3 outline paths, which is why the sans role has static instances at all
+(`kpr-w0s9`). The `KPress Print Sans` instances at the same two weights are layered over
+the same ranges inside `@media print`, declared last so CSS Fonts 4’s last-defined-face
+rule hands them to print and leaves the screen alone.
+The family is the instances’ own, not Source Sans’s: the upstream licence reserves the
+name “Source” for the original.
+Instancing the variable face at 400 and 650 reproduces every Latin advance of the
+shipped instance exactly, so one metric table is true of both — which is why the
+generator measures the sans slots from those instance files.
+
+**Scope.** The rules are scoped on the roles where a kpress stylesheet sets
+`--kpress-font-sans`, `--kpress-font-footnote` or `--kpress-font-table` on running
+author text, and on `data-kpress-prose-font="sans"`, under the same three opt-outs as
+the serif rules and one class more specific, so the sans composite wins inside a sans
+context and does not exist outside one.
+A third scope is the footnote preview overlay, which `tooltips.js` mounts outside every
+`.kpress`: it carries a clone of math already laid out from the sans tables, and a
+footnote is a sans role in every mode, so drawing it in the serif composite would put PT
+Serif glyphs on Source Sans boxes.
+It is the one place the two engines are decoupled — nothing re-renders in an overlay, so
+the per-node selection below never reaches it — and the cascade alone holds them
+together. Two scopes, not three: the document reaches the composite through the
+`data-kpress-math-face="sans"` mark `katex-init.js` stamps, which covers the reader’s
+sans reading face as well, and the overlay reaches it by position and mode stamp.
+That is what keeps the selectors inside the 400-character budget the consuming host’s
+stylesheet check applies — measured the host’s way, on `len(prelude.strip())`, the
+longest rule in the file is 339 and none reaches 400. Spelling the twelve roles into
+every rule ran to 477. Headings and the TOC are left out; see Future Work.
+
+**What can actually carry mathematics.** The scope is where the composite applies, which
+is not the same as where an author can put an expression today, and the two differ
+enough to matter before the feature is judged on a page.
+A Markdown image caption is HTML-escaped in `format/markdown.py`
+(`_render_paragraph_close`), so `![caption with $x$](img.png)` never produces
+mathematics at all; the branch’s own test file notes it.
+Rendering each of the other containers through the pipeline shows the rest.
+The natural inline spellings -- a one-line `<figcaption>`,
+`<p class="para-caption">...</p>`, `<details><summary>...</summary>` -- leave `$x$`
+literal, because markdown-it consumes a line that opens with a block-level HTML tag as
+an HTML block and never runs the inline parser over it.
+The same containers written as raw-HTML blocks, with blank lines around their content,
+do render, and so does an inline-level wrapper such as
+`<span class="sans-text">$x$</span>`; blank lines rather than newlines are what decides
+it. Tables and footnotes need none of that and are the roles the composite pays off in
+today, so caption mathematics specifically has to be written in the block form.
+
+**Per-node metrics.** `__setFontMetrics` replaces a table in the KaTeX singleton, so
+only one set exists at a time.
+The generated asset carries both -- the serif set as its own face keys, the sans set
+nested under `sans` -- and the render loop installs the set matching each node before
+rendering it, leaving the serif set installed afterwards.
+The role list `katex-init.js` tests with `closest()` is the stylesheet’s, and a test
+pins the two copies together.
+Both sets are required: sans faces laid out from serif numbers is the same forbidden
+state as faces without metrics, and a missing `sans` key stamps the same opt-out on
+`<html>`.
+
+**Operators** stay KaTeX here too, on the same three measurements as the serif brief’s
+route H: Source Sans centres `+ - =` 0.080 em above KaTeX’s math axis, sets `+` on 0.497
+em against KaTeX’s 0.778 em, and has no `\le` or `\ge`.
+
 ### Components
 
 - `static/katex/katex-text-face.css`: kpress-authored, lazy with the math closure; the
   eight `@font-face` rules for `KPress Math Text`, the scoped size token, the scoped
-  root family and class rules, with the specificity note.
+  root family and class rules, with the specificity note; then the twelve for
+  `KPress Math Text Sans` (eight on screen, four static instances under print) and its
+  fourteen rules, seven per scope.
   `style-tokens.css` and `components.css` are untouched.
 - `static/katex/katex-text-metrics.js`: generated; listed in `KATEX_JS_ASSETS` before
   `katex-init.js`; part of the lazy math closure, so a document without math still loads
-  nothing.
+  nothing. Both table sets live in it, the sans one nested under `sans`.
 - `static/katex/katex-init.js`: apply the tables when present and the attribute says
-  `prose`.
+  `prose`, choosing the set per rendered node from the stylesheet’s own role list.
 - `format/model.py`, `format/render.py`, `templates/page.html.jinja`, `contract.py`: the
   option, its stamping, the public-contract listing.
 - `devtools/katex_text_metrics.py`: reads `katex.min.js` for the base tables and the
@@ -214,6 +344,11 @@ One phase; the steps are small and each is testable on its own.
   hashes.
 - [x] Document the feature and the host contract; one commit per step in the branch’s
   style.
+- [x] Sans mathematics (`kpr-7f9z`): measure Source Sans against the KaTeX faces and
+  along its own weight axis; add the sans face plans, tables and `--check` coverage to
+  the generator; declare `KPress Math Text Sans` with its print instances; scope its
+  rules on the sans roles and the sans reading face; select the table set per node in
+  `katex-init.js`; tests and docs.
 
 ## Testing Strategy
 
@@ -232,6 +367,23 @@ One phase; the steps are small and each is testable on its own.
   `$\frac{4001}{4000}$`, the advance of a rendered digit is 0.533 of the math font size
   (PT Serif) rather than 0.5 (KaTeX_Main); the numerator’s ink box lies inside the
   `.katex-display` box; with `math_text_font="katex"` both revert.
+- Sans unit: the generator’s sans plans build at 400 and 650 and carry the sans Greek
+  factors; the shipped tables give `1` Source Sans’s 0.497em advance at 400 and 0.520em
+  at 650 and leave `+` alone; the stylesheet declares four sans slots with single-valued
+  weights, four static instances under `@media print` over the same ranges, and
+  `size-adjust` values equal to the generator’s; every sans rule carries the three
+  opt-outs and stays inside the selector budget; the role list in `katex-init.js` equals
+  the stylesheet’s.
+- Sans JS (vitest): a caption node is rendered with the sans tables installed and a
+  prose node with the serif ones, the serif set is left installed afterwards, `sans` and
+  `scale` are never installed as faces, and an asset without a `sans` key turns the face
+  off.
+- Sans Playwright: on a page with the same expression in prose, in a table cell and in a
+  footnote, `CSS.getPlatformFontsForNode` reports PT Serif for the prose digits and
+  Source Sans for the other two, a `KPress Print Sans` instance for the table under
+  print media, Source Sans again inside the footnote preview overlay opened from that
+  page, and KaTeX’s vertical list for the fraction is shorter in the sans roles than in
+  prose.
 - Browsers: Chromium in the test suite; Safari and Firefox by hand or through
   Playwright’s WebKit and Firefox builds before the branch is considered done.
 
@@ -243,18 +395,31 @@ contract. Upstreaming to `main` is decided after a consuming site has shipped wi
 
 ## Open Questions
 
-- Sans contexts: captions and labels set in Source Sans carry PT Serif math letters.
-  Consistency of the math face across the document is the usual choice; restricting the
-  scope to prose contexts is one selector if captions read better with the KaTeX faces.
 - A `size-adjust` of 3–5% on the KaTeX faces inside the composite, so symbols keep a
   small lift while letters stay at prose size.
 - Byte cost in a page that inlines every asset: the explainer grew from 1,177 KB to
   1,441 KB (three reading faces and three scaled Greek faces, its bold-italic slot being
-  pruned as unreachable, plus the 32 KB metrics table).
+  pruned as unreachable, plus the metrics table, 32,622 B at the time of that
+  measurement); the sans composite adds the two variable faces again, the four static
+  instances a printed copy uses, and a second metrics table.
   The upright Greek faces buy a 2–2.5% cap-height match for about 75 KB of that; if the
   cost matters more than the match, drop them and stop scaling the upright Greek entries
   in the generator together.
   The duplicate bytes themselves are `kpr-hhdc` under Font Consistency.
+- Byte cost in a page that links its assets, which is the ordinary case and the one the
+  sans composite makes concrete.
+  `katex-text-metrics.js` is 69,455 bytes against the serif-only asset’s 34,960, or
+  11,336 against 6,032 gzipped, so the sans tables are +5,304 bytes gzipped;
+  `katex-text-face.css` adds a few kilobytes more, most of it comment, and under half a
+  kilobyte gzipped once comments are stripped.
+  Both files are linked on every page with any mathematics, whether or not that page has
+  mathematics in a sans role, so the first visit pays roughly 8–9 KB gzipped and every
+  later one pays nothing: the files are cacheable, no `@font-face` URL is new, and the
+  rendered HTML is byte-identical either way.
+  Making it lazy needs a `has_sans_math` beside `has_math` through `format/markdown.py`,
+  `format/model.py` and `format/render.py`, the sans set in a file of its own, and
+  `applyTextMetrics` in `katex-init.js` taught to accept one set rather than requiring
+  both. Deliberately not done here; filed as a follow-up.
 - Whether to upstream to `main`, and under what option name.
 - The composite’s accents: the generator keeps KaTeX’s `skew` for the swapped italic
   letters, so `\hat{x}` over a PT Serif Italic `x` is placed for Computer Modern’s
@@ -289,8 +454,8 @@ reason. A shipped subset now answers those code points instead.
 
 Tracked under epic `kpr-b4mq`:
 
-- `kpr-w0s9`, in progress on this branch: static Source Sans 3 instances for print at
-  the weights kpress’s sans contexts request, generated by `devtools/instance_sans.py`,
+- `kpr-w0s9`, landed on `main`: static `KPress Print Sans` instances for print at the
+  weights kpress’s sans contexts request, generated by `devtools/instance_sans.py`,
   declared in the generated `print-fonts.css`, led by `print.css` under print media.
   Hosts that override the weight tokens instance their own set; a host that inlines
   assets may supply them only at PDF time so its page’s bytes do not change.
@@ -348,14 +513,28 @@ changes when they land (`think-9r58`).
 
 ## Future Work
 
-Recorded as a deferred bead under the epic (`kpr-7f9z`), not part of this plan:
+Not part of this plan:
 
-- **Sans math.** When the reader chooses the sans reading face, or inside sans contexts,
-  draw the letters and digits from Source Sans 3 with its own metrics: a second set of
-  composite faces keyed on `data-kpress-prose-font="sans"` and a second metrics table
-  from the same generator.
+- **Mathematics in a heading.** A heading is a sans role, but not at a weight either
+  composite has a table for.
+  `css/document.css` gives `h3` `--kpress-font-weight-sans-medium` (550) and `h4` 540,
+  and the shared `h1`–`h6` rule’s `--kpress-font-weight-sans-bold` (650) is overridden
+  at every level; `h1`, `h2`, `h5` and `h6` redeclare `--kpress-font-prose` and are not
+  sans at all, `h2` being serif italic 400. Drawing a heading’s mathematics from the
+  sans composite would set it at the pinned 400 against 550 or 540 words, and routing it
+  to the bold slots instead is not possible with a per-class table: KaTeX picks the
+  table from the TeX, not from the CSS. A third pair of slots pinned at the heading
+  weights would be the honest fix, at the cost of another face and another table for
+  each.
+- **Mathematics in the TOC** is not future work at all, because the TOC never receives
+  any. `_plain_inline_text` in `format/markdown.py` keeps only the `text` and
+  `code_inline` children of a heading’s inline token, so a `math_inline` token is
+  dropped before `Heading.title` exists, and `_render_toc` in `format/render.py` escapes
+  what is left. A heading written `## Bound with $x$ inside` reaches the TOC with the
+  expression simply absent from its title.
 
-Greek sizing, once listed here, shipped inside the feature: the composite’s italic slots
+Sans math, once listed here, shipped as its own subsection above (`kpr-7f9z`). Greek
+sizing, also once listed here, shipped inside the feature: the composite’s italic slots
 scale KaTeX’s Greek to PT Serif’s x-height (115.0% and 112.6%) and the upright slots its
 capitals to PT Serif’s cap height (102.5% and 102.0%), with the metric tables scaled by
 the same factors, `\mathit`’s table included since its Greek is drawn by the italic
@@ -365,11 +544,15 @@ draw the Greek unscaled while laying it out scaled.
 ## References
 
 - [Research: Harmonizing the Reading Face with KaTeX Mathematics](project/research/research-2026-09-07-math-text-face.md).
+- [Research: Source Sans 3 Inside KaTeX Mathematics](project/research/research-2026-09-07-sans-math-face.md),
+  which measures the sans composite and fixes its two build weights.
 - Commit `ef3074c` (KaTeX sizing tokens), `components.css` “KaTeX sizing”, `assets.py`
   (`KATEX_JS_ASSETS`, the lazy math closure), `katex-init.js`.
 - [KPress Design: Theme and Fonts](kpress-design.md#theme-and-fonts);
   [Operations and Host Integration](kpress-operations-and-host-integration.md).
-- [CSS Fonts 4, composite fonts](https://www.w3.org/TR/css-fonts-4/#composite-fonts).
+- [CSS Fonts 4, composite fonts](https://www.w3.org/TR/css-fonts-4/#composite-fonts);
+  [matching font styles](https://www.w3.org/TR/css-fonts-4/#font-style-matching), for
+  the clamping rule the sans slots’ pinned weights rely on.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
