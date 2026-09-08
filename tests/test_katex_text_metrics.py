@@ -87,6 +87,50 @@ def test_greek_is_scaled_by_the_face_factor(asset: dict[str, Any], bundle: str) 
     assert _table(asset, "Math-Italic")["952"] == expected
 
 
+def test_mathit_greek_is_copied_from_the_face_that_draws_it(
+    asset: dict[str, Any], bundle: str
+) -> None:
+    """`\\mathit` is laid out from Main-Italic but drawn from KaTeX_Math-Italic.
+
+    The composite's italic slot claims U+0370-03FF for KaTeX_Math-Italic, so the
+    Greek rows in the Main-Italic table have to be that face's rows scaled, not
+    Main-Italic's own. The two faces disagree: Main-Italic sets Upsilon on a
+    0.76666em advance, Math-Italic on 0.58333em. Scaling the wrong one leaves
+    `\\mathit{\\Upsilon}` measured a third of an em wider than it is drawn.
+    """
+    for table, drawn in (("Main-Italic", "Math-Italic"), ("Main-BoldItalic", "Math-BoldItalic")):
+        own = parse_katex_table(bundle, table)
+        scale = SCALE_FACTORS[table]
+        for code_point in (0x393, 0x3A5, 0x3B8):  # Gamma, Upsilon, theta
+            drawn_row = parse_katex_table(bundle, drawn)[code_point]
+            expected = [round(value * scale, PRECISION) + 0.0 for value in drawn_row]
+
+            assert _table(asset, table)[str(code_point)] == expected, (table, hex(code_point))
+        # Not merely equal by coincidence: the source rows genuinely differ.
+        assert own[0x3A5] != parse_katex_table(bundle, drawn)[0x3A5]
+
+
+def test_mathit_greek_keeps_the_drawn_faces_accent_skew(asset: dict[str, Any]) -> None:
+    """Skew is where an accent sits, so it has to come from the drawn face too.
+
+    KaTeX centres `\\hat{}` over a glyph using the table's skew. Main-Italic
+    reports 0 for its Greek capitals and Math-Italic reports a real overhang, so
+    a table scaled from Main-Italic would put the accent over `\\hat{\\mathit
+    {\\Gamma}}` about a tenth of an em to the left of the glyph it is drawn on.
+    """
+    skew_index = 3
+    for table, drawn in (("Main-Italic", "Math-Italic"), ("Main-BoldItalic", "Math-BoldItalic")):
+        assert _table(asset, table)["915"][skew_index] == _table(asset, drawn)["915"][skew_index]
+    assert _table(asset, "Main-Italic")["915"][skew_index] > 0.09
+
+
+def test_mathit_keeps_its_own_digits_and_punctuation(asset: dict[str, Any], bundle: str) -> None:
+    """Only the Greek is re-sourced: the italic slot draws no digits of its own."""
+    original = parse_katex_table(bundle, "Main-Italic")
+    for code_point in (0x31, 0x2B, 0x2C):  # `1`, `+`, `,`
+        assert _table(asset, "Main-Italic")[str(code_point)] == list(original[code_point])
+
+
 def test_scale_key_matches_the_module_constants(asset: dict[str, Any]) -> None:
     assert asset[SCALE_KEY] == SCALE_FACTORS
 

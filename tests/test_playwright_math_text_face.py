@@ -7,7 +7,7 @@ Neither can be checked without a real cascade and real glyphs: which face drew a
 glyph shows only in its advance, and whether KaTeX's boxes fit the glyphs shows
 only in a layout.
 
-Two invariants, each measured on a rendered page:
+The invariants, each measured on a rendered page:
 
 - a digit inside math advances by PT Serif's 0.533em rather than KaTeX_Main's
   0.500em, and reverts when the document opts out (``format.math_text_font:
@@ -16,19 +16,32 @@ Two invariants, each measured on a rendered page:
 - a display fraction is laid out for the taller PT Serif digits: KaTeX sizes the
   fraction's vertical list from its metric table, so the list is taller with the
   reading face's table installed than with KaTeX's own, which is what the metrics
-  asset buys and what a CSS-only swap would leave undone.
+  asset buys and what a CSS-only swap would leave undone;
+- ``\\mathit`` Greek is drawn and laid out by the same face: its slot draws with
+  KaTeX_Math-Italic, so its table's Greek advances and accent skews have to be
+  that face's rows, not the Main-Italic rows KaTeX would otherwise supply;
+- ``\\textrm{\\textit{...}}`` stays italic, in both nesting orders and with bold:
+  KaTeX emits one leaf for the pair and lays it out from the italic table;
+- the reader's font-set chooser carries typeset mathematics with it, in both
+  directions, and a footnote preview -- a clone mounted outside ``.kpress`` --
+  keeps the mode and the size of the document it was opened from;
+- an opt-out stamped directly on the wrapper reaches the stylesheet as well as
+  the script, so the composite family and the metrics can never disagree.
 """
 
 from __future__ import annotations
 
 import threading
+from collections.abc import Generator
+from contextlib import contextmanager
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import pytest
 
+from devtools.katex_text_metrics import ASSET_PATH, parse_asset
 from kpress.publish import build_site
 
 #: Advance width of the digit glyphs, per em, in the two faces a digit can come
@@ -42,17 +55,28 @@ class _QuietHandler(SimpleHTTPRequestHandler):
         _ = (format, args)
 
 
-def _build_fixture_site(tmp_path: Path, *, math_text_font: str | None) -> Path:
+DEFAULT_MARKDOWN = (
+    "# Math text face smoke\n\n"
+    "Stromquist settled $s(10) = 3 + 1/\\sqrt{2}$ in 2003, and the mass is\n\n"
+    "$$\\mu(Q) = \\frac{4001}{4000} = 1.00025.$$\n"
+)
+
+
+def _build_fixture_site(
+    tmp_path: Path,
+    *,
+    math_text_font: str | None,
+    markdown: str = DEFAULT_MARKDOWN,
+    choosers: str | None = None,
+) -> Path:
     (tmp_path / "content").mkdir(parents=True)
-    (tmp_path / "content" / "index.md").write_text(
-        "# Math text face smoke\n\n"
-        "Stromquist settled $s(10) = 3 + 1/\\sqrt{2}$ in 2003, and the mass is\n\n"
-        "$$\\mu(Q) = \\frac{4001}{4000} = 1.00025.$$\n",
-        encoding="utf-8",
-    )
-    fmt = "" if math_text_font is None else f"format:\n  math_text_font: {math_text_font}\n"
+    (tmp_path / "content" / "index.md").write_text(markdown, encoding="utf-8")
+    fmt = "" if math_text_font is None else f"  math_text_font: {math_text_font}\n"
+    if choosers is not None:
+        fmt += f"  widgets:\n    settings:\n      choosers: [{choosers}]\n"
     (tmp_path / "kpress.yml").write_text(
-        "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n" + fmt,
+        "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n"
+        + (f"format:\n{fmt}" if fmt else ""),
         encoding="utf-8",
     )
     build_site(tmp_path / "kpress.yml")
@@ -152,3 +176,292 @@ def test_reading_face_draws_and_lays_out_the_digits(tmp_path: Path) -> None:
     growth = default["fractionHeightEm"] - katex["fractionHeightEm"]
     low, high = FRACTION_GROWTH_EM
     assert low <= growth <= high, (default["fractionHeightEm"], katex["fractionHeightEm"])
+
+
+# ---- The `\mathit` slot, the `\textrm` slot, the chooser and the preview overlay ----
+
+
+def _serve(public: Path) -> tuple[ThreadingHTTPServer, threading.Thread]:
+    handler = partial(_QuietHandler, directory=str(public))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
+
+
+def _launch(playwright: Any, sync_api: Any) -> Any:
+    try:
+        return playwright.chromium.launch(headless=True)
+    except sync_api.Error:
+        try:
+            return playwright.chromium.launch(headless=True, channel="chrome")
+        except sync_api.Error as exc:
+            pytest.skip(f"No Playwright Chromium or system Chrome available: {exc}")
+
+
+@contextmanager
+def _served_page(public: Path) -> Generator[Any]:
+    """One built site, one browser, one loaded page: the probes are cheap, the setup is not."""
+    sync_api = pytest.importorskip("playwright.sync_api")
+    server, thread = _serve(public)
+    try:
+        with sync_api.sync_playwright() as playwright:
+            browser = _launch(playwright, sync_api)
+            try:
+                context = browser.new_context(viewport={"width": 1100, "height": 900})
+                page = context.new_page()
+                page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+                page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+                page.evaluate("document.fonts.ready")
+                yield page
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def _asset_row(face: str, code_point: int) -> list[float]:
+    """One row of the shipped metric table: what KaTeX is told the glyph measures."""
+    table = cast("dict[str, dict[str, list[float]]]", parse_asset(ASSET_PATH.read_text("utf-8")))
+    return table[face][str(code_point)]
+
+
+#: `\mathit` Greek, as the shipped Main-Italic table now describes it. The rows come
+#: from KaTeX_Math-Italic, the face the composite's italic slot actually draws them
+#: with; Main-Italic's own rows, which this table used to be scaled from, put Upsilon
+#: on a 0.88166em advance and give Gamma no skew at all.
+UPSILON_WIDTH_EM = _asset_row("Main-Italic", 0x3A5)[4]
+GAMMA_SKEW_EM = _asset_row("Main-Italic", 0x393)[3]
+#: Half the `^` advance: KaTeX centres an accent by `skew - width/2` (an inline
+#: `left` on `.accent-body`), so the skew row is directly readable off the page.
+HAT_HALF_WIDTH_EM = _asset_row("Main-Regular", 0x5E)[4] / 2
+#: What a Main-Italic-sourced table would have produced instead.
+UNSCALED_MAIN_ITALIC_UPSILON_EM = 0.88166
+
+_GREEK_MARKDOWN = (
+    "# Greek and nested text styles\n\n"
+    "Capital $\\mathit{\\Upsilon}$, accented $\\hat{\\mathit{\\Gamma}}$.\n\n"
+    "Nested $\\textrm{\\textit{n123}}$, $\\textit{\\textrm{n123}}$ and "
+    "$\\textrm{\\textbf{\\textit{n123}}}$.\n"
+)
+
+#: Advance of the `\mathit` Upsilon and the inline `left` KaTeX gives the accent
+#: over `\hat{\mathit{\Gamma}}`, plus every `\text...` leaf's resolved style.
+_GREEK_PROBE = """(() => {
+  const em = (el, px) => px / parseFloat(getComputedStyle(el).fontSize);
+  const upsilon = [...document.querySelectorAll('.katex .mathit')].find(
+    (el) => el.textContent === '\\u03a5'
+  );
+  const accent = document.querySelector('.katex .accent-body');
+  return {
+    upsilonAdvance: em(upsilon, upsilon.getBoundingClientRect().width),
+    accentLeftEm: parseFloat(accent.style.left),
+    textLeaves: [...document.querySelectorAll('.katex .textrm, .katex .textbf')]
+      .filter((el) => el.textContent === 'n123')
+      .map((el) => ({
+        cls: el.className,
+        style: getComputedStyle(el).fontStyle,
+        advance: em(el, el.getBoundingClientRect().width),
+      })),
+  };
+})()"""
+
+
+def test_mathit_greek_is_drawn_and_laid_out_by_the_same_face(tmp_path: Path) -> None:
+    """The `\\mathit` slot draws its Greek with KaTeX_Math-Italic, so its table must too.
+
+    `\\mathit` is laid out from KaTeX's Main-Italic table but the composite's italic
+    slot claims U+0370-03FF for KaTeX_Math-Italic, and the two faces disagree about
+    both advance and skew. A table scaled from Main-Italic measures Upsilon a fifth
+    of an em wider than the browser draws it and centres the accent over
+    `\\hat{\\mathit{\\Gamma}}` about a tenth of an em off the glyph.
+    """
+    public = _build_fixture_site(tmp_path, math_text_font=None, markdown=_GREEK_MARKDOWN)
+    with _served_page(public) as page:
+        probe = cast("dict[str, Any]", page.evaluate(_GREEK_PROBE))
+
+    # Drawn advance and shipped table row agree, and neither is Main-Italic's own.
+    assert probe["upsilonAdvance"] == pytest.approx(UPSILON_WIDTH_EM, abs=0.005)
+    assert probe["upsilonAdvance"] < UNSCALED_MAIN_ITALIC_UPSILON_EM - 0.1
+
+    # The accent sits at the drawn face's skew, not at the zero Main-Italic reports.
+    assert probe["accentLeftEm"] == pytest.approx(GAMMA_SKEW_EM - HAT_HALF_WIDTH_EM, abs=0.001)
+    assert probe["accentLeftEm"] > -HAT_HALF_WIDTH_EM + 0.05
+
+
+def test_textrm_does_not_suppress_an_explicit_nested_italic(tmp_path: Path) -> None:
+    """`\\textrm{\\textit{n}}` is one `.mord.textrm.textit` leaf and stays italic.
+
+    KaTeX lays the run out from the italic table either way, so pinning the upright
+    slot on `.textrm` would draw one face over another's metrics. Both nesting
+    orders and the bold combination collapse onto the same leaf, so one fixture
+    covers all three.
+    """
+    public = _build_fixture_site(tmp_path, math_text_font=None, markdown=_GREEK_MARKDOWN)
+    with _served_page(public) as page:
+        probe = cast("dict[str, Any]", page.evaluate(_GREEK_PROBE))
+
+    leaves = probe["textLeaves"]
+    assert [leaf["cls"] for leaf in leaves] == [
+        "mord textrm textit",
+        "mord textrm textit",
+        "mord textrm textbf textit",
+    ]
+    for leaf in leaves:
+        assert leaf["style"] == "italic", leaf
+    # The italic advance, not the upright 2.193em the pinned rule produced.
+    assert leaves[0]["advance"] == pytest.approx(2.085, abs=0.01)
+    assert leaves[2]["advance"] > leaves[0]["advance"], (
+        "the bold combination is bolder, not upright"
+    )
+
+
+_FOOTNOTE_MARKDOWN = (
+    "# Previews and the reader's font set\n\n"
+    "Stromquist settled $s(10) = 3 + 1/\\sqrt{2}$ in 2003, and the mass is "
+    "$\\frac{4001}{4000}$, repeated in a footnote[^mass].\n\n"
+    "[^mass]: The mass is $\\frac{4001}{4000}$ exactly.\n"
+)
+
+#: The same expression twice, because the two are set in different composites: prose
+#: takes the reading face, and a footnote is a sans role, so it takes `KPress Math Text
+#: Sans` (see katex-text-face.css). The reading face is therefore read where the reading
+#: face is, and the overlay -- a clone of the FOOTNOTE -- is compared against the
+#: footnote it was cloned from rather than against prose.
+PROSE_SCOPE = ".kpress-prose > p"
+FOOTNOTE_SCOPE = ".kpress-footnotes"
+
+#: Source Sans 3 sets its digits on 0.497em, which is 0.003 from KaTeX_Main's 0.500 and
+#: so cannot tell a mode change apart on its own; that is the whole reason the document
+#: reading below is taken in prose.
+SOURCE_SANS_DIGIT_ADVANCE = 0.497
+
+#: One reading of a math host: the advance of its `4001` digit run per em, whether the
+#: composite family drew it, and the ratio the KaTeX root was sized at against the prose
+#: around it. `scope` is either the document or the preview overlay, which must report
+#: the same three; the ratio rather than the size, because a preview sets its own prose
+#: a little smaller and it is the lift over that prose which has to match.
+_MODE_PROBE = """((selector) => {
+  const scope = document.querySelector(selector);
+  const digits = [...scope.querySelectorAll('.katex .mord')].find(
+    (el) => el.textContent === '4001' && el.children.length === 0
+  );
+  const style = getComputedStyle(digits);
+  const katex = scope.querySelector('.katex');
+  return {
+    advancePerDigit: digits.getBoundingClientRect().width / parseFloat(style.fontSize) / 4,
+    composite: style.fontFamily.includes('KPress Math Text'),
+    katexSizeRatio:
+      parseFloat(getComputedStyle(katex).fontSize) /
+      parseFloat(getComputedStyle(katex.parentElement).fontSize),
+    mathText: scope.getAttribute('data-kpress-math-text'),
+  };
+})"""
+
+
+def _open_preview(page: Any) -> dict[str, Any]:
+    page.locator("a[data-kpress-footnote-ref]").first.hover()
+    page.wait_for_selector(".kpress-tooltip", state="visible", timeout=5_000)
+    page.evaluate("document.fonts.ready")
+    probe = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, ".kpress-tooltip"))
+    page.keyboard.press("Escape")
+    return probe
+
+
+def _choose_font_set(page: Any, value: str) -> None:
+    page.locator(".kpress-settings-btn").first.click()
+    page.select_option("select.kpress-menu-select", value)
+    page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+    page.evaluate("document.fonts.ready")
+
+
+def test_the_font_set_chooser_carries_math_and_previews_with_it(tmp_path: Path) -> None:
+    """Both directions through the real chooser, and the preview overlay with them.
+
+    The chooser flips CSS instantly, but KaTeX was handed its metric tables once,
+    at load, so the switch is completed by a reload into the persisted choice (see
+    `fontSetSwitchNeedsReload` in settings-widget.js). Whatever mode the page ends
+    up in, the footnote preview -- a clone mounted outside `.kpress` -- has to be
+    drawn and sized in it too, or its glyphs sit in boxes measured for the others.
+
+    The clone comes from a footnote, which is a sans role, so the overlay is measured
+    against the footnote rather than against prose: matching prose would be the wrong
+    invariant and would put PT Serif glyphs on boxes measured for Source Sans.
+    """
+    public = _build_fixture_site(
+        tmp_path,
+        math_text_font=None,
+        markdown=_FOOTNOTE_MARKDOWN,
+        choosers="theme, font-set",
+    )
+    with _served_page(public) as page:
+        custom = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+        custom_note = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, FOOTNOTE_SCOPE))
+        custom_preview = _open_preview(page)
+
+        _choose_font_set(page, "system")
+        system = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+        system_note = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, FOOTNOTE_SCOPE))
+        system_preview = _open_preview(page)
+        persisted = page.evaluate("localStorage.getItem('kpress.fontSet')")
+
+        _choose_font_set(page, "custom")
+        back = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+
+    # The document: the reader's choice reaches the glyphs, not only the stylesheet.
+    assert custom["advancePerDigit"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
+    assert custom["composite"]
+    assert system["advancePerDigit"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+    assert not system["composite"]
+    assert persisted == "system"
+    assert back["advancePerDigit"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
+    assert back["composite"]
+
+    # The footnote follows the same switch, in the sans composite rather than the serif.
+    assert custom_note["advancePerDigit"] == pytest.approx(SOURCE_SANS_DIGIT_ADVANCE, abs=0.01)
+    assert custom_note["composite"]
+    assert not system_note["composite"]
+
+    # The size follows too: the reading face needs no lift, KaTeX's own does.
+    assert custom["katexSizeRatio"] == pytest.approx(1.0, abs=0.01)
+    assert system["katexSizeRatio"] == pytest.approx(1.05, abs=0.01)
+
+    # The overlay carries the mode of the document it was opened from and the metrics of
+    # the footnote it was cloned from, in both modes.
+    for document_probe, note, preview in (
+        (custom, custom_note, custom_preview),
+        (system, system_note, system_preview),
+    ):
+        assert preview["mathText"] == ("prose" if document_probe["composite"] else "katex")
+        assert preview["composite"] is document_probe["composite"]
+        assert preview["advancePerDigit"] == pytest.approx(note["advancePerDigit"], abs=0.005)
+        assert preview["katexSizeRatio"] == pytest.approx(note["katexSizeRatio"], abs=0.01)
+
+
+def test_a_font_set_stamped_on_the_wrapper_opts_out_of_both_guards(tmp_path: Path) -> None:
+    """The CSS scope and the JS guard have to agree wherever the attribute is stamped.
+
+    The built-in producers stamp `data-kpress-font-set` on `<html>`, and katex-init.js
+    reads it with `closest()`, which matches the element it starts from. So the
+    stylesheet excludes each opt-out bare as well as as an ancestor; otherwise a host
+    that stamped the wrapper directly would get the composite family with KaTeX's own
+    metrics, which is the one state the design forbids.
+    """
+    public = _build_fixture_site(tmp_path, math_text_font=None)
+    index = public / "index.html"
+    stamped = index.read_text(encoding="utf-8").replace(
+        'data-kpress-fonts="custom"',
+        'data-kpress-fonts="custom" data-kpress-font-set="system"',
+        1,
+    )
+    assert 'data-kpress-font-set="system"' in stamped, "the wrapper markup has moved"
+    index.write_text(stamped, encoding="utf-8")
+
+    with _served_page(public) as page:
+        probe = cast(Probe, page.evaluate(_PROBE))
+
+    assert probe["rendered"] == 2
+    assert "KPress Math Text" not in probe["family"]
+    assert probe["advance"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)

@@ -1261,12 +1261,13 @@ weight the table was built at whatever the context asks for.
 Upstream’s `.katex { font: normal 1.21em … }` already resets `font-weight`, so
 mathematics in a sans context is set at 400 either way.
 
-Under `@media print`, and declared last, the static `Source Sans 3` instances at the
+Under `@media print`, and declared last, the static `KPress Print Sans` instances at the
 same two weights are layered over the same ranges, so a printed page embeds a font
 rather than the Type3 outline paths Chromium writes for a variable face away from its
 default position (the reason [Print Sans Faces](#print-sans-faces) exists).
 The two agree exactly: instancing the variable face at 400 and 650 reproduces every
-Latin advance of the shipped instance, so one metric table is true of both.
+Latin advance of the shipped instance, so one metric table is true of both — which is
+also why the generator measures the sans slots from those instance files.
 
 Operators stay in the KaTeX faces here as well, for the same three reasons and by the
 same measurements: Source Sans centres `+ − =` 0.080 em above KaTeX’s math axis, sets
@@ -1309,22 +1310,63 @@ composites rather than turning the feature on or off: a reader switching the rea
 face to sans gets `KPress Math Text Sans` throughout, and one who opts out of the math
 text face gets KaTeX’s own faces either way.
 The feature rules are scoped positively, to a `.kpress` that has not opted out, so an
-opted-out wrapper keeps KaTeX’s own rules and the `1.05em` token exactly; the scope
-excludes `data-kpress-math-text="katex"` on the wrapper or any ancestor, the wrapper’s
+opted-out wrapper keeps KaTeX’s own rules and the `1.05em` token exactly.
+There are three ways out — `data-kpress-math-text="katex"`, the wrapper’s
 `data-kpress-fonts="system"`, and the reader’s persisted `data-kpress-font-set="system"`
 (both system modes load no reading face, so there would be nothing to draw the letters
-from). The metrics follow the same three conditions and are one setting for the whole
-page: KaTeX keeps one table per face, so a page that mixes opted-in and opted-out
-wrappers is unsupported, and the metrics follow the opted-in ones.
+from) — and each is honoured **on the element it is stamped on and on any ancestor**.
+`katex-init.js` reads them with `closest()`, which matches the element itself, so the
+stylesheet lists each one twice, bare and as an ancestor: a scope that admitted one
+placement the script refused would draw the composite over KaTeX’s own metrics, the one
+state this design forbids.
+The metrics follow the same three conditions and are one setting for the whole page:
+KaTeX keeps one table per face, so a page that mixes opted-in and opted-out wrappers is
+unsupported, and the metrics follow the opted-in ones.
 When a wrapper wants the face but the tables cannot be applied, `katex-init.js` stamps
 the opt-out on `<html>` and says so on the console, so the faces are turned off with the
 metrics rather than drawn without them.
-`\mathit` follows `KaTeX_Main`, the face it replaces, after the composite; its Greek
-capitals are drawn by the italic slot’s scaled `KaTeX_Math-Italic` face and laid out
-from the `Main-Italic` table, which the generator scales by that same factor.
+`\mathit` follows `KaTeX_Main`, the face it replaces, after the composite; its Greek is
+drawn by the italic slot’s scaled `KaTeX_Math-Italic` face, so the generator copies
+those rows from the `Math-Italic` table — not from `Main-Italic`, whose advances and
+accent skews belong to a face this slot never draws — and scales them by that face’s
+factor.
+`\textrm` and `\text` take the family only: KaTeX emits one `.mord.textrm.textit`
+leaf for `\textrm{\textit{x}}` and lays it out from the italic table, and upstream
+leaves `.textrm` without a `font-style` precisely so that nesting still resolves to
+italic. Pinning the upright slot there would draw one face over another’s metrics;
+`.mainrm`, which upstream does pin, keeps its pin.
 Browsers without `size-adjust` (before Chrome 92, Firefox 92 and Safari 17) draw the
-Greek unscaled while laying it out scaled; the `:not()` list the scope uses needs Chrome
-88, Firefox 84 or Safari 9.
+Greek unscaled while laying it out scaled; the scope needs `:not()` with a selector list
+(Chrome 88, Firefox 84, Safari 9) and `:is()` (Chrome 88, Firefox 88, Safari 14).
+
+**Live preferences and overlays.** Two things outlive the first render, and both have to
+keep the drawn face and the metric tables together.
+
+- **The reader’s font-set control** (the settings widget’s `font-set` chooser) is also
+  the switch for this feature.
+  The CSS flips instantly, but the metric tables were handed to KaTeX once, at load,
+  through a setter with no getter, over TeX that is gone as soon as it has been typeset
+  — so they cannot be swapped in place.
+  The widget therefore persists the choice and reloads, and `theme-bootstrap.js` stamps
+  it on `<html>` before first paint, so the page returns whole in the new mode.
+  The reload is taken only where it buys something: a page with no typeset math, or one
+  where the text face is off page-wide, switches in place.
+  A host that stamps `data-kpress-font-set` through its own control owns the same
+  reload.
+- **Footnote and section previews** are clones of already-rendered math that
+  `tooltips.js` mounts on the viewport pane or the body, outside every `.kpress`, so the
+  scoped rules above would stop applying to them and the overlay would draw KaTeX’s own
+  faces over boxes measured for the reading face.
+  The overlay therefore carries the originating wrapper’s resolved mode as
+  `data-kpress-math-text`, and both the composite scope in `katex-text-face.css` and the
+  `--kpress-katex-size-*` consumers in `components.css` admit `.kpress-tooltip`
+  alongside `.kpress`. Which composite it admits is decided by the clone’s source rather
+  than by the overlay’s position: the footnote preview is the only preview kind that
+  carries rendered math (the others are escaped text), and a footnote is a sans role in
+  every mode, so `.kpress-tooltip-footnote` takes `KPress Math Text Sans`. This is the
+  one place the two engines are decoupled — nothing re-renders in an overlay, so the
+  per-node table selection never reaches it — and the cascade alone keeps the drawn face
+  and the metrics the clone was laid out from together.
 
 **A host with another reading face.** The face is a contract, tuned for PT Serif and
 open to another. A host that pins its own reading face satisfies it in two places:
@@ -1345,8 +1387,8 @@ the inlining obligations.
 
 On screen the sans role is drawn from one variable face, `Source Sans 3 Variable`, at
 whatever weight the context asks for.
-On paper it is drawn from a set of static instances declared as the family
-`Source Sans 3`, which the print stylesheet puts ahead of the variable face.
+On paper it is drawn from a set of static instances of that face, declared as the family
+`KPress Print Sans`, which the print stylesheet puts ahead of the variable face.
 The screen is unaffected; the whole change lives under `@media print`.
 
 **Why.** Chromium’s PDF writer cannot embed a variable font at any position but its
@@ -1358,47 +1400,92 @@ But a viewer that smooths text drawn through the font machinery has no font to s
 and leaves the paths alone, so the sans reads a step lighter than the serif and the
 mathematics beside it.
 Measured with Quartz, the engine behind Preview, on one 12pt line, glyph `h`, as the
-fraction of the glyph box covered in ink, with font smoothing off then on:
+fraction of the glyph box covered in ink, with font smoothing off then on.
+Weight 410 is what the measurement happened to be taken at, a weight a host asks for
+rather than one KPress does; the effect is Type3 against embedded, not that weight, and
+a 410 request lands on the 400 instance:
 
 | How the glyph reaches the PDF | 3 px/pt | 2 px/pt |
 | --- | --- | --- |
-| Source Sans at 410, Type3 outline paths | 0.379 → 0.379 | 0.365 → 0.365 |
-| Source Sans at 410, static instance, embedded | 0.376 → 0.395 | 0.362 → 0.422 |
+| Sans at 410, Type3 outline paths | 0.379 → 0.379 | 0.365 → 0.365 |
+| Sans at 410, static instance, embedded | 0.376 → 0.395 | 0.362 → 0.422 |
 | KaTeX_Main, embedded | 0.275 → 0.318 | 0.273 → 0.327 |
 
 A static instance embeds like any other font and gains the same ink the serif and the
-mathematics gain.
-MuPDF, which does not smooth, agrees with Quartz within 1% on all three
-rows, so the difference is the smoothing and not the outlines.
-The measurements are recorded in
+mathematics gain. MuPDF, which does not smooth, agrees with Quartz within 1% on the
+smoothing-off column of all three rows, so the difference is the smoothing and not the
+outlines. The measurements are recorded in
 [Print Sans Faces Research](project/research/research-2026-09-07-print-sans-faces.md).
 
-**The family split.** The static set is the family `Source Sans 3` and the variable face
-is `Source Sans 3 Variable`, which are the upstream names of the two releases.
-Keeping them distinct means the two never share a weight range, so font matching never
-has to break a tie between them: under print the static family is first and answers
-every request it covers, and the variable face stays behind it as the fallback for a
-weight the set does not carry.
+**The family split.** The static set is the family `KPress Print Sans` and the variable
+face is `Source Sans 3 Variable`. The static faces are modified versions of Source Sans
+3 — instanced at one weight, with the variation tables removed — and the OFL they ship
+under reserves the name “Source” for the original, so a derived font distributed under
+that name would need Adobe’s permission.
+A name of KPress’s own is the alternative the license names, and the derived faces keep
+Adobe’s copyright and the OFL notice in their name tables (see `NOTICE.md`). Distinct
+names also mean the two families never share a weight range, so font matching never has
+to break a tie between them: under print the static family is first and answers every
+request, since a weight the set does not carry is matched to the nearest instance inside
+`KPress Print Sans` rather than passed on to the next family.
+The variable face stays behind it for the case where the family cannot answer at all, a
+build that ships without the instances, which is the behavior before this feature.
 
 **The set.** Six weights (370, 400, 550, 600, 650, 700) in normal and italic, twelve
 files of about 15KB, generated from the vendored variable faces by
 `devtools/instance_sans.py` into `static/fonts/` together with the stylesheet
 `static/css/print-fonts.css` that declares them.
 Both are generated files; `python -m devtools.instance_sans --check` verifies the
-shipped bytes and runs in `make lint`. The weights are the ones KPress’s own sans
-contexts request: the three weight tokens (370, 550, 650), the footnote controls’ 600,
-bold’s 700, and 400 for the resets.
-The two sans-mode headings ask for 380 and 440, which CSS weight matching lands on 370
-and 400; `.kpress-prose h4`’s 540 lands on 550. `tests/test_print_sans_faces.py` pins
-every landing place and fails if a stylesheet asks for a weight the set does not account
-for. The `@font-face` rules sit inside `@media print`, so a reader on screen never
+shipped bytes and runs in both `make lint` and `make lint-check`, the second of which is
+what CI runs. The weights are the ones KPress’s own sans contexts request: the three
+weight tokens (370, 550, 650), the footnote controls’ 600, bold’s 700, and 400 for the
+resets. The two sans-mode headings ask for 380 and 440, which CSS weight matching lands
+on 370 and 400; `.kpress-prose h4`’s 540 lands on 550. `tests/test_print_sans_faces.py`
+pins every landing place and fails if a stylesheet asks for a weight the set does not
+account for, and `tests/test_playwright_print_sans_face.py` measures the same table in
+Chromium. The `@font-face` rules sit inside `@media print`, so a reader on screen never
 downloads one, and `print-fonts.css` is registered right after `print.css` in
 `DEFAULT_CSS_ASSETS`.
 
-**The host hook.** `--kpress-host-font-sans-print` is the print-only sans stack, ahead
-of `--kpress-host-font-sans` in the print token.
-A host that overrides the sans weight tokens needs instances at its own weights; see
-[Host Integration](kpress-operations-and-host-integration.md#print-sans-faces-and-host-weights).
+The instances copy the variable faces’ `unicode-range` verbatim, so their coverage is
+the same Latin subset and no glyph is drawn from a static face that the variable one
+would have passed down the stack.
+The benefit is bounded by that subset: a code point outside it — Greek, CJK — matches
+neither family, falls through to the platform font, and still prints as Type3. Improving
+that means widening the vendored subset, not the instancing.
+
+**Export readiness.** A face declared inside `@media print` starts loading only when
+print layout asks for it, so an export that switches to print media and prints at once
+draws the page before the instances arrive.
+[`format/pdf.py`](../src/kpress/format/pdf.py) forces print layout, waits for
+`document.fonts.ready`, and then asks for the families the `@page` margin boxes name
+(`--kpress-font-sans` and `--kpress-font-prose`) before calling `page.pdf()`: a margin
+box sits outside the document tree, so its face never enters `document.fonts.ready` on
+its own and the footer would otherwise not print at all.
+`tests/test_playwright_print_pdf_fonts.py` pins both cases through the public
+`render_pdf`, one with the instances held back on the wire and one on a page where the
+footer is the only 400-weight sans, and asserts the exported PDF holds no Type3 font.
+
+The faces carry `font-display: swap` for the print paths that cannot wait: a browser’s
+own Print dialog, or a host that goes straight to `page.pdf()`. Print layout gets one
+chance to draw, and under `block` the text it has not got a face for is drawn as nothing
+at all — measured, the sans headings and the footer both vanish from such a PDF. Under
+`swap` the worst case is the fallback the stack already names, which is the variable
+face and its outline paths: a page that reads correctly and prints a step light, rather
+than a page with holes in it.
+There is no flash to trade against, since nothing on screen uses these rules.
+
+**The host hooks.** `--kpress-host-font-sans-print` is the print-only sans stack, ahead
+of `--kpress-host-font-sans` in the print token: a host that ships instances of its own
+points at them there.
+A host that sets only the screen hook, `--kpress-host-font-sans`, has named a family for
+both media and gets it in both — the static set is KPress’s default, not an override of
+a host’s deliberate choice — so such a host prints whatever its own family prints,
+outline paths included if it is a variable webfont.
+That is the case to know about, and
+[Host Integration](kpress-operations-and-host-integration.md#print-sans-faces-and-host-weights)
+states the obligation, along with what a host that overrides the sans weight tokens
+needs.
 
 ### Document Actions Widget
 
@@ -1468,7 +1555,7 @@ override any single role on its own, and otherwise the vendored reader faces app
 | Variable | Default (vendored) | Used by | Host hook |
 | --- | --- | --- | --- |
 | `--kpress-font-prose` | serif: PT Serif (`LocalPunct` punctuation) | reading body (`.kpress-prose`), H1/H2 | `--kpress-host-font-prose` |
-| `--kpress-font-sans` | sans: Source Sans 3 | UI chrome: TOC, captions, H3–H6, code-copy, **tooltips** | `--kpress-host-font-sans` |
+| `--kpress-font-sans` | sans: Source Sans 3 (`KPress Print Sans` instances under print) | UI chrome: TOC, captions, H3–H6, code-copy, **tooltips** | `--kpress-host-font-sans`, and `--kpress-host-font-sans-print` for print alone |
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
 | `--kpress-font-body` | sans: Source Sans 3 | `.kpress` wrapper base (a fallback; `.kpress-prose` overrides it for content) | `--kpress-host-font-body` |

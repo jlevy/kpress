@@ -4,7 +4,7 @@ The sans composite is the second half of the math text face: the same four style
 weight slots, drawing the Latin ranges from Source Sans 3 instead of PT Serif, applied
 inside a document's sans roles and under the reader's sans reading face.
 
-Three things here cannot be checked anywhere else and all three are load-bearing:
+Four things here cannot be checked anywhere else and all four are load-bearing:
 
 - each slot pins ONE weight, because a KaTeX metric table describes one weight and
   Source Sans's advances travel along the axis (see the research brief); the tables are
@@ -15,7 +15,11 @@ Three things here cannot be checked anywhere else and all three are load-bearing
   screen keeps the variable face and the PDF embeds a font";
 - the role list the rules are scoped on is spelled a second time in `katex-init.js`,
   which picks the matching metric table set per node, and the two copies must agree or
-  a caption is drawn in one face and laid out from the other.
+  a caption is drawn in one face and laid out from the other;
+- the footnote preview overlay takes the sans composite. It is the one place the two
+  engines are decoupled -- the overlay carries a CLONE and nothing re-renders in it --
+  so the cascade alone has to keep the drawn face and the metrics it was laid out from
+  together.
 """
 
 from __future__ import annotations
@@ -78,9 +82,18 @@ SANS_RULES = {
 #: JS selector that is not a role.
 PROSE_FONT_SANS = '[data-kpress-prose-font="sans"]'
 
+#: The third scope: a footnote preview, which tooltips.js mounts outside every `.kpress`
+#: and stamps with the originating wrapper's math mode. It is the only preview kind that
+#: carries rendered math, and a footnote is a sans role in every mode, so the clone it
+#: carries was laid out from the sans tables and has to be drawn from the sans composite.
+#: There is no `:not()` here: the overlay opts in by the stamp, which tooltips.js has
+#: already resolved against the same three opt-outs.
+OVERLAY_SCOPE = '.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote'
+
 _PRINT_BLOCK = re.compile(r"@media print\s*\{")
 _ROLE_LIST = re.compile(r"\)\s*:is\((?P<roles>[^)]*)\)\s*\.katex")
 _JS_SANS_CONTEXT = re.compile(r"const SANS_CONTEXT =\s*(?P<value>'[^']*'|\"[^\"]*\");", re.DOTALL)
+_NOT_LIST = re.compile(r":not\((?P<exclusions>[^)]*)\)")
 #: Selector budget a consuming host's stylesheet check applies; the CSS comment quotes it.
 MAX_SELECTOR_CHARS = 400
 
@@ -110,7 +123,8 @@ def _rules(css: str) -> dict[str, list[tuple[str, str]]]:
         if FAMILY not in body or "@" in match.group("sel") or "@" in body:
             continue
         selector = " ".join(match.group("sel").split())
-        tail = selector.split(")")[-1].strip()
+        # Two scopes end in `)`; the overlay's is a plain compound, so strip it by name.
+        tail = selector.split(")")[-1].strip().removeprefix(OVERLAY_SCOPE).strip()
         found.setdefault(tail, []).append((selector, body))
     return found
 
@@ -199,24 +213,51 @@ def test_greek_is_scaled_by_the_generator_factor_for_the_sans() -> None:
     assert expected["KaTeX_Math-Italic.woff2"] > 100
 
 
-def test_every_class_is_repointed_in_both_scopes() -> None:
-    """One rule per class per scope: the document's sans roles, and the sans reading
-    face. Separate rules rather than one selector list, so each selector stays short."""
+def test_every_class_is_repointed_in_all_three_scopes() -> None:
+    """One rule per class per scope: the document's sans roles, the sans reading face,
+    and the footnote preview overlay. Separate rules rather than one selector list, so
+    each selector stays short."""
     rules = _rules(_COMMENT_RE.sub("", _css()))
 
     assert sorted(rules) == sorted(SANS_RULES)
     for tail, katex_family in SANS_RULES.items():
-        assert len(rules[tail]) == 2, f"{tail} needs a role scope and a reading-face scope"
+        assert len(rules[tail]) == 3, f"{tail} needs the roles, the reading face, the overlay"
         selectors = [selector for selector, _body in rules[tail]]
         assert any(
             ":is(" in selector and ".kpress-figcaption" in selector for selector in selectors
         ), tail
         assert any(PROSE_FONT_SANS in selector for selector in selectors), tail
+        assert sum(selector.startswith(OVERLAY_SCOPE) for selector in selectors) == 1, tail
         for selector, body in rules[tail]:
             assert f"font-family: {FAMILY}, {katex_family}" in body, (tail, body)
-            for exclusion in SCOPE_EXCLUSIONS:
-                assert exclusion in selector, (tail, exclusion)
             assert len(selector) <= MAX_SELECTOR_CHARS, (tail, len(selector))
+
+
+def test_the_two_document_scopes_list_every_opt_out_twice() -> None:
+    """The same guard the serif rules carry, and for the same reason: `closest()` reads
+    each attribute on the wrapper itself as well as on an ancestor, so a scope that only
+    excluded the descendant form would let the sans composite draw Source Sans over the
+    Computer Modern numbers `katex-init.js` had declined to replace. Compared as a set,
+    because `[data-kpress-font-set="system"]` is a substring of its own descendant form
+    and a containment check passes whether or not the bare one is there.
+
+    The overlay scope is exempt and carries no `:not()`: it is stamped by tooltips.js,
+    which resolves the same three opt-outs before it writes the attribute.
+    """
+    rules = _rules(_COMMENT_RE.sub("", _css()))
+
+    checked = 0
+    for tail in SANS_RULES:
+        for selector, _body in rules[tail]:
+            if selector.startswith(OVERLAY_SCOPE):
+                assert ":not(" not in selector, tail
+                continue
+            found = _NOT_LIST.search(selector)
+            assert found, (tail, selector)
+            listed = {part.strip() for part in found.group("exclusions").split(",")}
+            assert listed == SCOPE_EXCLUSIONS, (tail, listed)
+            checked += 1
+    assert checked == len(SANS_RULES) * 2, "two document scopes for each class"
 
 
 def test_bold_asks_for_the_sans_bold_token_not_upstreams_700() -> None:
@@ -227,6 +268,20 @@ def test_bold_asks_for_the_sans_bold_token_not_upstreams_700() -> None:
         for _selector, body in rules[tail]:
             assert "font-weight: var(--kpress-font-weight-sans-bold, 650)" in body, (tail, body)
     assert SANS_BOLD_WEIGHT == 650, "the fallback above and the tables' build weight"
+
+
+def test_textrm_takes_the_family_only_here_too() -> None:
+    """`\\textrm{\\textit{x}}` is one `.mord.textrm.textit` leaf. These rules land at
+    (0,5,0), so a `font-style: normal` would outrank upstream's `.textit` at (0,2,0) and
+    draw the upright slot over a run KaTeX laid out from the italic table -- the reason
+    the serif rule drops the pin, and truer here, one class further up. `.mainrm` keeps
+    it, because upstream pins it too."""
+    rules = _rules(_COMMENT_RE.sub("", _css()))
+
+    for _selector, body in rules[".katex .textrm"]:
+        assert "font-style" not in body, body
+    for _selector, body in rules[".katex .mainrm"]:
+        assert "font-style: normal" in body, body
 
 
 def test_the_role_list_matches_the_one_katex_init_selects_tables_with() -> None:

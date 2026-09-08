@@ -1234,12 +1234,22 @@
    therefore carries at least one extra class or type. For the same reason the
    sans-context rule comes after the prose and display rules: it ties them at
    (0,3,0) and wins on order, which is what puts math in a caption at caption
-   size. */
-.kpress .katex {
+   size.
+
+   THE PREVIEW OVERLAY takes the same tokens. A footnote or section preview is a
+   clone of already-rendered math that tooltips.js mounts on the viewport pane or
+   the body, outside every `.kpress`, so without a scope of its own it would fall
+   back to upstream's 1.21em while the document beside it reads at the token. The
+   token's value comes from wherever the overlay sits in the cascade: 1em when
+   katex-text-face.css matches the overlay's stamped math mode, style-tokens.css's
+   1.05em otherwise, which is exactly the document's own rule. */
+.kpress .katex,
+.kpress-tooltip .katex {
   font-size: var(--kpress-katex-size-prose);
 }
 
-.kpress .katex-display .katex {
+.kpress .katex-display .katex,
+.kpress-tooltip .katex-display .katex {
   font-size: var(--kpress-katex-size-display);
 }
 

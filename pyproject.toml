@@ -217,6 +217,10 @@ skip = "tests/fixtures,tests/golden/accepted,tests/e2e/docs,src/kpress/format/st
 ignore-words-list = "caf"
 
 [tool.pytest.ini_options]
+# -rs so a skip says so and why. The browser tests skip when Playwright or Chromium is
+# absent, which is the normal state of a CI job that installs neither; a bare `s` in the
+# progress line is not enough to notice that a whole class of coverage did not run.
+addopts = "-rs"
 python_files = ["*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

@@ -12,16 +12,22 @@ regression this one cannot tell the faces apart by advance either. Chromium answ
 directly through ``CSS.getPlatformFontsForNode``, which names the face it resolved, and
 that is what this measures.
 
-Three invariants on one document:
+Four invariants on one document:
 
 - the digits of mathematics in a table cell resolve to Source Sans 3 and the digits of
   the same expression in prose resolve to PT Serif;
-- under print media the table cell's digits come from a static Source Sans instance
-  rather than the variable face, so a PDF embeds a font instead of Type3 outline paths;
+- under print media the table cell's digits come from a static `KPress Print Sans`
+  instance rather than the variable face, so a PDF embeds a font instead of Type3
+  outline paths;
 - the table cell's fraction is laid out from the sans table: Source Sans's digits are
   0.638em tall against PT Serif's 0.712em, so KaTeX's vertical list for `4001/4000` is
   shorter there than in prose, which is what per-node table selection buys and what a
-  CSS-only swap would leave undone.
+  CSS-only swap would leave undone;
+- a footnote preview overlay draws the sans composite too. The overlay is a clone of
+  math already typeset from the sans table, mounted outside every `.kpress`, so drawing
+  it in the serif composite would put PT Serif glyphs on Source Sans metrics. This is
+  the one place the two engines are decoupled -- nothing re-renders in the overlay --
+  so only the cascade can keep them together.
 """
 
 from __future__ import annotations
@@ -34,6 +40,7 @@ from typing import Any, TypedDict, cast
 
 import pytest
 
+from devtools.instance_sans import FAMILY
 from devtools.katex_text_metrics import SANS_REGULAR_WEIGHT
 from kpress.publish import build_site
 
@@ -41,8 +48,9 @@ from kpress.publish import build_site
 #: instance, and Source Sans 3 Variable's default position is 200, its ExtraLight.
 VARIABLE_FACE = "Source Sans 3 ExtraLight"
 #: The static instance the composite's regular slot layers in under print media, named by
-#: its weight in `devtools/instance_sans.py`.
-PRINT_INSTANCE = f"SourceSans3-{SANS_REGULAR_WEIGHT}"
+#: its family and weight in `devtools/instance_sans.py`. The instances carry a family of
+#: their own because the upstream licence reserves the name "Source".
+PRINT_INSTANCE = f"{FAMILY.replace(' ', '')}-{SANS_REGULAR_WEIGHT}"
 SERIF_FACE = "PT Serif"
 
 #: How much shorter KaTeX's vertical list for `4001/4000` comes out from the sans table
@@ -116,6 +124,28 @@ _PROBE = """(() => {
 })()"""
 
 
+#: Opens a footnote preview and tags the digit run inside the CLONE it carries, so the
+#: same CDP probe can name the face Chromium drew the overlay with. Focus is the trigger
+#: with no timer in front of it; the pointer path goes through a 500ms show delay.
+_OVERLAY_PROBE = """(() => {
+  const tooltip = document.querySelector('.kpress-tooltip-footnote');
+  if (!tooltip) { throw new Error('no footnote preview opened'); }
+  const root = tooltip.querySelector('.katex');
+  if (!root) { throw new Error('the preview carries no rendered math'); }
+  const digits = [...root.querySelectorAll('.mord')].find(
+    (el) => el.children.length === 0 && /^[0-9]+$/.test(el.textContent.trim())
+  );
+  if (!digits) { throw new Error('no digit run in the preview'); }
+  digits.id = 'kpress-probe-overlay';
+  return {
+    stamp: tooltip.getAttribute('data-kpress-math-text'),
+    // The overlay leaves the document's subtree, so this has to be false for the test
+    // to be about the stamp rather than about inheritance.
+    inWrapper: Boolean(tooltip.closest('.kpress')),
+  };
+})()"""
+
+
 def _platform_font(page: Any, selector: str) -> dict[str, Any]:
     """The face Chromium drew most of a node's glyphs with, as it reports it."""
     session = page.context.new_cdp_session(page)
@@ -183,6 +213,11 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
                     name: _platform_font(page, f"#kpress-probe-{name}")
                     for name in ("prose", "table", "footnote")
                 }
+                page.focus('.kpress-footnote-ref a[href^="#fn-"]')
+                page.wait_for_selector(".kpress-tooltip-footnote", timeout=10_000)
+                page.evaluate("document.fonts.ready")
+                stamped = cast(dict[str, Any], page.evaluate(_OVERLAY_PROBE))
+                overlay = _platform_font(page, "#kpress-probe-overlay")
                 printed = _settled(page, "#kpress-probe-table", "print")
             finally:
                 browser.close()
@@ -202,9 +237,16 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
 
     # Print: the static instance layered into the same composite, so a PDF embeds a font.
     assert printed["isCustomFont"], printed
-    assert printed["familyName"].startswith("Source Sans 3"), printed
+    assert printed["familyName"].startswith(FAMILY), printed
     assert printed["familyName"] != VARIABLE_FACE, printed
     assert printed["postScriptName"] == PRINT_INSTANCE, printed
+
+    # The preview overlay: a clone of the footnote's math, mounted outside every
+    # `.kpress`, drawn from the same composite the metrics it carries were built for.
+    assert stamped["inWrapper"] is False, stamped
+    assert stamped["stamp"] == "prose", stamped
+    assert overlay["isCustomFont"], overlay
+    assert overlay["familyName"] == VARIABLE_FACE, overlay
 
     # Laid out: the sans table makes KaTeX size the fraction for the shorter digits it
     # now draws there, so the vertical list is shorter than the prose one's.

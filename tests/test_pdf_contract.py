@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 from pytest import MonkeyPatch
@@ -73,6 +74,10 @@ def test_browser_pdf_backend_uses_playwright_print_pipeline(
         def emulate_media(self, *, media: str) -> None:
             events.append(("media", media))
 
+        def evaluate(self, expression: str, arg: object = None) -> object:
+            events.append(("evaluate", "document.fonts.ready" in expression, arg))
+            return None
+
         def pdf(self, *, path: str, format: str, print_background: bool) -> None:
             events.append(("pdf", Path(path).name, format, print_background))
             Path(path).write_bytes(b"%PDF-1.4\n% browser\n")
@@ -119,6 +124,18 @@ def test_browser_pdf_backend_uses_playwright_print_pipeline(
     assert report.path.read_bytes().startswith(b"%PDF-1.4")
     assert ("media", "print") in events
     assert ("pdf", "kpress-output.pdf", "A4", False) in events
+    # The print faces have to finish loading between the media switch and the print:
+    # the static instances are declared inside `@media print`, and the `@page` margin
+    # boxes need their families asked for by name.
+    names = [event[0] for event in events]
+    assert names.index("media") < names.index("evaluate") < names.index("pdf")
+    readiness = next(event for event in events if event[0] == "evaluate")
+    assert readiness[1] is True, readiness
+    tokens, sample, timeout_ms = cast(tuple[list[str], str, int], readiness[2])
+    assert tokens == ["--kpress-font-sans", "--kpress-font-prose"], readiness
+    assert sample.strip(), readiness
+    # Bounded: a face that never answers prints as it did before the wait existed.
+    assert timeout_ms > 0, readiness
     assert any(
         event[0] == "goto"
         and isinstance(event[1], str)

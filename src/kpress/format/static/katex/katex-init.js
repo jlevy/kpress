@@ -27,18 +27,35 @@ const OPTIONS = {
 // `globalThis.kpressKatexTextMetrics`, keyed by KaTeX face name plus a `scale`
 // entry that belongs to the stylesheet's `size-adjust`, not to KaTeX.
 //
-// WHETHER to use the tables is one setting for the whole page. The decision is
-// taken over every math host on the page, under the same three opt-outs the
-// stylesheet honours on any ancestor: `data-kpress-math-text="katex"`,
-// `data-kpress-fonts="system"` and the reader's persisted
-// `data-kpress-font-set="system"`. A page that mixes opted-in and opted-out
-// hosts is unsupported; the metrics follow the opted-in ones.
+// WHETHER to use the tables is one setting for the whole page: a page cannot lay
+// out one document with the reading face's numbers and another with Computer
+// Modern's. The decision is therefore taken over every math host on the page,
+// under the same three opt-outs the stylesheet honours:
+// `data-kpress-math-text="katex"`, `data-kpress-fonts="system"` and the reader's
+// persisted `data-kpress-font-set="system"`. `closest()` reads each of them on
+// the element itself as well as on any ancestor, and each appears in the
+// stylesheet's scope twice for the same reason, so the two guards agree wherever
+// an attribute is stamped -- on <html>, on an embedding host's root, or directly
+// on the wrapper. A page that mixes opted-in and opted-out hosts is unsupported;
+// the metrics follow the opted-in ones.
+//
+// That decision is also taken ONCE, at load. Nothing can read the tables back, so
+// the reader's font-set control completes a change of mode with a reload rather
+// than by rebuilding them in place; see `fontSetSwitchNeedsReload` in
+// js/settings-widget.js.
 //
 // WHICH tables is decided per rendered node, because a serif document's captions
 // and tables are set in the sans (below). `__setFontMetrics` replaces a table in
 // the KaTeX singleton, so only one set exists at a time and it has to be the right
 // one at the moment `render` is called: the loop installs the node's set, renders,
 // and leaves the serif set behind for whatever runs after it.
+//
+// A footnote preview overlay carries a CLONE of math this loop already typeset, so
+// it is never re-rendered and never reaches this selection. Its boxes were measured
+// from whichever set the ORIGINATING node took -- and a footnote is a sans context in
+// every mode -- so katex-text-face.css draws the overlay in the sans composite. See
+// its `.kpress-tooltip-footnote` scope, and `resolvedMathTextFont` in js/tooltips.js
+// for the mode stamp the overlay carries out of the document.
 //
 // If a host wants the face and the tables cannot be applied -- the asset did not
 // load, or a KaTeX bump renamed its private setter -- the face is turned off as
