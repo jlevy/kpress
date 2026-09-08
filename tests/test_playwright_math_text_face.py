@@ -563,6 +563,17 @@ KATEX_FACE_COUNTS = {"KaTeX_Main": 4, "KaTeX_Math": 2}
 #: `\boldsymbol` and `\textbf`, which this fixture has none of.
 REQUIRED_KATEX_FACES = (("KaTeX_Main", "normal", "400"), ("KaTeX_Math", "italic", "400"))
 
+#: The init's own ceiling on the wait (`FACE_WAIT_MS` in katex-init.js), and the bound
+#: this test holds the first render to. Every ordering assertion below is relative to
+#: `firstKatex`, so a page whose faces never settle satisfies all of them by rendering
+#: three seconds late; the bound is what tells that apart from the wait working. Two
+#: thirds of the ceiling: far above any real load on any runner, and far enough below
+#: 3000 that a render the deadline released cannot land under it. It is the init's
+#: constant and not this machine's speed, so it is as platform-independent as the
+#: orderings are.
+FACE_WAIT_MS = 3000
+FACE_WAIT_BOUND_MS = 2000
+
 
 def _face_key(face: FaceTiming) -> str:
     """The identity `katex-init.js` records a face under (its `faceKey`)."""
@@ -636,6 +647,27 @@ def _loaded_first(probe: PaintProbe, faces: list[FaceTiming], why: str) -> None:
         )
 
 
+def _settled_before_the_deadline(probe: PaintProbe) -> None:
+    """The wait ran to its end rather than being cut short by `FACE_WAIT_MS`.
+
+    Without this the orderings above are satisfied by the failure they exist to
+    catch: a face whose `load()` never settles renders the page three seconds late,
+    every other face is long since loaded, and each `loaded <= firstKatex` holds. It
+    has happened on this branch once already, as `KaTeX_Main normal 700` never
+    loading on the Linux runner. The record is where it shows: a request the
+    deadline beat is left `pending`, and a render past the bound is the deadline
+    having won even where the record cannot say so.
+    """
+    first = probe["firstKatex"]
+    assert first is not None
+    pending = [entry for entry in probe["wait"] if entry["outcome"] == "pending"]
+    assert pending == [], f"the deadline cut the wait short\n{_report(probe)}"
+    assert first < FACE_WAIT_BOUND_MS, (
+        f"the first .katex was inserted at {first:.1f}ms, past the {FACE_WAIT_BOUND_MS}ms"
+        f" bound on the init's {FACE_WAIT_MS}ms ceiling\n{_report(probe)}"
+    )
+
+
 def _covered(probe: PaintProbe) -> list[FaceTiming]:
     """The faces the init's wait actually covered: the ones its requests matched.
 
@@ -673,16 +705,18 @@ def test_math_paints_once_in_its_final_faces(tmp_path: Path) -> None:
     which reads as the digits in every formula changing font. `katex-init.js`
     loads the faces the mode will use and renders after they settle.
 
-    Three things are asserted, which is exactly what the wait promises: the
+    Four things are asserted, which is exactly what the wait promises: the
     composite's eight faces are loaded first in the mode that draws from them;
-    every face the wait's own record says it covered is loaded first; and the two
+    every face the wait's own record says it covered is loaded first; the two
     KaTeX faces every expression here is drawn from -- upright `KaTeX_Main` and
-    italic `KaTeX_Math` -- are loaded first in both modes. A KaTeX face the
-    fixture never asks for and the browser did not load is not a failure; the
-    record says which those were.
+    italic `KaTeX_Math` -- are loaded first in both modes; and the wait settled
+    rather than being released by its own deadline, without which each of the
+    other three is satisfied by a page that renders three seconds late. A KaTeX
+    face the fixture never asks for and the browser did not load is not a
+    failure; the record says which those were.
 
-    Relative times only, so the assertion is the ordering and not this machine's
-    speed.
+    Relative times and the init's own ceiling only, so the assertions are the
+    ordering and the wait's contract, not this machine's speed.
     """
     default = _paint_probe(tmp_path / "prose", None)
     assert default["firstKatex"] is not None, (
@@ -695,6 +729,7 @@ def test_math_paints_once_in_its_final_faces(tmp_path: Path) -> None:
         asked = [entry for entry in default["wait"] if entry["request"].startswith(f"{family}|")]
         assert len(asked) == count, f"{family} faces asked for: {asked}\n{_report(default)}"
 
+    _settled_before_the_deadline(default)
     composite = _faces(default, TEXT_FACE_FAMILY)
     # Four slots, each two faces: the reading face and the KaTeX face for Greek.
     assert len(composite) == 8, _report(default)
@@ -712,5 +747,6 @@ def test_math_paints_once_in_its_final_faces(tmp_path: Path) -> None:
     assert [entry for entry in katex["wait"] if TEXT_FACE_FAMILY in entry["request"]] == [], (
         _report(katex)
     )
+    _settled_before_the_deadline(katex)
     _loaded_first(katex, _covered(katex), "a face the wait covered")
     _loaded_first(katex, _required(katex), "a face every expression here uses")

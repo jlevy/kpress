@@ -122,6 +122,9 @@ function waitRecord() {
 }
 
 beforeEach(() => {
+  // The deadline case below installs fake timers; every other case in the file
+  // measures nothing and waits on real ones.
+  vi.useRealTimers();
   document.body.innerHTML = "";
   Reflect.deleteProperty(document, "fonts");
   Reflect.deleteProperty(globalThis, "kpressMathFaceWait");
@@ -322,6 +325,32 @@ describe("katex-init.js paints the mathematics once", () => {
     // must be legible afterwards as a face the wait did not in fact cover.
     expect(waitRecord()[loads[0].request]).toBe("error");
     expect(globalThis.kpressMathFaceWait[0].detail).toContain("the face did not load");
+  });
+
+  it("renders at the three-second ceiling when the faces never settle", async () => {
+    // The deadline is what stops a font that hangs from meaning no mathematics at
+    // all, and it is the one branch the cases above cannot reach: they settle every
+    // load. Here nothing settles, so the render can only come from the race.
+    vi.useFakeTimers();
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+    // Late mathematics in the fallback faces, not no mathematics: the tables are
+    // installed and the nodes are stamped exactly as on the settled path.
+    expect(globalThis.katex.__setFontMetrics).toHaveBeenCalledTimes(FACES.length);
+    expect(document.querySelector("[data-kpress-math]").dataset.kpressMathRendered).toBe("true");
+    // Every request is still outstanding, and the record says so: `pending` is how a
+    // page that repainted is told apart from one whose faces the wait did cover.
+    expect(Object.values(waitRecord())).toEqual(Array(loads.length).fill("pending"));
   });
 
   it("records a request that matched no face as empty", async () => {
