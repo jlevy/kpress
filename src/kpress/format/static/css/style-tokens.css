@@ -134,14 +134,23 @@
   --kpress-font-size-small: calc(var(--kpress-font-size-base) * 0.95);
   --kpress-font-size-smaller: calc(var(--kpress-font-size-base) * 0.9);
   --kpress-font-size-tiny: calc(var(--kpress-font-size-base) * 0.85);
-  /* The mono rung, derived from the two faces' ink rather than guessed. Planetaire
-     Mono Text draws an x-height of 1120/2000 = 0.560 em against PT Serif's
-     500/1000 = 0.500, so at 0.87 of the prose size code's x-height is
-     0.87 x 0.560 = 0.487 em, about 97% of the prose x-height beside it -- a hair
-     smaller, which is what keeps a code span from bulging out of the line it sits
-     in. The cost is width: Planetaire advances 1204/2000 = 0.602 em per column, so
-     45 / (0.87 x 0.602) = 85.9, and 85 columns fit the --kpress-measure reading
-     column. `tests/test_mono_face.py` re-derives both numbers from the shipped faces.
+  /* The mono rung: 0.82 of the prose size, a judgement about how code should read
+     beside prose rather than a number the ink forces. What the ink gives is the
+     scale to make that judgement on. Planetaire Mono Text draws an x-height of
+     1120/2000 = 0.560 em against PT Serif's 500/1000 = 0.500, so parity of
+     x-height -- code and prose with the same visual height of lowercase -- would
+     want 0.500/0.560 = 0.893. At 0.82 code's x-height is 0.82 x 0.560 = 0.459 em,
+     91.8% of the prose x-height beside it: deliberately under parity, so a code
+     span reads as an inset in the line rather than competing with it. 0.87 sat at
+     97.4%, near enough to parity that code read too large beside the prose; 0.82 is
+     the owner's decision of 2026-09-08.
+
+     Width follows from the same number: Planetaire advances 1204/2000 = 0.602 em
+     per column, so 45 / (0.82 x 0.602) = 91.16, and 91 columns fit the
+     --kpress-measure reading column -- six more than 0.87 allowed.
+     `tests/test_mono_face.py` re-derives both numbers from the shipped faces, so
+     the ratio's consequences cannot drift from the ink even though the ratio itself
+     is a choice.
 
      A host retunes the three rungs together through --kpress-host-font-size-mono,
      the one sizing hook beside --kpress-host-font-size-base: small and tiny derive
@@ -150,15 +159,15 @@
 
      The two ramps pair by index -- mono/normal, mono-small/smaller,
      mono-tiny/tiny -- so the small and tiny multipliers are the prose ramp's own
-     steps, 0.9 and 0.85. That is what makes the ratio hold: 0.87 x 0.9 / 0.9 is
-     0.87 again, so all three rungs sit at the same 97% of the prose x-height
+     steps, 0.9 and 0.85. That is what makes the ratio hold: 0.82 x 0.9 / 0.9 is
+     0.82 again, so all three rungs sit at the same 91.8% of the prose x-height
      beside them instead of only the first one. They were 0.915 and 0.855, the
      pre-Planetaire absolutes rescaled (0.75/0.82, 0.70/0.82) and tuned for the
-     system monos this face replaced, which left small and tiny at 99% and 98% --
-     drifting toward the parity the rung above is chosen to stay under. */
+     system monos this face replaced, which left small and tiny above the rung they
+     sit under instead of level with it. */
   --kpress-font-size-mono: var(
     --kpress-host-font-size-mono,
-    calc(var(--kpress-font-size-base) * 0.87)
+    calc(var(--kpress-font-size-base) * 0.82)
   );
   --kpress-font-size-mono-small: calc(var(--kpress-font-size-mono) * 0.9);
   --kpress-font-size-mono-tiny: calc(var(--kpress-font-size-mono) * 0.85);

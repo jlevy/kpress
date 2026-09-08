@@ -6,8 +6,8 @@ Three questions, none of which needs a browser:
   stylesheet declares exactly the face its name says;
 - ``mono_font`` and ``mono_weights`` decide which of those files a render declares,
   and nothing that was not declared reaches the manifest;
-- the 0.87 size token is the ratio the two faces' ink asks for, re-derived here from
-  the shipped bytes rather than restated.
+- the 0.82 size token's consequences -- relative x-height and columns per measure --
+  are re-derived here from the shipped bytes rather than restated.
 
 The browser half -- which face Chromium actually resolved -- is in
 ``test_playwright_mono_face.py``, and the PDF half in
@@ -345,14 +345,15 @@ def test_the_style_tokens_switch_on_the_stamped_attribute() -> None:
     assert FAMILY not in font_mode
 
 
-def test_the_mono_size_token_is_the_ratio_the_two_faces_ask_for() -> None:
-    """0.87 is derived, so this re-derives it instead of restating the number.
+def test_the_mono_size_token_holds_the_measured_consequences_of_its_ratio() -> None:
+    """0.82 is a judgement, so this measures what it does rather than restating it.
 
-    The mono rung is chosen so code's x-height lands a hair under the prose x-height
-    beside it -- close enough that a code span does not bulge out of its line, under
-    it so it still reads as an inset. The width consequence is the second half: a
-    mono column is an advance wide whatever the letter, so the ratio also fixes how
-    much code fits the reading measure.
+    The ratio itself is a decision about how code should read beside prose -- the ink
+    does not force it. What the ink does fix is the consequences, and those are what
+    this re-derives from the shipped bytes: code's x-height against the prose
+    x-height beside it, held deliberately below parity so a code span reads as an
+    inset; and, since a mono column is an advance wide whatever the letter, how much
+    code fits the reading measure.
     """
     css = _STYLE_TOKENS.read_text(encoding="utf-8")
     token = re.search(
@@ -368,16 +369,21 @@ def test_the_mono_size_token_is_the_ratio_the_two_faces_ask_for() -> None:
     assert mono_x == 0.560, mono_x
     assert prose_x == 0.500, prose_x
 
-    # Code's x-height against the prose x-height beside it: 97%, just under parity.
-    relative_x_height = (ratio * mono_x) / prose_x
-    assert 0.95 <= relative_x_height <= 1.0, relative_x_height
-    assert round(relative_x_height, 2) == 0.97, relative_x_height
+    # Parity of x-height -- the same visible lowercase height in both faces -- would
+    # want 0.893. The rung sits below it on purpose, and this is the number the
+    # judgement is made against.
+    assert round(prose_x / mono_x, 3) == 0.893, prose_x / mono_x
 
-    # And the reading measure holds 85 columns of it: 45 / (0.87 x 0.602) = 85.9, and
+    # Code's x-height against the prose x-height beside it: 91.8%, under parity.
+    relative_x_height = (ratio * mono_x) / prose_x
+    assert 0.88 <= relative_x_height <= 0.95, relative_x_height
+    assert round(relative_x_height, 2) == 0.92, relative_x_height
+
+    # And the reading measure holds 91 columns of it: 45 / (0.82 x 0.602) = 91.16, and
     # a column is not divisible, so the floor is the number that fits.
     exact_columns = _MEASURE_EM / (ratio * mono_advance)
-    assert round(exact_columns, 2) == 85.92, exact_columns
-    assert int(exact_columns) == 85, exact_columns
+    assert round(exact_columns, 2) == 91.16, exact_columns
+    assert int(exact_columns) == 91, exact_columns
 
     # The small and tiny rungs derive from the mono rung, so a host that retunes it
     # through --kpress-host-font-size-mono keeps the proportions between the three.
@@ -386,10 +392,10 @@ def test_the_mono_size_token_is_the_ratio_the_two_faces_ask_for() -> None:
 
     # And they hold the same ratio the mono rung does, which is the whole claim the
     # three-rung ramp makes. The two ramps pair by index, so each mono multiplier is
-    # its prose partner's own step and the ratio collapses to 0.87 in every rung. Left
+    # its prose partner's own step and the ratio collapses to 0.82 in every rung. Left
     # unchecked, these were 0.915 and 0.855 -- the pre-Planetaire absolutes rescaled --
-    # which put small and tiny at 99% and 98% of the prose x-height beside them while
-    # the rung above sat at 97%. Nothing failed, because nothing measured them.
+    # which put small and tiny above the rung they sit under rather than level with it.
+    # Nothing failed, because nothing measured them.
     for rung, prose_step in (("small", 0.9), ("tiny", 0.85)):
         found = re.search(
             rf"--kpress-font-size-mono-{rung}:\s*calc\(var\(--kpress-font-size-mono\) \* ([\d.]+)\)",
