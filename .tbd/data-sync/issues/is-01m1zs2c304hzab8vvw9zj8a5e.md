@@ -3,16 +3,20 @@ type: is
 id: is-01m1zs2c304hzab8vvw9zj8a5e
 title: "Decide: rename the sans math family, or fix the host's substring count of KPress Math Text blocks"
 kind: task
-status: open
+status: closed
 priority: 2
-version: 2
+version: 3
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
 dependencies: []
 parent_id: is-01m1yxrn6e5m1ddfvc6nrcammj
 created_at: 2026-09-08T05:50:16.535Z
-updated_at: 2026-09-08T06:42:22.032Z
+updated_at: 2026-09-08T10:19:37.323Z
+closed_at: 2026-09-08T10:19:37.313Z
+close_reason: "Resolved by Squares PR #128, merged as 33cd47606dae223664f117945631440aa5c8ece9, with KPress pinned to 7b20ae702acf37020e6132265c8faa0ba74e4465. The host matches composite font families exactly instead of counting KPress Math Text as a substring, preserving the published KPress Math Text Sans family name. The merged host tree matches tested head 43c006bc; all pre-merge fast, Pages, and full deferred checks passed."
+resolution: null
+duplicate_of: null
 ---
 Owner decision, raised by the senior review of #57 (K57-R2, second half). The consuming
 squares host counts the composite's @font-face blocks in packing/devtools/render_explainer.py
