@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from kpress.errors import KPressPublishError
-from kpress.format.assets import mono_synthesis_gaps
+from kpress.format.assets import mono_weights_rejection
 from kpress.format.model import (
     DEFAULT_MONO_WEIGHTS,
     MONO_WEIGHT_ORDER,
@@ -298,7 +298,8 @@ def _validated_mono_weights(value: object, *, mono_font: str) -> tuple[MonoWeigh
     Under ``mono_font: planetaire`` the set must cover every style the packaged
     stylesheets ask for, because a style they ask for and this list withholds is not
     absent from the page -- the browser synthesizes it, and a synthesized glyph is one
-    no foundry drew. See ``mono_synthesis_gaps``. The three additive weights (medium,
+    no foundry drew. See ``mono_weights_rejection``, which words the refusal for this
+    surface and for ``RenderOptions`` alike. The three additive weights (medium,
     semibold, extrabold) are free to include or omit: nothing packaged asks for them.
 
     Under ``mono_font: system`` no Planetaire face is declared at all, so the value is
@@ -323,20 +324,14 @@ def _validated_mono_weights(value: object, *, mono_font: str) -> tuple[MonoWeigh
     weights: tuple[MonoWeight, ...] = tuple(
         weight for weight in MONO_WEIGHT_ORDER if weight in requested
     )
-    if mono_font != "system":
-        gaps = mono_synthesis_gaps(weights)
-        if gaps:
-            missing = ", ".join(f"{style!r} ({effect})" for style, effect in gaps)
-            declared = ", ".join(repr(name) for name in weights) or "nothing"
-            msg = (
-                f"format.mono_weights declares {declared}, which leaves the packaged "
-                f"stylesheets asking for a style no declared face answers: {missing}. "
-                f"Every style KPress's own CSS asks for must be declared, so no glyph "
-                f"is invented: add the missing names, or set format.mono_font to "
-                f"'system' to hand code back to the platform and ship no face at all. "
-                f"'italic' and 'bold-italic' are added and dropped together."
-            )
-            raise KPressPublishError(msg)
+    rejection = mono_weights_rejection(
+        weights,
+        mono_font=cast("MonoFont", mono_font),
+        weights_setting="format.mono_weights",
+        font_setting="format.mono_font",
+    )
+    if rejection is not None:
+        raise KPressPublishError(rejection)
     return weights
 
 

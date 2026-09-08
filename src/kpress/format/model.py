@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from kpress.errors import KPressPublishError
+from kpress.errors import KPressInvalidRequestError, KPressPublishError
 from kpress.models import PrintProfile, ThemeMode
 
 if TYPE_CHECKING:
@@ -201,8 +201,10 @@ class RenderOptions:
     # fetches only the subset of that its own code reaches. A style a rule asks
     # for and this list withholds is drawn by synthesis, so the two axes the
     # default stylesheets use -- weight and slant -- must both be covered:
-    # publish/config.py rejects a set that would leave either synthesized, and
-    # italic and bold-italic are added and dropped as a pair. The three extra
+    # __post_init__ below and publish/config.py both reject a set that would
+    # leave either synthesized, through the one message
+    # format.assets.mono_weights_rejection writes, and italic and bold-italic
+    # are added and dropped as a pair. The three extra
     # weights (medium, semibold, extrabold) are opt-in and synthesize nothing.
     # Order does not matter: the manifest emits MONO_WEIGHT_ORDER. Ignored when
     # mono_font is "system".
@@ -328,6 +330,27 @@ class RenderOptions:
     header_html: str = ""
     footer_html: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Refuse a mono set that would leave a style for the browser to invent.
+
+        The same gate `format.mono_weights` meets at config load, in the same
+        words. It lived only in `publish/config.py`, so `kpress build --config`
+        refused `mono_weights=("regular",)` while
+        `RenderOptions(mono_weights=("regular",))` accepted it and shipped the
+        `/Type3` PDF the gate exists to prevent -- and every other entry point
+        (export, render request, an embedding host's own call) builds its
+        options here rather than through the YAML surface.
+
+        Deferred import: `kpress.format.assets` imports this module, so the mono
+        helpers cannot be named at module scope.
+        """
+
+        from kpress.format.assets import mono_weights_rejection
+
+        rejection = mono_weights_rejection(self.mono_weights, mono_font=self.mono_font)
+        if rejection is not None:
+            raise KPressInvalidRequestError(rejection)
 
 
 # Built-in widget defaults, merged UNDER a host's widgets map: the settings

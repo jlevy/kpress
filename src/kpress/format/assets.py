@@ -313,6 +313,49 @@ def mono_synthesis_gaps(weights: Iterable[MonoWeight]) -> tuple[tuple[MonoWeight
     )
 
 
+def mono_weights_rejection(
+    weights: Iterable[MonoWeight],
+    *,
+    mono_font: MonoFont = "planetaire",
+    weights_setting: str = "mono_weights",
+    font_setting: str = "mono_font",
+) -> str | None:
+    """Why this mono set is refused, or `None` when it is admissible.
+
+    One message for both surfaces that accept the setting. `format.mono_weights` was
+    checked at config load and `RenderOptions(mono_weights=...)` was not, so the
+    guarantee the docs describe held for `kpress build --config` and not for the Python
+    API that every other entry point -- export, render, embed -- builds its options
+    with. A set that reaches a render unchecked ships the `/Type3` PDF the check exists
+    to prevent, so the two surfaces refuse the same sets in the same words.
+
+    `weights_setting` and `font_setting` name the two settings in the surface the caller
+    speaks: `format.mono_weights` in YAML, `mono_weights` on `RenderOptions`. Nothing
+    else in the message differs, so a host that meets the refusal on one surface
+    recognizes it on the other.
+
+    Raises `ValueError` (from `mono_weight_order`) for a style name that does not exist,
+    which is a different error from a set that is merely incomplete.
+    """
+
+    ordered = mono_weight_order(weights)
+    if mono_font == "system":
+        return None
+    gaps = mono_synthesis_gaps(ordered)
+    if not gaps:
+        return None
+    missing = ", ".join(f"{style!r} ({effect})" for style, effect in gaps)
+    declared = ", ".join(repr(name) for name in ordered) or "nothing"
+    return (
+        f"{weights_setting} declares {declared}, which leaves the packaged "
+        f"stylesheets asking for a style no declared face answers: {missing}. "
+        f"Every style KPress's own CSS asks for must be declared, so no glyph "
+        f"is invented: add the missing names, or set {font_setting} to "
+        f"'system' to hand code back to the platform and ship no face at all. "
+        f"'italic' and 'bold-italic' are added and dropped together."
+    )
+
+
 def mono_css_assets(
     *,
     mono_font: MonoFont = "planetaire",
