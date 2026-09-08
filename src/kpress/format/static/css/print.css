@@ -360,10 +360,20 @@
     content: "";
     font-size: calc(var(--kpress-font-size-base) * 0.7);
     height: 0.226em;
-    left: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
+    inset-inline-start: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
     position: absolute;
     top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
     width: 0.226em;
+  }
+
+  /* This selector outranks the shared forced-colors rule in components.css, so
+     the nested print marker needs its own copy or it prints as nothing in a
+     high-contrast profile. The reasoning is with that rule. */
+  @media (forced-colors: active) {
+    .kpress ol ul > li::before {
+      background: CanvasText;
+      forced-color-adjust: none;
+    }
   }
 
   .kpress .kpress-long-list,

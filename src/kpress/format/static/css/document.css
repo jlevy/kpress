@@ -212,14 +212,23 @@
    One consequence beyond the face: .claim's marker used to come out 60% larger
    than this one, because its stack is the sans and a different fallback answered
    it. All three bulleted lists now draw the one square --kpress-bullet-size
-   describes. */
+   describes.
+
+   The inline offset is logical, not physical. The glyph used `left`, and so did
+   this box at first, which put the marker on the far side of a right-to-left
+   item and pointed the 0.064em ink nudge away from the text instead of toward
+   it. `inset-inline-start` resolves to `right` under `dir="rtl"` and the nudge
+   follows it, so one pair of numbers serves both directions.
+
+   Forced colors need their own rule; components.css carries it, because that
+   file loads later and .claim's marker rule lives there. */
 .kpress-prose ul > li::before,
 .kpress .concepts ul > li::before {
   background: currentColor;
   content: "";
   font-size: var(--kpress-bullet-size);
   height: 0.226em;
-  left: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
+  inset-inline-start: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
   position: absolute;
   top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
   width: 0.226em;
