@@ -33,7 +33,7 @@ const METRICS = {
     "Main-Regular": { 48: [0, 0.638, 0, 0, 0.497] },
     "Main-Bold": { 48: [0, 0.636, 0, 0, 0.52] },
     "Math-Italic": { 97: [0, 0.498, 0, 0, 0.525] },
-    scale: { "Main-Regular": 0.966, "Math-Italic": 1.102 },
+    scale: { "Main-Regular": 0.96, "Math-Italic": 1.102 },
   },
   scale: { "Main-Regular": 1.025, "Math-Italic": 1.15 },
 };
@@ -63,21 +63,36 @@ function mountProseAndCaption({ wrapper = "" } = {}) {
     </div>`;
 }
 
-// Which set was installed when the n-th render ran: `__setFontMetrics` replaces a table
-// in the KaTeX singleton, so what matters is the last table handed over before the call.
+// Which set was installed when the n-th render ran, over EVERY face rather than one of
+// them. `__setFontMetrics` replaces one table per call, so what matters is the last table
+// handed over for each face before the render; a set is installed only when they all came
+// from the same one. Watching `Main-Regular` alone -- which this helper used to do --
+// called a half-installed state "sans" and would have passed a sans render whose
+// `Math-Italic` was still the serif table, which is Source Sans letters on PT Serif
+// boxes, the one state the design forbids. A mixed result is returned as the per-face
+// list so the failure names the face that was left behind.
 function setInstalledForRender(index) {
   const installs = globalThis.katex.__setFontMetrics.mock;
   const renderedAt = globalThis.renderMathInElement.mock.invocationCallOrder[index];
-  let table = null;
-  installs.calls.forEach(([face, value], call) => {
-    if (face === "Main-Regular" && installs.invocationCallOrder[call] < renderedAt) {
-      table = value;
+  /** @type {Record<string, unknown>} */
+  const installed = {};
+  installs.calls.forEach(([face, table], call) => {
+    if (installs.invocationCallOrder[call] < renderedAt) {
+      installed[face] = table;
     }
   });
-  if (table === METRICS.sans["Main-Regular"]) {
-    return "sans";
-  }
-  return table === METRICS["Main-Regular"] ? "prose" : null;
+  const sets = FACES.map((face) => {
+    if (installed[face] === METRICS.sans[face]) {
+      return "sans";
+    }
+    return installed[face] === METRICS[face] ? "prose" : `${face}:none`;
+  });
+  return sets.every((set) => set === sets[0]) ? sets[0] : sets.join(",");
+}
+
+/** The mark katex-init.js stamps, read off the n-th math node. */
+function markOf(index) {
+  return mathNodes()[index].dataset.kpressMathFace;
 }
 
 function mathNodes() {
@@ -276,6 +291,59 @@ describe("katex-init.js per-node table selection", () => {
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(2);
     expect(setInstalledForRender(0)).toBe("prose");
     expect(setInstalledForRender(1)).toBe("sans");
+  });
+
+  it("marks the caption node for the stylesheet and leaves the prose node unmarked", () => {
+    // The mark is what katex-text-face.css draws the sans composite on, so it and the
+    // table set have to come out of the same decision. Absence is what "serif" means.
+    mountProseAndCaption();
+
+    runInitScript();
+
+    expect(markOf(0)).toBeUndefined();
+    expect(markOf(1)).toBe("sans");
+  });
+
+  it("marks every node under the reader's sans reading face", () => {
+    // The reading face used to be a CSS scope of its own, seven more rules. It is the
+    // last entry of SANS_CONTEXT instead, so the mark already covers it.
+    mountProseAndCaption({ wrapper: 'data-kpress-prose-font="sans"' });
+
+    runInitScript();
+
+    expect(markOf(0)).toBe("sans");
+    expect(markOf(1)).toBe("sans");
+  });
+
+  it("marks nothing when the tables are not ours to install", () => {
+    // Face without metrics is the forbidden state, and a mark without metrics is the
+    // same thing said in CSS: it would draw Source Sans over Computer Modern's numbers.
+    globalThis.kpressKatexTextMetrics = undefined;
+    mountProseAndCaption();
+
+    runInitScript();
+
+    expect(markOf(0)).toBeUndefined();
+    expect(markOf(1)).toBeUndefined();
+  });
+
+  it("gives a host one call that installs the tables and marks the node together", () => {
+    // The documented re-render path: a host that calls katex.render after load would
+    // otherwise always get the serif set, since the loop restores it, and in a caption
+    // that is Source Sans drawn over PT Serif's numbers on a path the ops doc invites.
+    mountProseAndCaption();
+
+    runInitScript();
+    globalThis.katex.__setFontMetrics.mockClear();
+    const caption = mathNodes()[1];
+    const installed = globalThis.kpressMathText.installTablesFor(caption);
+
+    expect(installed).toBe("sans");
+    expect(caption.dataset.kpressMathFace).toBe("sans");
+    const tables = Object.fromEntries(globalThis.katex.__setFontMetrics.mock.calls);
+    for (const face of FACES) {
+      expect(tables[face]).toBe(METRICS.sans[face]);
+    }
   });
 
   it("leaves the serif set installed once the page is rendered", () => {

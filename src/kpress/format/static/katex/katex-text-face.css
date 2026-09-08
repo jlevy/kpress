@@ -547,37 +547,53 @@
 
 /* ---------------------------- THE SANS FEATURE RULES ------------------------------ */
 
-/* Three scopes, one composite. The first reaches the sans roles of any document: the
-   roles below are every place a kpress stylesheet sets `--kpress-font-sans`,
-   `--kpress-font-footnote` or `--kpress-font-table` on running author text. Headings
-   and the TOC are sans roles too and are deliberately NOT here: both are set at the
-   sans bold weight, where a table built at 400 does not describe the glyphs and the
-   pinned 400 would set the mathematics a step lighter than the words. The second scope
-   is the reader's sans reading face, where the whole document is sans. The third is the
-   footnote preview overlay, at the end of this section.
+/* Two scopes, one composite. The first is the document itself, reached by the mark
+   `katex-init.js` stamps on every math node it installs the sans metric tables for:
+   a caption, a footnote, a table cell, one of the semantic containers, a `<details>`,
+   a tab button -- and, when the reader has chosen the sans reading face, every node in
+   the document. The second is the footnote preview overlay, at the end of this section.
 
-   All three carry the same three opt-outs as the serif rules above, each spelled twice
-   for the reason recorded there -- once for the wrapper itself, once for an ancestor --
-   and all land one class above the serif rules: (0,5,0) against (0,4,0), and (0,4,0)
-   against (0,3,0) for the root rule. So the sans composite wins inside a sans context
-   and does not exist outside one. Omitting a bare form here would be the one failure
-   this file exists to prevent, and a quiet one: `katex-init.js` reads the same attribute
-   with `closest()` and would install no tables at all, leaving Source Sans drawn over
-   Computer Modern's numbers inside every caption.
+   THE MARK RATHER THAN A ROLE LIST. These rules used to spell the twelve sans roles out,
+   once per repointed class and a second seven times for the reading face: fourteen copies
+   of a selector `katex-init.js` also has to spell, in a language where it cannot be
+   shared. Both costs were real. A role dropped from one of the fourteen drew Source Sans
+   over Computer Modern's numbers in that one role with the whole suite still green, since
+   only the first copy was ever pinned against the script. And the seven role selectors
+   ran to 477 characters against the 400 a consuming host's stylesheet check allows, so
+   the next role could not be added at all. Keying on the mark costs one attribute per
+   rendered math node and leaves ONE list, in the file that must have it anyway, since
+   only a script can install a metric table.
 
-   The scopes are separate rules rather than one selector list to keep each selector
-   inside the 400-character budget a consuming host's stylesheet check applies; the
-   longest below is 395, so a further role has to buy its room from the list.
+   A page without JavaScript is unaffected. There is no `.katex` for any of these rules to
+   match until the script has rendered one, only the semantic MathML fallback.
+
+   The mark says nothing about the opt-outs, so the `:not()` stays, spelled the way the
+   serif rules above spell it: each attribute twice, once for the wrapper itself and once
+   for an ancestor, because `closest()` reads both. `katex-init.js` marks a node wherever
+   the sans set is what it installs, which includes a wrapper that opted out inside a page
+   that did not, so dropping the guard here would draw Source Sans over the Computer
+   Modern numbers that wrapper asked to keep.
+
+   Specificity is what it was before the mark: `.kpress:not(...)` at (0,2,0), plus the
+   mark, plus `.katex` lands the root rule at (0,4,0) against the serif root rule's
+   (0,3,0), and each leaf class one higher again, (0,5,0) against (0,4,0). Margin +1
+   everywhere, so the sans composite wins inside a sans context, does not exist outside
+   one, and neither result is a matter of source order.
+
+   Headings and the TOC are sans roles and are deliberately NOT marked, which
+   `katex-init.js` decides by leaving them out of `SANS_CONTEXT`, for two different
+   reasons. A heading sits a weight step away from the words around it -- `h3` at 550,
+   `h4` at 540, `h2` in the serif italic -- and a table built at 400 describes none of
+   those, so its mathematics would be a step off its own text whichever composite drew it.
+   The TOC carries no mathematics at all: `render.py` escapes entry titles when it builds
+   the TOC, so no `.katex` ever reaches it.
 
    `.textrm` takes the family only here, for the reason the serif rule above records:
    pinning `font-style: normal` at (0,5,0) would outrank the `.textit` nested inside a
    `\textrm{\textit{x}}` leaf and draw the upright slot over an italic-measured run.
-   `.mainrm` keeps the pin, because upstream pins it too.
+   `.mainrm` keeps the pin, because upstream pins it too. */
 
-   `katex-init.js` selects the matching metric table set per rendered node with the same
-   role list; `tests/test_sans_math_face_css.py` pins the two lists together. */
-
-/* --- sans roles --- */
+/* --- the document, by the mark katex-init.js stamps --- */
 
 .kpress:not(
     [data-kpress-fonts="system"],
@@ -586,20 +602,7 @@
     [data-kpress-fonts="system"] *,
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
-  ) :is(
-    .kpress-figcaption,
-    .kpress-footnotes,
-    .kpress-table,
-    .sans-text,
-    .description,
-    .key-claims,
-    .summary,
-    .concepts,
-    .claim,
-    .para-caption,
-    .tab-button,
-    summary
-  )
+  ) [data-kpress-math-face="sans"]
   .katex {
   font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
 }
@@ -612,20 +615,7 @@
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
   )
-  :is(
-    .kpress-figcaption,
-    .kpress-footnotes,
-    .kpress-table,
-    .sans-text,
-    .description,
-    .key-claims,
-    .summary,
-    .concepts,
-    .claim,
-    .para-caption,
-    .tab-button,
-    summary
-  )
+  [data-kpress-math-face="sans"]
   .katex
   .mathnormal {
   font-family: "KPress Math Text Sans", KaTeX_Math, serif;
@@ -640,26 +630,20 @@
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
   )
-  :is(
-    .kpress-figcaption,
-    .kpress-footnotes,
-    .kpress-table,
-    .sans-text,
-    .description,
-    .key-claims,
-    .summary,
-    .concepts,
-    .claim,
-    .para-caption,
-    .tab-button,
-    summary
-  )
+  [data-kpress-math-face="sans"]
   .katex
   .mathit {
   font-family: "KPress Math Text Sans", KaTeX_Main, serif;
   font-style: italic;
 }
 
+/* 650 as a literal, not `var(--kpress-font-weight-sans-bold, 650)`. The token is a pinned
+   public variable a host may override, the composite declares 400 and 650 only, and the
+   `\mathbf` table is built at 650. CSS Fonts 4 searches DOWNWARD for a desired weight in
+   [400, 500], so a host that set the token to 500 or less got the 400 face under the 650
+   table -- measured at 0.6153 em drawn against 0.6300 em laid out, 2.3% wrong, and
+   silently. What a host means by bold is a question about words; which face the table
+   describes is not. */
 .kpress:not(
     [data-kpress-fonts="system"],
     [data-kpress-font-set="system"],
@@ -667,25 +651,11 @@
     [data-kpress-fonts="system"] *,
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
-  )
-  :is(
-    .kpress-figcaption,
-    .kpress-footnotes,
-    .kpress-table,
-    .sans-text,
-    .description,
-    .key-claims,
-    .summary,
-    .concepts,
-    .claim,
-    .para-caption,
-    .tab-button,
-    summary
-  )
+  ) [data-kpress-math-face="sans"]
   .katex
   .mathbf {
   font-family: "KPress Math Text Sans", KaTeX_Main, serif;
-  font-weight: var(--kpress-font-weight-sans-bold, 650);
+  font-weight: 650;
 }
 
 .kpress:not(
@@ -696,25 +666,12 @@
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
   )
-  :is(
-    .kpress-figcaption,
-    .kpress-footnotes,
-    .kpress-table,
-    .sans-text,
-    .description,
-    .key-claims,
-    .summary,
-    .concepts,
-    .claim,
-    .para-caption,
-    .tab-button,
-    summary
-  )
+  [data-kpress-math-face="sans"]
   .katex
   .boldsymbol {
   font-family: "KPress Math Text Sans", KaTeX_Math, serif;
   font-style: italic;
-  font-weight: var(--kpress-font-weight-sans-bold, 650);
+  font-weight: 650;
 }
 
 .kpress:not(
@@ -725,20 +682,7 @@
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
   )
-  :is(
-    .kpress-figcaption,
-    .kpress-footnotes,
-    .kpress-table,
-    .sans-text,
-    .description,
-    .key-claims,
-    .summary,
-    .concepts,
-    .claim,
-    .para-caption,
-    .tab-button,
-    summary
-  )
+  [data-kpress-math-face="sans"]
   .katex
   .textrm {
   font-family: "KPress Math Text Sans", KaTeX_Main, serif;
@@ -752,118 +696,7 @@
     [data-kpress-font-set="system"] *,
     [data-kpress-math-text="katex"] *
   )
-  :is(
-    .kpress-figcaption,
-    .kpress-footnotes,
-    .kpress-table,
-    .sans-text,
-    .description,
-    .key-claims,
-    .summary,
-    .concepts,
-    .claim,
-    .para-caption,
-    .tab-button,
-    summary
-  )
-  .katex
-  .mainrm {
-  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
-  font-style: normal;
-}
-
-/* --- sans reading face --- */
-
-:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
-    [data-kpress-fonts="system"],
-    [data-kpress-font-set="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  )
-  .katex {
-  font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
-}
-
-:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
-    [data-kpress-fonts="system"],
-    [data-kpress-font-set="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  )
-  .katex
-  .mathnormal {
-  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
-  font-style: italic;
-}
-
-:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
-    [data-kpress-fonts="system"],
-    [data-kpress-font-set="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  )
-  .katex
-  .mathit {
-  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
-  font-style: italic;
-}
-
-:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
-    [data-kpress-fonts="system"],
-    [data-kpress-font-set="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  )
-  .katex
-  .mathbf {
-  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
-  font-weight: var(--kpress-font-weight-sans-bold, 650);
-}
-
-:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
-    [data-kpress-fonts="system"],
-    [data-kpress-font-set="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  )
-  .katex
-  .boldsymbol {
-  font-family: "KPress Math Text Sans", KaTeX_Math, serif;
-  font-style: italic;
-  font-weight: var(--kpress-font-weight-sans-bold, 650);
-}
-
-:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
-    [data-kpress-fonts="system"],
-    [data-kpress-font-set="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  )
-  .katex
-  .textrm {
-  font-family: "KPress Math Text Sans", KaTeX_Main, serif;
-}
-
-:is([data-kpress-prose-font="sans"] .kpress, .kpress[data-kpress-prose-font="sans"]):not(
-    [data-kpress-fonts="system"],
-    [data-kpress-font-set="system"],
-    [data-kpress-math-text="katex"],
-    [data-kpress-fonts="system"] *,
-    [data-kpress-font-set="system"] *,
-    [data-kpress-math-text="katex"] *
-  )
+  [data-kpress-math-face="sans"]
   .katex
   .mainrm {
   font-family: "KPress Math Text Sans", KaTeX_Main, serif;
@@ -872,25 +705,33 @@
 
 /* --- the footnote preview overlay --- */
 
-/* THE THIRD SCOPE. tooltips.js mounts a preview on the viewport pane or the body,
+/* THE SECOND SCOPE. tooltips.js mounts a preview on the viewport pane or the body,
    outside every `.kpress`, and stamps the originating wrapper's math mode on it so the
    serif rules above can reach it by attribute rather than by position. But a preview is
    a CLONE of math KaTeX has already typeset, and the only preview kind that carries
    rendered math is the footnote one: every other kind is escaped text
    (`internalTooltipContent` in js/tooltips.js), so no `.katex` reaches it at all.
 
-   A footnote is a sans role in every mode -- `.kpress-footnotes` is in the role list
-   above, and under the reader's sans reading face the whole document is sans -- so the
-   clone's boxes were measured from the SANS tables. Drawing it in the serif composite
-   would put PT Serif glyphs on Source Sans metrics, which is the same disagreement
-   between what KaTeX measures and what it draws that the whole file exists to prevent.
-   The overlay therefore takes the sans composite.
+   A footnote is a sans role in every mode -- `.kpress-footnotes` is in `SANS_CONTEXT`,
+   and under the reader's sans reading face the whole document is sans -- so the clone's
+   boxes were measured from the SANS tables. Drawing it in the serif composite would put
+   PT Serif glyphs on Source Sans metrics, which is the same disagreement between what
+   KaTeX measures and what it draws that the whole file exists to prevent. The overlay
+   therefore takes the sans composite.
+
+   This scope keys on position and the mode stamp rather than on the mark the document
+   scope uses, and deliberately. The clone does carry the mark out of the document, since
+   `katex-init.js` writes it on the math node the overlay copies. But the clone is mounted
+   outside every `.kpress`, so the document rule cannot reach it whatever it carries, and
+   a rule that trusted the mark alone would draw the sans composite in any preview an
+   embedding host happened to mount -- including one whose serif original had never been
+   marked. Reaching the overlay by what it is keeps the third-party surface narrow.
 
    `.kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote` is (0,3,0),
    one class above the serif overlay scope's (0,2,0), so these land at (0,5,0) against
-   (0,4,0) -- the same margin the two document scopes keep, and again not a matter of
-   order. The mode stamp stays in the selector so the three opt-outs still apply: an
-   overlay opened from an opted-out wrapper is stamped `katex` and matches nothing here.
+   (0,4,0) -- the same margin the document scope keeps, and again not a matter of order.
+   The mode stamp stays in the selector so the three opt-outs still apply: an overlay
+   opened from an opted-out wrapper is stamped `katex` and matches nothing here.
 
    The size token needs no rule of its own: `--kpress-katex-size-sans` and the
    `--kpress-katex-size-prose` the serif overlay scope sets are both 1em. */
@@ -911,13 +752,13 @@
 
 .kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .mathbf {
   font-family: "KPress Math Text Sans", KaTeX_Main, serif;
-  font-weight: var(--kpress-font-weight-sans-bold, 650);
+  font-weight: 650;
 }
 
 .kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .boldsymbol {
   font-family: "KPress Math Text Sans", KaTeX_Math, serif;
   font-style: italic;
-  font-weight: var(--kpress-font-weight-sans-bold, 650);
+  font-weight: 650;
 }
 
 .kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .textrm {

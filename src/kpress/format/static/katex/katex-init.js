@@ -50,6 +50,11 @@ const OPTIONS = {
 // one at the moment `render` is called: the loop installs the node's set, renders,
 // and leaves the serif set behind for whatever runs after it.
 //
+// The same call marks the node -- `data-kpress-math-face="sans"` -- and that mark is
+// what katex-text-face.css draws the sans composite on. So the face and the metrics come
+// out of one decision rather than out of a selector spelled once in each language, and
+// the list of sans roles exists in this file only.
+//
 // A footnote preview overlay carries a CLONE of math this loop already typeset, so
 // it is never re-rendered and never reaches this selection. Its boxes were measured
 // from whichever set the ORIGINATING node took -- and a footnote is a sans context in
@@ -70,13 +75,36 @@ const TEXT_FACE_OPT_OUT =
 // caption's own face. The tables for the sans composite live under the asset's `sans`
 // key; the serif ones are its own face keys.
 //
-// SANS_CONTEXT is the same list katex-text-face.css scopes its sans rules on, spelled
-// again here because a selector cannot be shared across the two languages;
-// tests/test_sans_math_face_css.py pins the two copies together. The last entry is the
-// reader's sans reading face, which is stamped on <html> or on the wrapper, and which
-// `closest` finds either way.
+// SANS_CONTEXT is the ONE place the list lives. katex-text-face.css used to spell it
+// again -- seven times, once per repointed class, and a second seven for the reading
+// face -- and the two copies could drift silently: a role dropped from one of those CSS
+// rules drew Source Sans over PT Serif's numbers inside every table cell with the whole
+// suite still green. So the script now stamps `data-kpress-math-face="sans"` on each
+// math node it selects the sans set for, and the stylesheet keys on that instead. One
+// list, in the language that has to have it anyway, since only the script can install a
+// metric table.
+//
+// That collapses the reader's sans reading face into the same mechanism: the last entry
+// below is the attribute the reading-face control stamps on <html> or on the wrapper,
+// which `closest` finds either way, so a document that is sans throughout marks every
+// node and needs no scope of its own.
+//
+// `details` rather than `summary`, because document.css puts the whole `<details>`
+// subtree in sans while a `summary` scope reaches the disclosure line alone -- author
+// math in the body of a `<details>` was drawn from the serif composite under sans words.
+// `<summary>` is a child of `<details>`, so the wider selector subsumes the narrower one.
+//
+// Both spellings of the tab button: tabs.js writes `kpress-tab-button` on the buttons it
+// hydrates, and the bare `tab-button` is the form an author's own markup uses, which
+// components.css already treats as a sans role for the size token.
 const SANS_CONTEXT =
-  '.kpress-figcaption, .kpress-footnotes, .kpress-table, .sans-text, .description, .key-claims, .summary, .concepts, .claim, .para-caption, .tab-button, summary, [data-kpress-prose-font="sans"]';
+  '.kpress-figcaption, .kpress-footnotes, .kpress-table, .sans-text, .description, .key-claims, .summary, .concepts, .claim, .para-caption, .tab-button, .kpress-tab-button, details, [data-kpress-prose-font="sans"]';
+
+// The stamp, as the `dataset` key that writes it; the stylesheet selects on the
+// `data-kpress-math-face="sans"` it produces. A node is marked only where the sans set
+// is what the render loop installs for it, so the mark and the metric table are decided
+// by one call on one line and cannot disagree.
+const SANS_FACE_ATTR = "kpressMathFace";
 const SERIF_SET = "prose";
 const SANS_SET = "sans";
 const SCALE_KEY = "scale";
@@ -146,6 +174,47 @@ function textMetricsSet(node) {
   return node.closest(SANS_CONTEXT) ? SANS_SET : SERIF_SET;
 }
 
+/**
+ * Install the table set this node's context asks for, and mark the node so the
+ * stylesheet draws it from the matching composite. One call, so the face and the metrics
+ * are chosen together; the mark goes on before the render, so no `.katex` ever exists
+ * inside an unmarked sans node.
+ *
+ * The mark is only ever added. A node whose context is serif is left unmarked, which is
+ * what the absence of the attribute means, and nothing re-renders a node into a
+ * different context without reloading -- the reader's reading-face control reloads for
+ * exactly that reason (`fontSetSwitchNeedsReload` in js/settings-widget.js).
+ *
+ * @param {Element} node
+ * @returns {string | null} the set installed, or null when the tables are not ours
+ */
+function installTablesFor(node) {
+  if (!installedSet) {
+    return null;
+  }
+  const set = textMetricsSet(node);
+  if (!installTables(set)) {
+    return null;
+  }
+  // `dataset` rather than `instanceof HTMLElement`: this is a classic script that has to
+  // survive whatever a host hands it, and a duck-typed check needs no global to exist.
+  if (set === SANS_SET && node.dataset) {
+    node.dataset[SANS_FACE_ATTR] = SANS_SET;
+  }
+  return set;
+}
+
+// The one seam a host needs. kpress-operations-and-host-integration.md contemplates a
+// host with a script of its own that calls `katex.render` after the page has loaded --
+// re-typesetting a live-filtered table, or math it inserted itself. The loop below
+// leaves the SERIF set installed when it finishes, so such a script would otherwise
+// always lay its mathematics out from PT Serif's numbers and, in a caption or a table,
+// have it drawn from Source Sans: the same disagreement the reader's font control used
+// to produce, reached on a documented path. Calling this first with the node about to be
+// rendered installs the right tables and marks the node, and the caller owns the
+// ordering from there.
+globalThis.kpressMathText = { installTablesFor };
+
 function enhanceMath() {
   const render = globalThis.renderMathInElement;
   if (typeof render !== "function") {
@@ -158,9 +227,7 @@ function enhanceMath() {
     if (!host || host.dataset.kpressMathRendered === "true") {
       continue;
     }
-    if (installedSet) {
-      installTables(textMetricsSet(node));
-    }
+    installTablesFor(node);
     try {
       render(node, OPTIONS);
       host.dataset.kpressMathRendered = "true";
