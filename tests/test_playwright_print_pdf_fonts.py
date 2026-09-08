@@ -1,0 +1,140 @@
+"""Real-PDF regression for the faces a printed page needs.
+
+The static print instances are declared inside ``@media print``, so they start loading
+only once print layout asks for them. An export that switches to print media and prints
+immediately draws the page before they arrive, and prints the sans in the fallback the
+stack names -- the variable face, which is the Type3 condition this whole feature
+exists to remove. Two cases carry the risk:
+
+- text in the document, when the faces are still in flight at print time;
+- text in an ``@page`` margin box -- KPress's footer -- which sits outside the document
+  tree, so its face never enters ``document.fonts.ready`` and its first request would
+  land inside ``page.pdf()``, after the page it belongs to is drawn.
+
+Both are measured through the public ``render_pdf`` on the faces the PDF embeds.
+Chromium embeds a subset of a face only for glyphs it actually drew with it, so the
+presence of the static instance is the assertion that the sans text survived the export
+as a font; ``/Type3`` anywhere in the file is the assertion that nothing fell back.
+"""
+
+from __future__ import annotations
+
+import re
+import threading
+import time
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+import pytest
+
+from devtools.instance_sans import FAMILY
+from kpress.format.pdf import PdfOptions, render_pdf
+from kpress.workflow.format import format_document
+
+#: The static instance every default KPress page needs in print: the footer margin box
+#: names the sans stack at the root's own weight, which font matching lands on 400.
+FOOTER_FACE = f"{FAMILY.replace(' ', '')}-400"
+
+#: How long the delaying server holds a static instance back. Long enough that an export
+#: which does not wait prints before the face arrives (measured: it prints immediately),
+#: short enough to stay well inside the suite's per-test timeout.
+_FONT_DELAY_SECONDS = 0.7
+
+_INSTANCE_FILE = re.compile(r"/kpress-print-sans-latin-\d{3}-(?:normal|italic)\.woff2$")
+_BASE_FONT = re.compile(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)")
+
+
+def _embedded_fonts(pdf: Path) -> set[str]:
+    """Every font the PDF embeds or references, without its subset prefix."""
+    return {name.decode() for name in _BASE_FONT.findall(pdf.read_bytes())}
+
+
+def _formatted_page(tmp_path: Path, markdown: str) -> Path:
+    """One document through the local format workflow, as ``kpress export`` renders it."""
+    (tmp_path / "src").mkdir(parents=True)
+    source = tmp_path / "src" / "doc.md"
+    source.write_text(markdown, encoding="utf-8")
+    result = format_document(source, output_dir=tmp_path / "out", work_root=tmp_path / ".kpress")
+    return next(path for path in result.outputs if path.suffix == ".html")
+
+
+class _SlowFontHandler(SimpleHTTPRequestHandler):
+    """Serve the formatted page's assets, holding the static instances back."""
+
+    def log_message(self, format: str, *args: object) -> None:
+        _ = (format, args)
+
+    def end_headers(self) -> None:
+        # The document is a file:// page, so its font requests carry a null origin.
+        self.send_header("Access-Control-Allow-Origin", "*")
+        super().end_headers()
+
+    def do_GET(self) -> None:
+        if _INSTANCE_FILE.search(self.path):
+            time.sleep(_FONT_DELAY_SECONDS)
+        super().do_GET()
+
+
+def _require_chromium() -> None:
+    sync_api = pytest.importorskip("playwright.sync_api")
+    with sync_api.sync_playwright() as playwright:
+        if not Path(playwright.chromium.executable_path).is_file():
+            pytest.skip("No Playwright Chromium available")
+
+
+def test_page_footer_face_embeds_in_the_exported_pdf(tmp_path: Path) -> None:
+    """The footer is the only sans on a serif-only page, so its face proves it printed."""
+    _require_chromium()
+    html = _formatted_page(
+        tmp_path,
+        "# Serif only\n\nA paragraph of ordinary prose, all of it in the serif face.\n\n"
+        "### One sans heading\n\nAnd a second paragraph after it.\n",
+    )
+    output = tmp_path / "doc.pdf"
+
+    render_pdf(html, PdfOptions(output=output))
+
+    fonts = _embedded_fonts(output)
+    assert FOOTER_FACE in fonts, fonts
+    # Nothing on the page reached the PDF as outline paths, which is the whole point of
+    # the static set, and the variable face was never drawn from.
+    assert b"/Type3" not in output.read_bytes(), fonts
+    assert not [name for name in fonts if name.startswith("SourceSans3")], fonts
+
+
+def test_slow_print_faces_still_embed_in_the_exported_pdf(tmp_path: Path) -> None:
+    """Text in the document survives an export that starts before the faces arrive."""
+    _require_chromium()
+    html = _formatted_page(
+        tmp_path,
+        "# Print sans smoke\n\n"
+        "A paragraph of prose with a note attached to it.[^a]\n\n"
+        "[^a]: The footnote body is set in the sans face at the small size.\n",
+    )
+    handler = partial(_SlowFontHandler, directory=str(html.parent))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        # Same document, assets over the delaying server: a <base> retargets every
+        # relative URL the formatted page carries.
+        delayed = html.with_name("delayed.html")
+        delayed.write_text(
+            html.read_text(encoding="utf-8").replace(
+                "<head>", f'<head><base href="http://127.0.0.1:{server.server_address[1]}/">', 1
+            ),
+            encoding="utf-8",
+        )
+        output = tmp_path / "delayed.pdf"
+        render_pdf(delayed, PdfOptions(output=output))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    fonts = _embedded_fonts(output)
+    # The footnote and the footer both resolve to the 400 instance; the prose face is
+    # there to show the page itself rendered rather than exporting blank.
+    assert FOOTER_FACE in fonts, fonts
+    assert any(name.startswith("PTSerif") for name in fonts), fonts

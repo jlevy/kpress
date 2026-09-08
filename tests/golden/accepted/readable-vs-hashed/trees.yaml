@@ -6,15 +6,54 @@ readable:
     _kpress/assets/css/document.css:
       bytes: 13301
       sha256_16: 49d55a2dbac06488
+    _kpress/assets/css/print-fonts.css:
+      bytes: 5514
+      sha256_16: 66913c33eb85fa38
     _kpress/assets/css/print.css:
-      bytes: 8783
-      sha256_16: 428e051e6c77735a
+      bytes: 10636
+      sha256_16: f12e8502893162cd
     _kpress/assets/css/style-tokens.css:
       bytes: 33456
       sha256_16: 65319145ba31a2da
     _kpress/assets/css/syntax.css:
       bytes: 7789
       sha256_16: 807cf5be35b5a8dd
+    _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2:
+      bytes: 15468
+      sha256_16: 4d839c9d54c57ab0
+    _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2:
+      bytes: 15308
+      sha256_16: f41033bac2496b3b
+    _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2:
+      bytes: 15548
+      sha256_16: bd1f2a046978c67d
+    _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2:
+      bytes: 15388
+      sha256_16: a957bd8de97e31da
+    _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2:
+      bytes: 15516
+      sha256_16: 05c33c4d0b64b915
+    _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2:
+      bytes: 15308
+      sha256_16: 050256481eaa7d24
+    _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2:
+      bytes: 15532
+      sha256_16: 90ee17afac862425
+    _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2:
+      bytes: 15392
+      sha256_16: 900df4999e4dc354
+    _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2:
+      bytes: 15620
+      sha256_16: ff519fb1358fa12a
+    _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2:
+      bytes: 15372
+      sha256_16: 8cd1aee8d860fe72
+    _kpress/assets/fonts/kpress-print-sans-latin-700-italic.woff2:
+      bytes: 15564
+      sha256_16: 5b21315e7e4431d4
+    _kpress/assets/fonts/kpress-print-sans-latin-700-normal.woff2:
+      bytes: 15348
+      sha256_16: 5c97026f3519067e
     _kpress/assets/fonts/pt-serif-latin-400-italic.woff2:
       bytes: 34896
       sha256_16: cb373bde18855c82
@@ -77,10 +116,15 @@ readable:
           path: _kpress/assets/css/document.css
           size: 13301
         - applied_pipeline: []
-          content_hash: 428e051e6c77735a
+          content_hash: 66913c33eb85fa38
+          kind: css
+          path: _kpress/assets/css/print-fonts.css
+          size: 5514
+        - applied_pipeline: []
+          content_hash: f12e8502893162cd
           kind: css
           path: _kpress/assets/css/print.css
-          size: 8783
+          size: 10636
         - applied_pipeline: []
           content_hash: 65319145ba31a2da
           kind: css
@@ -91,6 +135,66 @@ readable:
           kind: css
           path: _kpress/assets/css/syntax.css
           size: 7789
+        - applied_pipeline: []
+          content_hash: 4d839c9d54c57ab0
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          size: 15468
+        - applied_pipeline: []
+          content_hash: f41033bac2496b3b
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: bd1f2a046978c67d
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          size: 15548
+        - applied_pipeline: []
+          content_hash: a957bd8de97e31da
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          size: 15388
+        - applied_pipeline: []
+          content_hash: 05c33c4d0b64b915
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          size: 15516
+        - applied_pipeline: []
+          content_hash: 050256481eaa7d24
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: 90ee17afac862425
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          size: 15532
+        - applied_pipeline: []
+          content_hash: 900df4999e4dc354
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          size: 15392
+        - applied_pipeline: []
+          content_hash: ff519fb1358fa12a
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          size: 15620
+        - applied_pipeline: []
+          content_hash: 8cd1aee8d860fe72
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          size: 15372
+        - applied_pipeline: []
+          content_hash: 5b21315e7e4431d4
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-700-italic.woff2
+          size: 15564
+        - applied_pipeline: []
+          content_hash: 5c97026f3519067e
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-700-normal.woff2
+          size: 15348
         - applied_pipeline: []
           content_hash: cb373bde18855c82
           kind: woff2
@@ -172,15 +276,15 @@ readable:
           path: _kpress/assets/js/viewport.js
           size: 5446
         - applied_pipeline: []
-          content_hash: e59dbc6617296adf
+          content_hash: ce087c941fef70ba
           kind: html
           path: about.html
-          size: 9949
+          size: 10016
         - applied_pipeline: []
-          content_hash: 0130640b694cc762
+          content_hash: d55d94bc2c58047e
           kind: html
           path: index.html
-          size: 10348
+          size: 10415
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
           kind: txt
@@ -199,7 +303,13 @@ readable:
           output_path: _kpress/assets/css/document.css
           path: css/document.css
           source: package
-        - content_hash: 428e051e6c77735a
+        - content_hash: 66913c33eb85fa38
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/print-fonts.css
+          path: css/print-fonts.css
+          source: package
+        - content_hash: f12e8502893162cd
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/print.css
@@ -216,6 +326,78 @@ readable:
           media_type: text/css
           output_path: _kpress/assets/css/syntax.css
           path: css/syntax.css
+          source: package
+        - content_hash: 4d839c9d54c57ab0
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          path: fonts/kpress-print-sans-latin-370-italic.woff2
+          source: package
+        - content_hash: f41033bac2496b3b
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          path: fonts/kpress-print-sans-latin-370-normal.woff2
+          source: package
+        - content_hash: bd1f2a046978c67d
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          path: fonts/kpress-print-sans-latin-400-italic.woff2
+          source: package
+        - content_hash: a957bd8de97e31da
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          path: fonts/kpress-print-sans-latin-400-normal.woff2
+          source: package
+        - content_hash: 05c33c4d0b64b915
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          path: fonts/kpress-print-sans-latin-550-italic.woff2
+          source: package
+        - content_hash: 050256481eaa7d24
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          path: fonts/kpress-print-sans-latin-550-normal.woff2
+          source: package
+        - content_hash: 90ee17afac862425
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          path: fonts/kpress-print-sans-latin-600-italic.woff2
+          source: package
+        - content_hash: 900df4999e4dc354
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          path: fonts/kpress-print-sans-latin-600-normal.woff2
+          source: package
+        - content_hash: ff519fb1358fa12a
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          path: fonts/kpress-print-sans-latin-650-italic.woff2
+          source: package
+        - content_hash: 8cd1aee8d860fe72
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          path: fonts/kpress-print-sans-latin-650-normal.woff2
+          source: package
+        - content_hash: 5b21315e7e4431d4
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-700-italic.woff2
+          path: fonts/kpress-print-sans-latin-700-italic.woff2
+          source: package
+        - content_hash: 5c97026f3519067e
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-700-normal.woff2
+          path: fonts/kpress-print-sans-latin-700-normal.woff2
           source: package
         - content_hash: cb373bde18855c82
           kind: package
@@ -396,6 +578,7 @@ readable:
         <link rel="stylesheet" href="/_kpress/assets/css/document.css">
         <link rel="stylesheet" href="/_kpress/assets/css/components.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.css">
         <script type="module" src="/_kpress/assets/js/theme.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.js"></script>
         </head>
@@ -562,6 +745,7 @@ readable:
         <link rel="stylesheet" href="/_kpress/assets/css/document.css">
         <link rel="stylesheet" href="/_kpress/assets/css/components.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.css">
         <script type="module" src="/_kpress/assets/js/theme.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.js"></script>
         <script type="module" src="/_kpress/assets/js/tooltips.js"></script>
@@ -677,12 +861,18 @@ hashed:
     _kpress/assets/css/document.49d55a2dbac06488.css.gz:
       bytes: 3780
       sha256_16: 6bdc8a55c5ea76af
-    _kpress/assets/css/print.428e051e6c77735a.css:
-      bytes: 8783
-      sha256_16: 428e051e6c77735a
-    _kpress/assets/css/print.428e051e6c77735a.css.gz:
-      bytes: 2629
-      sha256_16: c8bf7cb7d338de15
+    _kpress/assets/css/print-fonts.66913c33eb85fa38.css:
+      bytes: 5514
+      sha256_16: 66913c33eb85fa38
+    _kpress/assets/css/print-fonts.66913c33eb85fa38.css.gz:
+      bytes: 654
+      sha256_16: 66a87b820e775d7e
+    _kpress/assets/css/print.f12e8502893162cd.css:
+      bytes: 10636
+      sha256_16: f12e8502893162cd
+    _kpress/assets/css/print.f12e8502893162cd.css.gz:
+      bytes: 3380
+      sha256_16: ee78b47e59412b35
     _kpress/assets/css/style-tokens.65319145ba31a2da.css:
       bytes: 33456
       sha256_16: 65319145ba31a2da
@@ -695,6 +885,42 @@ hashed:
     _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz:
       bytes: 1471
       sha256_16: 448109895ffa3e82
+    _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2:
+      bytes: 15468
+      sha256_16: 4d839c9d54c57ab0
+    _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2:
+      bytes: 15308
+      sha256_16: f41033bac2496b3b
+    _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2:
+      bytes: 15548
+      sha256_16: bd1f2a046978c67d
+    _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2:
+      bytes: 15388
+      sha256_16: a957bd8de97e31da
+    _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2:
+      bytes: 15516
+      sha256_16: 05c33c4d0b64b915
+    _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2:
+      bytes: 15308
+      sha256_16: 050256481eaa7d24
+    _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2:
+      bytes: 15532
+      sha256_16: 90ee17afac862425
+    _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2:
+      bytes: 15392
+      sha256_16: 900df4999e4dc354
+    _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2:
+      bytes: 15620
+      sha256_16: ff519fb1358fa12a
+    _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2:
+      bytes: 15372
+      sha256_16: 8cd1aee8d860fe72
+    _kpress/assets/fonts/kpress-print-sans-latin-700-italic.woff2:
+      bytes: 15564
+      sha256_16: 5b21315e7e4431d4
+    _kpress/assets/fonts/kpress-print-sans-latin-700-normal.woff2:
+      bytes: 15348
+      sha256_16: 5c97026f3519067e
     _kpress/assets/fonts/pt-serif-latin-400-italic.woff2:
       bytes: 34896
       sha256_16: cb373bde18855c82
@@ -801,17 +1027,29 @@ hashed:
           size: 3780
           source_path: _kpress/assets/css/document.49d55a2dbac06488.css
         - applied_pipeline: []
-          content_hash: 428e051e6c77735a
+          content_hash: 66913c33eb85fa38
           kind: css
-          path: _kpress/assets/css/print.428e051e6c77735a.css
-          size: 8783
+          path: _kpress/assets/css/print-fonts.66913c33eb85fa38.css
+          size: 5514
         - applied_pipeline: []
           compression: gzip
-          content_hash: c8bf7cb7d338de15
+          content_hash: 66a87b820e775d7e
           kind: gz
-          path: _kpress/assets/css/print.428e051e6c77735a.css.gz
-          size: 2629
-          source_path: _kpress/assets/css/print.428e051e6c77735a.css
+          path: _kpress/assets/css/print-fonts.66913c33eb85fa38.css.gz
+          size: 654
+          source_path: _kpress/assets/css/print-fonts.66913c33eb85fa38.css
+        - applied_pipeline: []
+          content_hash: f12e8502893162cd
+          kind: css
+          path: _kpress/assets/css/print.f12e8502893162cd.css
+          size: 10636
+        - applied_pipeline: []
+          compression: gzip
+          content_hash: ee78b47e59412b35
+          kind: gz
+          path: _kpress/assets/css/print.f12e8502893162cd.css.gz
+          size: 3380
+          source_path: _kpress/assets/css/print.f12e8502893162cd.css
         - applied_pipeline: []
           content_hash: 65319145ba31a2da
           kind: css
@@ -836,6 +1074,66 @@ hashed:
           path: _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
           size: 1471
           source_path: _kpress/assets/css/syntax.807cf5be35b5a8dd.css
+        - applied_pipeline: []
+          content_hash: 4d839c9d54c57ab0
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          size: 15468
+        - applied_pipeline: []
+          content_hash: f41033bac2496b3b
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: bd1f2a046978c67d
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          size: 15548
+        - applied_pipeline: []
+          content_hash: a957bd8de97e31da
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          size: 15388
+        - applied_pipeline: []
+          content_hash: 05c33c4d0b64b915
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          size: 15516
+        - applied_pipeline: []
+          content_hash: 050256481eaa7d24
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: 90ee17afac862425
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          size: 15532
+        - applied_pipeline: []
+          content_hash: 900df4999e4dc354
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          size: 15392
+        - applied_pipeline: []
+          content_hash: ff519fb1358fa12a
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          size: 15620
+        - applied_pipeline: []
+          content_hash: 8cd1aee8d860fe72
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          size: 15372
+        - applied_pipeline: []
+          content_hash: 5b21315e7e4431d4
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-700-italic.woff2
+          size: 15564
+        - applied_pipeline: []
+          content_hash: 5c97026f3519067e
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-700-normal.woff2
+          size: 15348
         - applied_pipeline: []
           content_hash: cb373bde18855c82
           kind: woff2
@@ -987,28 +1285,28 @@ hashed:
           size: 1682
           source_path: _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
         - applied_pipeline: []
-          content_hash: 8f769f8c0a778511
+          content_hash: a035cc1327628ada
           kind: html
           path: about.html
-          size: 10630
+          size: 10714
         - applied_pipeline: []
           compression: gzip
-          content_hash: 6a1a6f5adfcf9a9a
+          content_hash: 1ed98e934d45ded9
           kind: gz
           path: about.html.gz
-          size: 3407
+          size: 3428
           source_path: about.html
         - applied_pipeline: []
-          content_hash: a3fc4cf26ed8e4f7
+          content_hash: c161b00c387da77c
           kind: html
           path: index.html
-          size: 11399
+          size: 11483
         - applied_pipeline: []
           compression: gzip
-          content_hash: 067dfc292d107424
+          content_hash: 63074fd08844d2a5
           kind: gz
           path: index.html.gz
-          size: 3623
+          size: 3643
           source_path: index.html
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
@@ -1028,10 +1326,16 @@ hashed:
           output_path: _kpress/assets/css/document.49d55a2dbac06488.css
           path: css/document.css
           source: package
-        - content_hash: 428e051e6c77735a
+        - content_hash: 66913c33eb85fa38
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/print.428e051e6c77735a.css
+          output_path: _kpress/assets/css/print-fonts.66913c33eb85fa38.css
+          path: css/print-fonts.css
+          source: package
+        - content_hash: f12e8502893162cd
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/print.f12e8502893162cd.css
           path: css/print.css
           source: package
         - content_hash: 65319145ba31a2da
@@ -1045,6 +1349,78 @@ hashed:
           media_type: text/css
           output_path: _kpress/assets/css/syntax.807cf5be35b5a8dd.css
           path: css/syntax.css
+          source: package
+        - content_hash: 4d839c9d54c57ab0
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          path: fonts/kpress-print-sans-latin-370-italic.woff2
+          source: package
+        - content_hash: f41033bac2496b3b
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          path: fonts/kpress-print-sans-latin-370-normal.woff2
+          source: package
+        - content_hash: bd1f2a046978c67d
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          path: fonts/kpress-print-sans-latin-400-italic.woff2
+          source: package
+        - content_hash: a957bd8de97e31da
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          path: fonts/kpress-print-sans-latin-400-normal.woff2
+          source: package
+        - content_hash: 05c33c4d0b64b915
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          path: fonts/kpress-print-sans-latin-550-italic.woff2
+          source: package
+        - content_hash: 050256481eaa7d24
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          path: fonts/kpress-print-sans-latin-550-normal.woff2
+          source: package
+        - content_hash: 90ee17afac862425
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          path: fonts/kpress-print-sans-latin-600-italic.woff2
+          source: package
+        - content_hash: 900df4999e4dc354
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          path: fonts/kpress-print-sans-latin-600-normal.woff2
+          source: package
+        - content_hash: ff519fb1358fa12a
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          path: fonts/kpress-print-sans-latin-650-italic.woff2
+          source: package
+        - content_hash: 8cd1aee8d860fe72
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          path: fonts/kpress-print-sans-latin-650-normal.woff2
+          source: package
+        - content_hash: 5b21315e7e4431d4
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-700-italic.woff2
+          path: fonts/kpress-print-sans-latin-700-italic.woff2
+          source: package
+        - content_hash: 5c97026f3519067e
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-700-normal.woff2
+          path: fonts/kpress-print-sans-latin-700-normal.woff2
           source: package
         - content_hash: cb373bde18855c82
           kind: package
@@ -1227,7 +1603,8 @@ hashed:
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
         <link rel="stylesheet" href="/_kpress/assets/css/document.49d55a2dbac06488.css">
         <link rel="stylesheet" href="/_kpress/assets/css/components.ace5d041b16ba294.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/print.428e051e6c77735a.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print.f12e8502893162cd.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.66913c33eb85fa38.css">
         <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.60c0f1a42a4d9b2c.js"></script>
         </head>
@@ -1319,8 +1696,8 @@ hashed:
         </body>
         </html>
     about.html.gz:
-      bytes: 3407
-      sha256_16: 6a1a6f5adfcf9a9a
+      bytes: 3428
+      sha256_16: 1ed98e934d45ded9
     index.html:
       text: |
         <!doctype html>
@@ -1397,7 +1774,8 @@ hashed:
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
         <link rel="stylesheet" href="/_kpress/assets/css/document.49d55a2dbac06488.css">
         <link rel="stylesheet" href="/_kpress/assets/css/components.ace5d041b16ba294.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/print.428e051e6c77735a.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print.f12e8502893162cd.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.66913c33eb85fa38.css">
         <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.60c0f1a42a4d9b2c.js"></script>
         <script type="module" src="/_kpress/assets/js/tooltips.0d651991ea723da2.js"></script>
@@ -1496,8 +1874,8 @@ hashed:
         </body>
         </html>
     index.html.gz:
-      bytes: 3623
-      sha256_16: 067dfc292d107424
+      bytes: 3643
+      sha256_16: 63074fd08844d2a5
     robots.txt:
       text: |
         User-agent: *
@@ -1506,7 +1884,8 @@ categories:
   hashed:
   - _kpress/assets/css/components.ace5d041b16ba294.css
   - _kpress/assets/css/document.49d55a2dbac06488.css
-  - _kpress/assets/css/print.428e051e6c77735a.css
+  - _kpress/assets/css/print-fonts.66913c33eb85fa38.css
+  - _kpress/assets/css/print.f12e8502893162cd.css
   - _kpress/assets/css/style-tokens.65319145ba31a2da.css
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css
   - _kpress/assets/js/history.9cf96b2ecad0462a.js
@@ -1522,7 +1901,8 @@ categories:
   compressed:
   - _kpress/assets/css/components.ace5d041b16ba294.css.gz
   - _kpress/assets/css/document.49d55a2dbac06488.css.gz
-  - _kpress/assets/css/print.428e051e6c77735a.css.gz
+  - _kpress/assets/css/print-fonts.66913c33eb85fa38.css.gz
+  - _kpress/assets/css/print.f12e8502893162cd.css.gz
   - _kpress/assets/css/style-tokens.65319145ba31a2da.css.gz
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
   - _kpress/assets/js/history.9cf96b2ecad0462a.js.gz
@@ -1540,7 +1920,8 @@ categories:
   hashed_only:
   - _kpress/assets/css/components.ace5d041b16ba294.css.gz
   - _kpress/assets/css/document.49d55a2dbac06488.css.gz
-  - _kpress/assets/css/print.428e051e6c77735a.css.gz
+  - _kpress/assets/css/print-fonts.66913c33eb85fa38.css.gz
+  - _kpress/assets/css/print.f12e8502893162cd.css.gz
   - _kpress/assets/css/style-tokens.65319145ba31a2da.css.gz
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
   - _kpress/assets/js/history.9cf96b2ecad0462a.js.gz
@@ -1559,9 +1940,22 @@ categories:
   shared:
   - _kpress/assets/css/components.css
   - _kpress/assets/css/document.css
+  - _kpress/assets/css/print-fonts.css
   - _kpress/assets/css/print.css
   - _kpress/assets/css/style-tokens.css
   - _kpress/assets/css/syntax.css
+  - _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-700-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-700-normal.woff2
   - _kpress/assets/fonts/pt-serif-latin-400-italic.woff2
   - _kpress/assets/fonts/pt-serif-latin-400-normal.woff2
   - _kpress/assets/fonts/pt-serif-latin-700-italic.woff2
