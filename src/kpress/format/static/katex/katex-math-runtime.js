@@ -13,6 +13,10 @@ const SCALE_KEY = "scale";
 const FACE_WAIT_MS = 3000;
 const FACE_SAMPLE = "a1αΩ";
 const KATEX_FAMILIES = ["KaTeX_Main", "KaTeX_Math"];
+const COMPOSITE_FAMILIES = {
+  [SERIF_SET]: "KPress Math Text",
+  [SANS_SET]: "KPress Math Text Sans",
+};
 const COMPOSITE_FONTS = {
   [SERIF_SET]: [
     "400 1em 'KPress Math Text'",
@@ -82,19 +86,43 @@ function textMetricsSet(node, options = {}) {
   return node.closest(SANS_CONTEXT) || options.isSansContext?.(node) ? SANS_SET : SERIF_SET;
 }
 
+function compositeDeclared(set) {
+  if (typeof document.fonts?.forEach !== "function") {
+    return true;
+  }
+  const family = COMPOSITE_FAMILIES[set].toLowerCase();
+  let declared = false;
+  document.fonts.forEach((face) => {
+    if (face.family.replace(/^["']|["']$/g, "").toLowerCase() === family) {
+      declared = true;
+    }
+  });
+  // Check declarations, not load status: a failed unused weight must not discard
+  // the profile. The rendered glyph requests validate its required faces later.
+  return declared;
+}
+
 // Initialization is independent of the native loop. A host can use this API on
 // its first dynamically created formula, including a page with no native math.
 function installTablesFor(node, options = {}) {
   applyTextMetrics([node]);
-  const set = textMetricsSet(node, options);
+  let set = textMetricsSet(node, options);
+  if (set !== KATEX_SET && !compositeDeclared(set)) {
+    // FontFaceSet.check accepts a missing CSS family when fallback is available.
+    // Select matching stock metrics and families before laying out that fallback.
+    set = KATEX_SET;
+  }
   if (node.dataset) {
     delete node.dataset[SANS_FACE_ATTR];
     if (set === KATEX_SET && tablesFor(KATEX_SET)) {
       node.dataset[SANS_FACE_ATTR] = KATEX_SET;
     }
   }
-  if (!installedSet || !installTables(set)) {
+  if (!installedSet) {
     return null;
+  }
+  if (!installTables(set)) {
+    throw new Error("kpress: the selected mathematics font metrics are unavailable");
   }
   if (set === SANS_SET && node.dataset) {
     node.dataset[SANS_FACE_ATTR] = SANS_SET;

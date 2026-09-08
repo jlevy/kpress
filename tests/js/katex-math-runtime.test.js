@@ -146,4 +146,46 @@ describe("the host math runtime", () => {
     expect(target.style.visibility).toBe("");
     expect(target.dataset.kpressMathPending).toBeUndefined();
   });
+
+  it("selects stock metrics when no composite family is declared", async () => {
+    const target = node();
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { forEach() {}, check: () => true, load: () => Promise.resolve([]) },
+    });
+    globalThis.katex.render.mockImplementation(() => {
+      expect(globalThis.katex.__setFontMetrics.mock.lastCall).toEqual([
+        "Main-Regular",
+        original["Main-Regular"],
+      ]);
+    });
+    await boot().render("1", target);
+    expect(target.dataset.kpressMathFace).toBe("katex");
+  });
+
+  it("preserves experimental defaults when the entire document explicitly opts out", async () => {
+    const target = node();
+    document.documentElement.dataset.kpressMathText = "katex";
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { forEach() {}, check: () => true, load: () => Promise.resolve([]) },
+    });
+    await boot().render("1", target);
+    expect(globalThis.katex.__setFontMetrics).not.toHaveBeenCalled();
+    expect(globalThis.katex.render).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a fallback without stock tables instead of rendering with custom metrics", async () => {
+    const target = node();
+    Reflect.deleteProperty(globalThis.kpressKatexTextMetrics, "katex");
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { forEach() {}, check: () => true, load: () => Promise.resolve([]) },
+    });
+    await expect(boot().render("1", target)).rejects.toThrow(
+      "selected mathematics font metrics are unavailable",
+    );
+    expect(globalThis.katex.render).not.toHaveBeenCalled();
+    expect(target.style.visibility).toBe("");
+  });
 });

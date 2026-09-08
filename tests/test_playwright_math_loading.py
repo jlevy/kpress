@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Generator
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import pytest
 
@@ -205,3 +206,94 @@ def test_host_first_render_waits_keeps_latest_and_supports_mixed_faces(tmp_path:
             "nodes => nodes.every(node => !getComputedStyle(node).fontFamily.includes('KPress Math Text'))"
         )
         assert page.locator(".kpress-math-render .katex").count() == 0
+
+
+_FALLBACK_MARKDOWN = (
+    "# Composite fallback\n\n"
+    "In prose $\\frac{4001}{4000}$.\n\n"
+    "| Caption math |\n| --- |\n| $\\frac{4001}{4000}$ |\n"
+)
+_FALLBACK_PROBE = """() => [...document.querySelectorAll('.kpress-math-render')].map(node => {
+  const digits = [...node.querySelectorAll('.katex-html .mord')].find(
+    el => el.textContent === '4001' && !el.children.length
+  );
+  return {
+    advance: __kpressFontAdvance(digits) / 4,
+    height: parseFloat(node.querySelector('.mfrac .vlist').style.height),
+    family: getComputedStyle(digits).fontFamily,
+    profile: node.dataset.kpressMathFace ?? 'prose',
+  };
+})"""
+
+
+class _MathFaceProbe(TypedDict):
+    advance: float
+    height: float
+    family: str
+    profile: str
+
+
+@pytest.mark.parametrize("missing", ["stylesheet", "both", "serif"])
+def test_missing_composite_uses_matching_stock_fonts_and_metrics(
+    tmp_path: Path, missing: str
+) -> None:
+    references: dict[str, list[_MathFaceProbe]] = {}
+    for name, mode in (("custom", None), ("stock", "katex")):
+        public = _build_fixture_site(
+            tmp_path / name, math_text_font=mode, markdown=_FALLBACK_MARKDOWN
+        )
+        with _page(public) as page:
+            page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
+            references[name] = page.evaluate(_FALLBACK_PROBE)
+
+    public = _build_fixture_site(
+        tmp_path / "missing", math_text_font=None, markdown=_FALLBACK_MARKDOWN
+    )
+    stylesheet = public / "_kpress/assets/katex/katex-text-face.css"
+    if missing == "stylesheet":
+        stylesheet.unlink()
+    else:
+        css = re.sub(r"/\*.*?\*/", "", stylesheet.read_text(), flags=re.DOTALL)
+
+        def omit_composite(match: re.Match[str]) -> str:
+            block = match.group()
+            if 'font-family: "KPress Math Text";' in block or (
+                missing == "both" and 'font-family: "KPress Math Text Sans";' in block
+            ):
+                return ""
+            return block
+
+        stylesheet.write_text(re.sub(r"@font-face\s*\{[^}]*\}", omit_composite, css))
+
+    with _page(public) as page:
+        page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
+        actual: list[_MathFaceProbe] = page.evaluate(_FALLBACK_PROBE)
+        assert page.locator('[data-kpress-math-rendered="true"]').count() == 2
+        assert any(entry["outcome"] == "empty" for entry in page.evaluate("kpressMathFaceWait"))
+
+    for index, result in enumerate(actual):
+        reference = references["custom" if missing == "serif" and index == 1 else "stock"][index]
+        assert result["family"] == reference["family"]
+        assert result["advance"] == pytest.approx(reference["advance"], abs=0.001)
+        assert result["height"] == pytest.approx(reference["height"], abs=0.001)
+        assert result["profile"] == ("sans" if missing == "serif" and index == 1 else "katex")
+
+
+@pytest.mark.parametrize("weight", ["400", "700"])
+def test_required_font_failure_differs_from_an_unused_weight(tmp_path: Path, weight: str) -> None:
+    public = _build_fixture_site(
+        tmp_path, math_text_font=None, markdown="# Fonts\n\n$\\frac{4001}{4000}$.\n"
+    )
+    (public / f"_kpress/assets/fonts/pt-serif-latin-{weight}-normal.woff2").unlink()
+    with _page(public) as page:
+        page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
+        assert any(entry["outcome"] == "error" for entry in page.evaluate("kpressMathFaceWait"))
+        if weight == "400":
+            assert page.locator('[data-kpress-math-rendered="true"]').count() == 0
+            assert page.locator(".kpress-math-semantic").is_visible()
+        else:
+            assert page.locator('[data-kpress-math-rendered="true"]').count() == 1
+            result = page.evaluate(_FALLBACK_PROBE)[0]
+            assert result["profile"] == "prose"
+            assert "KPress Math Text" in result["family"]
+            assert result["advance"] == pytest.approx(0.533, abs=0.001)

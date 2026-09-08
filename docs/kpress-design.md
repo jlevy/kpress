@@ -1443,6 +1443,10 @@ If a face required by a rendered formula still fails or times out, native KPress
 the semantic MathML rather than showing fallback glyphs on the unavailable face’s metric
 table. Host rendering rejects so the host can show its own text fallback.
 Failure of an unused warmup face does not discard an otherwise complete formula.
+If a composite family has no registered declarations, the runtime selects stock KaTeX
+families and their retained original metric tables for the affected formula.
+It checks declaration presence rather than load status, so a missing family is distinct
+from a failed unused weight.
 See [Rendering Mathematics in a Host](math-rendering-api.md) for the public API and
 readiness results.
 

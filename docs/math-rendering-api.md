@@ -61,6 +61,13 @@ alphabets, without downloading those families on pages that never use them.
 A failed unused warmup face does not discard a formula whose required faces loaded
 successfully.
 
+If the selected composite family has no registered font declarations, the runtime uses
+stock KaTeX families and their original metric tables for that formula.
+This covers a missing composite stylesheet as well as an omitted family; another
+composite family can still render normally.
+The warmup diagnostics retain the empty requests even when the stock rendering succeeds.
+Declared faces that fail to load still follow the required-face error handling above.
+
 ## Sans Contexts and Opt-Outs
 
 The runtime recognizes KPress captions, tables, footnotes and other sans roles.
@@ -83,6 +90,8 @@ The generated metrics asset retains the original tables under `katex`, so an opt
 formula can use stock metrics after another formula used the custom face.
 The runtime marks that node `data-kpress-math-face="katex"` so its CSS families also
 revert inside a wrapper that otherwise uses the custom face.
+When the whole document opts out before any custom rendering, the runtime leaves KaTeX’s
+existing metric tables untouched, including a host’s experimental replacements.
 
 ## Preparing a Batch
 
@@ -107,7 +116,8 @@ font set.
 
 For synchronous measurements after preparation, `installTablesFor(node, context)`
 returns `prose`, `sans`, `katex` or `null`, and `restore()` reinstalls the default serif
-tables.
+tables. If tables have already been installed but the next selected set is unavailable,
+`installTablesFor()` throws before rendering can use mismatched metrics.
 These methods do not wait for fonts; application rendering should use `render()`.
 
 The composite fonts are CSS families over separate PT Serif, Source Sans and KaTeX font
