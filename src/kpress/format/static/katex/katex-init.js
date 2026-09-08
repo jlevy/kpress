@@ -107,8 +107,187 @@ function enhanceMath() {
   }
 }
 
+// PAINTING ONCE. KaTeX renders into the live DOM, so an expression is painted
+// the moment it is rendered, in whatever faces have decoded by then. The
+// composite's reading-face slots are separate @font-face rules from the prose
+// PT Serif, fetched only when a formula first asks for them, so a render that
+// starts before they are ready paints the letters and digits in the next family
+// of the stack (KaTeX_Main) and repaints them when the slot arrives -- which a
+// reader sees as the digits in every formula changing font. Measured on a
+// twenty-formula page over loopback: the first `.katex` node was inserted at
+// 70ms and the composite's slots decoded between 111ms and 116ms; with 150ms of
+// latency added, at 817ms against 851ms and 1009ms.
+//
+// So the faces the mathematics will use are loaded first, and the render waits
+// on them. The same page then inserts its first expression at 129ms, after
+// every face. Where the page inlines its fonts as data URIs the wait costs tens
+// of milliseconds; in hosted mode it delays the mathematics by a font round trip
+// instead of flashing it, which is the right trade for a reading page and the
+// same one `font-display: block` makes in katex-text-face.css.
+
+// Sample text for `document.fonts.load()`, which loads a face only when the
+// text has a code point the face's `unicode-range` covers. It therefore has to
+// reach both faces of every composite slot: `a` for the reading face's Latin
+// range, `1` for its digits, `Ω` for the upright slots' Greek (U+0391-03A9,
+// capitals only) and `α` for the italic slots' (U+0370-03FF).
+const FACE_SAMPLE = "a1αΩ";
+
+// The composite's four slots, as CSS `font` shorthands. All four, because which
+// expression first asks for `\mathbf` or `\boldsymbol` is not knowable before
+// the render; the reading-face halves name the same woff2 files as the prose
+// faces, so a page whose prose already uses PT Serif bold or italic pays no
+// extra request for them.
+//
+// The composite is asked for BY DESCRIPTION rather than face by face, because a
+// host may declare its own `KPress Math Text` rules over these (see the contract
+// in katex-text-face.css). `document.fonts.load()` runs the same matching the
+// renderer runs, so the host's faces are what gets fetched and the rules it
+// replaced are not -- which loading every face of the family by name would get
+// wrong, fetching KPress's PT Serif files onto a page that never draws them.
+const TEXT_FACE_FONTS = [
+  "400 1em 'KPress Math Text'",
+  "italic 400 1em 'KPress Math Text'",
+  "700 1em 'KPress Math Text'",
+  "italic 700 1em 'KPress Math Text'",
+];
+
+// The KaTeX families to wait on in either mode. `KaTeX_Main` and `KaTeX_Math`
+// are the families every rule in katex-text-face.css names after the composite
+// -- where operators, relations, punctuation and everything the composite leaves
+// unclaimed are drawn -- and the ones that draw the letters and digits as well
+// when the face is off. Only these two: the construct-specific families (AMS,
+// Size1-4, Caligraphic, Fraktur, Script, SansSerif, Typewriter) are reached only
+// by the constructs that name them, and waiting on them would fetch all thirteen
+// on every page with math; they keep the bundle's own `swap`.
+//
+// Unlike the composite these are asked for FACE BY FACE, off `document.fonts`
+// and through `FontFace.load()`: they come from the pinned bundle, which is the
+// only thing that declares them, so their four and two rules are the complete
+// list and every one of them is wanted. Describing them instead -- `700 1em
+// 'KaTeX_Main'` and the rest -- would put the browser's face-matching between
+// the script and faces it already holds, and would leave the set the wait
+// covers implicit. Naming each face makes it exact, and the record below then
+// says which face every request was for.
+//
+// That the bundle is the only declarer is an assumption, and it is the host's to
+// keep: kpress-operations-and-host-integration.md asks a host to substitute a
+// math face through `KPress Math Text` and not by redeclaring these two
+// families, since a page that declares its own would have both sets loaded here.
+const KATEX_FAMILIES = ["KaTeX_Main", "KaTeX_Math"];
+
+// How long the wait may last, matching the block period `font-display: block`
+// gives a face before it swaps anyway: past it the wait buys nothing, and
+// mathematics that never appears is worse than mathematics that repaints.
+const FACE_WAIT_MS = 3000;
+
+/**
+ * One `@font-face`, as the wait record and the tests name it.
+ *
+ * @param {FontFace} face
+ * @returns {string}
+ */
+function faceKey(face) {
+  return [face.family, face.style, face.weight, face.unicodeRange].join("|");
+}
+
+/**
+ * The faces this page's mathematics will be drawn from, as promises that settle
+ * when the face has loaded or failed to, or `null` when there is nothing to wait
+ * for: no math, no KaTeX to render it, or no font loading API -- a browser
+ * without `document.fonts` has no `font-display` either, and renders exactly as
+ * it did before.
+ *
+ * A failed face settles like any other rather than rejecting, so one face that
+ * cannot be fetched does not cut the wait short for the rest and leave the
+ * mathematics to repaint in the ones that were nearly there; `FACE_WAIT_MS`
+ * bounds the wait either way.
+ *
+ * @returns {Promise<unknown>[] | null}
+ */
+function mathFaceLoads() {
+  const fonts = document.fonts;
+  const nodes = document.querySelectorAll(".kpress-math-render");
+  if (
+    nodes.length === 0 ||
+    typeof globalThis.renderMathInElement !== "function" ||
+    !fonts ||
+    typeof fonts.load !== "function" ||
+    typeof fonts.forEach !== "function"
+  ) {
+    return null;
+  }
+  // What the wait asked for and what came back, on
+  // `globalThis.kpressMathFaceWait`: one entry per request, in the order they
+  // were made, each `{ request, outcome, faces, detail }`. `outcome` is
+  // `pending` until it settles and then `loaded` (the request produced faces,
+  // and they loaded), `empty` (it matched no face, so it waited on nothing) or
+  // `error` (it was rejected, with the reason in `detail`); `faces` names what
+  // it matched. A page whose mathematics repaints is read here first: an
+  // `empty` or `error` entry is a face the wait did not in fact cover.
+  // Documented in kpress-design.md "Paints once"; nothing in the page reads it.
+  /** @type {{ request: string, outcome: string, faces: string[], detail?: string }[]} */
+  const record = [];
+  globalThis.kpressMathFaceWait = record;
+  /** @type {Promise<unknown>[]} */
+  const loads = [];
+  /**
+   * @param {string} request
+   * @param {Promise<FontFace[]>} matched
+   */
+  const track = (request, matched) => {
+    /** @type {{ request: string, outcome: string, faces: string[], detail?: string }} */
+    const entry = { request, outcome: "pending", faces: [] };
+    record.push(entry);
+    loads.push(
+      matched.then(
+        (faces) => {
+          entry.faces = faces.map(faceKey);
+          entry.outcome = faces.length === 0 ? "empty" : "loaded";
+        },
+        (error) => {
+          entry.outcome = "error";
+          entry.detail = String(error);
+        },
+      ),
+    );
+  };
+
+  fonts.forEach((face) => {
+    if (!KATEX_FAMILIES.includes(face.family) || typeof face.load !== "function") {
+      return;
+    }
+    track(
+      faceKey(face),
+      face.load().then((loaded) => [loaded]),
+    );
+  });
+  for (const node of nodes) {
+    // The composite is only reachable where the stylesheet applies it, so a page
+    // that has opted out waits on the KaTeX faces alone.
+    if (!node.closest(TEXT_FACE_OPT_OUT)) {
+      for (const spec of TEXT_FACE_FONTS) {
+        track(spec, fonts.load(spec, FACE_SAMPLE));
+      }
+      break;
+    }
+  }
+  return loads;
+}
+
+function startMath() {
+  const loads = mathFaceLoads();
+  if (loads === null) {
+    enhanceMath();
+    return;
+  }
+  const deadline = new Promise((resolve) => setTimeout(resolve, FACE_WAIT_MS));
+  // Both handlers render: a face that fails to load must not take the
+  // mathematics with it.
+  Promise.race([Promise.all(loads), deadline]).then(enhanceMath, enhanceMath);
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", enhanceMath, { once: true });
+  document.addEventListener("DOMContentLoaded", startMath, { once: true });
 } else {
-  enhanceMath();
+  startMath();
 }

@@ -26,7 +26,10 @@ The invariants, each measured on a rendered page:
   directions, and a footnote preview -- a clone mounted outside ``.kpress`` --
   keeps the mode and the size of the document it was opened from;
 - an opt-out stamped directly on the wrapper reaches the stylesheet as well as
-  the script, so the composite family and the metrics can never disagree.
+  the script, so the composite family and the metrics can never disagree;
+- the mathematics paints once: every face the mode draws from has finished
+  loading before the first typeset expression reaches the DOM, so no formula is
+  painted in a fallback and repainted in the reading face.
 """
 
 from __future__ import annotations
@@ -441,3 +444,309 @@ def test_a_font_set_stamped_on_the_wrapper_opts_out_of_both_guards(tmp_path: Pat
     assert probe["rendered"] == 2
     assert "KPress Math Text" not in probe["family"]
     assert probe["advance"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+
+
+# ---- The mathematics paints once ----
+
+
+#: Recorded from the moment the page starts, before any of its own scripts run:
+#: when the first `.katex` node was inserted, and when each `@font-face` in
+#: `document.fonts` finished loading. Every face is watched as soon as it enters
+#: the set, while its `loaded` promise is still pending, so the time recorded is
+#: when the load settled and not when the probe happened to look -- an
+#: `requestAnimationFrame` poll would be a whole blocked frame late, and KaTeX
+#: blocks the frame it renders in.
+#:
+#: A face is recorded under its IDENTITY -- family, style, weight, unicode-range --
+#: and not per `FontFace` object, because a browser may hand out more than one
+#: object for the same `@font-face` rule. Chrome on Linux rebuilds the
+#: CSS-connected faces when the active stylesheet set changes, so a poll that lands
+#: between `katex.min.css` and `katex-text-face.css` catches a whole generation of
+#: objects that is then replaced and never loads: on that run `document.fonts`
+#: reported the KaTeX faces twice, the first copy pending forever. `objects` counts
+#: how many were seen for one identity, and `loaded` is the first of them to load,
+#: which is when the face's bytes were in fact ready.
+_PAINT_PROBE_INIT = """(() => {
+  const probe = { firstKatex: null, faces: [] };
+  globalThis.__kpressPaintProbe = probe;
+
+  const mark = (node) => {
+    if (probe.firstKatex !== null || node.nodeType !== 1) return;
+    if (node.classList.contains("katex") || node.querySelector(".katex")) {
+      probe.firstKatex = performance.now();
+    }
+  };
+  new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) mark(node);
+  }).observe(document, { childList: true, subtree: true });
+
+  const watched = new WeakSet();
+  const byKey = new Map();
+  const watch = () => {
+    document.fonts.forEach((face) => {
+      if (watched.has(face)) return;
+      watched.add(face);
+      const key = [face.family, face.style, face.weight, face.unicodeRange].join("|");
+      let record = byKey.get(key);
+      if (record === undefined) {
+        record = {
+          family: face.family,
+          style: face.style,
+          weight: face.weight,
+          unicodeRange: face.unicodeRange,
+          loaded: null,
+          objects: 0,
+        };
+        byKey.set(key, record);
+        probe.faces.push(record);
+      }
+      record.objects += 1;
+      face.loaded.then(
+        () => {
+          if (record.loaded === null) record.loaded = performance.now();
+        },
+        () => {},
+      );
+    });
+    setTimeout(watch, 1);
+  };
+  watch();
+})()"""
+
+
+class FaceTiming(TypedDict):
+    """One `@font-face` of the page, and when it finished loading."""
+
+    family: str
+    style: str
+    weight: str
+    unicodeRange: str
+    loaded: float | None
+    objects: int
+
+
+class WaitEntry(TypedDict):
+    """One request `katex-init.js` made of the font loading API, and its outcome.
+
+    ``request`` is a face key when the init asked for a face it can see in
+    ``document.fonts`` and a CSS ``font`` shorthand when it asked the matching
+    algorithm for one; ``outcome`` is ``loaded``, ``empty``, ``error`` or (only if
+    the three-second deadline beat the loads) ``pending``.
+    """
+
+    request: str
+    outcome: str
+    faces: list[str]
+
+
+class PaintProbe(TypedDict):
+    """When the first typeset expression reached the DOM, against the faces."""
+
+    firstKatex: float | None
+    faces: list[FaceTiming]
+    wait: list[WaitEntry]
+
+
+#: The composite family the mathematics is drawn from where the face is on.
+TEXT_FACE_FAMILY = "KPress Math Text"
+
+#: The two KaTeX families every rule in katex-text-face.css names after the composite
+#: (and that draw the letters and digits themselves when the face is off), against how
+#: many `@font-face` rules the pinned bundle declares for each. The init asks for every
+#: one of them by name, so a bump that adds or drops a face has to be seen here.
+KATEX_FACE_COUNTS = {"KaTeX_Main": 4, "KaTeX_Math": 2}
+
+#: The KaTeX faces every expression on the fixture page is drawn from, whatever it
+#: contains: upright `KaTeX_Main` for operators, relations, punctuation and (in the
+#: opt-out mode) the letters and digits, and italic `KaTeX_Math` for the variables.
+#: The bold and bold-italic faces of either family are only reached by `\mathbf`,
+#: `\boldsymbol` and `\textbf`, which this fixture has none of.
+REQUIRED_KATEX_FACES = (("KaTeX_Main", "normal", "400"), ("KaTeX_Math", "italic", "400"))
+
+#: The init's own ceiling on the wait (`FACE_WAIT_MS` in katex-init.js), and the bound
+#: this test holds the first render to. Every ordering assertion below is relative to
+#: `firstKatex`, so a page whose faces never settle satisfies all of them by rendering
+#: three seconds late; the bound is what tells that apart from the wait working. Two
+#: thirds of the ceiling: far above any real load on any runner, and far enough below
+#: 3000 that a render the deadline released cannot land under it. It is the init's
+#: constant and not this machine's speed, so it is as platform-independent as the
+#: orderings are.
+FACE_WAIT_MS = 3000
+FACE_WAIT_BOUND_MS = 2000
+
+
+def _face_key(face: FaceTiming) -> str:
+    """The identity `katex-init.js` records a face under (its `faceKey`)."""
+    return "|".join((face["family"], face["style"], face["weight"], face["unicodeRange"]))
+
+
+def _paint_probe(tmp_path: Path, math_text_font: str | None) -> PaintProbe:
+    sync_api = pytest.importorskip("playwright.sync_api")
+    public = _build_fixture_site(tmp_path, math_text_font=math_text_font)
+    server, thread = _serve(public)
+    url = f"http://127.0.0.1:{server.server_address[1]}/"
+    try:
+        with sync_api.sync_playwright() as playwright:
+            browser = _launch(playwright, sync_api)
+            try:
+                context = browser.new_context(viewport={"width": 900, "height": 900})
+                context.add_init_script(_PAINT_PROBE_INIT)
+                page = context.new_page()
+                page.goto(url)
+                page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+                page.evaluate("document.fonts.ready")
+                probe = cast(PaintProbe, page.evaluate("globalThis.__kpressPaintProbe"))
+                # The init's own account of the wait, which says which faces it in
+                # fact covered; see "PAINTING ONCE" in katex-init.js.
+                probe["wait"] = cast(
+                    "list[WaitEntry]", page.evaluate("globalThis.kpressMathFaceWait ?? []")
+                )
+                return probe
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def _faces(probe: PaintProbe, family: str) -> list[FaceTiming]:
+    return [face for face in probe["faces"] if face["family"] == family]
+
+
+def _report(probe: PaintProbe) -> str:
+    """Everything the page recorded, so a failure here explains itself.
+
+    A browser that loads a different set of faces than the one this machine loads
+    is the whole difficulty of this test, and the assertions below cannot say which
+    face it was. This can.
+    """
+    lines = [f"first .katex inserted at {probe['firstKatex']}ms", "the init's font wait:"]
+    lines += [
+        f"  {entry['outcome']:<7} {entry['request']} -> {entry['faces'] or '(none)'}"
+        for entry in probe["wait"]
+    ] or ["  (nothing recorded)"]
+    lines.append("every @font-face of the page, and when it loaded:")
+    lines += [
+        f"  {face['loaded']} {_face_key(face)} ({face['objects']} object(s))"
+        for face in probe["faces"]
+    ]
+    return "\n".join(lines)
+
+
+def _loaded_first(probe: PaintProbe, faces: list[FaceTiming], why: str) -> None:
+    """Every one of `faces` finished loading before the first `.katex` node existed."""
+    first = probe["firstKatex"]
+    assert first is not None
+    for face in faces:
+        loaded = face["loaded"]
+        assert loaded is not None, f"{why}: {_face_key(face)} never loaded\n{_report(probe)}"
+        assert loaded <= first, (
+            f"{why}: {_face_key(face)} loaded {loaded - first:.1f}ms after the first .katex"
+            f"\n{_report(probe)}"
+        )
+
+
+def _settled_before_the_deadline(probe: PaintProbe) -> None:
+    """The wait ran to its end rather than being cut short by `FACE_WAIT_MS`.
+
+    Without this the orderings above are satisfied by the failure they exist to
+    catch: a face whose `load()` never settles renders the page three seconds late,
+    every other face is long since loaded, and each `loaded <= firstKatex` holds. It
+    has happened on this branch once already, as `KaTeX_Main normal 700` never
+    loading on the Linux runner. The record is where it shows: a request the
+    deadline beat is left `pending`, and a render past the bound is the deadline
+    having won even where the record cannot say so.
+    """
+    first = probe["firstKatex"]
+    assert first is not None
+    pending = [entry for entry in probe["wait"] if entry["outcome"] == "pending"]
+    assert pending == [], f"the deadline cut the wait short\n{_report(probe)}"
+    assert first < FACE_WAIT_BOUND_MS, (
+        f"the first .katex was inserted at {first:.1f}ms, past the {FACE_WAIT_BOUND_MS}ms"
+        f" bound on the init's {FACE_WAIT_MS}ms ceiling\n{_report(probe)}"
+    )
+
+
+def _covered(probe: PaintProbe) -> list[FaceTiming]:
+    """The faces the init's wait actually covered: the ones its requests matched.
+
+    A request that came back empty, or was rejected, waited on nothing -- it is
+    reported by `_report` but it is not a face the fix promises anything about.
+    """
+    keys = {
+        key for entry in probe["wait"] if entry["outcome"] == "loaded" for key in entry["faces"]
+    }
+    return [face for face in probe["faces"] if _face_key(face) in keys]
+
+
+def _required(probe: PaintProbe) -> list[FaceTiming]:
+    """The KaTeX faces every expression on the fixture page needs."""
+    found: list[FaceTiming] = []
+    for family, style, weight in REQUIRED_KATEX_FACES:
+        matches = [
+            face
+            for face in _faces(probe, family)
+            if face["style"] == style and face["weight"] == weight
+        ]
+        assert matches, f"no {family} {style} {weight} face on the page\n{_report(probe)}"
+        found += matches
+    return found
+
+
+def test_math_paints_once_in_its_final_faces(tmp_path: Path) -> None:
+    """No expression reaches the page before the faces that draw it.
+
+    KaTeX renders into the live DOM, so an expression is painted in whatever
+    faces have decoded by then; the composite's slots are separate `@font-face`
+    rules from the prose PT Serif and are fetched only when a formula first asks
+    for them. Rendering first therefore paints the letters and digits in the next
+    family of the stack and repaints them from the reading face a moment later,
+    which reads as the digits in every formula changing font. `katex-init.js`
+    loads the faces the mode will use and renders after they settle.
+
+    Four things are asserted, which is exactly what the wait promises: the
+    composite's eight faces are loaded first in the mode that draws from them;
+    every face the wait's own record says it covered is loaded first; the two
+    KaTeX faces every expression here is drawn from -- upright `KaTeX_Main` and
+    italic `KaTeX_Math` -- are loaded first in both modes; and the wait settled
+    rather than being released by its own deadline, without which each of the
+    other three is satisfied by a page that renders three seconds late. A KaTeX
+    face the fixture never asks for and the browser did not load is not a
+    failure; the record says which those were.
+
+    Relative times and the init's own ceiling only, so the assertions are the
+    ordering and the wait's contract, not this machine's speed.
+    """
+    default = _paint_probe(tmp_path / "prose", None)
+    assert default["firstKatex"] is not None, (
+        f"no .katex node was ever inserted\n{_report(default)}"
+    )
+
+    # The init asked for every face of both KaTeX families by name, whatever the
+    # browser then made of the request.
+    for family, count in KATEX_FACE_COUNTS.items():
+        asked = [entry for entry in default["wait"] if entry["request"].startswith(f"{family}|")]
+        assert len(asked) == count, f"{family} faces asked for: {asked}\n{_report(default)}"
+
+    _settled_before_the_deadline(default)
+    composite = _faces(default, TEXT_FACE_FAMILY)
+    # Four slots, each two faces: the reading face and the KaTeX face for Greek.
+    assert len(composite) == 8, _report(default)
+    _loaded_first(default, composite, "the composite the mode draws from")
+    _loaded_first(default, _covered(default), "a face the wait covered")
+    _loaded_first(default, _required(default), "a face every expression here uses")
+
+    # The opt-out mode uses none of the composite, and waits on none of it: the
+    # KaTeX faces it does draw from are ready before the first expression.
+    katex = _paint_probe(tmp_path / "katex", "katex")
+    assert katex["firstKatex"] is not None, f"no .katex node was ever inserted\n{_report(katex)}"
+    assert [face for face in _faces(katex, TEXT_FACE_FAMILY) if face["loaded"] is not None] == [], (
+        _report(katex)
+    )
+    assert [entry for entry in katex["wait"] if TEXT_FACE_FAMILY in entry["request"]] == [], (
+        _report(katex)
+    )
+    _settled_before_the_deadline(katex)
+    _loaded_first(katex, _covered(katex), "a face the wait covered")
+    _loaded_first(katex, _required(katex), "a face every expression here uses")
