@@ -10,13 +10,13 @@ a heading's sans weight is not the weight the pinned tables were built at -- but
 those blocks gets sans mathematics whether or not its own letters are sans.
 
 That is the whole hazard this file exists for, and it is one the cascade reaches
-quietly. `document.css` re-declares the prose face directly on `h1`, `h2`, `h5` and `h6`
+quietly. `document.css` redeclares the prose face directly on `h1`, `h2`, `h5` and `h6`
 (`.kpress-prose h1` and its siblings), and a declaration on the heading itself beats the
 sans family a container sets on an ancestor, which reaches the heading only by
 inheritance. Before this test existed, an `h2` inside `:::description` therefore drew PT
 Serif words wrapped around a Source Sans formula -- Chromium-verified -- which is the
 exact disagreement the sans composite was built to remove. `.sans-text` had escaped the
-`h1`/`h2` half of it by re-declaring those two, and had NOT escaped the `h5`/`h6` half.
+`h1`/`h2` half of it by redeclaring those two, and had NOT escaped the `h5`/`h6` half.
 
 So the invariant here is not "some rule exists". It is the cascade's own answer: for
 every block and every heading level, resolve `font-family` the way a browser does --
@@ -24,7 +24,7 @@ every rule in the two stylesheets that reaches that heading, ranked by specifici
 then by source order -- and require the winner to be the sans face, declared by a rule
 that names the block. The second half matters as much as the first: it keeps the
 agreement anchored to the block rather than resting on `.kpress-prose h1..h6` happening
-to stay sans for the levels that do not re-declare.
+to stay sans for the levels that do not redeclare.
 
 The other sans-math roles -- captions, footnotes, tables, tab buttons, `details` -- are
 not covered: none of them is a container kpress renders author headings into, and giving

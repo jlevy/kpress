@@ -1257,9 +1257,9 @@ A heading is a weight step away from any table this feature can build.
 The shared `.kpress-prose h1`–`h6` rule in `css/document.css` does declare
 `--kpress-font-weight-sans-bold` (650), but every level overrides it: `h3` takes
 `--kpress-font-weight-sans-medium` (550) and `h4` takes 540, while `h1`, `h2`, `h5` and
-`h6` re-declare `--kpress-font-prose` and are not sans at all (`h2` is serif italic
-400). So the sans headings that exist are at 550 and 540, and a table built at 400 is no
-truer of those than the 650 table would have been.
+`h6` redeclare `--kpress-font-prose` and are not sans at all (`h2` is serif italic 400).
+So the sans headings that exist are at 550 and 540, and a table built at 400 is no truer
+of those than the 650 table would have been.
 Either way a heading’s mathematics would sit a step off its own words, and the
 pinned-weight design above is exactly what makes that unfixable per heading: KaTeX picks
 the table from the TeX, not from the CSS, so a third pair of slots at the heading

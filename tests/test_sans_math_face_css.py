@@ -312,7 +312,7 @@ def test_every_class_is_repointed_in_both_scopes() -> None:
         selectors = [selector for selector, _body in rules[tail]]
         assert sum(MARK in selector for selector in selectors) == 1, tail
         assert sum(selector.startswith(OVERLAY_SCOPE) for selector in selectors) == 1, tail
-        for selector, body in rules[tail]:
+        for _selector, body in rules[tail]:
             assert f"font-family: {FAMILY}, {katex_family}" in body, (tail, body)
 
 
@@ -406,7 +406,7 @@ def test_the_stylesheet_names_no_role_and_reaches_the_document_only_by_the_mark(
     assert key, "katex-init.js declares no SANS_FACE_ATTR"
     # `kpressMathFace` is how a `dataset` write spells `data-kpress-math-face`.
     dashed = re.sub(r"([A-Z])", lambda m: f"-{m.group(1).lower()}", key.group("key"))
-    assert MARK == f'[data-{dashed}="sans"]', (key.group("key"), MARK)
+    assert f'[data-{dashed}="sans"]' == MARK, (key.group("key"), MARK)
 
 
 def test_the_script_carries_every_sans_role_including_the_two_the_review_found() -> None:

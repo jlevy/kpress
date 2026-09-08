@@ -1578,7 +1578,7 @@
 /* Every heading inside a sans block takes the sans face, so its mathematics and its
    words are set in the same one.
 
-   WHY THIS RULE IS NEEDED AT ALL: document.css re-declares the prose face directly on
+   WHY THIS RULE IS NEEDED AT ALL: document.css redeclares the prose face directly on
    the heading -- `.kpress-prose h1`, `h2`, `h5` and `h6` each carry their own
    `font-family: var(--kpress-font-prose, ...)` -- and a declaration on the element
    itself beats the sans family a container sets on an ancestor, which reaches the
@@ -1596,7 +1596,7 @@
    heading's sans weight is not the weight the pinned tables were built at), so the
    agreement has to be reached from the text side, here.
 
-   `.sans-text` is in the list too. It already re-declares the sans family on its own
+   `.sans-text` is in the list too. It already redeclares the sans family on its own
    `h1` and `h2` above -- that pair is where this pattern comes from -- but it stops
    there, so its `h5` and `h6` were on the prose face exactly like the other five
    containers. `h3` and `h4` reach the sans face through the `.kpress-prose h1..h6`

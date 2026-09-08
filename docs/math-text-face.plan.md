@@ -499,7 +499,7 @@ Not part of this plan:
   composite has a table for.
   `css/document.css` gives `h3` `--kpress-font-weight-sans-medium` (550) and `h4` 540,
   and the shared `h1`–`h6` rule’s `--kpress-font-weight-sans-bold` (650) is overridden
-  at every level; `h1`, `h2`, `h5` and `h6` re-declare `--kpress-font-prose` and are not
+  at every level; `h1`, `h2`, `h5` and `h6` redeclare `--kpress-font-prose` and are not
   sans at all, `h2` being serif italic 400. Drawing a heading’s mathematics from the
   sans composite would set it at the pinned 400 against 550 or 540 words, and routing it
   to the bold slots instead is not possible with a per-class table: KaTeX picks the
