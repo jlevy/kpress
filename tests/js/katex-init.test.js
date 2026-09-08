@@ -46,8 +46,88 @@ function mathNodes() {
   return document.querySelectorAll(".kpress-math-render");
 }
 
+// happy-dom ships no `document.fonts`, which is the script's own no-font-loading
+// path: it renders straight away, exactly as it did before the wait existed. The
+// tests that exercise the wait install this stub, whose promises settle only when
+// the test says so, and every other test in the file runs without it.
+//
+// The set holds the faces the pinned KaTeX bundle declares, plus faces the init
+// must leave alone: a construct-specific KaTeX family, the prose face, and the
+// composite -- which is asked for through `load()` and never face by face, so
+// that a host's own `KPress Math Text` rules are what a page fetches.
+const SET_FACES = [
+  ["KaTeX_Main", "normal", "700"],
+  ["KaTeX_Main", "italic", "700"],
+  ["KaTeX_Main", "italic", "400"],
+  ["KaTeX_Main", "normal", "400"],
+  ["KaTeX_Math", "italic", "700"],
+  ["KaTeX_Math", "italic", "400"],
+  ["KaTeX_Size1", "normal", "400"],
+  ["PT Serif", "normal", "400"],
+  ["KPress Math Text", "normal", "400"],
+];
+
+/** The identity `katex-init.js` records a face under, and the tests name it by. */
+function faceKey({ family, style, weight, unicodeRange }) {
+  return [family, style, weight, unicodeRange].join("|");
+}
+
+function stubFontFaceSet() {
+  /**
+   * @type {{ request: string, text?: string,
+   *          settle: (ok: boolean, faces?: unknown[]) => void }[]}
+   */
+  const loads = [];
+  const faces = SET_FACES.map(([family, style, weight]) => {
+    const face = { family, style, weight, unicodeRange: "U+0-10FFFF" };
+    return Object.assign(face, {
+      load: vi.fn(
+        () =>
+          new Promise((resolve, reject) => {
+            loads.push({
+              request: faceKey(face),
+              settle: (ok) => (ok ? resolve(face) : reject(new Error("the face did not load"))),
+            });
+          }),
+      ),
+    });
+  });
+  const fonts = {
+    forEach: (callback) => {
+      for (const face of faces) {
+        callback(face, face, fonts);
+      }
+    },
+    load: vi.fn(
+      (spec, text) =>
+        new Promise((resolve, reject) => {
+          loads.push({
+            request: spec,
+            text,
+            settle: (ok, matched = [{ family: spec, style: "normal", weight: "400" }]) =>
+              ok ? resolve(matched) : reject(new Error("the face did not load")),
+          });
+        }),
+    ),
+  };
+  Object.defineProperty(document, "fonts", { value: fonts, configurable: true });
+  return loads;
+}
+
+/** What `katex-init.js` recorded about the wait, keyed by request. */
+function waitRecord() {
+  return Object.fromEntries(
+    (globalThis.kpressMathFaceWait ?? []).map((entry) => [entry.request, entry.outcome]),
+  );
+}
+
 beforeEach(() => {
+  // The deadline case below installs fake timers; every other case in the file
+  // measures nothing and waits on real ones.
+  vi.useRealTimers();
   document.body.innerHTML = "";
+  Reflect.deleteProperty(document, "fonts");
+  Reflect.deleteProperty(globalThis, "kpressMathFaceWait");
   document.documentElement.removeAttribute("data-kpress-math-text");
   document.documentElement.removeAttribute("data-kpress-font-set");
   globalThis.kpressKatexTextMetrics = METRICS;
@@ -146,5 +226,172 @@ describe("katex-init.js math text metrics", () => {
 
     expect(document.documentElement.dataset.kpressMathText).toBe("katex");
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+});
+
+//: The KaTeX faces the init asks for by name: every face of the two families
+//: katex-text-face.css names after the composite, and none of the others.
+const KATEX_REQUESTS = [
+  "KaTeX_Main|normal|700|U+0-10FFFF",
+  "KaTeX_Main|italic|700|U+0-10FFFF",
+  "KaTeX_Main|italic|400|U+0-10FFFF",
+  "KaTeX_Main|normal|400|U+0-10FFFF",
+  "KaTeX_Math|italic|700|U+0-10FFFF",
+  "KaTeX_Math|italic|400|U+0-10FFFF",
+];
+
+describe("katex-init.js paints the mathematics once", () => {
+  it("renders only once the composite and the KaTeX faces have loaded", async () => {
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    // KaTeX renders into the live DOM, so a formula typeset before its faces
+    // decode is painted in the next family of the stack and repainted when the
+    // reading face arrives. Nothing is typeset while the loads are pending.
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+
+    const requests = loads.map((load) => load.request);
+    // The two KaTeX families, face by face off `document.fonts`, so no matching
+    // stands between the wait and a face the page already holds. Nothing else in
+    // the set is touched: not the construct-specific families, not the prose
+    // face, and not the composite, which is asked for by description below.
+    expect(requests.slice(0, KATEX_REQUESTS.length)).toEqual(KATEX_REQUESTS);
+    expect(requests.join(" ")).not.toContain("KaTeX_Size1");
+    expect(requests.join(" ")).not.toContain("PT Serif");
+    expect(requests.join(" ")).not.toContain("KPress Math Text|");
+
+    // The composite's four slots, as descriptions, so a host that declared its
+    // own faces over these gets the ones it declared.
+    const specs = loads.filter((load) => load.text !== undefined);
+    expect(specs.map((load) => load.request)).toEqual([
+      "400 1em 'KPress Math Text'",
+      "italic 400 1em 'KPress Math Text'",
+      "700 1em 'KPress Math Text'",
+      "italic 700 1em 'KPress Math Text'",
+    ]);
+    // `document.fonts.load` loads a face only for a code point its
+    // `unicode-range` covers, so the sample reaches both faces of every slot:
+    // Latin and digits for the reading face, and Greek in both cases for the
+    // KaTeX halves, whose upright slots carry the capitals alone.
+    for (const load of specs) {
+      expect(load.text).toMatch(/[a-z]/);
+      expect(load.text).toMatch(/[0-9]/);
+      expect(load.text).toContain("α");
+      expect(load.text).toContain("Ω");
+    }
+
+    for (const load of loads) {
+      load.settle(true);
+    }
+
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+    expect(globalThis.katex.__setFontMetrics).toHaveBeenCalledTimes(FACES.length);
+    // The record a page's mathematics is debugged from says every request was
+    // covered by a face that loaded.
+    expect(Object.values(waitRecord())).toEqual(Array(loads.length).fill("loaded"));
+  });
+
+  it("waits for no composite face when the document opts out", async () => {
+    document.documentElement.dataset.kpressMathText = "katex";
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    expect(loads.map((load) => load.request)).toEqual(KATEX_REQUESTS);
+
+    for (const load of loads) {
+      load.settle(true);
+    }
+
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+  });
+
+  it("renders anyway when a face fails to load, and records which", async () => {
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    loads[0].settle(false);
+    for (const load of loads.slice(1)) {
+      load.settle(true);
+    }
+
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+    // A face that cannot be fetched must not take the mathematics with it, and
+    // must be legible afterwards as a face the wait did not in fact cover.
+    expect(waitRecord()[loads[0].request]).toBe("error");
+    expect(globalThis.kpressMathFaceWait[0].detail).toContain("the face did not load");
+  });
+
+  it("renders at the three-second ceiling when the faces never settle", async () => {
+    // The deadline is what stops a font that hangs from meaning no mathematics at
+    // all, and it is the one branch the cases above cannot reach: they settle every
+    // load. Here nothing settles, so the render can only come from the race.
+    vi.useFakeTimers();
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+    // Late mathematics in the fallback faces, not no mathematics: the tables are
+    // installed and the nodes are stamped exactly as on the settled path.
+    expect(globalThis.katex.__setFontMetrics).toHaveBeenCalledTimes(FACES.length);
+    expect(document.querySelector("[data-kpress-math]").dataset.kpressMathRendered).toBe("true");
+    // Every request is still outstanding, and the record says so: `pending` is how a
+    // page that repainted is told apart from one whose faces the wait did cover.
+    expect(Object.values(waitRecord())).toEqual(Array(loads.length).fill("pending"));
+  });
+
+  it("records a request that matched no face as empty", async () => {
+    // A description that matches nothing resolves with no faces, so the wait
+    // bought nothing for that slot. It is not an error and must not block the
+    // render, but it is the difference between a face the fix covers and one it
+    // does not, so the record has to say so.
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    const empty = loads.find((load) => load.request === "700 1em 'KPress Math Text'");
+    empty.settle(true, []);
+    for (const load of loads.filter((load) => load !== empty)) {
+      load.settle(true);
+    }
+
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+    expect(waitRecord()["700 1em 'KPress Math Text'"]).toBe("empty");
+    expect(waitRecord()["400 1em 'KPress Math Text'"]).toBe("loaded");
+  });
+
+  it("renders straight away where there is no font loading API", () => {
+    // No stub: a browser without `document.fonts` has no `font-display` either,
+    // and behaves exactly as it did before the wait existed.
+    mountMath();
+
+    runInitScript();
+
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
+    expect(globalThis.kpressMathFaceWait).toBeUndefined();
+  });
+
+  it("loads no face on a page with no mathematics", () => {
+    const loads = stubFontFaceSet();
+
+    runInitScript();
+
+    expect(loads).toHaveLength(0);
+    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+    expect(globalThis.kpressMathFaceWait).toBeUndefined();
   });
 });
