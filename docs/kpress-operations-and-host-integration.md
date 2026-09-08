@@ -242,6 +242,25 @@ sizing too).
 See [Sizing Policy](kpress-design.md#sizing-policy) for the contract and the
 deliberately root-relative layout lengths.
 
+Code is the one role with an asset-pruning setting rather than only a display switch.
+By default a document declares two Planetaire Mono Text faces — regular and bold, 27,384
+bytes of woff2, about 27KB, which base64 grows by a third to about 36KB — plus their two
+`mono-planetaire-*.css` stylesheets.
+A host that sets `mono_font: "system"` gets neither: the faces and their stylesheets
+never enter the manifest, so there is nothing to link, copy, or inline, and
+`--kpress-font-mono` resolves to the platform stack.
+A host that wants more styles than the two names them in `mono_weights` (`italic`,
+`bold-italic`, `medium`, `semibold`, `extrabold`) and pays for exactly those, about 15
+KB each. `italic` is the one most sites want next: KPress’s syntax highlighting sets
+comments and docstrings italic, and under the default pair a browser synthesizes the
+slant rather than drawing it — fine for a page with a few code spans, less so for a page
+of annotated code. The reader-facing `font_mode: "system"` is a different lever: it also
+puts code in the platform mono, but it changes only the cascade, so an inlining host
+still carries every face it declared.
+Sizing the mono against a family of its own goes through `--kpress-host-font-size-mono`,
+which carries the small and tiny rungs with it; see
+[Mono Face](kpress-design.md#mono-face) for how the default ratio is derived.
+
 Theming is equally declarative: rendered fragments carry no baked theme or palette
 attributes, so a host stamps `data-kpress-resolved-theme` (and optionally
 `data-kpress-palette`) on one scope — `:root` or a wrapper — and updates it on toggle;

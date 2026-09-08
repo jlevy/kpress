@@ -33,6 +33,7 @@ from pathlib import Path
 import pytest
 
 from devtools.instance_sans import FAMILY
+from devtools.subset_mono import SOURCES as MONO_STYLES
 from devtools.subset_quotes import POSTSCRIPT_NAME as QUOTE_FACE
 from kpress.format.pdf import PdfOptions, render_pdf
 from kpress.workflow.format import format_document
@@ -41,6 +42,10 @@ from kpress.workflow.format import format_document
 #: names the sans stack at the root's own weight, which font matching lands on 400.
 FOOTER_FACE = f"{FAMILY.replace(' ', '')}-400"
 
+#: The mono face code resolves to, by the PostScript name the subset keeps from
+#: upstream (devtools/subset_mono.py renames nothing).
+MONO_FACE = f"PlanetaireMonoText-{MONO_STYLES[0].upstream}"
+
 #: How long the delaying server holds a static instance back. Long enough that an export
 #: which does not wait prints before the face arrives (measured: it prints immediately),
 #: short enough to stay well inside the suite's per-test timeout.
@@ -48,11 +53,30 @@ _FONT_DELAY_SECONDS = 0.7
 
 _INSTANCE_FILE = re.compile(r"/kpress-print-sans-latin-\d{3}-(?:normal|italic)\.woff2$")
 _BASE_FONT = re.compile(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)")
+_OBJECT = re.compile(rb"\d+ 0 obj(.*?)endobj", re.DOTALL)
+_TYPE0 = re.compile(rb"/Subtype\s*/Type0\b")
 
 
 def _embedded_fonts(pdf: Path) -> set[str]:
     """Every font the PDF embeds or references, without its subset prefix."""
     return {name.decode() for name in _BASE_FONT.findall(pdf.read_bytes())}
+
+
+def _type0_fonts(pdf: Path) -> set[str]:
+    """The composite fonts the PDF embeds: a real font program, not drawn outlines.
+
+    ``/Type0`` is what an embedded woff2 becomes on the way into a PDF, so the
+    distinction this makes is the same one ``/Type3`` makes above -- a font a viewer
+    can smooth, select and search, against a page of paths that only looks like text.
+    """
+    names: set[str] = set()
+    for body in _OBJECT.findall(pdf.read_bytes()):
+        if not _TYPE0.search(body):
+            continue
+        found = _BASE_FONT.search(body)
+        if found is not None:
+            names.add(found.group(1).decode())
+    return names
 
 
 def _formatted_page(tmp_path: Path, markdown: str) -> Path:
@@ -143,6 +167,37 @@ def test_slow_print_faces_still_embed_in_the_exported_pdf(tmp_path: Path) -> Non
     # there to show the page itself rendered rather than exporting blank.
     assert FOOTER_FACE in fonts, fonts
     assert any(name.startswith("PTSerif") for name in fonts), fonts
+
+
+def test_code_embeds_the_shipped_mono_face_in_the_exported_pdf(tmp_path: Path) -> None:
+    """Printed code comes from the shipped face, not from the exporting machine's mono.
+
+    This is the last role that used to fall through to whatever the renderer had
+    installed: the squares explainer PDF that started this work carried 56 KB of the
+    build machine's Menlo. Both shapes a reader meets code in are on the page, and the
+    face has to arrive as a composite font rather than as outlines.
+    """
+    _require_chromium()
+    html = _formatted_page(
+        tmp_path,
+        "# Code in print\n\n"
+        "A paragraph that mentions `render_page(document, options)` inline.\n\n"
+        "```python\n"
+        "def measure(face: str) -> int:\n"
+        "    return len(face)  # 0123456789\n"
+        "```\n",
+    )
+    output = tmp_path / "code.pdf"
+
+    render_pdf(html, PdfOptions(output=output))
+
+    assert MONO_FACE in _type0_fonts(output), _embedded_fonts(output)
+    fonts = _embedded_fonts(output)
+    # The prose beside the code printed too, and nothing anywhere fell back to paths.
+    assert any(name.startswith("PTSerif") for name in fonts), fonts
+    assert b"/Type3" not in output.read_bytes(), fonts
+    # Nothing borrowed the exporting machine's own mono.
+    assert not [name for name in fonts if "Menlo" in name or "Courier" in name], fonts
 
 
 def test_quotation_marks_embed_in_the_exported_pdf(tmp_path: Path) -> None:

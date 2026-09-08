@@ -27,6 +27,34 @@ DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
 ProseFont = Literal["serif", "sans"]
 MathTextFont = Literal["prose", "katex"]
+# Which family draws code: the shipped Planetaire Mono Text subsets, or the
+# platform's own mono stack. See RenderOptions.mono_font.
+MonoFont = Literal["planetaire", "system"]
+# The Planetaire styles KPress vendors, named as `mono_weights` names them.
+# devtools/subset_mono.py generates one subset and one stylesheet per entry.
+MonoWeight = Literal["regular", "bold", "italic", "bold-italic", "medium", "semibold", "extrabold"]
+#: Declaration order, so a stylesheet list is deterministic whatever order a host
+#: wrote its weights in. Mirrors devtools/subset_mono.py's SOURCES.
+MONO_WEIGHT_ORDER: tuple[MonoWeight, ...] = (
+    "regular",
+    "bold",
+    "italic",
+    "bold-italic",
+    "medium",
+    "semibold",
+    "extrabold",
+)
+#: What a document declares when a host says nothing: upright and bold. Those are the
+#: two `code` and the syntax highlighter's keywords resolve to, and they carry the two
+#: shapes a reader meets code in.
+#:
+#: It is a deliberately short default, not a complete one. `syntax.css` also sets
+#: comments and docstrings italic, so under this pair a browser slants the upright face
+#: itself -- a synthesized oblique, legible but not the drawn italic. Adding "italic"
+#: (and "bold-italic" for the italic-and-700 tokens) buys the real ones for another
+#: 15 KB apiece, which a page that is mostly prose with a few code spans should not pay
+#: by default and a page of annotated code probably should.
+DEFAULT_MONO_WEIGHTS: tuple[MonoWeight, ...] = ("regular", "bold")
 AssetMode = Literal["hosted", "linked", "hashed", "inline"]
 AssetPolicy = Literal["none", "auto", "all"]
 OptimizerMode = Literal["none", "full"]
@@ -135,6 +163,30 @@ class RenderOptions:
     # does not change the math face. See "Math Text Face" in
     # docs/kpress-design.md.
     math_text_font: MathTextFont = "prose"
+    # Which family draws code. "planetaire" (the default) leads
+    # --kpress-font-mono with the shipped Planetaire Mono Text subsets, so a
+    # document sets code in the same face on every machine and a printed page
+    # embeds it. "system" hands code back to the platform stack (ui-monospace,
+    # SFMono-Regular, Menlo, Consolas, monospace) AND drops every Planetaire
+    # face from the asset manifest, so nothing is fetched, copied, or inlined.
+    # That asset consequence is why this is a render option and not only a CSS
+    # switch. Stamped as data-kpress-mono-font on <html> by the standalone page
+    # shell only; fragments bake no attribute and the CSS reads the absence of
+    # the attribute as "planetaire", so an embedding host that wants the
+    # platform mono stamps data-kpress-mono-font="system" on its own root and
+    # passes the same value here so the faces are pruned. Independent of
+    # font_mode: font_mode="system" is a display switch that leaves the asset
+    # set alone, the way it does for PT Serif. See "Mono Face" in
+    # docs/kpress-design.md.
+    mono_font: MonoFont = "planetaire"
+    # Which Planetaire styles the document declares. Only declared faces exist
+    # in the stylesheet, so a hosted page fetches only what its code uses and an
+    # inlined page carries only what was enabled. A style a rule asks for and
+    # this list withholds is not an error: the browser synthesizes it from the
+    # nearest declared face, which is why DEFAULT_MONO_WEIGHTS can be two files
+    # rather than four. Order does not matter: the manifest emits
+    # MONO_WEIGHT_ORDER. Ignored when mono_font is "system".
+    mono_weights: tuple[MonoWeight, ...] = DEFAULT_MONO_WEIGHTS
     # Content card: render the reading column as a bordered sheet floating over
     # the page (textpress's long-text card; chrome only appears at md+ widths).
     # Stamped as data-kpress-card on the document article; the CSS lives in

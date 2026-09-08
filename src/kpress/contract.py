@@ -49,6 +49,8 @@ PUBLIC_FORMAT_API = (
     "Heading",
     "MathMode",
     "MathTextFont",
+    "MonoFont",
+    "MonoWeight",
     "RenderedDocument",
     "RenderedPage",
     "RenderOptions",
@@ -365,7 +367,8 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
 # (see style-tokens.css "Palette options"): an embedding host now re-themes by setting
 # the resolved --kpress-doc-* / --color-* tokens directly, not through a --kpress-host-*
 # color fallback. The font, sizing (--kpress-host-font-size-base, the one knob the
-# whole type ramp derives from), and settings-inset seams remain.
+# whole type ramp derives from, plus --kpress-host-font-size-mono for the mono rung
+# the ramp does not reach), and settings-inset seams remain.
 PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-body",
     "--kpress-host-font-footnote",
@@ -385,6 +388,12 @@ PUBLIC_HOST_CSS_VARIABLES = (
     # that overrides the sans weight tokens sets this to its own instanced family.
     "--kpress-host-font-sans-print",
     "--kpress-host-font-size-base",
+    # The second sizing hook, and the only rung with one: code is the one role whose
+    # size is a ratio between two faces' x-heights rather than a step of the prose
+    # ramp, so a host that swaps --kpress-host-font-mono for a face of its own has to
+    # be able to re-derive it. The small and tiny mono rungs derive from this one, so
+    # setting it retunes all three.
+    "--kpress-host-font-size-mono",
     "--kpress-host-font-table",
     "--kpress-host-settings-inset-block",
     "--kpress-host-settings-inset-inline",
@@ -435,6 +444,7 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
         "head_extra_html",
         "header_html",
         "math_text_font",
+        "mono_font",
         "palette",
         "prose_font",
         "resolved_theme",

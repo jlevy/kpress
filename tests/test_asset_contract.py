@@ -456,6 +456,12 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/kpress-print-sans-latin-550-italic.woff2",
         "fonts/kpress-print-sans-latin-600-italic.woff2",
         "fonts/kpress-print-sans-latin-650-italic.woff2",
+        # The mono face and the stylesheets that declare it: the default pair only,
+        # since mono_weights decides the rest (see tests/test_mono_face.py).
+        "css/mono-planetaire-400-normal.css",
+        "css/mono-planetaire-700-normal.css",
+        "fonts/planetaire-mono-text-latin-400-normal.woff2",
+        "fonts/planetaire-mono-text-latin-700-normal.woff2",
     } <= asset_ids
     assert all("latest" not in asset.path for asset in manifest.assets)
     # The shipped set and the generator cannot drift apart: the ten names above are

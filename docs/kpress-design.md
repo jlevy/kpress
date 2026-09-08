@@ -239,8 +239,9 @@ feature guarantees); the sections named in the table carry the architecture deta
   popover with a `system`/`light`/`dark` icon chooser; embedded hosts own the control
   instead.
 - **Font model.** A global `font_mode` selects vendored reader faces (`custom`) or the
-  platform stack (`system`); reader fonts are vendored package assets rather than CDN
-  dependencies.
+  platform stack (`system`); `mono_font` and `mono_weights` decide separately which mono
+  faces a document declares at all.
+  Reader fonts are vendored package assets rather than CDN dependencies.
 
 ### Interactions
 
@@ -1853,12 +1854,57 @@ paints.
 
 ### Mono Face
 
-Code is set in the platform’s own monospace stack -- `ui-monospace`, `SFMono-Regular`,
-Menlo, Consolas -- so it is the one role a KPress document does not draw from a face
-KPress ships, and `--kpress-font-size-mono` stays at `0.82` of the base, a ratio tuned
-for those faces.
-Planetaire Mono Text is the face chosen to replace it, sized by x-height
-at `0.87`, and lands with on/off and weight settings under `kpr-v731` and `kpr-hqrr`.
+Code is set in **Planetaire Mono Text**: B612 Mono’s letterforms with Hack’s punctuation
+and symbols, under the SIL Open Font License, vendored as latin subsets from
+[jlevy/planetaire](https://github.com/jlevy/planetaire).
+It was chosen from a four-way comparison beside PT Serif (Menlo, Source Code Pro, Hack
+and Planetaire), each sized from its own ink rather than from its nominal point size.
+Before it, code was the one role a document did not draw from a face KPress ships, so a
+printed page carried whatever mono the exporting machine had: the explainer PDF that
+started this work embedded 56 KB of the build machine’s Menlo.
+
+**The size, derived rather than picked.** `--kpress-font-size-mono` is `0.87` of the
+prose size. Planetaire draws an x-height of 1120/2000 = 0.560 em against PT Serif’s
+500/1000 = 0.500, so at 0.87 code’s x-height is 0.487 em, about **97%** of the prose
+x-height beside it — under parity, so a code span reads as an inset rather than bulging
+out of its line. The width follows from the same number: a mono column is 1204/2000 =
+0.602 em wide, so 45 / (0.87 × 0.602) ≈ **85 columns** fit the `--kpress-measure`
+reading column.
+`tests/test_mono_face.py` re-derives both figures from the shipped faces,
+so the token and the ink cannot drift apart.
+The `-small` and `-tiny` rungs derive from the mono rung rather than from the base, so
+`--kpress-host-font-size-mono` retunes all three at once.
+
+**What ships, and what a document declares.** `devtools/subset_mono.py` subsets seven
+upstream styles to the same latin `unicode-range` every other vendored face covers and
+writes each one beside a stylesheet of its own: `mono-planetaire-<weight>-<style>.css`,
+one `@font-face` each.
+One stylesheet per style is the mechanism behind `mono_weights` — a single-file page
+inlines every face it declares, so a style nobody asked for must not be declared, and
+selecting stylesheets is how a render says so without rewriting CSS. The default pair is
+regular and bold: `code` at 400, and the syntax highlighter’s keywords at 700.
+
+That default is short rather than complete, and knowing which is which matters.
+`syntax.css` also sets comments and docstrings italic, and a style a rule asks for but
+`mono_weights` withholds is not an error — the browser slants the upright face itself, a
+synthesized oblique that is legible but is not the drawn italic.
+So the trade is deliberate: a page that is mostly prose with a few code spans should not
+pay 15 KB for an italic it uses in one comment, and a page of annotated code should, by
+naming `italic` (and `bold-italic` for the tokens that are italic *and* 700). The three
+heavier italics upstream offers are not vendored at all, since no rule reaches an italic
+above 700.
+
+`mono_font: system` declares none of them, hands `--kpress-font-mono` back to
+`ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`, and drops the faces from the
+manifest, so a hosted page fetches nothing and an inlining host carries nothing.
+That asset consequence is why it is a render option and not only a CSS switch; the
+reader-facing `font_mode="system"` also puts code in the platform mono, but leaves the
+asset set alone, exactly as it does for PT Serif.
+
+Provenance, sha256 and licences are in
+[`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md); what a host
+that inlines assets prunes is in
+[Operations and Host Integration](kpress-operations-and-host-integration.md#host-integration).
 
 ### Document Actions Widget
 
@@ -1932,7 +1978,29 @@ override any single role on its own, and otherwise the vendored reader faces app
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
 | `--kpress-font-body` | sans: Source Sans 3 | `.kpress` wrapper base (a fallback; `.kpress-prose` overrides it for content) | `--kpress-host-font-body` |
-| `--kpress-font-mono` | mono: system mono stack | code fences, inline code | `--kpress-host-font-mono` |
+| `--kpress-font-mono` | mono: Planetaire Mono Text | code fences, inline code | `--kpress-host-font-mono` |
+
+**Every font setting, on one surface.** Four settings and two sizing hooks decide which
+faces a document uses; each is a `RenderOptions` field, most are also a `kpress.yml`
+key, and each is readable from the rendered markup:
+
+| Setting | Options | Config key | Data attribute | Host hook |
+| --- | --- | --- | --- | --- |
+| `font_mode` | `custom` (default), `system` | none (render option only) | `data-kpress-fonts` on the `.kpress` article; the reader’s own choice is `data-kpress-font-set` on `<html>` | none: `system` overrides the role tokens outright |
+| `prose_font` | `serif` (default), `sans` | `format.prose_font` | `data-kpress-prose-font` on `<html>` | `--kpress-host-font-prose-sans` for the sans reading stack |
+| `math_text_font` | `prose` (default), `katex` | `format.math_text_font` | `data-kpress-math-text` on `<html>` | `--kpress-host-font-prose` (the composite follows the reading face) |
+| `mono_font` | `planetaire` (default), `system` | `format.mono_font` | `data-kpress-mono-font` on `<html>` | `--kpress-host-font-mono` |
+| `mono_weights` | any of `regular`, `bold` (both default), `italic`, `bold-italic`, `medium`, `semibold`, `extrabold` | `format.mono_weights` | none: it selects stylesheets, not a switch | none |
+| the type ramp | — | — | — | `--kpress-host-font-size-base`, the one knob everything derives from |
+| the mono rung | — | — | — | `--kpress-host-font-size-mono`, which carries small and tiny with it |
+
+Two of those change what ships rather than only how it renders.
+`mono_font: system` drops every Planetaire face and its stylesheets from the manifest,
+and `mono_weights` narrows that set to the styles named; the rest are display switches
+over an unchanged asset set.
+A reader’s persisted `font_mode` and `prose_font` choices override the site default at
+display time, which is why those two are stamped where a bootstrap can re-stamp them;
+`mono_font` and `mono_weights` are publishing decisions and are not reader-switchable.
 
 The reading body is therefore serif by default and is settable serif↔sans per role: a
 host flips it by setting `--kpress-host-font-prose` (a host app’s serif/sans
@@ -1946,8 +2014,8 @@ footnote preview tooltips, so the two always agree.
 Every text stack leads with a face KPress ships, so a document draws the same glyphs on
 any machine and a printed page embeds them rather than borrowing from the renderer; the
 system stacks trailing each family are the fallback for a face that failed to load, not
-part of the design. Mono is the standing exception, and `font_mode="system"` is the one
-place the platform is asked for a font on purpose.
+part of the design. `font_mode="system"` and `mono_font="system"` are the two places the
+platform is asked for a font on purpose.
 
 Vendored font files ship as package assets and static builds copy them into the output
 tree; per-file provenance, sha256 and licence are recorded in
