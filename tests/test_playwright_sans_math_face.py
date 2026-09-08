@@ -210,44 +210,40 @@ _OVERLAY_PROBE = """(() => {
 })()"""
 
 
-def _platform_font(page: Any, selector: str) -> dict[str, Any]:
+def _platform_font(session: Any, selector: str) -> dict[str, Any]:
     """The face Chromium drew most of a node's glyphs with, as it reports it."""
-    session = page.context.new_cdp_session(page)
-    try:
-        session.send("DOM.enable")
-        session.send("CSS.enable")
-        root = cast(dict[str, Any], session.send("DOM.getDocument", {"depth": -1}))
-        found = cast(
-            dict[str, Any],
-            session.send(
-                "DOM.querySelector", {"nodeId": root["root"]["nodeId"], "selector": selector}
-            ),
-        )
-        assert found["nodeId"], f"no node for {selector}"
-        result = cast(
-            dict[str, Any],
-            session.send("CSS.getPlatformFontsForNode", {"nodeId": found["nodeId"]}),
-        )
-        fonts = cast(list[dict[str, Any]], result["fonts"])
-        assert fonts, f"no platform fonts reported for {selector}"
-        return max(fonts, key=lambda font: cast(int, font["glyphCount"]))
-    finally:
-        session.detach()
+    root = cast(dict[str, Any], session.send("DOM.getDocument", {"depth": -1}))
+    found = cast(
+        dict[str, Any],
+        session.send("DOM.querySelector", {"nodeId": root["root"]["nodeId"], "selector": selector}),
+    )
+    assert found["nodeId"], f"no node for {selector}"
+    result = cast(
+        dict[str, Any],
+        session.send("CSS.getPlatformFontsForNode", {"nodeId": found["nodeId"]}),
+    )
+    fonts = cast(list[dict[str, Any]], result["fonts"])
+    assert fonts, f"no platform fonts reported for {selector}"
+    return max(fonts, key=lambda font: cast(int, font["glyphCount"]))
 
 
-def _settled(page: Any, selector: str, media: str) -> dict[str, Any]:
-    """Switch media, let the faces the new layout needs load, and read the face back."""
+def _settled(page: Any, session: Any, selector: str, media: str) -> dict[str, Any]:
+    """Switch media, let the faces the new layout needs load, and read the face back.
+
+    The caller keeps one CDP session attached across retries: detaching a sample
+    resets print emulation, so the next attempt would read screen fonts instead.
+    """
     page.emulate_media(media=media)
     page.evaluate("document.fonts.ready")
     # A face declared inside `@media print` only starts loading once print media matches
     # and a layout asks for it, so the first report can still name the screen's face.
     for _ in range(30):
-        font = _platform_font(page, selector)
+        font = _platform_font(session, selector)
         if font["isCustomFont"] and VARIABLE_FACE not in font["familyName"]:
             return font
         page.wait_for_timeout(100)
         page.evaluate("document.fonts.ready")
-    return _platform_font(page, selector)
+    return _platform_font(session, selector)
 
 
 # One `build_site`, one browser, three KaTeX renders, a footnote preview and a print
@@ -277,17 +273,24 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
                 page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
                 page.evaluate("document.fonts.ready")
-                probe = cast(Probe, page.evaluate(_PROBE))
-                screen = {
-                    name: _platform_font(page, f"#kpress-probe-{name}")
-                    for name in ("prose", "table", "footnote")
-                }
-                page.focus('.kpress-footnote-ref a[href^="#fn-"]')
-                page.wait_for_selector(".kpress-tooltip-footnote", timeout=10_000)
-                page.evaluate("document.fonts.ready")
-                stamped = cast(dict[str, Any], page.evaluate(_OVERLAY_PROBE))
-                overlay = _platform_font(page, "#kpress-probe-overlay")
-                printed = _settled(page, "#kpress-probe-table", "print")
+                session = context.new_cdp_session(page)
+                try:
+                    session.send("DOM.enable")
+                    session.send("CSS.enable")
+                    probe = cast(Probe, page.evaluate(_PROBE))
+                    screen = {
+                        name: _platform_font(session, f"#kpress-probe-{name}")
+                        for name in ("prose", "table", "footnote")
+                    }
+                    page.focus('.kpress-footnote-ref a[href^="#fn-"]')
+                    page.wait_for_selector(".kpress-tooltip-footnote", timeout=10_000)
+                    page.evaluate("document.fonts.ready")
+                    stamped = cast(dict[str, Any], page.evaluate(_OVERLAY_PROBE))
+                    overlay = _platform_font(session, "#kpress-probe-overlay")
+                    printed = _settled(page, session, "#kpress-probe-table", "print")
+                    assert page.evaluate("matchMedia('print').matches")
+                finally:
+                    session.detach()
             finally:
                 browser.close()
     finally:
@@ -466,12 +469,18 @@ def test_the_reading_face_chooser_carries_typeset_mathematics_with_it(tmp_path: 
     """
     public = _build_fixture_site(tmp_path, choosers="theme, reading-font")
     with _served_page(public) as page:
-        before = cast(Probe, page.evaluate(_PROBE))
-        serif_prose = _platform_font(page, "#kpress-probe-prose")
-        _choose_reading_font(page, "sans")
-        after = cast(Probe, page.evaluate(_PROBE))
-        sans_prose = _platform_font(page, "#kpress-probe-prose")
-        persisted = cast(str, page.evaluate("localStorage.getItem('kpress.proseFont')"))
+        session = page.context.new_cdp_session(page)
+        try:
+            session.send("DOM.enable")
+            session.send("CSS.enable")
+            before = cast(Probe, page.evaluate(_PROBE))
+            serif_prose = _platform_font(session, "#kpress-probe-prose")
+            _choose_reading_font(page, "sans")
+            after = cast(Probe, page.evaluate(_PROBE))
+            sans_prose = _platform_font(session, "#kpress-probe-prose")
+            persisted = cast(str, page.evaluate("localStorage.getItem('kpress.proseFont')"))
+        finally:
+            session.detach()
 
     assert before["rendered"] == 3
     assert after["rendered"] == 3
