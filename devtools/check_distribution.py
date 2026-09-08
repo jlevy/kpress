@@ -61,6 +61,10 @@ def _inspect_wheel(wheel: Path) -> None:
             # static Source Sans 3 instances it declares (devtools/instance_sans.py).
             "kpress/format/static/css/print-fonts.css",
             "kpress/format/static/fonts/kpress-print-sans-latin-550-normal.woff2",
+            # The quote face (devtools/subset_quotes.py) and the licence of the face it
+            # is six glyphs of.
+            "kpress/format/static/fonts/kpress-quotes.woff2",
+            "kpress/licenses/source-serif-4.txt",
             "kpress/format/templates/page.html.jinja",
             "kpress/licenses/github-slugger.txt",
             "kpress/licenses/katex.txt",

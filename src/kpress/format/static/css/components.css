@@ -1567,12 +1567,46 @@
   position: relative;
 }
 
+/* The same drawn square as the prose and concepts markers; document.css carries
+   the measurement it reproduces. This rule is where the glyph cost most: .claim
+   is sans, so U+25AA fell through a different stack than the prose one and came
+   out 5.20px against the prose marker's 3.26px at a 16px base -- 60% larger,
+   for a token whose whole purpose is that every bulleted list matches. */
 .kpress .claim::before {
-  content: "\25AA\FE0E";
+  background: currentColor;
+  content: "";
   font-size: var(--kpress-bullet-size);
-  left: calc(var(--kpress-font-size-base) * -0.85);
+  height: 0.226em;
+  inset-inline-start: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
   position: absolute;
-  top: calc(var(--kpress-font-size-base) * 0.1);
+  top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
+  width: 0.226em;
+}
+
+/* Every mark KPress paints rather than sets, in forced colors (Windows High
+   Contrast and the browser settings that emulate it).
+
+   The UA forces `background-color` to `Canvas` there, so a box filled with
+   `currentColor` paints the page background onto the page background and
+   disappears: measured in Chromium under `forced_colors: active`, the marker
+   painted 0 ink pixels where the U+25AA glyph it replaces painted 196. That is
+   the one behaviour a drawn mark does not inherit from a glyph, and it is lost
+   for the readers a high-contrast mode exists for. `CanvasText` is the forced
+   foreground, and `forced-color-adjust: none` is what lets it through.
+
+   One rule for all four, and it lives here rather than beside each base rule
+   because this file loads after document.css and ties it on specificity. The
+   nested print marker needs its own copy in print.css, whose selector is more
+   specific still. The disclosure chevron is in the same list for the same
+   reason: it is a mask filled with `background-color`. */
+@media (forced-colors: active) {
+  .kpress-prose ul > li::before,
+  .kpress .concepts ul > li::before,
+  .kpress .claim::before,
+  .kpress summary::before {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
 }
 
 .kpress .full-text {
@@ -1670,6 +1704,8 @@
   outline-offset: 3px;
 }
 
+/* One sans bold across the design system: these two carried a literal 700, the
+   only sans chrome above the bold token, until 2026-09-07. */
 .kpress .kpress-video-placeholder-action {
   align-items: center;
   background: oklch(100.00% 0 0 / 0.92);
@@ -1677,7 +1713,7 @@
   color: oklch(17.76% 0 0);
   display: inline-flex;
   font-size: var(--kpress-font-size-small);
-  font-weight: 700;
+  font-weight: var(--kpress-font-weight-sans-bold);
   height: 3rem;
   justify-content: center;
   line-height: 1;
@@ -1686,7 +1722,7 @@
 
 .kpress .kpress-video-placeholder-title {
   font-size: var(--kpress-font-size-small);
-  font-weight: 700;
+  font-weight: var(--kpress-font-weight-sans-bold);
 }
 
 .kpress-video-popover iframe {
@@ -1702,6 +1738,9 @@
   width: 100%;
 }
 
+/* The caps-label idiom, at the label weight the TOC title, the disclosure
+   summaries and the print tab label all use. It asked for a literal 600 until
+   2026-09-07, so the same label came out heavier on screen than on paper. */
 .kpress .tab-button,
 .kpress-tab-button {
   background: transparent;
@@ -1714,7 +1753,7 @@
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-caps-label-size);
   font-variant-caps: var(--kpress-caps-variant);
-  font-weight: 600;
+  font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: var(--kpress-caps-spacing);
   line-height: 1.2;
   max-width: 10rem;

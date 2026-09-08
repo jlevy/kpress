@@ -130,7 +130,9 @@ Specifically:
 
 - Six weights (370, 400, 550, 600, 650, 700) in normal and italic: the three weight
   tokens, the footnote controls’ 600, bold’s 700, and 400 for the resets.
-  Twelve files of about 15KB.
+  Twelve files of about 15KB. (The 700 pair was dropped later the same day.
+  Bold in a sans context comes from the 650 token, not from a literal 700, so nothing
+  requested the pair; five weights and ten files ship.)
 - The family name `KPress Print Sans` for the static set against
   `Source Sans 3 Variable` for the axis.
   Distinct names keep the two from sharing a weight range, so font matching never has to
