@@ -37,10 +37,6 @@ def test_style_tokens_define_system_font_override() -> None:
     override = css.split('.kpress[data-kpress-fonts="system"]', 1)[1].split("}", 1)[0]
     assert "PT Serif" not in override
     assert "Source Sans 3 Variable" not in override
-    # The mono role is vendored too, so system mode has to replace it as well or a
-    # page that downloads no reader face still downloads a code face.
-    assert "Source Code Pro" not in override
-    assert "--kpress-font-mono:" in override
     assert "system-ui" in override
 
 

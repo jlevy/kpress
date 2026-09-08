@@ -129,7 +129,7 @@ feature guarantees); the sections named in the table carry the architecture deta
 | Media | Image/figure handling, YouTube popover interception | Document Components |
 | Tabs | Tabbed content with keyboard access | Document Components |
 | Theming | Light/dark/system with pre-paint bootstrap; `neutral`/`warm` palettes; container-query responsive layout | Design System; Theme and Fonts |
-| Fonts | Vendored PT Serif / Source Sans 3 / Source Code Pro with `custom`/`system` modes and per-role host overrides | Theme and Fonts |
+| Fonts | Vendored PT Serif / Source Sans 3 / quote subset with `custom`/`system` modes and per-role host overrides | Theme and Fonts |
 | Widgets and extensions | Page-model block, widget registry (settings gear, choosers), tree/page transforms, head/header/footer slots | Extension and Injection Model |
 | Document dialect | Open custom-tag admission for host plugins (preprocessors emit tags; hosts style them) | Plugins and the Document Dialect |
 | Static publishing | Config, source discovery, routes, manifests, site files, and `hosted`/`linked`/`hashed` site asset modes | Static Publishing; Asset Model |
@@ -1496,12 +1496,12 @@ document comes from a face KPress ships, on screen and in print
 the way that matters most: a reader without Georgia saw the marks the borrowing existed
 to avoid, and a printed page always did.
 So the marks are shipped instead.
-Source Serif 4 is the companion of the Source Sans 3 and Source Code Pro faces KPress
-already vendors, and its marks are level to 0.00px and only 7% wider than Georgia’s.
-Taking six glyphs of it costs 724 bytes, which is why the whole 20 KB face is not
-vendored: `devtools/subset_quotes.py` reads the upstream `@fontsource/source-serif-4`
-file from outside the repository, subsets it to those six code points, renames the
-result to the family `KPress Quotes`, and writes `static/fonts/kpress-quotes.woff2`.
+Source Serif 4 is the companion of the Source Sans 3 face KPress already vendors, and
+its marks are level to 0.00px and only 7% wider than Georgia’s. Taking six glyphs of it
+costs 724 bytes, which is why the whole 20 KB face is not vendored:
+`devtools/subset_quotes.py` reads the upstream `@fontsource/source-serif-4` file from
+outside the repository, subsets it to those six code points, renames the result to the
+family `KPress Quotes`, and writes `static/fonts/kpress-quotes.woff2`.
 `python -m devtools.subset_quotes --check` runs in `make lint`, comparing the shipped
 bytes against a fresh subset when the source is at hand and against a pinned digest when
 it is not; provenance and both hashes are in the fonts README.
@@ -1575,60 +1575,12 @@ paints.
 
 ### Mono Face
 
-Code is set in **Source Code Pro**, vendored static at 400 and 700, leading
-`--kpress-font-mono` ahead of the system monos.
-
-**Why.** The stack used to begin at `ui-monospace`, so a code fence was a different font
-on every machine, and a PDF made on a Mac carried 56 KB of embedded Menlo.
-Static rather than variable for the reason the print sans instances exist: Chromium’s
-PDF writer cannot embed a variable font away from its default position.
-Two static weights need no print-only set, so `print-fonts.css` says nothing about mono.
-
-**The size.** `--kpress-font-size-mono` is `0.925` of the base, set by x-height rather
-than by eye. Inline code interrupts a line of PT Serif, so what has to agree is the
-height of a lowercase letter, and the two faces measure that against different em boxes.
-Read from the shipped woff2 files with fontTools, as `OS/2.sxHeight` over
-`head.unitsPerEm`:
-
-| Face | sxHeight/1000 |
-| --- | --- |
-| PT Serif 400 | 500 |
-| Source Code Pro 400 | 486 |
-| Source Code Pro 700 | 496 |
-| Source Sans 3 Variable | 478 at its default axis position, 486 instanced at 400 |
-
-The sans number needs a word, because the file and the page disagree.
-Source Sans 3’s variable file has a default `wght` of 200, so a bare read of its `OS/2`
-table says 478; instanced at 400 the `MVAR` deltas put it at 486, which is what a page
-draws and what `devtools/instance_sans.py` writes into the 400 static instance.
-The two Source faces are therefore not siblings holding one x-height on purpose.
-They land 8 units apart at the file default and together at 400, and neither fact enters
-the derivation below, which uses only PT Serif 500 and Source Code Pro 486.
-
-The rule is that code’s x-height sits at **90% of the prose x-height around it**, one
-deliberate step below rather than level with it, because a monospaced face at the
-serif’s x-height reads wider and heavier than the line it interrupts: every advance is
-600/1000 against PT Serif’s 519 for the same `x`. `0.925 x 486/1000` is `0.4496` of the
-base against PT Serif’s `0.500`, so 89.9%.
-
-The apparent size of code does not change; only which face draws it.
-The `0.82` this replaces was tuned for the system monos, and Menlo -- what a Mac
-actually drew -- carries a 0.5468 em x-height, so `0.82` landed at 7.175px against the
-prose’s 8.000px, or 89.7%. Source Code Pro at `0.925` draws 7.193px.
-`--kpress-font-size-mono-small` and `-mono-tiny` keep their old proportions to the mono
-size to within half a percent.
-
-**The column budget.** The cost of the larger scale is measured in columns of code, and
-it is **82**. A code block at the default reading measure has 700px of text between its
-paddings at a 16px base, and a column is `0.575em`: Source Code Pro advances 600/1000
-and the `.kpress code, .kpress-code` rule takes 0.025em back as letter-spacing.
-At `0.925` that is 8.510px, so 82 columns fit in 697.8px and 83 do not.
-The `0.82` this replaces held 92. Eighty is the standard code-line budget, so the number
-is pinned by `tests/test_playwright_mono_face.py` rather than left to be rediscovered
-when a later retune crosses it.
-A pane too narrow to show the full measure holds fewer columns, which is
-`--kpress-measure` clamping and not this token; the lever for a wider code block is the
-measure, not the mono size.
+Code is set in the platform’s own monospace stack -- `ui-monospace`, `SFMono-Regular`,
+Menlo, Consolas -- so it is the one role a KPress document does not draw from a face
+KPress ships, and `--kpress-font-size-mono` stays at `0.82` of the base, a ratio tuned
+for those faces.
+Planetaire Mono Text is the face chosen to replace it, sized by x-height
+at `0.87`, and lands with on/off and weight settings under `kpr-v731` and `kpr-hqrr`.
 
 ### Document Actions Widget
 
@@ -1686,7 +1638,7 @@ actions with the same text badges, keeping one visual vocabulary.
 
 Font mode (`RenderOptions.font_mode`, type `FontMode = Literal["custom", "system"]`):
 
-- `custom` (default): the vendored faces (PT Serif, Source Sans 3, Source Code Pro) via
+- `custom` (default): the vendored faces (PT Serif, Source Sans 3, the quote subset) via
   CSS variables.
 - `system`: `.kpress[data-kpress-fonts="system"]` overrides font variables to system-ui
   stacks with no custom font loading.
@@ -1702,7 +1654,7 @@ override any single role on its own, and otherwise the vendored reader faces app
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
 | `--kpress-font-body` | sans: Source Sans 3 | `.kpress` wrapper base (a fallback; `.kpress-prose` overrides it for content) | `--kpress-host-font-body` |
-| `--kpress-font-mono` | mono: Source Code Pro | code fences, inline code | `--kpress-host-font-mono` |
+| `--kpress-font-mono` | mono: system mono stack | code fences, inline code | `--kpress-host-font-mono` |
 
 The reading body is therefore serif by default and is settable serif↔sans per role: a
 host flips it by setting `--kpress-host-font-prose` (a host app’s serif/sans
@@ -1713,19 +1665,17 @@ Footnotes and tables each carry their own stack (`--kpress-font-footnote`,
 **sans**. The bottom footnotes section uses the same `--kpress-font-footnote` as the
 footnote preview tooltips, so the two always agree.
 
-Every default stack leads with a face KPress ships, so a document draws the same glyphs
-on any machine and a printed page embeds them rather than borrowing from the renderer;
-the system stacks trailing each family are the fallback for a face that failed to load,
-not part of the design.
-The one place the platform is asked for a font on purpose is `font_mode="system"`, which
-replaces all four stacks at once.
+Every text stack leads with a face KPress ships, so a document draws the same glyphs on
+any machine and a printed page embeds them rather than borrowing from the renderer; the
+system stacks trailing each family are the fallback for a face that failed to load, not
+part of the design. Mono is the standing exception, and `font_mode="system"` is the one
+place the platform is asked for a font on purpose.
 
 Vendored font files ship as package assets and static builds copy them into the output
 tree; per-file provenance, sha256 and licence are recorded in
 [`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md).
 The sans role resolves to a different stack under print, through its own hook
 `--kpress-host-font-sans-print`: see [Print Sans Faces](#print-sans-faces).
-The mono role needs no such split, because both its faces are already static.
 
 ## Document Components
 

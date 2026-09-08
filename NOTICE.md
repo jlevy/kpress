@@ -27,10 +27,6 @@ independent of KPress’s license.
   tables. That license reserves the name “Source” for the original, so the derived family
   is named `KPress Print Sans`; Adobe’s copyright notice and the OFL notice travel in
   every derived file’s name table.
-- **Source Code Pro**
-  ([SIL Open Font License 1.1](src/kpress/licenses/source-code-pro.txt), Adobe,
-  [adobe-fonts/source-code-pro](https://github.com/adobe-fonts/source-code-pro)). Static
-  woff2 subsets at 400 and 700 vendored under `src/kpress/format/static/fonts/`.
 - **Source Serif 4**
   ([SIL Open Font License 1.1](src/kpress/licenses/source-serif-4.txt), Adobe,
   [adobe-fonts/source-serif](https://github.com/adobe-fonts/source-serif)). Six glyphs

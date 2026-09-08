@@ -1015,24 +1015,16 @@
 }
 
 /* Code inside a table steps down a mono tier, at EVERY width.
-   The two ramps in style-tokens.css pair by index -- mono against normal,
-   mono-small against smaller, mono-tiny against tiny -- and each pair sits at
-   about 0.93 of its text tier, so code keeps one optical weight against
-   whatever text surrounds it. THE MONO SCALE in style-tokens.css derives that
-   figure and owns the literals; this rule reads it rather than restating it,
-   because the six numbers were repeated here once and went stale the first time
-   the mono scale moved.
-
-   A table is the one surface whose text is reduced (`small`) while its code was
-   not, leaving code at mono over small -- above the ramp rather than on it, so
-   it reads heavier inside a table than the identical span in prose, which
+   The two ramps in style-tokens.css pair by index — mono/normal 0.82,
+   mono-small/smaller 0.833, mono-tiny/tiny 0.824 — so code keeps one optical
+   weight against whatever text surrounds it. A table is the one surface whose
+   text is reduced (`small`) while its code was not, leaving code at 0.863 of
+   its own cell: heavier inside a table than the identical span in prose, which
    mono's larger x-height exaggerates further.
 
    `small` has no mono partner (the text ramp has four tiers, mono has three),
-   so neither choice is exact. Against the ramp's ~0.93, mono over small
-   overshoots by about 0.05 and mono-small over small falls short by about
-   0.03, so mono-small is the nearer of the two and reads as subordinate rather
-   than competing.
+   so neither choice is exact; mono-small at 0.789 lands closer to the ramp's
+   0.82 than mono's 0.863, and reads as subordinate rather than competing.
 
    This rule was previously scoped inside the narrow band, where it looked
    correct only because that band ALSO drops table text to `smaller` — the

@@ -442,9 +442,6 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/pt-serif-latin-700-italic.woff2",
         "fonts/source-sans-3-latin-wght-normal.woff2",
         "fonts/source-sans-3-latin-wght-italic.woff2",
-        # The mono face: static at the two weights code asks for.
-        "fonts/source-code-pro-latin-400-normal.woff2",
-        "fonts/source-code-pro-latin-700-normal.woff2",
         # The quote face: six glyphs of Source Serif 4 (devtools/subset_quotes.py).
         "fonts/kpress-quotes.woff2",
         # The static print instances and the stylesheet that declares them.
@@ -586,31 +583,6 @@ def test_list_markers_are_drawn_not_set() -> None:
         # Sized from the rule's own marker font size, so one pair of numbers serves
         # both the screen size and print's smaller one.
         assert rule.count("0.226em") == 2, (name, selector)
-
-
-def test_mono_stack_leads_with_the_vendored_face() -> None:
-    """Code is drawn by a face KPress ships, not by whatever mono the machine has.
-
-    Before this, ``--kpress-font-mono`` began at ``ui-monospace``, so inline code was a
-    different font on every machine and 56 KB of Menlo in a Mac-made PDF. The vendored
-    family must lead the stack, and both static weights must be declared, or the system
-    monos behind it answer instead.
-    """
-    css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
-
-    stack = css[css.index("--kpress-font-mono:") :]
-    stack = stack[: stack.index(");")]
-    vendored = stack.index('"Source Code Pro"')
-    assert vendored < stack.index("ui-monospace"), "the vendored face must come first"
-    assert stack.index("--kpress-host-font-mono") < vendored, "the host hook still wins"
-
-    for weight in ("400", "700"):
-        assert f'url("../fonts/source-code-pro-latin-{weight}-normal.woff2")' in css
-    assert css.count('font-family: "Source Code Pro";') == 2
-
-    # Static, not variable: a variable face cannot be embedded in a PDF away from its
-    # default position, which is the whole reason the print sans set exists.
-    assert "source-code-pro-latin-wght" not in css
 
 
 def test_browser_assets_are_native_esm() -> None:

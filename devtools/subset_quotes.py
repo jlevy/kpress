@@ -5,7 +5,7 @@ hangs about 2px above its closing pair, and its curly doubles are 16% wider than
 Georgia marks KPress used to borrow through a ``local()`` face. Borrowing solved the
 look and broke the rule that every glyph in a document comes from a face KPress ships,
 so the marks are shipped instead -- six glyphs of Source Serif 4, the companion of the
-Source Sans 3 and Source Code Pro faces already vendored here.
+Source Sans 3 face already vendored here.
 
 This tool subsets the upstream ``source-serif-4-latin-400-normal.woff2`` down to the
 straight and curly quotes and the apostrophe, renames the result to the family

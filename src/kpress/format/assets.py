@@ -183,11 +183,6 @@ DEFAULT_FONT_ASSETS = [
     "fonts/pt-serif-latin-700-italic.woff2",
     "fonts/source-sans-3-latin-wght-normal.woff2",
     "fonts/source-sans-3-latin-wght-italic.woff2",
-    # The mono face, vendored static at the two weights code asks for. Static
-    # rather than variable so a printed page embeds a font instead of outline
-    # paths; provenance and licence are in static/fonts/README.md.
-    "fonts/source-code-pro-latin-400-normal.woff2",
-    "fonts/source-code-pro-latin-700-normal.woff2",
     # The quotation marks and the apostrophe: six glyphs of Source Serif 4, generated
     # by devtools/subset_quotes.py and leading the prose stack over that unicode-range.
     # PT Serif draws these six badly, and borrowing the reader's Georgia is not an

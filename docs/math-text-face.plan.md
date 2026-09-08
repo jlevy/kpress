@@ -266,7 +266,7 @@ contract. Upstreaming to `main` is decided after a consuming site has shipped wi
 The owner’s rule (2026-09-07): a document resolves every text run to a face kpress
 ships, on screen and in print, never to whatever the reader’s or the renderer’s machine
 happens to have. The faces are PT Serif, Source Sans 3 (variable on screen, static in
-print), the KaTeX faces and the composite, and a shipped mono.
+print), the KaTeX faces and the composite, and a shipped mono once one is chosen.
 Measuring the squares explainer PDF for the math text face showed where the rule was not
 yet met:
 
@@ -275,7 +275,7 @@ yet met:
 | PT Serif, embedded subsets | 92 KB | as intended |
 | KaTeX faces, four embedded subsets | 25 KB | as intended |
 | Source Sans 3 as Type3 outline paths, 17 fonts | 345 KB | Chromium cannot embed a variable font at a non-default weight |
-| Menlo, 134 characters of inline code | 56 KB | kpress ships no mono face |
+| Menlo, 134 characters of inline code | 56 KB | kpress ships no mono face; open under `kpr-v731` |
 | Georgia, 48 list bullets | 16 KB | U+25AA is not in PT Serif’s latin subset |
 | Helvetica, the atlas figure | 54 KB | its own pipeline; accepted |
 
@@ -297,16 +297,19 @@ Tracked under epic `kpr-b4mq`:
   The exporter waits for the faces print layout asks for, and for the ones only the
   `@page` footer asks for, before it prints; without that wait a slow face prints as
   blank space.
-- `kpr-v731`, done: Source Code Pro, static 400 and 700, vendored from
-  `@fontsource/source-code-pro` 5.3.0 and leading the mono stack.
-  The size token moved from `0.82` to `0.925` of the base, set by x-height rather than
-  by eye: code’s x-height now sits at 89.9% of PT Serif’s, which is where Menlo at
-  `0.82` had been sitting (89.7%), so the change is one of face and not of apparent
-  size. `static/fonts/README.md` records provenance, sha256 and licence for all eight
-  vendored files; the four that predate the record turned out to be byte-identical to
-  the Fontsource packages of the same names, so their origin is no longer guesswork.
-  `kpr-aq8o` decides the final mono face against stated criteria; Source Code Pro stays
-  until it does.
+- `kpr-v731`, open: the mono is still the platform’s own stack.
+  Source Code Pro was vendored here as an interim face and backed out before this branch
+  landed, by the owner’s decision of 2026-09-08: the chosen face is Planetaire Mono
+  Text, and it lands as its own pull request once the vertical-metrics fix in that
+  font’s repository is in a pinned release.
+  `--kpress-font-size-mono` therefore stays at `0.82` of the base until then, and is
+  re-derived by x-height at `0.87` with the face.
+  `kpr-hqrr` carries the settings that ship alongside it: mono on or off, which weights
+  are declared, and the size ratio behind a host hook.
+  `static/fonts/README.md` survives the backout and records provenance, sha256 and
+  licence for the six vendored files; the four that predate the record turned out to be
+  byte-identical to the Fontsource packages of the same names, so their origin is no
+  longer guesswork.
 - `kpr-2tmj`, done: the list marker is a drawn `currentColor` box.
   Every marker is within 0.02px of the size the glyph drew and 0.08px of its position,
   measured in Chromium at a 16px base; the one deliberate move is the sans `.claim`

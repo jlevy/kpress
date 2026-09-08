@@ -19,13 +19,6 @@ as a font; ``/Type3`` anywhere in the file is the assertion that nothing fell ba
 The quote face is here for the other half of the same rule. It replaced a ``local()``
 borrowing of the reader's Georgia, which a PDF could never embed, so what a printed page
 does with a quotation mark is exactly the thing that used to be wrong.
-
-The mono is here for the same reason the sans is. ``test_playwright_mono_face.py``
-measures it under print *media*, through the face Chromium resolves for a node -- but
-resolving a face in print layout and embedding it in a PDF are not the same question,
-and the whole static instance set above exists because those two came apart once. The
-mono's own motivating defect was a PDF as well: a Mac-made export that embedded 56 KB of
-the machine's Menlo. So the claim gets checked where it was broken.
 """
 
 from __future__ import annotations
@@ -44,20 +37,9 @@ from devtools.subset_quotes import POSTSCRIPT_NAME as QUOTE_FACE
 from kpress.format.pdf import PdfOptions, render_pdf
 from kpress.workflow.format import format_document
 
-from .test_playwright_mono_face import MONO_POSTSCRIPT
-
 #: The static instance every default KPress page needs in print: the footer margin box
 #: names the sans stack at the root's own weight, which font matching lands on 400.
 FOOTER_FACE = f"{FAMILY.replace(' ', '')}-400"
-
-#: The PostScript prefix the two vendored mono files share, taken from the media-level
-#: mono test so one string serves both. Anyone reading this PDF's font list should not
-#: expect to find the prefix bare: the faces are named ``SourceCodeProExtraLight-Regular``
-#: and ``SourceCodeProExtraLight-Bold``, because Google Fonts instanced the static files
-#: from a variable font whose default axis position is ExtraLight and left that name in
-#: the table -- the outlines are the real 400 and 700. The prefix is what is asserted,
-#: never the whole name. static/fonts/README.md records the quirk.
-MONO_FACE_PREFIX = MONO_POSTSCRIPT
 
 #: How long the delaying server holds a static instance back. Long enough that an export
 #: which does not wait prints before the face arrives (measured: it prints immediately),
@@ -179,37 +161,4 @@ def test_quotation_marks_embed_in_the_exported_pdf(tmp_path: Path) -> None:
     fonts = _embedded_fonts(output)
     assert QUOTE_FACE in fonts, fonts
     # The letters beside the marks are still the reading face, so the page did print.
-    assert any(name.startswith("PTSerif") for name in fonts), fonts
-
-
-def test_code_faces_embed_in_the_exported_pdf(tmp_path: Path) -> None:
-    """Printed code comes from the vendored mono, not from the exporting machine."""
-    _require_chromium()
-    html = _formatted_page(
-        tmp_path,
-        "# Code faces\n\n"
-        "A paragraph of prose with `render(document)` set inline in it, so the mono has\n"
-        "to draw a run inside the reading face as well as a block of its own.\n\n"
-        "```python\n"
-        "def render(document: str) -> str:\n"
-        "    return document\n"
-        "```\n\n"
-        "And a closing paragraph after the fence.\n",
-    )
-    output = tmp_path / "code.pdf"
-
-    render_pdf(html, PdfOptions(output=output))
-
-    fonts = _embedded_fonts(output)
-    mono = {name for name in fonts if name.startswith(MONO_FACE_PREFIX)}
-    assert mono, fonts
-    # Both static weights, measured: `syntax.css` sets keyword tokens to 700, so the
-    # Python fence draws from the bold file as well as the upright one, and a PDF that
-    # carried only one of them would mean the other never made it out of the CSS.
-    assert any(name.endswith("-Regular") for name in mono), mono
-    assert any(name.endswith("-Bold") for name in mono), mono
-    # Neither weight reached the PDF as outline paths. The mono has no print-only
-    # instance set because both files are already static, and this is that claim.
-    assert b"/Type3" not in output.read_bytes(), fonts
-    # The prose around the code is still the reading face, so a blank export cannot pass.
     assert any(name.startswith("PTSerif") for name in fonts), fonts

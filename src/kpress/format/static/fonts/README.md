@@ -1,14 +1,15 @@
 # Vendored Fonts
 
-Every face a KPress document draws from is in this directory.
-Nothing is fetched from a CDN at page load, and nothing is borrowed from the reader’s
-machine: the rule is that a document resolves every text run to a face KPress ships, on
-screen and in print.
+Every face a KPress document ships is in this directory.
+Nothing is fetched from a CDN at page load: the rule is that a document resolves its
+text to a face KPress ships, on screen and in print.
 The system stacks that trail each family in
 [`style-tokens.css`](../css/style-tokens.css) are the fallback for a face that failed to
 load, not part of the design.
-The exception is `font_mode="system"`, where a page asks for the platform stack on
-purpose and downloads none of these files.
+Two roles stand outside the rule.
+`font_mode="system"` asks for the platform stack on purpose and downloads none of these
+files. And code is still set in the platform’s own mono, because KPress ships no mono
+face yet; Planetaire Mono Text is the one chosen, under `kpr-v731` and `kpr-hqrr`.
 
 Every face here is under the [SIL Open Font License 1.1](https://openfontlicense.org),
 which permits bundling and redistribution; the license text for each ships in
@@ -23,7 +24,6 @@ KPress generates rather than vendors carry names of their own.
 | PT Serif | prose reading face, and the Latin letters inside mathematics | 4 static, 400/700 x normal/italic |
 | Source Sans 3 Variable | sans on screen, at whatever weight a context asks for | 2 variable, `wght` x normal/italic |
 | KPress Print Sans | sans in print, one static instance per weight | 10 generated from Source Sans 3, see below |
-| Source Code Pro | mono: code fences, inline code, math error text | 2 static, 400/700 normal |
 | KPress Quotes | the quotation marks and the apostrophe inside prose | 1 generated from Source Serif 4, 6 glyphs |
 
 ## Provenance
@@ -43,19 +43,17 @@ repository named no source, but their bytes match, so the source is not in doubt
 | `pt-serif-latin-700-italic.woff2` | `@fontsource/pt-serif` | 5.3.0 | `3cb3cfab3c562cbbb5a53accf433f65ed1cd0403ea3bdd6ceeb73bf87f23521c` |
 | `source-sans-3-latin-wght-normal.woff2` | `@fontsource-variable/source-sans-3` | 5.3.0 | `7a19a7027e125257d310c6dbd78ae3a30b5ea1e3794d60b12bb28227a003bfda` |
 | `source-sans-3-latin-wght-italic.woff2` | `@fontsource-variable/source-sans-3` | 5.3.0 | `9a15dafc2c2b2414aaa9d6c30830d9aab4361329d8495b1574633603b994b411` |
-| `source-code-pro-latin-400-normal.woff2` | `@fontsource/source-code-pro` | 5.3.0 | `75aa8cacfd459d58d7c093f3ff0ab8745cc878dfc93c5d4cda052791aeace878` |
-| `source-code-pro-latin-700-normal.woff2` | `@fontsource/source-code-pro` | 5.3.0 | `34faf509fa4130733093f36100f76670ff7d93d4889746de11a62a0fe8d82084` |
 
 Each file is `package/files/<name>` inside the package tarball.
 To re-verify one:
 
 ```bash
-npm pack @fontsource/source-code-pro@5.3.0 --ignore-scripts
-tar xzf fontsource-source-code-pro-5.3.0.tgz
-shasum -a 256 package/files/source-code-pro-latin-400-normal.woff2
+npm pack @fontsource/pt-serif@5.3.0 --ignore-scripts
+tar xzf fontsource-pt-serif-5.3.0.tgz
+shasum -a 256 package/files/pt-serif-latin-400-normal.woff2
 ```
 
-All four packages, counting the Source Serif 4 one below, were published on 2026-07-19,
+All three packages, counting the Source Serif 4 one below, were published on 2026-07-19,
 so the 14-day cool-off in
 [`SUPPLY-CHAIN-SECURITY.md`](../../../../../SUPPLY-CHAIN-SECURITY.md) is satisfied.
 None is an installed dependency: the bytes are vendored, and the package name and
@@ -99,23 +97,7 @@ byte when that file is present, and falls back to checking the shipped file agai
 output sha256 above when it is not.
 Both hashes are pinned in the tool.
 
-## Two Naming Quirks Worth Knowing
-
-**Source Code Pro’s static files call themselves ExtraLight.** Both files report family
-`Source Code Pro ExtraLight` and PostScript names `SourceCodeProExtraLight-Regular` and
-`-Bold`, because Google Fonts instanced them from a variable font whose default axis
-position is ExtraLight and did not rewrite the name table.
-The outlines are the real 400 and 700 (`usWeightClass` 400 and 700; the stems differ),
-and `@font-face` names the family, so nothing about rendering is affected.
-It surfaces in two places.
-Chromium’s `CSS.getPlatformFontsForNode` reports the face’s own name, so
-`tests/test_playwright_mono_face.py` asserts a `Source Code Pro` prefix rather than an
-exact family name. An exported PDF’s font list names the mono faces
-`SourceCodeProExtraLight-Regular` and `SourceCodeProExtraLight-Bold` for the same
-reason, and those two entries are the real 400 and 700 outlines rather than an
-ExtraLight that slipped into the document.
-The bytes are vendored as published so the sha256 above can be checked against the
-package.
+## A Naming Quirk Worth Knowing
 
 **The two generated families are named for KPress, not for their source.** The print
 instances are `KPress Print Sans` and the quote subset is `KPress Quotes`, not
