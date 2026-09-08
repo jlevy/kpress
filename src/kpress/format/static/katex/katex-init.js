@@ -200,24 +200,41 @@ function enhanceMath() {
 // capitals only) and `α` for the italic slots' (U+0370-03FF).
 const FACE_SAMPLE = "a1αΩ";
 
-// The composite's four slots, as CSS `font` shorthands. All four, because which
-// expression first asks for `\mathbf` or `\boldsymbol` is not knowable before
-// the render; the reading-face halves name the same woff2 files as the prose
-// faces, so a page whose prose already uses PT Serif bold or italic pays no
-// extra request for them.
+// Each composite's four slots, as CSS `font` shorthands, under the same key the
+// table sets use -- because the two go together: a node laid out from the sans
+// table is drawn from the sans composite, so the faces to wait for are the ones
+// the node's own set names. All four slots of a composite that is wanted at all,
+// because which expression first asks for `\mathbf` or `\boldsymbol` is not
+// knowable before the render; the reading-face halves name the same woff2 files
+// as the prose faces, so a page whose prose already uses PT Serif bold or italic
+// pays no extra request for them.
 //
-// The composite is asked for BY DESCRIPTION rather than face by face, because a
+// The WEIGHTS are each composite's own, and they differ: the serif slots are
+// upstream's 400 and 700, and the sans slots are 400 and 650, the sans bold
+// token. A shorthand at the wrong weight would match the other slot's face and
+// leave the one the page draws from to arrive late, which is the whole failure
+// this wait exists to prevent.
+//
+// A composite is asked for BY DESCRIPTION rather than face by face, because a
 // host may declare its own `KPress Math Text` rules over these (see the contract
 // in katex-text-face.css). `document.fonts.load()` runs the same matching the
 // renderer runs, so the host's faces are what gets fetched and the rules it
 // replaced are not -- which loading every face of the family by name would get
 // wrong, fetching KPress's PT Serif files onto a page that never draws them.
-const TEXT_FACE_FONTS = [
-  "400 1em 'KPress Math Text'",
-  "italic 400 1em 'KPress Math Text'",
-  "700 1em 'KPress Math Text'",
-  "italic 700 1em 'KPress Math Text'",
-];
+const COMPOSITE_FONTS = {
+  [SERIF_SET]: [
+    "400 1em 'KPress Math Text'",
+    "italic 400 1em 'KPress Math Text'",
+    "700 1em 'KPress Math Text'",
+    "italic 700 1em 'KPress Math Text'",
+  ],
+  [SANS_SET]: [
+    "400 1em 'KPress Math Text Sans'",
+    "italic 400 1em 'KPress Math Text Sans'",
+    "650 1em 'KPress Math Text Sans'",
+    "italic 650 1em 'KPress Math Text Sans'",
+  ],
+};
 
 // The KaTeX families to wait on in either mode. `KaTeX_Main` and `KaTeX_Math`
 // are the families every rule in katex-text-face.css names after the composite
@@ -329,14 +346,37 @@ function mathFaceLoads() {
       face.load().then((loaded) => [loaded]),
     );
   });
+  // WHICH composites to wait for is the same question as which tables to install,
+  // asked once for the page instead of once per node: a composite is wanted if some
+  // expression on the page will be drawn from it. So the sets are collected here with
+  // `textMetricsSet`, the function the render loop selects tables with, over the same
+  // nodes -- there is no second notion of "this page has sans mathematics" that could
+  // disagree with the one the render uses.
+  //
+  // The cost of getting it wrong is a fetch either way: waiting on a composite the page
+  // never draws from would pull its four slots onto a page that has no sans mathematics
+  // (Source Sans is already there for the prose, but the KaTeX Greek halves are two more
+  // files), and not waiting on one it does draw from is the flash this wait exists to
+  // prevent. A page with no math in a sans role therefore asks for the serif slots
+  // alone, exactly as it did before the sans composite existed.
+  //
+  // A node that has opted out is skipped rather than counted: the composite is only
+  // reachable where the stylesheet applies it, so a page that has opted out throughout
+  // waits on the KaTeX faces alone.
+  /** @type {Set<string>} */
+  const wanted = new Set();
   for (const node of nodes) {
-    // The composite is only reachable where the stylesheet applies it, so a page
-    // that has opted out waits on the KaTeX faces alone.
     if (!node.closest(TEXT_FACE_OPT_OUT)) {
-      for (const spec of TEXT_FACE_FONTS) {
-        track(spec, fonts.load(spec, FACE_SAMPLE));
-      }
-      break;
+      wanted.add(textMetricsSet(node));
+    }
+  }
+  // In this order, so the record reads the same on every page that wants both.
+  for (const set of [SERIF_SET, SANS_SET]) {
+    if (!wanted.has(set)) {
+      continue;
+    }
+    for (const spec of COMPOSITE_FONTS[set]) {
+      track(spec, fonts.load(spec, FACE_SAMPLE));
     }
   }
   return loads;

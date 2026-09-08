@@ -30,15 +30,25 @@
  * inlined), so the relative `../fonts/` and `../katex/fonts/` URLs below resolve
  * in `hosted`, `linked`, `hashed` and `inline` alike.
  *
- * `font-display: block` throughout, as on the prose PT Serif faces in
- * style-tokens.css and unlike the vendored KaTeX bundle's `swap`. The bundle can
- * afford `swap` because a late KaTeX face repaints glyphs that were already
- * KaTeX's; a late slot here repaints them from the reading face to Computer
- * Modern and back, which a reader sees as the digits in every formula changing
- * font. `katex-init.js` waits for these faces before the first render, so in
- * practice no mathematics exists during the block period; `block` is what
- * decides the remaining case, where a slot is somehow still not ready -- hide
- * the glyphs briefly rather than paint them twice.
+ * `font-display: block` on every screen face of BOTH composites -- the serif
+ * `KPress Math Text` and the sans `KPress Math Text Sans` below -- as on the
+ * prose PT Serif faces in style-tokens.css and unlike the vendored KaTeX
+ * bundle's `swap`. The bundle can afford `swap` because a late KaTeX face
+ * repaints glyphs that were already KaTeX's; a late slot here repaints them from
+ * the reading face to Computer Modern and back, which a reader sees as the
+ * digits in every formula changing font, and a caption's or a table's digits
+ * flash exactly as prose's do. `katex-init.js` waits for the faces of whichever
+ * composites the page will draw from before the first render, so in practice no
+ * mathematics exists during the block period; `block` is what decides the
+ * remaining case, where a slot is somehow still not ready -- hide the glyphs
+ * briefly rather than paint them twice.
+ *
+ * The four static instances inside the `@media print` block keep `swap`, and
+ * deliberately: there is no first paint to protect in a printed page, the print
+ * path has already resolved its fonts before it composes a page, and `block`
+ * blanks a whole run rather than the code points the face claims -- a cost worth
+ * paying against a flash on screen and not worth paying against a blank run in a
+ * PDF.
  *
  * THE CONTRACT FOR A HOST WITH ANOTHER READING FACE. Two hooks, both additive:
  *
@@ -396,7 +406,7 @@
   font-family: "KPress Math Text Sans";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2");
   unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
 }
@@ -405,7 +415,7 @@
   font-family: "KPress Math Text Sans";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   /* Greek to Source Sans's cap height; `katex_text_metrics --print-scale` (Main-Regular).
      Below 100%: Computer Modern's Greek capitals are taller than Source Sans's. */
   size-adjust: 96.6%;
@@ -419,7 +429,7 @@
   font-family: "KPress Math Text Sans";
   font-style: italic;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2");
   unicode-range: U+0041-005A, U+0061-007A;
 }
@@ -428,7 +438,7 @@
   font-family: "KPress Math Text Sans";
   font-style: italic;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   /* Greek to Source Sans's x-height; `katex_text_metrics --print-scale` (Math-Italic). */
   size-adjust: 110.2%;
   src: url("../katex/fonts/KaTeX_Math-Italic.woff2") format("woff2");
@@ -441,7 +451,7 @@
   font-family: "KPress Math Text Sans";
   font-style: normal;
   font-weight: 650;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2");
   unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
 }
@@ -450,7 +460,7 @@
   font-family: "KPress Math Text Sans";
   font-style: normal;
   font-weight: 650;
-  font-display: swap;
+  font-display: block;
   /* Greek to Source Sans's cap height; `katex_text_metrics --print-scale` (Main-Bold). */
   size-adjust: 96.2%;
   src: url("../katex/fonts/KaTeX_Main-Bold.woff2") format("woff2");
@@ -463,7 +473,7 @@
   font-family: "KPress Math Text Sans";
   font-style: italic;
   font-weight: 650;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2");
   unicode-range: U+0041-005A, U+0061-007A;
 }
@@ -472,7 +482,7 @@
   font-family: "KPress Math Text Sans";
   font-style: italic;
   font-weight: 650;
-  font-display: swap;
+  font-display: block;
   /* Greek to Source Sans's x-height; `--print-scale` (Math-BoldItalic). */
   size-adjust: 109.3%;
   src: url("../katex/fonts/KaTeX_Math-BoldItalic.woff2") format("woff2");

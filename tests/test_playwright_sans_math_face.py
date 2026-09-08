@@ -44,6 +44,18 @@ from devtools.instance_sans import FAMILY
 from devtools.katex_text_metrics import SANS_REGULAR_WEIGHT
 from kpress.publish import build_site
 
+from .test_playwright_math_text_face import (
+    _PAINT_PROBE_INIT,  # pyright: ignore[reportPrivateUsage]
+    TEXT_FACE_FAMILY,
+    PaintProbe,
+    WaitEntry,
+    _covered,  # pyright: ignore[reportPrivateUsage]
+    _faces,  # pyright: ignore[reportPrivateUsage]
+    _loaded_first,  # pyright: ignore[reportPrivateUsage]
+    _report,  # pyright: ignore[reportPrivateUsage]
+    _settled_before_the_deadline,  # pyright: ignore[reportPrivateUsage]
+)
+
 #: What Chromium calls the variable face: a variable web font is reported by its default
 #: instance, and Source Sans 3 Variable's default position is 200, its ExtraLight.
 VARIABLE_FACE = "Source Sans 3 ExtraLight"
@@ -254,3 +266,93 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
     low, high = FRACTION_SHRINK_EM
     assert low <= shrink <= high, (probe["prose"], probe["table"])
     assert probe["footnote"] == pytest.approx(probe["table"], abs=0.001)
+
+
+# ---- The mathematics of a sans role paints once too ----
+
+
+#: The sans composite, whose faces a caption, a footnote and a table cell are drawn from.
+#: The serif one rides along on the same page: this fixture has prose mathematics too, so
+#: the wait covers both composites and both have to be ready before the first insertion.
+SANS_FACE_FAMILY = "KPress Math Text Sans"
+
+
+def _sans_paint_probe(tmp_path: Path) -> PaintProbe:
+    """The paint probe of tests/test_playwright_math_text_face.py, on the sans fixture.
+
+    Same instrumentation, a different document: this one puts the same expression in
+    prose, in a table cell and in a footnote, so one page draws from both composites.
+    """
+    sync_api = pytest.importorskip("playwright.sync_api")
+    public = _build_fixture_site(tmp_path)
+    handler = partial(_QuietHandler, directory=str(public))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_api.sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except sync_api.Error:
+                try:
+                    browser = playwright.chromium.launch(headless=True, channel="chrome")
+                except sync_api.Error as exc:
+                    pytest.skip(f"No Playwright Chromium or system Chrome available: {exc}")
+            try:
+                context = browser.new_context(viewport={"width": 900, "height": 900})
+                context.add_init_script(_PAINT_PROBE_INIT)
+                page = context.new_page()
+                page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+                page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+                page.evaluate("document.fonts.ready")
+                probe = cast(PaintProbe, page.evaluate("globalThis.__kpressPaintProbe"))
+                probe["wait"] = cast(
+                    "list[WaitEntry]", page.evaluate("globalThis.kpressMathFaceWait ?? []")
+                )
+                return probe
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_sans_role_mathematics_paints_once_in_its_final_faces(tmp_path: Path) -> None:
+    """A table cell's and a footnote's mathematics waits for the sans composite.
+
+    The serif half of this is tested next door; what is new here is that a page with
+    mathematics in a sans role draws from a SECOND composite, whose eight faces the
+    original wait knew nothing about. Left out, a caption, a footnote and a table cell
+    would each paint their digits in KaTeX_Main and repaint them in Source Sans while
+    prose beside them stayed still -- the flash confined to exactly the roles the sans
+    composite exists to set, which is the hardest kind to notice.
+
+    Both composites, because the fixture has mathematics in prose and in two sans
+    roles, so both are wanted and both are asked for. The four assertions are the
+    ones the serif test makes, and for the same reasons: every face of each composite
+    loaded before the first `.katex` node existed, every face the wait's own record
+    says it covered did too, and the wait settled rather than being released by its
+    three-second deadline -- without which the orderings are satisfied by a page that
+    simply rendered very late.
+    """
+    probe = _sans_paint_probe(tmp_path)
+    assert probe["firstKatex"] is not None, f"no .katex node was ever inserted\n{_report(probe)}"
+
+    _settled_before_the_deadline(probe)
+    for family in (TEXT_FACE_FAMILY, SANS_FACE_FAMILY):
+        composite = _faces(probe, family)
+        # Four slots, each two faces: the reading face and the KaTeX face for Greek.
+        assert len(composite) == 8, f"{family}\n{_report(probe)}"
+        _loaded_first(probe, composite, f"the composite {family} draws from")
+    _loaded_first(probe, _covered(probe), "a face the wait covered")
+
+    # The record says the sans slots were asked for at the sans weights, and that
+    # each request in fact matched a face: an `empty` here would mean the wait
+    # bought nothing for that slot, which is how a weight typo would look.
+    sans = [entry for entry in probe["wait"] if SANS_FACE_FAMILY in entry["request"]]
+    assert [entry["request"] for entry in sans] == [
+        f"{weight} 1em '{SANS_FACE_FAMILY}'"
+        for weight in ("400", "italic 400", "650", "italic 650")
+    ], _report(probe)
+    assert {entry["outcome"] for entry in sans} == {"loaded"}, _report(probe)

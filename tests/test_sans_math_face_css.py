@@ -44,6 +44,9 @@ from .test_math_text_face_css import (
     FontFace,
     _parse_faces,  # pyright: ignore[reportPrivateUsage]
 )
+from .test_math_text_face_css import (
+    FAMILY as SERIF_FAMILY,
+)
 
 FAMILY = '"KPress Math Text Sans"'
 VARIABLE_FACE = "source-sans-3-latin-wght-{style}.woff2"
@@ -136,8 +139,31 @@ def test_declares_four_slots_each_with_a_reading_face_and_scaled_greek() -> None
     assert sorted({face.slot for face in screen}) == sorted(SLOTS)
     for slot in SLOTS:
         assert len([face for face in screen if face.slot == slot]) == 2
-    for face in screen:
-        assert face.declarations["font-display"] == "swap"
+
+
+def test_both_composites_block_on_screen_and_the_print_instances_do_not() -> None:
+    """One assertion over both families, because the reason is one reason.
+
+    `katex-init.js` waits for the faces of whichever composites the page draws from
+    before it renders, so `block` decides only the case where a slot is somehow still
+    not ready: hide those glyphs briefly rather than paint them in KaTeX_Main and
+    repaint them in the reading face. A sans face left on `swap` while the serif ones
+    blocked would flash in exactly the roles -- captions, footnotes, table cells --
+    that the sans composite exists to set, and only there, which is the hardest kind
+    of inconsistency to notice.
+
+    The static instances under `@media print` keep `swap`: there is no first paint to
+    protect in a printed page, and `block` blanks a whole run rather than the code
+    points the face claims.
+    """
+    screen, printed = _screen_and_print()
+    serif = _parse_faces(_COMMENT_RE.sub("", _css()), SERIF_FAMILY)
+
+    assert len(serif) == 8, "the serif composite's four slots x two faces"
+    for face in (*serif, *screen):
+        assert face.declarations["font-display"] == "block", face.slot
+    for face in printed:
+        assert face.declarations["font-display"] == "swap", face.slot
 
 
 def test_each_slot_pins_one_weight_and_the_generator_builds_its_table_there() -> None:

@@ -388,6 +388,61 @@ describe("katex-init.js paints the mathematics once", () => {
     expect(Object.values(waitRecord())).toEqual(Array(loads.length).fill("loaded"));
   });
 
+  it("adds the sans composite's slots where the page has sans-role mathematics", async () => {
+    // The sans slots are 400 and 650, not 400 and 700: a shorthand at the serif
+    // weights would match the wrong face and leave the one the caption is drawn
+    // from to arrive late, which is the flash the wait exists to prevent.
+    const loads = stubFontFaceSet();
+    mountProseAndCaption();
+
+    runInitScript();
+
+    const specs = loads.filter((load) => load.text !== undefined);
+    expect(specs.map((load) => load.request)).toEqual([
+      "400 1em 'KPress Math Text'",
+      "italic 400 1em 'KPress Math Text'",
+      "700 1em 'KPress Math Text'",
+      "italic 700 1em 'KPress Math Text'",
+      "400 1em 'KPress Math Text Sans'",
+      "italic 400 1em 'KPress Math Text Sans'",
+      "650 1em 'KPress Math Text Sans'",
+      "italic 650 1em 'KPress Math Text Sans'",
+    ]);
+    for (const load of loads) {
+      load.settle(true);
+    }
+    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(2));
+  });
+
+  it("asks for the sans slots alone under the reader's sans reading face", async () => {
+    // Every node is a sans node there, so the serif composite is never drawn and
+    // its four slots -- two of them KaTeX Greek files nothing else fetches --
+    // are not worth a request.
+    const loads = stubFontFaceSet();
+    mountProseAndCaption({ wrapper: 'data-kpress-prose-font="sans"' });
+
+    runInitScript();
+
+    const specs = loads.filter((load) => load.text !== undefined);
+    expect(specs.map((load) => load.request)).toEqual([
+      "400 1em 'KPress Math Text Sans'",
+      "italic 400 1em 'KPress Math Text Sans'",
+      "650 1em 'KPress Math Text Sans'",
+      "italic 650 1em 'KPress Math Text Sans'",
+    ]);
+  });
+
+  it("asks for no sans slot on a page whose mathematics is all prose", () => {
+    // The wait is decided by `textMetricsSet`, the same function the render loop
+    // selects tables with, so "this page has sans mathematics" has one meaning.
+    const loads = stubFontFaceSet();
+    mountMath();
+
+    runInitScript();
+
+    expect(loads.map((load) => load.request).join(" ")).not.toContain("Text Sans");
+  });
+
   it("waits for no composite face when the document opts out", async () => {
     document.documentElement.dataset.kpressMathText = "katex";
     const loads = stubFontFaceSet();
