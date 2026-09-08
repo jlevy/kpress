@@ -9,6 +9,9 @@ Use this index for implementation, maintenance, and release work.
 
 - [KPress Design](kpress-design.md): architecture, public contracts, extension seams,
   static publishing, assets, icons, and optimization
+- [Font and Math Loading](project/architecture/arch-2026-09-08-font-and-math-loading.md):
+  font composition, layout, readiness, prepared geometry, hydration, fallback, and print
+- [Rendering Mathematics in a Host](math-rendering-api.md): the shared runtime API
 - [Icon System](kpress-design.md#icon-system): the icon set, its SVG contract, and how
   glyphs are added or replaced (within KPress Design)
 - [Declarative Embedding](done/declarative-embedding.plan.md): the completed
@@ -16,6 +19,13 @@ Use this index for implementation, maintenance, and release work.
   (issues #37/#38/#42); its durable contracts live in KPress Design and the 0.3.0 notes
 - [Content-Size Indicators](content-size-indicators.plan.md): proposed word-count and
   reading-time indicators
+- [Math Text Face](math-text-face.plan.md): the letters and digits inside KaTeX
+  mathematics drawn from the reading face, with matching metrics; on by default
+- [Math Text Face Research](project/research/research-2026-09-07-math-text-face.md): the
+  measurements, prior art and prototypes behind it
+- [Print Sans Faces Research](project/research/research-2026-09-07-print-sans-faces.md):
+  why a variable font prints as outline paths, what a smoothing viewer does with them,
+  and the static instances that answer it
 - [Interactive Footnote Popovers](interactive-footnote-popovers.plan.md): proposed
   interaction, accessibility, asset, and verification contract for pinnable evidence
   previews
@@ -52,6 +62,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
+- [KPress 0.3.6](releases/0.3.6.md): code is set in a shipped mono face, with the
+  default declaring every style the stylesheets ask for and synthesizing sets refused
 - [KPress 0.3.3](releases/0.3.3.md): maintenance release making an automatic TOC take
   both a heading count and a document length, and letting dynamic hosts switch it off
 - [KPress 0.3.2](releases/0.3.2.md): maintenance release fixing two typographic rules

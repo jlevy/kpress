@@ -5,10 +5,16 @@
 name: CI
 
 on:
+  # Pushes to main and to the squares/** integration branches. The base of a stack
+  # is where a bad merge resolution lands, and the merge commit a stacked pull
+  # request creates when it merges down is a push, not a pull request, so without
+  # the second pattern nothing ever builds it.
   push:
-    branches: ["main"]
+    branches: ["main", "squares/**"]
+  # Pull requests into main, and into the squares/** integration branches, so a
+  # pull request stacked on one of those is checked before it merges down.
   pull_request:
-    branches: ["main"]
+    branches: ["main", "squares/**"]
 
 permissions:
   contents: read
@@ -51,6 +57,22 @@ jobs:
         with:
           node-version: "24.18.0"
           cache: "npm"
+
+      # Without these, `subset_mono --check` takes its pinned-hash path, which compares
+      # the shipped subsets against recorded digests and so cannot catch a change to
+      # the generator that alters what it would now write. With them it rebuilds every
+      # subset and compares byte for byte. The download is self-verifying: the tool
+      # hashes each file against the `source_sha256` pinned in SOURCES and exits 2 on a
+      # mismatch, and it now refuses a partly populated cache rather than downgrading,
+      # so a failed fetch fails the job instead of quietly weakening the gate.
+      - name: Fetch the pinned upstream mono faces
+        run: |
+          mkdir -p ~/.cache/kpress/fonts
+          cd ~/.cache/kpress/fonts
+          for f in Regular Bold Italic BoldItalic Medium SemiBold ExtraBold; do
+            curl -fLO --retry 3 --retry-all-errors \
+              "https://cdn.jsdelivr.net/gh/jlevy/planetaire@v0.2.0/fonts/web/PlanetaireMonoText-$f.woff2"
+          done
 
       - name: Run quality gates and audits
         run: make lint-check audit
@@ -96,6 +118,33 @@ jobs:
 
       - name: Run tests
         run: make test
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          version: "0.11.26"
+          checksum: "6426a73c3837e6e2483ee344cbc00f36394d179afcba6183cb77437e67db4af0"
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Install locked test dependencies
+        run: uv --config-file uv.toml sync --locked --extra pdf --group dev
+
+      # The locked Playwright wheel selects these browser revisions. Installing
+      # them is explicit because the CDN binaries are outside the Python lock.
+      - name: Install browsers and operating system dependencies
+        run: uv --config-file uv.toml run --frozen --extra pdf python -m playwright install --with-deps chromium firefox webkit
+
+      - name: Verify real fonts and first visible mathematics
+        run: make test-browser
 
   # Build both distributions and run the shared artifact inspection plus
   # isolated installed-wheel smoke test owned by make build.

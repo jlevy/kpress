@@ -44,6 +44,9 @@ make lint-check
 # Run Python and browserless DOM tests.
 make test
 
+# Require the real-browser mathematics regressions (the browser must be installed).
+make test-browser
+
 # Audit the frozen Python and npm dependency graphs.
 make audit
 
@@ -53,6 +56,14 @@ make verify
 # Delete local build artifacts and installed environments.
 make clean
 ```
+
+The separate CI browser job installs the `pdf` extra from `uv.lock`, then explicitly
+runs `python -m playwright install --with-deps chromium` through that environment.
+The locked Playwright package selects the browser revision.
+`make test-browser` sets `KPRESS_REQUIRE_BROWSER=1`, so missing Playwright or Chromium
+fails the font loading regressions instead of silently skipping them.
+This covers native MathML recovery, delayed construct fonts, and host rendering
+alongside the serif and sans face checks.
 
 Focused equivalents used while diagnosing an individual gate:
 

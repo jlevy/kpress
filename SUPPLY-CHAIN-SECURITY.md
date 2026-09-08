@@ -34,11 +34,25 @@ adopt them; for code we author and publish ourselves, we already control and tru
 source and release pipeline, so the waiting period adds no safety.
 We may adopt the latest first-party release immediately.
 
-The exemption covers only the timing window.
+The exemption covers the timing window.
 First-party dependencies must still be:
 
-- **Pinned to an exact version** (never `@latest` or an open range).
+- **Pinned to an exact version wherever they can affect what we ship** — anything a
+  build, test, audit, or publishing path resolves: lockfiles, `pyproject.toml`, and the
+  runners the Makefile invokes.
+  Never `@latest` or an open range there.
 - Preferably verified against the source git tag / provenance for that version.
+
+Agent tooling that a first-party tool generates and owns is outside that rule.
+`tbd setup --auto` writes the hook and skill files under `.claude/`, `.codex/` and
+`.agents/`, and we commit what it produces rather than hand-patching it: a hand patch is
+silently undone by the next refresh, and pinning the generator’s own documented install
+line to a stale version is how this repository ended up four minors behind the CLI it
+runs. Nothing in the build, test, or publishing path executes those files, so a version
+named in them is documentation, not a resolved dependency.
+
+The cool-off and the pinning discipline exist for third-party code we do not control.
+Neither is a reason to hold our own tools back.
 
 Current first-party dependencies (all `github.com/jlevy/*`):
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif">
+<html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif" data-kpress-math-text="prose" data-kpress-mono-font="planetaire">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -34,6 +34,15 @@ body {
 // hosts never load this bootstrap at all (fragment path).
 (() => {
   const root = document.documentElement;
+  // Native MathML uses the browser's math face. Reserve its space until the
+  // enhanced result is ready, with recovery if scripts or font loads fail.
+  root.dataset.kpressMathPending = "true";
+  const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+    globalThis
+  );
+  mathState.kpressMathPendingTimer = setTimeout(() => {
+    delete root.dataset.kpressMathPending;
+  }, 3000);
   /** @param {string} key */
   const stored = (key) => {
     try {
@@ -72,7 +81,13 @@ body {
 <link rel="stylesheet" href="/kpress-static/css/document.css">
 <link rel="stylesheet" href="/kpress-static/css/components.css">
 <link rel="stylesheet" href="/kpress-static/css/print.css">
+<link rel="stylesheet" href="/kpress-static/css/print-fonts.css">
+<link rel="stylesheet" href="/kpress-static/css/mono-planetaire-400-normal.css">
+<link rel="stylesheet" href="/kpress-static/css/mono-planetaire-700-normal.css">
+<link rel="stylesheet" href="/kpress-static/css/mono-planetaire-400-italic.css">
+<link rel="stylesheet" href="/kpress-static/css/mono-planetaire-700-italic.css">
 <link rel="stylesheet" href="/kpress-static/katex/katex.min.css">
+<link rel="stylesheet" href="/kpress-static/katex/katex-text-face.css">
 <script type="module" src="/kpress-static/js/theme.js"></script>
 <script type="module" src="/kpress-static/js/settings-widget.js"></script>
 <script type="module" src="/kpress-static/js/toc.js"></script>
@@ -83,6 +98,8 @@ body {
 <script type="module" src="/kpress-static/js/diagrams.js"></script>
 <script defer src="/kpress-static/katex/katex.min.js"></script>
 <script defer src="/kpress-static/katex/auto-render.min.js"></script>
+<script defer src="/kpress-static/katex/katex-text-metrics.js"></script>
+<script defer src="/kpress-static/katex/katex-math-runtime.js"></script>
 <script defer src="/kpress-static/katex/katex-init.js"></script>
 </head>
 <body class="kpress-frame" data-kpress-frame>

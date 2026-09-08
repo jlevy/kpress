@@ -25,6 +25,8 @@ from kpress.contract import (
     PUBLIC_FRAGMENT_CSS_VARIABLES,
     PUBLIC_HOST_CSS_VARIABLES,
     PUBLIC_JS_EXPORTS,
+    PUBLIC_MATH_PREPARED_ATTRIBUTES,
+    PUBLIC_MATH_RUNTIME_METHODS,
     PUBLIC_PACKAGE_API,
     PUBLIC_PAGE_MODEL_KEYS,
     PUBLIC_PASS_THROUGH_ATTRIBUTE_PREFIXES,
@@ -380,6 +382,28 @@ def test_widget_behavior_and_js_export_contracts_match_the_js() -> None:
         for name in names:
             pattern = rf"export (?:async )?(?:function|const) {re.escape(name)}\b"
             assert re.search(pattern, text), f"{module}: {name} not exported"
+
+
+def test_classic_math_runtime_exposes_the_documented_methods() -> None:
+    runtime = (_KPRESS_ROOT / "src/kpress/format/static/katex/katex-math-runtime.js").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(r"globalThis\.kpressMathText = \{(.*?)\};", runtime, re.DOTALL)
+    assert match
+    names = tuple(re.findall(r"^\s*(\w+)\s*[:,]", match.group(1), re.MULTILINE))
+    assert names == PUBLIC_MATH_RUNTIME_METHODS
+
+
+def test_prepared_math_attributes_match_the_runtime_and_documentation() -> None:
+    runtime = (_KPRESS_ROOT / "src/kpress/format/static/katex/katex-math-runtime.js").read_text(
+        encoding="utf-8"
+    )
+    docs = (_KPRESS_ROOT / "docs/math-rendering-api.md").read_text(encoding="utf-8")
+    for attribute in PUBLIC_MATH_PREPARED_ATTRIBUTES:
+        first, *rest = attribute.removeprefix("data-").split("-")
+        dataset = first + "".join(part.capitalize() for part in rest)
+        assert re.search(rf"\bdataset\.{dataset}\b", runtime), attribute
+        assert attribute in docs
 
 
 def test_page_model_block_keys_match_the_contract() -> None:

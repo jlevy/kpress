@@ -30,7 +30,7 @@ unexport NPM_CONFIG_MINIMUM_RELEASE_AGE
 # npm 11. Repository installs must use the reviewed .npmrc policy instead.
 unexport NPM_CONFIG_BEFORE
 
-.PHONY: default install hooks-install biome-fix browser-types format format-markdown lint lint-check test audit lock upgrade build verify clean
+.PHONY: default install hooks-install biome-fix browser-types format format-markdown lint lint-check test test-browser audit lock upgrade build verify clean
 
 default: install format lint test
 
@@ -63,17 +63,30 @@ lint:
 	$(UV_RUN) python -m devtools.lint
 	$(UV_RUN) python -m devtools.check_supply_chain
 	$(UV_RUN) python -m devtools.public_hygiene
+	$(UV_RUN) python -m devtools.katex_text_metrics --check
+	$(UV_RUN) python -m devtools.instance_sans --check
+	$(UV_RUN) python -m devtools.subset_quotes --check
+	$(UV_RUN) python -m devtools.subset_mono --check
 
 # Check-only lint, matching CI (does not modify files).
 lint-check:
 	$(UV_RUN) python -m devtools.lint --check
 	$(UV_RUN) python -m devtools.check_supply_chain
 	$(UV_RUN) python -m devtools.public_hygiene
+	$(UV_RUN) python -m devtools.katex_text_metrics --check
+	$(UV_RUN) python -m devtools.instance_sans --check
+	$(UV_RUN) python -m devtools.subset_quotes --check
+	$(UV_RUN) python -m devtools.subset_mono --check
 	$(FLOWMARK) --auto --check .
 
 test:
 	$(UV_RUN) pytest
 	npx --no-install vitest run --config tests/js/vitest.config.mjs
+
+# The separate CI browser job installs the locked Playwright browser explicitly.
+# Required mode fails rather than skipping if the package or browser is absent.
+test-browser:
+	KPRESS_REQUIRE_BROWSER=1 $(UV_RUN) --extra pdf pytest tests/test_playwright_math_loading.py tests/test_playwright_math_text_face.py tests/test_playwright_sans_math_face.py tests/test_playwright_mono_face.py tests/test_playwright_print_pdf_fonts.py
 
 audit:
 	npm audit --audit-level=moderate

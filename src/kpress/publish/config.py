@@ -8,10 +8,16 @@ from pathlib import Path
 from typing import Any, cast
 
 from kpress.errors import KPressPublishError
+from kpress.format.assets import mono_weights_rejection
 from kpress.format.model import (
+    DEFAULT_MONO_WEIGHTS,
+    MONO_WEIGHT_ORDER,
     AssetMode,
     DocumentTree,
     MathMode,
+    MathTextFont,
+    MonoFont,
+    MonoWeight,
     OptimizerMode,
     ProseFont,
     TocMode,
@@ -50,6 +56,17 @@ class FormatConfig:
     # Site default for the reading-font chooser (see RenderOptions.prose_font):
     # readers' persisted choices still win.
     prose_font: ProseFont = "serif"
+    # Faces for the letters and digits inside KaTeX mathematics (see
+    # RenderOptions.math_text_font): "prose" draws them from the reading face,
+    # "katex" keeps KaTeX's own. Independent of prose_font.
+    math_text_font: MathTextFont = "prose"
+    # Which family draws code (see RenderOptions.mono_font): "planetaire" ships
+    # the vendored subsets, "system" hands code to the platform stack and drops
+    # the faces from every page's assets.
+    mono_font: MonoFont = "planetaire"
+    # Which Planetaire styles the site declares (see RenderOptions.mono_weights).
+    # Only declared faces exist in the stylesheet and in the output tree.
+    mono_weights: tuple[MonoWeight, ...] = DEFAULT_MONO_WEIGHTS
     # Content card on the reading column (see RenderOptions.content_card).
     content_card: bool = True
     # Render the doc-title <h1> header (see RenderOptions.show_doc_header).
@@ -225,6 +242,8 @@ _MATH_MODES = ("off", "auto")
 _DIAGRAM_MODES = ("off", "auto", "mermaid")
 _COLOR_MODES = ("system", "light", "dark")
 _PROSE_FONTS = ("serif", "sans")
+_MATH_TEXT_FONTS = ("prose", "katex")
+_MONO_FONTS = ("planetaire", "system")
 _ASSET_MODES = ("hosted", "linked", "hashed")
 _OPTIMIZER_MODES = ("none", "full")
 _PRECOMPRESS_METHODS = ("gzip", "br")
@@ -267,6 +286,53 @@ def _validated_precompress(value: object) -> list[str]:
     for method in methods:
         _ = _checked_choice("optimizer.precompress method", method, _PRECOMPRESS_METHODS)
     return methods
+
+
+def _validated_mono_weights(value: object, *, mono_font: str) -> tuple[MonoWeight, ...]:
+    """Return format.mono_weights in declaration order, raising on unknown names.
+
+    Omitted (``None``) keeps the default set. A single string is accepted the way
+    ``format.html.extra_tags`` accepts one, since declaring exactly one style is a
+    reasonable thing to write.
+
+    Under ``mono_font: planetaire`` the set must cover every style the packaged
+    stylesheets ask for, because a style they ask for and this list withholds is not
+    absent from the page -- the browser synthesizes it, and a synthesized glyph is one
+    no foundry drew. See ``mono_weights_rejection``, which words the refusal for this
+    surface and for ``RenderOptions`` alike. The three additive weights (medium,
+    semibold, extrabold) are free to include or omit: nothing packaged asks for them.
+
+    Under ``mono_font: system`` no Planetaire face is declared at all, so the value is
+    ignored and any set -- including the empty list -- is accepted unchecked.
+    """
+
+    if value is None:
+        return DEFAULT_MONO_WEIGHTS
+    if isinstance(value, str):
+        names = [value]
+    elif isinstance(value, list):
+        names = [str(item) for item in cast(list[object], value)]
+    else:
+        msg = (
+            f"Invalid format.mono_weights value {value!r}; expected a style name or "
+            f"a list of style names"
+        )
+        raise KPressPublishError(msg)
+    for name in names:
+        _ = _checked_choice("format.mono_weights entry", name, MONO_WEIGHT_ORDER)
+    requested = set(names)
+    weights: tuple[MonoWeight, ...] = tuple(
+        weight for weight in MONO_WEIGHT_ORDER if weight in requested
+    )
+    rejection = mono_weights_rejection(
+        weights,
+        mono_font=cast("MonoFont", mono_font),
+        weights_setting="format.mono_weights",
+        font_setting="format.mono_font",
+    )
+    if rejection is not None:
+        raise KPressPublishError(rejection)
+    return weights
 
 
 def _validated_extra_tags(value: object) -> tuple[str, ...]:
@@ -371,6 +437,9 @@ _KNOWN_FORMAT_KEYS = frozenset(
         "palette",
         "color_mode",
         "prose_font",
+        "math_text_font",
+        "mono_font",
+        "mono_weights",
         "content_card",
         "show_doc_header",
         "toc",
@@ -473,11 +542,17 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     _ = _checked_choice("format.diagrams", config.format.diagrams, _DIAGRAM_MODES)
     _ = _checked_choice("format.color_mode", config.format.color_mode, _COLOR_MODES)
     _ = _checked_choice("format.prose_font", config.format.prose_font, _PROSE_FONTS)
+    _ = _checked_choice("format.math_text_font", config.format.math_text_font, _MATH_TEXT_FONTS)
+    _ = _checked_choice("format.mono_font", config.format.mono_font, _MONO_FONTS)
+    mono_weights = _validated_mono_weights(
+        list(config.format.mono_weights), mono_font=config.format.mono_font
+    )
     extra_tags = _validated_extra_tags(list(config.format.extra_tags))
     extra_attributes = _validated_extra_attributes(list(config.format.extra_attributes))
     widgets = parse_widgets(config.format.widgets)
     if (
         widgets != config.format.widgets
+        or mono_weights != config.format.mono_weights
         or extra_tags != config.format.extra_tags
         or extra_attributes != config.format.extra_attributes
     ):
@@ -486,6 +561,7 @@ def validate_config(config: KPressConfig) -> KPressConfig:
             format=replace(
                 config.format,
                 widgets=widgets,
+                mono_weights=mono_weights,
                 extra_tags=extra_tags,
                 extra_attributes=extra_attributes,
             ),
@@ -574,6 +650,16 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
         if "prose_font" in fmt
         else "serif"
     )
+    math_text_font = (
+        _checked_choice("format.math_text_font", fmt.get("math_text_font"), _MATH_TEXT_FONTS)
+        if "math_text_font" in fmt
+        else "prose"
+    )
+    mono_font = (
+        _checked_choice("format.mono_font", fmt.get("mono_font"), _MONO_FONTS)
+        if "mono_font" in fmt
+        else "planetaire"
+    )
     if "asset_mode" in publish:
         asset_mode = publish.get("asset_mode")
         # `inline` is rejected at the config surface until it is truly
@@ -605,6 +691,9 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             palette=str(fmt.get("palette", "neutral")),
             color_mode=color_mode,
             prose_font=cast(ProseFont, prose_font),
+            math_text_font=cast(MathTextFont, math_text_font),
+            mono_font=cast(MonoFont, mono_font),
+            mono_weights=_validated_mono_weights(fmt.get("mono_weights"), mono_font=mono_font),
             content_card=_bool_value(fmt.get("content_card"), True),
             show_doc_header=_bool_value(fmt.get("show_doc_header"), True),
             toc=cast(TocMode, toc),

@@ -48,6 +48,9 @@ PUBLIC_FORMAT_API = (
     "Footnote",
     "Heading",
     "MathMode",
+    "MathTextFont",
+    "MonoFont",
+    "MonoWeight",
     "RenderedDocument",
     "RenderedPage",
     "RenderOptions",
@@ -114,6 +117,8 @@ PUBLIC_RENDER_REQUEST_FIELDS = (
     "widgets",
     "extra_tags",
     "extra_attributes",
+    "mono_font",
+    "mono_weights",
 )
 
 PUBLIC_CSS_CLASSES = (
@@ -258,6 +263,8 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-caps-label-size",
     "--kpress-caps-spacing",
     "--kpress-caps-transform",
+    "--kpress-column-inset",
+    "--kpress-doc-gutter",
     "--kpress-measure",
     "--kpress-page-margin-block-start",
     "--kpress-page-margin-inline",
@@ -341,6 +348,8 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
     "--kpress-font-table",
     "--kpress-bullet-size",
     "--kpress-caps-label-size",
+    "--kpress-column-inset",
+    "--kpress-doc-gutter",
     "--kpress-measure",
     "--kpress-page-margin-block-start",
     "--kpress-page-margin-inline",
@@ -360,15 +369,33 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
 # (see style-tokens.css "Palette options"): an embedding host now re-themes by setting
 # the resolved --kpress-doc-* / --color-* tokens directly, not through a --kpress-host-*
 # color fallback. The font, sizing (--kpress-host-font-size-base, the one knob the
-# whole type ramp derives from), and settings-inset seams remain.
+# whole type ramp derives from, plus --kpress-host-font-size-mono for the mono rung
+# the ramp does not reach), and settings-inset seams remain.
 PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-body",
     "--kpress-host-font-footnote",
     "--kpress-host-font-mono",
     "--kpress-host-font-prose",
     "--kpress-host-font-prose-sans",
+    # The family that answers the quote and apostrophe code points. It leads the prose
+    # stack, and defaults to "KPress Quotes" -- six glyphs of Source Serif 4, shipped
+    # because PT Serif draws those six badly (devtools/subset_quotes.py). A host points
+    # this at another family to swap the marks, or at its own reading face to drop them.
+    # See style-tokens.css and kpress-design.md "Quotation Marks".
+    "--kpress-host-font-punctuation",
     "--kpress-host-font-sans",
+    # Print only: the sans stack the print stylesheet uses, which leads with the static
+    # "Source Sans 3" instances (see print.css and devtools/instance_sans.py) because a
+    # variable face cannot be embedded in a PDF away from its default weight. A host
+    # that overrides the sans weight tokens sets this to its own instanced family.
+    "--kpress-host-font-sans-print",
     "--kpress-host-font-size-base",
+    # The second sizing hook, and the only rung with one: code is the one role whose
+    # size is a ratio between two faces' x-heights rather than a step of the prose
+    # ramp, so a host that swaps --kpress-host-font-mono for a face of its own has to
+    # be able to re-derive it. The small and tiny mono rungs derive from this one, so
+    # setting it retunes all three.
+    "--kpress-host-font-size-mono",
     "--kpress-host-font-table",
     "--kpress-host-settings-inset-block",
     "--kpress-host-settings-inset-inline",
@@ -418,6 +445,8 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
         "fragment_html",
         "head_extra_html",
         "header_html",
+        "math_text_font",
+        "mono_font",
         "palette",
         "prose_font",
         "resolved_theme",
@@ -517,6 +546,22 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# Classic KaTeX assets expose one host API after the metrics asset has loaded.
+PUBLIC_MATH_RUNTIME_METHODS = (
+    "ready",
+    "render",
+    "hydrate",
+    "installTablesFor",
+    "restore",
+    "complete",
+)
+PUBLIC_MATH_PREPARED_ATTRIBUTES = (
+    "data-kpress-math-source",
+    "data-kpress-math-display",
+    "data-kpress-math-profile",
+    "data-kpress-math-prepared",
+)
+
 BUILD_MANIFEST_REQUIRED_KEYS = (
     "schema_version",
     "output_dir",
@@ -544,6 +589,8 @@ __all__ = [
     "PUBLIC_FRAGMENT_CSS_VARIABLES",
     "PUBLIC_HOST_CSS_VARIABLES",
     "PUBLIC_JS_EXPORTS",
+    "PUBLIC_MATH_RUNTIME_METHODS",
+    "PUBLIC_MATH_PREPARED_ATTRIBUTES",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",
     "PUBLIC_PASS_THROUGH_ATTRIBUTES",

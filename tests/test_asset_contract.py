@@ -3,10 +3,19 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from devtools.instance_sans import FAMILY, STYLES, WEIGHTS, instance_name
+from devtools.subset_quotes import CODE_POINTS
 from kpress.format.assets import package_asset_manifest, package_asset_refs
 from kpress.runtime import get_static_asset
 
 _KPRESS_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _one(pattern: str, text: str) -> str:
+    """The single capture of a pattern that must match exactly once."""
+    matches = re.findall(pattern, text)
+    assert len(matches) == 1, f"{pattern!r} matched {len(matches)} times in {text!r}"
+    return str(matches[0])
 
 
 def test_scroll_surfaces_share_the_minimal_scrollbar_token() -> None:
@@ -102,7 +111,7 @@ def test_document_css_contract_has_required_surfaces() -> None:
         "--kpress-caps-heading-size-multiplier",
         "PT Serif",
         "Source Sans 3",
-        "LocalPunct",
+        "KPress Quotes",
         "--kpress-print-page-margin",
         ".kpress-print-surface",
         ".kpress-toc",
@@ -226,16 +235,19 @@ def test_toc_and_footnote_transitions_are_property_scoped() -> None:
 
     assert "transition: all" not in css
     toc_rule = css.partition(".kpress-toc a {")[2].partition("}")[0]
-    footnote_rule = css.partition(".kpress-footnote-ref a,\n.kpress-footnote-backref {")[
-        2
-    ].partition("}")[0]
+    footnote_rule = css.partition(
+        ".kpress-footnote-ref a,\n.kpress a.kpress-footnote-backref,\n"
+        ".kpress-tooltip .kpress-footnote-nav-link {"
+    )[2].partition("}")[0]
     assert toc_rule
     assert footnote_rule
     for rule in [toc_rule, footnote_rule]:
         assert "color var(--kpress-transition-fast)" in rule
         assert "background-color var(--kpress-transition-fast)" in rule
         assert "background var(--kpress-transition-fast)" not in rule
-    assert "border-color var(--kpress-transition-fast)" in toc_rule
+        # The hover draws a border in the link colour; it is transparent at rest, so
+        # it animates in rather than appearing.
+        assert "border-color var(--kpress-transition-fast)" in rule
 
 
 def test_table_css_contract_covers_responsive_reader_parity() -> None:
@@ -263,8 +275,8 @@ def test_table_code_steps_down_a_mono_tier_at_every_width() -> None:
     The size ramps pair by index (mono/normal, mono-small/smaller,
     mono-tiny/tiny), so code holds one optical weight against the text around
     it. A table reduces its text to ``small`` but used to leave code at ``mono``
-    everywhere except the narrow band — 0.863 of its own cell, heavier than the
-    same span in prose at 0.820.
+    everywhere except the narrow band — 0.916 of its own cell, heavier than the
+    same span in prose at 0.870.
 
     The narrow band looked right only because it ALSO drops table text to
     ``smaller``; the pairing came from the text side. So scoping this
@@ -385,6 +397,7 @@ def test_print_css_contract_covers_reader_parity_surfaces() -> None:
         """.kpress-doc,
   .kpress-page-main {
     padding-inline: 0;
+    padding-block-start: 0;
   }"""
         in css
     )
@@ -429,8 +442,153 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/pt-serif-latin-700-italic.woff2",
         "fonts/source-sans-3-latin-wght-normal.woff2",
         "fonts/source-sans-3-latin-wght-italic.woff2",
+        # The quote face: six glyphs of Source Serif 4 (devtools/subset_quotes.py).
+        "fonts/kpress-quotes.woff2",
+        # The static print instances and the stylesheet that declares them.
+        "css/print-fonts.css",
+        "fonts/kpress-print-sans-latin-370-normal.woff2",
+        "fonts/kpress-print-sans-latin-400-normal.woff2",
+        "fonts/kpress-print-sans-latin-550-normal.woff2",
+        "fonts/kpress-print-sans-latin-600-normal.woff2",
+        "fonts/kpress-print-sans-latin-650-normal.woff2",
+        "fonts/kpress-print-sans-latin-370-italic.woff2",
+        "fonts/kpress-print-sans-latin-400-italic.woff2",
+        "fonts/kpress-print-sans-latin-550-italic.woff2",
+        "fonts/kpress-print-sans-latin-600-italic.woff2",
+        "fonts/kpress-print-sans-latin-650-italic.woff2",
+        # The mono face and the stylesheets that declare it: the default pair only,
+        # since mono_weights decides the rest (see tests/test_mono_face.py).
+        "css/mono-planetaire-400-normal.css",
+        "css/mono-planetaire-700-normal.css",
+        "fonts/planetaire-mono-text-latin-400-normal.woff2",
+        "fonts/planetaire-mono-text-latin-700-normal.woff2",
     } <= asset_ids
     assert all("latest" not in asset.path for asset in manifest.assets)
+    # The shipped set and the generator cannot drift apart: the ten names above are
+    # exactly the generator's weights crossed with its styles.
+    assert {
+        f"fonts/{instance_name(weight, style)}" for weight in WEIGHTS for style in STYLES
+    } <= asset_ids
+
+
+def test_print_font_faces_declare_the_static_instances_under_print_only() -> None:
+    """print-fonts.css is the generated declaration of the static print sans set.
+
+    Ten faces, one per weight and style, every one inside the single ``@media print``
+    block so no screen reader downloads them, every ``src`` naming a file that ships.
+    ``font-display: swap`` on all ten: print layout has one chance to draw, and a
+    caller that cannot wait for the faces must get the fallback rather than nothing.
+    """
+    css = get_static_asset("css/print-fonts.css").content.decode("utf-8")
+
+    assert css.count("@media") == 1
+    media_start = css.index("@media print {")
+    faces = list(re.finditer(r"@font-face\s*\{(?P<body>[^}]*)\}", css))
+    assert len(faces) == len(WEIGHTS) * len(STYLES) == 10
+    assert all(face.start() > media_start for face in faces)
+
+    fonts_dir = _KPRESS_ROOT / "src/kpress/format/static/fonts"
+    declared: set[tuple[int, str]] = set()
+    for face in faces:
+        body = face.group("body")
+        assert re.search(rf'font-family:\s*"{re.escape(FAMILY)}";', body), body
+        assert re.search(r"font-display:\s*swap;", body), body
+        weight = int(_one(r"font-weight:\s*(\d+);", body))
+        style = _one(r"font-style:\s*(normal|italic);", body)
+        url = _one(r'src:\s*url\("\.\./fonts/([^"]+)"\)', body)
+        assert url == instance_name(weight, style)
+        # Size, not just presence: a truncated or empty woff2 is a file too, and the
+        # smallest of the ten is over 15 KB.
+        assert (fonts_dir / url).is_file(), url
+        assert (fonts_dir / url).stat().st_size > 10_000, url
+        declared.add((weight, style))
+
+    assert declared == {(weight, style) for weight in WEIGHTS for style in STYLES}
+
+
+def test_print_css_leads_the_sans_stack_with_the_static_family() -> None:
+    """Under print the static family comes first and the variable face is the fallback.
+
+    Chromium's PDF writer draws the variable face at a non-default weight as Type3
+    outline paths, which a smoothing viewer leaves thin; the static instance embeds as a
+    font. Order is the whole mechanism, so it is what this pins.
+    """
+    css = get_static_asset("css/print.css").content.decode("utf-8")
+
+    assert "@media print {" in css
+    stack = css[css.index("@media print {") :]
+    assert "--kpress-host-font-sans-print" in stack
+    static = stack.index(f'"{FAMILY}"')
+    variable = stack.index('"Source Sans 3 Variable"')
+    assert static < variable, "the variable face must come after the static family"
+    # The screen stack is untouched: style-tokens.css still leads with the variable face
+    # and never names the print-only family.
+    tokens = get_static_asset("css/style-tokens.css").content.decode("utf-8")
+    assert FAMILY not in tokens
+
+
+def test_the_quote_face_is_shipped_and_leads_the_prose_stack() -> None:
+    """The quotation marks come from a file KPress ships, not from the reader's Georgia.
+
+    ``LocalPunct`` was ``local("Georgia")`` over these same six code points, and it led
+    ``--kpress-font-prose``: a document's marks came from the reader's machine when they
+    had Georgia and from PT Serif when they did not, and a printed page could embed
+    neither. ``KPress Quotes`` takes that position with the same range and a real
+    ``url()``, so the answer is one face on every machine and in every medium. Nothing
+    may reintroduce a ``local()`` face here.
+    """
+    css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
+    collapsed = re.sub(r"\s+", " ", css)
+
+    # The lead of the prose stack, ahead of PT Serif and reachable through the hook.
+    prose = collapsed[collapsed.index("--kpress-font-prose: var(") :]
+    prose = prose[: prose.index("serif );") + len("serif );")]
+    assert 'var(--kpress-font-punctuation), "PT Serif"' in prose, prose
+    assert '--kpress-font-punctuation: var(--kpress-host-font-punctuation, "KPress Quotes")' in (
+        collapsed
+    )
+
+    # A shipped file over exactly the six code points the generator subsets.
+    face = collapsed[collapsed.index('font-family: "KPress Quotes";') :]
+    face = face[: face.index("}")]
+    assert 'src: url("../fonts/kpress-quotes.woff2") format("woff2");' in face, face
+    assert "unicode-range: " + ", ".join(f"U+{cp:04X}" for cp in CODE_POINTS) + ";" in face, face
+    assert "font-display: block;" in face, face
+
+    assert "LocalPunct" not in collapsed
+    assert "src: local(" not in collapsed
+
+
+def test_list_markers_are_drawn_not_set() -> None:
+    """No stylesheet asks a font for the list marker.
+
+    U+25AA is in none of the faces KPress ships, so the glyph fell down whichever stack
+    the rule inherited: Georgia on a Mac, 16 KB of it embedded in a printed PDF, and a
+    different mark elsewhere. A ``currentColor`` box is the same square everywhere.
+    """
+    sheets = {
+        name: get_static_asset(f"css/{name}").content.decode("utf-8")
+        for name in ("document.css", "components.css", "print.css")
+    }
+
+    # The CSS escape, not the bare codepoint: the rules' own comments name U+25AA.
+    glyph_escape = re.compile(r"\\0*25aa", re.IGNORECASE)
+    for name, css in sheets.items():
+        assert not glyph_escape.search(css), f"{name} still sets the marker as a glyph"
+
+    for name, selector in (
+        ("document.css", ".kpress-prose ul > li::before"),
+        ("components.css", ".kpress .claim::before"),
+        ("print.css", ".kpress ol ul > li::before"),
+    ):
+        css = sheets[name]
+        rule = css[css.index(selector) :]
+        rule = rule[: rule.index("}")]
+        assert 'content: "";' in rule, (name, selector)
+        assert "background: currentColor;" in rule, (name, selector)
+        # Sized from the rule's own marker font size, so one pair of numbers serves
+        # both the screen size and print's smaller one.
+        assert rule.count("0.226em") == 2, (name, selector)
 
 
 def test_browser_assets_are_native_esm() -> None:
@@ -506,17 +664,23 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
         # §3.7/§3.8 tooltip stacking above TOC + the fade-in visible class
         "z-index: 300",
         "kpress-tooltip-visible",
-        # §3.6 TOC sidebar breakpoint (75rem ≈ kash 1200px). Both grid tracks are
-        # FIXED widths (no cqw/vw/1fr) so the content column is a hard constant
-        # 48rem at every pane width; the pair is left-aligned with justify-content
-        # so extra pane width becomes a single trailing margin (no empty band left
-        # of the TOC). A pane-coupled term in the column math (the old
-        # clamp(.., 15cqw, ..) TOC under a fixed group cap) made the content shrink
-        # as the pane widened.
+        # §3.6 TOC sidebar breakpoint (75rem ≈ kash 1200px). The content track is
+        # the column box — the reading measure plus its two insets — so the TEXT
+        # lands at exactly the measure; the pair is left-aligned with
+        # justify-content so extra pane width becomes a single trailing margin (no
+        # empty band left of the TOC). Neither track grows with the pane: a
+        # pane-coupled term in the column math (the old clamp(.., 15cqw, ..) TOC
+        # under a fixed group cap) made the content shrink as the pane widened.
+        # The min() against 100cqw is a floor guard, not a resize — it does not
+        # bind at the default measure — so an over-large host measure degrades
+        # instead of overflowing the pane.
         "@container kpress-doc (min-width: 75rem)",
-        # 53rem = 48rem reading measure + 2×2.5rem inset (content-card inner
-        # breathing room; was 51rem at 1.5rem inset).
-        "grid-template-columns: 15rem 53rem;",
+        # Pinned as the derivation, not as a literal width: a literal here is what
+        # let the track drift out of step with --kpress-measure, so that setting
+        # the public token moved the article and left the text where it was. The
+        # rail track stays 15rem; only the content track is derived.
+        "grid-template-columns:",
+        "min(calc(var(--kpress-measure) + 2 * var(--kpress-column-inset)), calc(100cqw - 20rem))",
         "justify-content: start",
         # The grid wrapper carries its own reading-measure cap + margin:auto
         # (`.kpress-doc-layout`), so it must be uncapped alongside the article

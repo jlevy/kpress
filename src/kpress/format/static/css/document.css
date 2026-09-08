@@ -15,10 +15,19 @@
   box-sizing: inherit;
 }
 
+/* Cap #1 of the width chain (see components.css "the width chain"): the article
+   holds the reading column plus its inset plus the page gutter. Every term is
+   named, because the failure this fixes was a cap that added some of them and
+   not others -- the measure then meant "text" at one width and "text minus
+   padding" at another. box-sizing is border-box (.kpress above), so the gutter
+   belongs inside the cap. */
 .kpress-doc {
   margin: 0 auto;
-  max-width: min(100%, calc(var(--kpress-measure, 76ch) + 2rem));
-  padding: 2rem 1rem 3rem;
+  max-width: min(
+    100%,
+    calc(var(--kpress-measure) + 2 * var(--kpress-column-inset) + 2 * var(--kpress-doc-gutter))
+  );
+  padding: 2rem var(--kpress-doc-gutter) 3rem;
 }
 
 .kpress-print-surface {
@@ -75,9 +84,13 @@
   margin-bottom: 0.15rem;
 }
 
+/* Cap #2 of the width chain: the column box, text plus its inset. Capping this
+   at the bare measure is what clamped the column below the measure in the
+   single-column bands -- the inset was then subtracted from a box already
+   sized to the text. */
 .kpress-doc-layout {
   margin: 0 auto;
-  max-width: var(--kpress-measure, 76ch);
+  max-width: calc(var(--kpress-measure) + 2 * var(--kpress-column-inset));
 }
 
 .kpress-prose {
@@ -182,13 +195,43 @@
   margin-block-end: 0;
 }
 
+/* The square is DRAWN, not set. It used to be the glyph U+25AA, which no face
+   KPress ships carries: it fell down the prose stack to whatever the reader had
+   (Georgia on a Mac, something else elsewhere) and put 16 KB of embedded Georgia
+   into a printed PDF for 48 bullets. A currentColor box depends on no font and
+   is the same mark on every machine.
+
+   The numbers reproduce what Georgia drew, measured in Chromium at a 16px base:
+   a 3.255 x 3.255 px square whose ink began 0.921px right of the pen and whose
+   centre sat 11.051px left of and 13.143px below the item's top-left corner.
+   0.226em of the marker size is that square; the two added offsets move the box
+   from the old text origin onto the ink the glyph actually put there, and both
+   are in em of the marker size, so the same pair serves the print rule at its
+   smaller size. See print.css and the .claim rule in components.css.
+
+   One consequence beyond the face: .claim's marker used to come out 60% larger
+   than this one, because its stack is the sans and a different fallback answered
+   it. All three bulleted lists now draw the one square --kpress-bullet-size
+   describes.
+
+   The inline offset is logical, not physical. The glyph used `left`, and so did
+   this box at first, which put the marker on the far side of a right-to-left
+   item and pointed the 0.064em ink nudge away from the text instead of toward
+   it. `inset-inline-start` resolves to `right` under `dir="rtl"` and the nudge
+   follows it, so one pair of numbers serves both directions.
+
+   Forced colors need their own rule; components.css carries it, because that
+   file loads later and .claim's marker rule lives there. */
 .kpress-prose ul > li::before,
 .kpress .concepts ul > li::before {
-  content: "\25AA\FE0E";
+  background: currentColor;
+  content: "";
   font-size: var(--kpress-bullet-size);
-  left: calc(var(--kpress-font-size-base) * -0.85);
+  height: 0.226em;
+  inset-inline-start: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
   position: absolute;
-  top: calc(var(--kpress-font-size-base) * 0.1);
+  top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
+  width: 0.226em;
 }
 
 .kpress-prose ol {

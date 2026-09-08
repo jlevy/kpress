@@ -164,6 +164,66 @@ font-role table under [Theme and Fonts](kpress-design.md#theme-and-fonts)); a ho
 can use this for a serif/sans reading-font toggle, which sets
 `--kpress-host-font-prose`. Hosts customize colors by setting the public
 `--kpress-doc-*` tokens on the document scope.
+The sans role has one further hook that applies under print only,
+`--kpress-host-font-sans-print`; a host that changes the sans weights owes its printed
+pages a set of static faces, described in
+[Print Sans Faces and Host Weights](#print-sans-faces-and-host-weights).
+The serif role has one too: `--kpress-host-font-punctuation` names the family that
+answers the quotation marks and the apostrophe, which lead the prose stack because PT
+Serif draws those six glyphs badly.
+Setting it to `"PT Serif"` gives them back to the reading face; the reasoning is in
+[Quotation Marks](kpress-design.md#quotation-marks).
+The two serif hooks interact, and a host that sets only the first loses the quote face
+without being told:
+[The Prose Hook and the Quote Face](#the-prose-hook-and-the-quote-face).
+
+Mathematics carries two further font seams, both for a host that has pinned a reading
+face of its own (full contract: [Math Text Face](kpress-design.md#math-text-face)). The
+first is CSS: redeclare the `KPress Math Text` faces after KPress’s
+`katex/katex-text-face.css`, and the host’s faces win for the Latin and digit ranges
+they declare while KPress’s KaTeX fallbacks keep the symbols.
+`katex-math-runtime.js` waits for the composite by description
+(`700 1em 'KPress Math Text'` and its three siblings) rather than face by face, so the
+browser matches the host’s faces and those are the ones waited on and fetched; the
+host’s mathematics paints once as well, and the KPress faces it replaced are not pulled
+onto the page. `KPress Math Text` is the whole of that seam: the same wait takes the
+`KaTeX_Main` and `KaTeX_Math` faces off `document.fonts` by name, on the assumption that
+the pinned bundle is the only thing declaring them, so a host that redeclares either
+family gets both sets loaded and KPress’s shadowed files fetched onto pages that never
+draw them. Substitute a math face through the composite, not by redeclaring the KaTeX
+families. The second is JS: regenerate `globalThis.kpressKatexTextMetrics` for that face
+with `devtools/katex_text_metrics.py` and load it before `katex-math-runtime.js`, since
+KaTeX lays out from those tables and faces swapped without them leave Computer Modern
+boxes around the host’s glyphs.
+Both seams have a sans twin, `KPress Math Text Sans` and the generator’s `sans` table
+set, which is what a caption, a footnote, a table and the reader’s sans reading face
+draw from.
+A host that pins only its serif leaves them alone and keeps Source Sans there;
+a host that pins its sans as well redeclares both families and regenerates both sets,
+and must keep the `sans` key present — `katex-math-runtime.js` treats a missing sans set
+the way it treats missing tables anywhere else and turns the whole face off, since sans
+faces laid out from serif numbers is the state the design forbids.
+A host that redeclares the sans faces gives each slot a single `font-weight`, not a
+range: the table it ships describes one weight, and a variable face is clamped to the
+range its `@font-face` declares.
+A host that inlines assets into one self-contained file has two obligations beyond the
+usual: when it inlines `@font-face` sources it must rewrite the composite’s KaTeX-face
+URLs as well as the `../fonts/…` reading-face ones, and it must include
+`katex-text-metrics.js` before any script of its own that calls `katex.render` — the
+tables have to be set before the first render.
+
+A host that renders its own mathematics loads `katex-math-runtime.js` after the bundle
+and metrics asset, then calls
+`await globalThis.kpressMathText.render(source, node, options, context)`. The runtime
+initializes independently of the native render loop, selects and restores the metric
+tables, and waits for the fonts used by the rendered result before showing it.
+This also covers early event callbacks and large operators whose fonts the initial
+warmup does not request.
+A host can extend the sans-context decision with `context.isSansContext(node)` and
+prepare a batch with `ready(nodes, context)`. Call `complete()` once the initial batch
+settles, to release the head bootstrap’s pending MathML state.
+See [Rendering Mathematics in a Host](math-rendering-api.md) for the complete API, error
+fallback and self-contained-page options.
 
 Document sizing is one knob, not many: every KPress font size derives from
 `--kpress-font-size-base` (default `1rem`), so a host that pins its own typography
@@ -182,6 +242,31 @@ sizing too).
 See [Sizing Policy](kpress-design.md#sizing-policy) for the contract and the
 deliberately root-relative layout lengths.
 
+Code is the one role with an asset-pruning setting rather than only a display switch.
+By default a document declares four Planetaire Mono Text faces — regular, bold, italic
+and bold-italic, 57,260 bytes of woff2, about 56KB — plus their four
+`mono-planetaire-*.css` stylesheets.
+That is what a **static build copies**, not what a reader downloads: a browser fetches a
+declared face only when a glyph resolves to it, so a prose page with no code fetches
+none of the four, and a page of Python fetches three.
+No asset mode base64s a font — inline mode leaves woff2 external and `single-file`
+export is refused — so a declared face costs a page nothing until its style appears on
+it. A host that sets `mono_font: "system"` gets none of it: the faces and their
+stylesheets never enter the manifest, so there is nothing to link, copy, or inline, and
+`--kpress-font-mono` resolves to the platform stack.
+That prunes all seven subsets, about 104KB, from the built tree.
+A host that wants the three heavier upright weights names them in `mono_weights`
+(`medium`, `semibold`, `extrabold`) and pays about 16 KB each in the built tree.
+Narrowing below the four is refused rather than accepted: KPress’s own stylesheets ask
+for all four, and a style they ask for and a document withholds is drawn by synthesis —
+which on the weight axis puts `/Type3` outlines in an exported PDF. See
+[Mono Face](kpress-design.md#mono-face) for the table of what is refused and why.
+The reader-facing `font_mode: "system"` is a different lever: it also puts code in the
+platform mono, but it changes only the cascade, so the faces stay in the manifest.
+Sizing the mono against a family of its own goes through `--kpress-host-font-size-mono`,
+which carries the small and tiny rungs with it; see
+[Mono Face](kpress-design.md#mono-face) for how the default ratio is derived.
+
 Theming is equally declarative: rendered fragments carry no baked theme or palette
 attributes, so a host stamps `data-kpress-resolved-theme` (and optionally
 `data-kpress-palette`) on one scope — `:root` or a wrapper — and updates it on toggle;
@@ -195,6 +280,52 @@ then emitting `theme:change`. Set `include_theme_resolver=True` only when KPress
 instead own root attributes, theme persistence, and the OS-color-scheme listener.
 See [Theme and Fonts](kpress-design.md#theme-and-fonts) for the full embedder contract
 and the wrapper-scope note about body-portaled overlays.
+
+### The Prose Hook and the Quote Face
+
+The two serif hooks interact, and the interaction is silent, so it is worth its own
+lines.
+
+**Setting `--kpress-host-font-prose` replaces the quote face along with the reading
+face.** The hook is the first entry inside `--kpress-font-prose`, so a value discards
+the rest of the list, and `var(--kpress-font-punctuation)` is the head of that list.
+Measured in Chromium: a default page draws its quotation marks from `KPress Quotes` and
+every other character from PT Serif; with `--kpress-host-font-prose` set, the marks come
+from the host’s face and the quote face is not resolved at all.
+Nothing in the page reports it, and nothing in a host’s diff shows it.
+
+A host that wants to keep the shipped marks puts them back at the head of its own stack:
+
+```css
+:root {
+  --kpress-host-font-prose: var(--kpress-font-punctuation), "Host Serif", Georgia, serif;
+}
+```
+
+A host that wants its own face to set its own marks says so deliberately instead, which
+also stops the shipped face from being downloaded:
+
+```css
+:root {
+  --kpress-host-font-punctuation: "Host Serif";
+}
+```
+
+**Migration.** A host that already sets `--kpress-host-font-prose` upgrades into this
+without a code change of its own.
+Before the quote face shipped, the head of that list was `LocalPunct`, a
+`local("Georgia")` borrowing that resolved to nothing on a machine without Georgia and
+never reached a PDF, so replacing the stack gave up little and no test measured it.
+It now gives up a face KPress ships and embeds.
+Either declaration above settles it; a host that does nothing keeps drawing the marks it
+was already drawing.
+
+**Sans reading mode gives the marks up on purpose.** The built-in reading-font chooser
+(`data-kpress-prose-font="sans"`) repoints `--kpress-font-prose` at the sans stack by
+the same mechanism, so quotation marks in sans reading mode come from Source Sans 3 on
+screen and from `KPress Print Sans` in print.
+Both are shipped faces, and a serif quote face inside a sans paragraph would be the
+mismatch the punctuation token exists to prevent.
 
 ### Collapsible TOC
 
@@ -504,6 +635,66 @@ reuse the source profile with structural overrides.
 The host hides its own chrome (`.app-header`, `.tab-bar`, `.tree-pane`, `.file-header`)
 via its own `@media print` rules.
 KPress does not reach outside its `.kpress` container.
+
+### Print Sans Faces and Host Weights
+
+Under print the sans stack leads with the static `KPress Print Sans` instances rather
+than the variable `Source Sans 3 Variable` used on screen, because Chromium’s PDF writer
+draws a variable face at a non-default weight as outline paths instead of embedding it,
+and a viewer that smooths embedded text leaves those paths thin.
+The instances are modified versions of Source Sans 3 under a family name of KPress’s
+own, which is what the OFL asks of a derived font whose original reserves its name.
+The full argument and the measurements are in
+[Print Sans Faces](kpress-design.md#print-sans-faces).
+Four consequences for a host:
+
+- **A host that keeps KPress’s weights has nothing to do.** The ten instances ship as
+  package assets and `print-fonts.css` is part of the default stylesheet set, so linked
+  and hashed builds carry them and print correctly.
+- **A host that sets `--kpress-host-font-sans` must also set
+  `--kpress-host-font-sans-print`.** The screen hook names the sans for both media, and
+  under print it replaces the whole default list, static family included — a host’s own
+  family is not overruled on paper.
+  So a host that pins its own sans and stops there prints whatever that family prints,
+  outline paths and all if it is a variable webfont, with no warning anywhere.
+  Set the print hook to the host’s own instances, or to
+  `"KPress Print Sans", <its own stack>` to keep KPress’s set in front of it.
+- **A host that overrides the sans weight tokens** (`--kpress-font-weight-sans-light` /
+  `-medium` / `-bold`, or any `font-weight` of its own on a sans context) has two
+  options. Instance its own set and declare it: copy `devtools/instance_sans.py` from the
+  repository — it is a development tool and is not in the wheel — and install fontTools,
+  which is its only dependency; `instance_face(variable, weight, family)` returns the
+  woff2 bytes and `face_rule(weight, style, url, family)` the matching `@font-face`
+  rule, for the five weights in `WEIGHTS` crossed with the two styles in `STYLES`.
+  Declare those faces inside `@media print` after KPress’s stylesheets, under a family
+  name of the host’s own (the same OFL obligation applies to the host’s derived files),
+  and point `--kpress-host-font-sans-print` at it.
+  Or skip the instancing and point `--kpress-host-font-sans-print` at a family the host
+  already ships. A weight with no instance is not an error: CSS font matching falls to
+  the nearest one KPress ships, so the printed page is a step off the screen rather than
+  broken. The set now tops out at 650, so a host that raises
+  `--kpress-font-weight-sans-bold` to 700 prints at 650 until it instances its own; the
+  700 pair was dropped on 2026-09-07 because nothing in KPress requested it.
+- **A host that inlines assets into one self-contained file** pays for faces that only a
+  printed copy uses: the ten instances are 154,452 bytes of woff2, about 151KB, which
+  base64 grows by a third to 205,948 bytes, about 201KB. Supplying them at PDF time
+  (linked assets for the print or export path, inlined assets for the page) is a
+  supported choice: without them the printed sans falls back to the variable face and
+  its outline paths, which is exactly the behavior before this feature.
+- **A host that drives its own browser print** should let the print faces load before it
+  prints. A face declared inside `@media print` starts loading only when print layout
+  asks for it, and a face used by an `@page` margin box never enters
+  `document.fonts.ready` at all, so a print issued right after the media switch draws
+  before the instances arrive.
+  After switching to print media, force layout, await `document.fonts.ready`, then
+  `document.fonts.load` the families the margin boxes name (`--kpress-font-sans` and
+  `--kpress-font-prose`, read from the root under print media) and await it again.
+  `kpress.format.pdf.render_pdf` does exactly this, so a host that exports through
+  KPress has nothing to do.
+  Skipping the wait is not a broken page: the faces carry `font-display: swap`, so what
+  has not arrived falls back to the variable face and its outline paths.
+  The same is true of a reader who prints from the browser’s own dialog, where nothing
+  can wait on the host’s behalf.
 
 ### Static Export Seam
 

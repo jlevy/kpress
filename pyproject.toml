@@ -84,6 +84,10 @@ dev = [
     "rich>=15.0.0",
     "basedpyright>=1.39.9",
     "funlog>=0.2.1",
+    # Reads the vendored woff2 faces for devtools/katex_text_metrics.py and instances
+    # them for devtools/instance_sans.py. Development only: the generated metric table
+    # and the static faces ship, the generator's dependency does not.
+    "fonttools>=4.63.0",
 ]
 
 [project.scripts]
@@ -208,11 +212,15 @@ reportImplicitStringConcatenation = false
 
 [tool.codespell]
 # Skip test content/golden outputs and vendored third-party assets.
-skip = "tests/fixtures,tests/golden/accepted,tests/e2e/docs,src/kpress/format/static/katex,src/kpress/format/static/icons,*.woff2,uv.lock"
+skip = "tests/fixtures,tests/golden/accepted,tests/e2e/docs,src/kpress/format/static/katex,src/kpress/format/static/icons,src/kpress/licenses,*.woff2,uv.lock"
 # Percent-encoded Café anchors necessarily contain the ASCII URL fragment `caf`.
 ignore-words-list = "caf"
 
 [tool.pytest.ini_options]
+# -rs so a skip says so and why. The browser tests skip when Playwright or Chromium is
+# absent, which is the normal state of a CI job that installs neither; a bare `s` in the
+# progress line is not enough to notice that a whole class of coverage did not run.
+addopts = "-rs"
 python_files = ["*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

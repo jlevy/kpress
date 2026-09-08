@@ -1,20 +1,80 @@
 readable:
   files:
     _kpress/assets/css/components.css:
-      bytes: 68365
-      sha256_16: 763595ddf1a251e9
+      bytes: 82037
+      sha256_16: ea01e51f26c5ecfb
     _kpress/assets/css/document.css:
-      bytes: 12505
-      sha256_16: d86525c4bb370b43
+      bytes: 15075
+      sha256_16: 20d6af8f353834cf
+    _kpress/assets/css/mono-planetaire-400-italic.css:
+      bytes: 735
+      sha256_16: 34bd1d5b7aa5a794
+    _kpress/assets/css/mono-planetaire-400-normal.css:
+      bytes: 736
+      sha256_16: 9a5f82ca54019902
+    _kpress/assets/css/mono-planetaire-700-italic.css:
+      bytes: 740
+      sha256_16: 8fe04148a6caac2d
+    _kpress/assets/css/mono-planetaire-700-normal.css:
+      bytes: 733
+      sha256_16: c5232ad5d38dc5a6
+    _kpress/assets/css/print-fonts.css:
+      bytes: 4674
+      sha256_16: 94482bb5f8c9001e
     _kpress/assets/css/print.css:
-      bytes: 8033
-      sha256_16: 86c6396bc77060cd
+      bytes: 11280
+      sha256_16: f94d203df8621af9
     _kpress/assets/css/style-tokens.css:
-      bytes: 29950
-      sha256_16: 0554b3a1d96a854f
+      bytes: 39413
+      sha256_16: a95c97e3e024901f
     _kpress/assets/css/syntax.css:
       bytes: 7789
       sha256_16: 807cf5be35b5a8dd
+    _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2:
+      bytes: 15468
+      sha256_16: 4d839c9d54c57ab0
+    _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2:
+      bytes: 15308
+      sha256_16: f41033bac2496b3b
+    _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2:
+      bytes: 15548
+      sha256_16: bd1f2a046978c67d
+    _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2:
+      bytes: 15388
+      sha256_16: a957bd8de97e31da
+    _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2:
+      bytes: 15516
+      sha256_16: 05c33c4d0b64b915
+    _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2:
+      bytes: 15308
+      sha256_16: 050256481eaa7d24
+    _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2:
+      bytes: 15532
+      sha256_16: 90ee17afac862425
+    _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2:
+      bytes: 15392
+      sha256_16: 900df4999e4dc354
+    _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2:
+      bytes: 15620
+      sha256_16: ff519fb1358fa12a
+    _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2:
+      bytes: 15372
+      sha256_16: 8cd1aee8d860fe72
+    _kpress/assets/fonts/kpress-quotes.woff2:
+      bytes: 724
+      sha256_16: c1b4e25238045596
+    _kpress/assets/fonts/planetaire-mono-text-latin-400-italic.woff2:
+      bytes: 14840
+      sha256_16: 079d54b75f6d5822
+    _kpress/assets/fonts/planetaire-mono-text-latin-400-normal.woff2:
+      bytes: 13424
+      sha256_16: 0ecd530d8bdc55cc
+    _kpress/assets/fonts/planetaire-mono-text-latin-700-italic.woff2:
+      bytes: 15036
+      sha256_16: 4665ca22f8e64518
+    _kpress/assets/fonts/planetaire-mono-text-latin-700-normal.woff2:
+      bytes: 13960
+      sha256_16: 5b01f48d9a28b265
     _kpress/assets/fonts/pt-serif-latin-400-italic.woff2:
       bytes: 34896
       sha256_16: cb373bde18855c82
@@ -49,8 +109,8 @@ readable:
       bytes: 14783
       sha256_16: 17fe05340c4c6480
     _kpress/assets/js/settings-widget.js:
-      bytes: 6808
-      sha256_16: 29aa1292b1757639
+      bytes: 9764
+      sha256_16: c90a7454d24aae69
     _kpress/assets/js/theme-controls.js:
       bytes: 1854
       sha256_16: 9e4a1c0b3df97b9b
@@ -58,8 +118,8 @@ readable:
       bytes: 4668
       sha256_16: eef4b6281e1a2cdd
     _kpress/assets/js/tooltips.js:
-      bytes: 27654
-      sha256_16: d427e1160ca7c8cb
+      bytes: 33659
+      sha256_16: 0d651991ea723da2
     _kpress/assets/js/viewport.js:
       bytes: 5446
       sha256_16: acab9e9c3e7e92ce
@@ -67,30 +127,130 @@ readable:
       json:
         files:
         - applied_pipeline: []
-          content_hash: 763595ddf1a251e9
+          content_hash: ea01e51f26c5ecfb
           kind: css
           path: _kpress/assets/css/components.css
-          size: 68365
+          size: 82037
         - applied_pipeline: []
-          content_hash: d86525c4bb370b43
+          content_hash: 20d6af8f353834cf
           kind: css
           path: _kpress/assets/css/document.css
-          size: 12505
+          size: 15075
         - applied_pipeline: []
-          content_hash: 86c6396bc77060cd
+          content_hash: 34bd1d5b7aa5a794
+          kind: css
+          path: _kpress/assets/css/mono-planetaire-400-italic.css
+          size: 735
+        - applied_pipeline: []
+          content_hash: 9a5f82ca54019902
+          kind: css
+          path: _kpress/assets/css/mono-planetaire-400-normal.css
+          size: 736
+        - applied_pipeline: []
+          content_hash: 8fe04148a6caac2d
+          kind: css
+          path: _kpress/assets/css/mono-planetaire-700-italic.css
+          size: 740
+        - applied_pipeline: []
+          content_hash: c5232ad5d38dc5a6
+          kind: css
+          path: _kpress/assets/css/mono-planetaire-700-normal.css
+          size: 733
+        - applied_pipeline: []
+          content_hash: 94482bb5f8c9001e
+          kind: css
+          path: _kpress/assets/css/print-fonts.css
+          size: 4674
+        - applied_pipeline: []
+          content_hash: f94d203df8621af9
           kind: css
           path: _kpress/assets/css/print.css
-          size: 8033
+          size: 11280
         - applied_pipeline: []
-          content_hash: 0554b3a1d96a854f
+          content_hash: a95c97e3e024901f
           kind: css
           path: _kpress/assets/css/style-tokens.css
-          size: 29950
+          size: 39413
         - applied_pipeline: []
           content_hash: 807cf5be35b5a8dd
           kind: css
           path: _kpress/assets/css/syntax.css
           size: 7789
+        - applied_pipeline: []
+          content_hash: 4d839c9d54c57ab0
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          size: 15468
+        - applied_pipeline: []
+          content_hash: f41033bac2496b3b
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: bd1f2a046978c67d
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          size: 15548
+        - applied_pipeline: []
+          content_hash: a957bd8de97e31da
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          size: 15388
+        - applied_pipeline: []
+          content_hash: 05c33c4d0b64b915
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          size: 15516
+        - applied_pipeline: []
+          content_hash: 050256481eaa7d24
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: 90ee17afac862425
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          size: 15532
+        - applied_pipeline: []
+          content_hash: 900df4999e4dc354
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          size: 15392
+        - applied_pipeline: []
+          content_hash: ff519fb1358fa12a
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          size: 15620
+        - applied_pipeline: []
+          content_hash: 8cd1aee8d860fe72
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          size: 15372
+        - applied_pipeline: []
+          content_hash: c1b4e25238045596
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-quotes.woff2
+          size: 724
+        - applied_pipeline: []
+          content_hash: 079d54b75f6d5822
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-400-italic.woff2
+          size: 14840
+        - applied_pipeline: []
+          content_hash: 0ecd530d8bdc55cc
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-400-normal.woff2
+          size: 13424
+        - applied_pipeline: []
+          content_hash: 4665ca22f8e64518
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-700-italic.woff2
+          size: 15036
+        - applied_pipeline: []
+          content_hash: 5b01f48d9a28b265
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-700-normal.woff2
+          size: 13960
         - applied_pipeline: []
           content_hash: cb373bde18855c82
           kind: woff2
@@ -147,10 +307,10 @@ readable:
           path: _kpress/assets/js/runtime.js
           size: 14783
         - applied_pipeline: []
-          content_hash: 29aa1292b1757639
+          content_hash: c90a7454d24aae69
           kind: js
           path: _kpress/assets/js/settings-widget.js
-          size: 6808
+          size: 9764
         - applied_pipeline: []
           content_hash: 9e4a1c0b3df97b9b
           kind: js
@@ -162,50 +322,80 @@ readable:
           path: _kpress/assets/js/theme.js
           size: 4668
         - applied_pipeline: []
-          content_hash: d427e1160ca7c8cb
+          content_hash: 0d651991ea723da2
           kind: js
           path: _kpress/assets/js/tooltips.js
-          size: 27654
+          size: 33659
         - applied_pipeline: []
           content_hash: acab9e9c3e7e92ce
           kind: js
           path: _kpress/assets/js/viewport.js
           size: 5446
         - applied_pipeline: []
-          content_hash: 95c396f59190f6d2
+          content_hash: e67c6709f22aa231
           kind: html
           path: about.html
-          size: 9919
+          size: 10797
         - applied_pipeline: []
-          content_hash: b0c3ebb22c0ae960
+          content_hash: 22e89c0bc5eabd12
           kind: html
           path: index.html
-          size: 10318
+          size: 11196
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
           kind: txt
           path: robots.txt
           size: 23
         assets:
-        - content_hash: 763595ddf1a251e9
+        - content_hash: ea01e51f26c5ecfb
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/components.css
           path: css/components.css
           source: package
-        - content_hash: d86525c4bb370b43
+        - content_hash: 20d6af8f353834cf
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/document.css
           path: css/document.css
           source: package
-        - content_hash: 86c6396bc77060cd
+        - content_hash: 34bd1d5b7aa5a794
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/mono-planetaire-400-italic.css
+          path: css/mono-planetaire-400-italic.css
+          source: package
+        - content_hash: 9a5f82ca54019902
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/mono-planetaire-400-normal.css
+          path: css/mono-planetaire-400-normal.css
+          source: package
+        - content_hash: 8fe04148a6caac2d
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/mono-planetaire-700-italic.css
+          path: css/mono-planetaire-700-italic.css
+          source: package
+        - content_hash: c5232ad5d38dc5a6
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/mono-planetaire-700-normal.css
+          path: css/mono-planetaire-700-normal.css
+          source: package
+        - content_hash: 94482bb5f8c9001e
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/print-fonts.css
+          path: css/print-fonts.css
+          source: package
+        - content_hash: f94d203df8621af9
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/print.css
           path: css/print.css
           source: package
-        - content_hash: 0554b3a1d96a854f
+        - content_hash: a95c97e3e024901f
           kind: package
           media_type: text/css
           output_path: _kpress/assets/css/style-tokens.css
@@ -216,6 +406,96 @@ readable:
           media_type: text/css
           output_path: _kpress/assets/css/syntax.css
           path: css/syntax.css
+          source: package
+        - content_hash: 4d839c9d54c57ab0
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          path: fonts/kpress-print-sans-latin-370-italic.woff2
+          source: package
+        - content_hash: f41033bac2496b3b
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          path: fonts/kpress-print-sans-latin-370-normal.woff2
+          source: package
+        - content_hash: bd1f2a046978c67d
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          path: fonts/kpress-print-sans-latin-400-italic.woff2
+          source: package
+        - content_hash: a957bd8de97e31da
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          path: fonts/kpress-print-sans-latin-400-normal.woff2
+          source: package
+        - content_hash: 05c33c4d0b64b915
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          path: fonts/kpress-print-sans-latin-550-italic.woff2
+          source: package
+        - content_hash: 050256481eaa7d24
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          path: fonts/kpress-print-sans-latin-550-normal.woff2
+          source: package
+        - content_hash: 90ee17afac862425
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          path: fonts/kpress-print-sans-latin-600-italic.woff2
+          source: package
+        - content_hash: 900df4999e4dc354
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          path: fonts/kpress-print-sans-latin-600-normal.woff2
+          source: package
+        - content_hash: ff519fb1358fa12a
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          path: fonts/kpress-print-sans-latin-650-italic.woff2
+          source: package
+        - content_hash: 8cd1aee8d860fe72
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          path: fonts/kpress-print-sans-latin-650-normal.woff2
+          source: package
+        - content_hash: c1b4e25238045596
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-quotes.woff2
+          path: fonts/kpress-quotes.woff2
+          source: package
+        - content_hash: 079d54b75f6d5822
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-400-italic.woff2
+          path: fonts/planetaire-mono-text-latin-400-italic.woff2
+          source: package
+        - content_hash: 0ecd530d8bdc55cc
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-400-normal.woff2
+          path: fonts/planetaire-mono-text-latin-400-normal.woff2
+          source: package
+        - content_hash: 4665ca22f8e64518
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-700-italic.woff2
+          path: fonts/planetaire-mono-text-latin-700-italic.woff2
+          source: package
+        - content_hash: 5b01f48d9a28b265
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-700-normal.woff2
+          path: fonts/planetaire-mono-text-latin-700-normal.woff2
           source: package
         - content_hash: cb373bde18855c82
           kind: package
@@ -283,7 +563,7 @@ readable:
           output_path: _kpress/assets/js/runtime.js
           path: js/runtime.js
           source: package
-        - content_hash: 29aa1292b1757639
+        - content_hash: c90a7454d24aae69
           kind: package
           media_type: text/javascript
           output_path: _kpress/assets/js/settings-widget.js
@@ -301,7 +581,7 @@ readable:
           output_path: _kpress/assets/js/theme.js
           path: js/theme.js
           source: package
-        - content_hash: d427e1160ca7c8cb
+        - content_hash: 0d651991ea723da2
           kind: package
           media_type: text/javascript
           output_path: _kpress/assets/js/tooltips.js
@@ -323,7 +603,7 @@ readable:
     about.html:
       text: |
         <!doctype html>
-        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif">
+        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif" data-kpress-math-text="prose" data-kpress-mono-font="planetaire">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -358,6 +638,15 @@ readable:
         // hosts never load this bootstrap at all (fragment path).
         (() => {
           const root = document.documentElement;
+          // Native MathML uses the browser's math face. Reserve its space until the
+          // enhanced result is ready, with recovery if scripts or font loads fail.
+          root.dataset.kpressMathPending = "true";
+          const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+            globalThis
+          );
+          mathState.kpressMathPendingTimer = setTimeout(() => {
+            delete root.dataset.kpressMathPending;
+          }, 3000);
           /** @param {string} key */
           const stored = (key) => {
             try {
@@ -396,6 +685,11 @@ readable:
         <link rel="stylesheet" href="/_kpress/assets/css/document.css">
         <link rel="stylesheet" href="/_kpress/assets/css/components.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-normal.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-normal.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-italic.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-italic.css">
         <script type="module" src="/_kpress/assets/js/theme.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.js"></script>
         </head>
@@ -489,7 +783,7 @@ readable:
     index.html:
       text: |
         <!doctype html>
-        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif">
+        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif" data-kpress-math-text="prose" data-kpress-mono-font="planetaire">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -524,6 +818,15 @@ readable:
         // hosts never load this bootstrap at all (fragment path).
         (() => {
           const root = document.documentElement;
+          // Native MathML uses the browser's math face. Reserve its space until the
+          // enhanced result is ready, with recovery if scripts or font loads fail.
+          root.dataset.kpressMathPending = "true";
+          const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+            globalThis
+          );
+          mathState.kpressMathPendingTimer = setTimeout(() => {
+            delete root.dataset.kpressMathPending;
+          }, 3000);
           /** @param {string} key */
           const stored = (key) => {
             try {
@@ -562,6 +865,11 @@ readable:
         <link rel="stylesheet" href="/_kpress/assets/css/document.css">
         <link rel="stylesheet" href="/_kpress/assets/css/components.css">
         <link rel="stylesheet" href="/_kpress/assets/css/print.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-normal.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-normal.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-italic.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-italic.css">
         <script type="module" src="/_kpress/assets/js/theme.js"></script>
         <script type="module" src="/_kpress/assets/js/settings-widget.js"></script>
         <script type="module" src="/_kpress/assets/js/tooltips.js"></script>
@@ -665,36 +973,111 @@ readable:
         Allow: /
 hashed:
   files:
-    _kpress/assets/css/components.763595ddf1a251e9.css:
-      bytes: 68365
-      sha256_16: 763595ddf1a251e9
-    _kpress/assets/css/components.763595ddf1a251e9.css.gz:
-      bytes: 17953
-      sha256_16: d4cd6a3585888b43
-    _kpress/assets/css/document.d86525c4bb370b43.css:
-      bytes: 12505
-      sha256_16: d86525c4bb370b43
-    _kpress/assets/css/document.d86525c4bb370b43.css.gz:
-      bytes: 3457
-      sha256_16: 174968be8dffc956
-    _kpress/assets/css/print.86c6396bc77060cd.css:
-      bytes: 8033
-      sha256_16: 86c6396bc77060cd
-    _kpress/assets/css/print.86c6396bc77060cd.css.gz:
-      bytes: 2278
-      sha256_16: 6d380fc126e842e8
-    _kpress/assets/css/style-tokens.0554b3a1d96a854f.css:
-      bytes: 29950
-      sha256_16: 0554b3a1d96a854f
-    _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz:
-      bytes: 8901
-      sha256_16: f699745feecabfb0
+    _kpress/assets/css/components.ea01e51f26c5ecfb.css:
+      bytes: 82037
+      sha256_16: ea01e51f26c5ecfb
+    _kpress/assets/css/components.ea01e51f26c5ecfb.css.gz:
+      bytes: 22817
+      sha256_16: db8dfc2529a47097
+    _kpress/assets/css/document.20d6af8f353834cf.css:
+      bytes: 15075
+      sha256_16: 20d6af8f353834cf
+    _kpress/assets/css/document.20d6af8f353834cf.css.gz:
+      bytes: 4593
+      sha256_16: bfb2ce9b26ee9d4b
+    _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css:
+      bytes: 735
+      sha256_16: 34bd1d5b7aa5a794
+    _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css.gz:
+      bytes: 455
+      sha256_16: dd38a0c92e6c20b7
+    _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css:
+      bytes: 736
+      sha256_16: 9a5f82ca54019902
+    _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css.gz:
+      bytes: 457
+      sha256_16: 517da629ba565ab0
+    _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css:
+      bytes: 740
+      sha256_16: 8fe04148a6caac2d
+    _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css.gz:
+      bytes: 459
+      sha256_16: 76548f744821d4f0
+    _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css:
+      bytes: 733
+      sha256_16: c5232ad5d38dc5a6
+    _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css.gz:
+      bytes: 456
+      sha256_16: 67d585c583d66b3b
+    _kpress/assets/css/print-fonts.94482bb5f8c9001e.css:
+      bytes: 4674
+      sha256_16: 94482bb5f8c9001e
+    _kpress/assets/css/print-fonts.94482bb5f8c9001e.css.gz:
+      bytes: 637
+      sha256_16: d190c0ccce4a891a
+    _kpress/assets/css/print.f94d203df8621af9.css:
+      bytes: 11280
+      sha256_16: f94d203df8621af9
+    _kpress/assets/css/print.f94d203df8621af9.css.gz:
+      bytes: 3650
+      sha256_16: 53eb2a2748b3a3dc
+    _kpress/assets/css/style-tokens.a95c97e3e024901f.css:
+      bytes: 39413
+      sha256_16: a95c97e3e024901f
+    _kpress/assets/css/style-tokens.a95c97e3e024901f.css.gz:
+      bytes: 12247
+      sha256_16: aa7e662d30d6310f
     _kpress/assets/css/syntax.807cf5be35b5a8dd.css:
       bytes: 7789
       sha256_16: 807cf5be35b5a8dd
     _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz:
       bytes: 1471
       sha256_16: 448109895ffa3e82
+    _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2:
+      bytes: 15468
+      sha256_16: 4d839c9d54c57ab0
+    _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2:
+      bytes: 15308
+      sha256_16: f41033bac2496b3b
+    _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2:
+      bytes: 15548
+      sha256_16: bd1f2a046978c67d
+    _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2:
+      bytes: 15388
+      sha256_16: a957bd8de97e31da
+    _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2:
+      bytes: 15516
+      sha256_16: 05c33c4d0b64b915
+    _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2:
+      bytes: 15308
+      sha256_16: 050256481eaa7d24
+    _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2:
+      bytes: 15532
+      sha256_16: 90ee17afac862425
+    _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2:
+      bytes: 15392
+      sha256_16: 900df4999e4dc354
+    _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2:
+      bytes: 15620
+      sha256_16: ff519fb1358fa12a
+    _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2:
+      bytes: 15372
+      sha256_16: 8cd1aee8d860fe72
+    _kpress/assets/fonts/kpress-quotes.woff2:
+      bytes: 724
+      sha256_16: c1b4e25238045596
+    _kpress/assets/fonts/planetaire-mono-text-latin-400-italic.woff2:
+      bytes: 14840
+      sha256_16: 079d54b75f6d5822
+    _kpress/assets/fonts/planetaire-mono-text-latin-400-normal.woff2:
+      bytes: 13424
+      sha256_16: 0ecd530d8bdc55cc
+    _kpress/assets/fonts/planetaire-mono-text-latin-700-italic.woff2:
+      bytes: 15036
+      sha256_16: 4665ca22f8e64518
+    _kpress/assets/fonts/planetaire-mono-text-latin-700-normal.woff2:
+      bytes: 13960
+      sha256_16: 5b01f48d9a28b265
     _kpress/assets/fonts/pt-serif-latin-400-italic.woff2:
       bytes: 34896
       sha256_16: cb373bde18855c82
@@ -743,12 +1126,12 @@ hashed:
     _kpress/assets/js/runtime.17fe05340c4c6480.js.gz:
       bytes: 4333
       sha256_16: b55b319249bd8775
-    _kpress/assets/js/settings-widget.29aa1292b1757639.js:
-      bytes: 6808
-      sha256_16: 29aa1292b1757639
-    _kpress/assets/js/settings-widget.29aa1292b1757639.js.gz:
-      bytes: 2474
-      sha256_16: d853b2ab6b2bb83e
+    _kpress/assets/js/settings-widget.c90a7454d24aae69.js:
+      bytes: 9764
+      sha256_16: c90a7454d24aae69
+    _kpress/assets/js/settings-widget.c90a7454d24aae69.js.gz:
+      bytes: 3663
+      sha256_16: 7197416c30f0709d
     _kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js:
       bytes: 1854
       sha256_16: 9e4a1c0b3df97b9b
@@ -761,12 +1144,12 @@ hashed:
     _kpress/assets/js/theme.eef4b6281e1a2cdd.js.gz:
       bytes: 1722
       sha256_16: bd656a7dea5aa960
-    _kpress/assets/js/tooltips.d427e1160ca7c8cb.js:
-      bytes: 27654
-      sha256_16: d427e1160ca7c8cb
-    _kpress/assets/js/tooltips.d427e1160ca7c8cb.js.gz:
-      bytes: 7940
-      sha256_16: b0a2449390ab2fbd
+    _kpress/assets/js/tooltips.0d651991ea723da2.js:
+      bytes: 33659
+      sha256_16: 0d651991ea723da2
+    _kpress/assets/js/tooltips.0d651991ea723da2.js.gz:
+      bytes: 10009
+      sha256_16: a148ff633aaae0c5
     _kpress/assets/js/viewport.acab9e9c3e7e92ce.js:
       bytes: 5446
       sha256_16: acab9e9c3e7e92ce
@@ -777,53 +1160,113 @@ hashed:
       json:
         files:
         - applied_pipeline: []
-          content_hash: 763595ddf1a251e9
+          content_hash: ea01e51f26c5ecfb
           kind: css
-          path: _kpress/assets/css/components.763595ddf1a251e9.css
-          size: 68365
+          path: _kpress/assets/css/components.ea01e51f26c5ecfb.css
+          size: 82037
         - applied_pipeline: []
           compression: gzip
-          content_hash: d4cd6a3585888b43
+          content_hash: db8dfc2529a47097
           kind: gz
-          path: _kpress/assets/css/components.763595ddf1a251e9.css.gz
-          size: 17953
-          source_path: _kpress/assets/css/components.763595ddf1a251e9.css
+          path: _kpress/assets/css/components.ea01e51f26c5ecfb.css.gz
+          size: 22817
+          source_path: _kpress/assets/css/components.ea01e51f26c5ecfb.css
         - applied_pipeline: []
-          content_hash: d86525c4bb370b43
+          content_hash: 20d6af8f353834cf
           kind: css
-          path: _kpress/assets/css/document.d86525c4bb370b43.css
-          size: 12505
+          path: _kpress/assets/css/document.20d6af8f353834cf.css
+          size: 15075
         - applied_pipeline: []
           compression: gzip
-          content_hash: 174968be8dffc956
+          content_hash: bfb2ce9b26ee9d4b
           kind: gz
-          path: _kpress/assets/css/document.d86525c4bb370b43.css.gz
-          size: 3457
-          source_path: _kpress/assets/css/document.d86525c4bb370b43.css
+          path: _kpress/assets/css/document.20d6af8f353834cf.css.gz
+          size: 4593
+          source_path: _kpress/assets/css/document.20d6af8f353834cf.css
         - applied_pipeline: []
-          content_hash: 86c6396bc77060cd
+          content_hash: 34bd1d5b7aa5a794
           kind: css
-          path: _kpress/assets/css/print.86c6396bc77060cd.css
-          size: 8033
+          path: _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css
+          size: 735
         - applied_pipeline: []
           compression: gzip
-          content_hash: 6d380fc126e842e8
+          content_hash: dd38a0c92e6c20b7
           kind: gz
-          path: _kpress/assets/css/print.86c6396bc77060cd.css.gz
-          size: 2278
-          source_path: _kpress/assets/css/print.86c6396bc77060cd.css
+          path: _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css.gz
+          size: 455
+          source_path: _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css
         - applied_pipeline: []
-          content_hash: 0554b3a1d96a854f
+          content_hash: 9a5f82ca54019902
           kind: css
-          path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
-          size: 29950
+          path: _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css
+          size: 736
         - applied_pipeline: []
           compression: gzip
-          content_hash: f699745feecabfb0
+          content_hash: 517da629ba565ab0
           kind: gz
-          path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz
-          size: 8901
-          source_path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
+          path: _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css.gz
+          size: 457
+          source_path: _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css
+        - applied_pipeline: []
+          content_hash: 8fe04148a6caac2d
+          kind: css
+          path: _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css
+          size: 740
+        - applied_pipeline: []
+          compression: gzip
+          content_hash: 76548f744821d4f0
+          kind: gz
+          path: _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css.gz
+          size: 459
+          source_path: _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css
+        - applied_pipeline: []
+          content_hash: c5232ad5d38dc5a6
+          kind: css
+          path: _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css
+          size: 733
+        - applied_pipeline: []
+          compression: gzip
+          content_hash: 67d585c583d66b3b
+          kind: gz
+          path: _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css.gz
+          size: 456
+          source_path: _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css
+        - applied_pipeline: []
+          content_hash: 94482bb5f8c9001e
+          kind: css
+          path: _kpress/assets/css/print-fonts.94482bb5f8c9001e.css
+          size: 4674
+        - applied_pipeline: []
+          compression: gzip
+          content_hash: d190c0ccce4a891a
+          kind: gz
+          path: _kpress/assets/css/print-fonts.94482bb5f8c9001e.css.gz
+          size: 637
+          source_path: _kpress/assets/css/print-fonts.94482bb5f8c9001e.css
+        - applied_pipeline: []
+          content_hash: f94d203df8621af9
+          kind: css
+          path: _kpress/assets/css/print.f94d203df8621af9.css
+          size: 11280
+        - applied_pipeline: []
+          compression: gzip
+          content_hash: 53eb2a2748b3a3dc
+          kind: gz
+          path: _kpress/assets/css/print.f94d203df8621af9.css.gz
+          size: 3650
+          source_path: _kpress/assets/css/print.f94d203df8621af9.css
+        - applied_pipeline: []
+          content_hash: a95c97e3e024901f
+          kind: css
+          path: _kpress/assets/css/style-tokens.a95c97e3e024901f.css
+          size: 39413
+        - applied_pipeline: []
+          compression: gzip
+          content_hash: aa7e662d30d6310f
+          kind: gz
+          path: _kpress/assets/css/style-tokens.a95c97e3e024901f.css.gz
+          size: 12247
+          source_path: _kpress/assets/css/style-tokens.a95c97e3e024901f.css
         - applied_pipeline: []
           content_hash: 807cf5be35b5a8dd
           kind: css
@@ -836,6 +1279,81 @@ hashed:
           path: _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
           size: 1471
           source_path: _kpress/assets/css/syntax.807cf5be35b5a8dd.css
+        - applied_pipeline: []
+          content_hash: 4d839c9d54c57ab0
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          size: 15468
+        - applied_pipeline: []
+          content_hash: f41033bac2496b3b
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: bd1f2a046978c67d
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          size: 15548
+        - applied_pipeline: []
+          content_hash: a957bd8de97e31da
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          size: 15388
+        - applied_pipeline: []
+          content_hash: 05c33c4d0b64b915
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          size: 15516
+        - applied_pipeline: []
+          content_hash: 050256481eaa7d24
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          size: 15308
+        - applied_pipeline: []
+          content_hash: 90ee17afac862425
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          size: 15532
+        - applied_pipeline: []
+          content_hash: 900df4999e4dc354
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          size: 15392
+        - applied_pipeline: []
+          content_hash: ff519fb1358fa12a
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          size: 15620
+        - applied_pipeline: []
+          content_hash: 8cd1aee8d860fe72
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          size: 15372
+        - applied_pipeline: []
+          content_hash: c1b4e25238045596
+          kind: woff2
+          path: _kpress/assets/fonts/kpress-quotes.woff2
+          size: 724
+        - applied_pipeline: []
+          content_hash: 079d54b75f6d5822
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-400-italic.woff2
+          size: 14840
+        - applied_pipeline: []
+          content_hash: 0ecd530d8bdc55cc
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-400-normal.woff2
+          size: 13424
+        - applied_pipeline: []
+          content_hash: 4665ca22f8e64518
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-700-italic.woff2
+          size: 15036
+        - applied_pipeline: []
+          content_hash: 5b01f48d9a28b265
+          kind: woff2
+          path: _kpress/assets/fonts/planetaire-mono-text-latin-700-normal.woff2
+          size: 13960
         - applied_pipeline: []
           content_hash: cb373bde18855c82
           kind: woff2
@@ -927,17 +1445,17 @@ hashed:
           size: 4333
           source_path: _kpress/assets/js/runtime.17fe05340c4c6480.js
         - applied_pipeline: []
-          content_hash: 29aa1292b1757639
+          content_hash: c90a7454d24aae69
           kind: js
-          path: _kpress/assets/js/settings-widget.29aa1292b1757639.js
-          size: 6808
+          path: _kpress/assets/js/settings-widget.c90a7454d24aae69.js
+          size: 9764
         - applied_pipeline: []
           compression: gzip
-          content_hash: d853b2ab6b2bb83e
+          content_hash: 7197416c30f0709d
           kind: gz
-          path: _kpress/assets/js/settings-widget.29aa1292b1757639.js.gz
-          size: 2474
-          source_path: _kpress/assets/js/settings-widget.29aa1292b1757639.js
+          path: _kpress/assets/js/settings-widget.c90a7454d24aae69.js.gz
+          size: 3663
+          source_path: _kpress/assets/js/settings-widget.c90a7454d24aae69.js
         - applied_pipeline: []
           content_hash: 9e4a1c0b3df97b9b
           kind: js
@@ -963,17 +1481,17 @@ hashed:
           size: 1722
           source_path: _kpress/assets/js/theme.eef4b6281e1a2cdd.js
         - applied_pipeline: []
-          content_hash: d427e1160ca7c8cb
+          content_hash: 0d651991ea723da2
           kind: js
-          path: _kpress/assets/js/tooltips.d427e1160ca7c8cb.js
-          size: 27654
+          path: _kpress/assets/js/tooltips.0d651991ea723da2.js
+          size: 33659
         - applied_pipeline: []
           compression: gzip
-          content_hash: b0a2449390ab2fbd
+          content_hash: a148ff633aaae0c5
           kind: gz
-          path: _kpress/assets/js/tooltips.d427e1160ca7c8cb.js.gz
-          size: 7940
-          source_path: _kpress/assets/js/tooltips.d427e1160ca7c8cb.js
+          path: _kpress/assets/js/tooltips.0d651991ea723da2.js.gz
+          size: 10009
+          source_path: _kpress/assets/js/tooltips.0d651991ea723da2.js
         - applied_pipeline: []
           content_hash: acab9e9c3e7e92ce
           kind: js
@@ -987,28 +1505,28 @@ hashed:
           size: 1682
           source_path: _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
         - applied_pipeline: []
-          content_hash: dc1a363a192f7470
+          content_hash: 19aa5661f453c4f5
           kind: html
           path: about.html
-          size: 10600
+          size: 11563
         - applied_pipeline: []
           compression: gzip
-          content_hash: 98cf6f2dad6dc06f
+          content_hash: ffd8883433b0965a
           kind: gz
           path: about.html.gz
-          size: 3397
+          size: 3711
           source_path: about.html
         - applied_pipeline: []
-          content_hash: e121d25fea81a79f
+          content_hash: bfa43024d4fd50ff
           kind: html
           path: index.html
-          size: 11369
+          size: 12332
         - applied_pipeline: []
           compression: gzip
-          content_hash: d5c4053f1677d329
+          content_hash: 257ec4f524e6d625
           kind: gz
           path: index.html.gz
-          size: 3612
+          size: 3928
           source_path: index.html
         - applied_pipeline: []
           content_hash: 16ceb5ee3e0dc13a
@@ -1016,28 +1534,58 @@ hashed:
           path: robots.txt
           size: 23
         assets:
-        - content_hash: 763595ddf1a251e9
+        - content_hash: ea01e51f26c5ecfb
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/components.763595ddf1a251e9.css
+          output_path: _kpress/assets/css/components.ea01e51f26c5ecfb.css
           path: css/components.css
           source: package
-        - content_hash: d86525c4bb370b43
+        - content_hash: 20d6af8f353834cf
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/document.d86525c4bb370b43.css
+          output_path: _kpress/assets/css/document.20d6af8f353834cf.css
           path: css/document.css
           source: package
-        - content_hash: 86c6396bc77060cd
+        - content_hash: 34bd1d5b7aa5a794
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/print.86c6396bc77060cd.css
+          output_path: _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css
+          path: css/mono-planetaire-400-italic.css
+          source: package
+        - content_hash: 9a5f82ca54019902
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css
+          path: css/mono-planetaire-400-normal.css
+          source: package
+        - content_hash: 8fe04148a6caac2d
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css
+          path: css/mono-planetaire-700-italic.css
+          source: package
+        - content_hash: c5232ad5d38dc5a6
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css
+          path: css/mono-planetaire-700-normal.css
+          source: package
+        - content_hash: 94482bb5f8c9001e
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/print-fonts.94482bb5f8c9001e.css
+          path: css/print-fonts.css
+          source: package
+        - content_hash: f94d203df8621af9
+          kind: package
+          media_type: text/css
+          output_path: _kpress/assets/css/print.f94d203df8621af9.css
           path: css/print.css
           source: package
-        - content_hash: 0554b3a1d96a854f
+        - content_hash: a95c97e3e024901f
           kind: package
           media_type: text/css
-          output_path: _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
+          output_path: _kpress/assets/css/style-tokens.a95c97e3e024901f.css
           path: css/style-tokens.css
           source: package
         - content_hash: 807cf5be35b5a8dd
@@ -1045,6 +1593,96 @@ hashed:
           media_type: text/css
           output_path: _kpress/assets/css/syntax.807cf5be35b5a8dd.css
           path: css/syntax.css
+          source: package
+        - content_hash: 4d839c9d54c57ab0
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+          path: fonts/kpress-print-sans-latin-370-italic.woff2
+          source: package
+        - content_hash: f41033bac2496b3b
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+          path: fonts/kpress-print-sans-latin-370-normal.woff2
+          source: package
+        - content_hash: bd1f2a046978c67d
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+          path: fonts/kpress-print-sans-latin-400-italic.woff2
+          source: package
+        - content_hash: a957bd8de97e31da
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+          path: fonts/kpress-print-sans-latin-400-normal.woff2
+          source: package
+        - content_hash: 05c33c4d0b64b915
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+          path: fonts/kpress-print-sans-latin-550-italic.woff2
+          source: package
+        - content_hash: 050256481eaa7d24
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+          path: fonts/kpress-print-sans-latin-550-normal.woff2
+          source: package
+        - content_hash: 90ee17afac862425
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+          path: fonts/kpress-print-sans-latin-600-italic.woff2
+          source: package
+        - content_hash: 900df4999e4dc354
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+          path: fonts/kpress-print-sans-latin-600-normal.woff2
+          source: package
+        - content_hash: ff519fb1358fa12a
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+          path: fonts/kpress-print-sans-latin-650-italic.woff2
+          source: package
+        - content_hash: 8cd1aee8d860fe72
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+          path: fonts/kpress-print-sans-latin-650-normal.woff2
+          source: package
+        - content_hash: c1b4e25238045596
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/kpress-quotes.woff2
+          path: fonts/kpress-quotes.woff2
+          source: package
+        - content_hash: 079d54b75f6d5822
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-400-italic.woff2
+          path: fonts/planetaire-mono-text-latin-400-italic.woff2
+          source: package
+        - content_hash: 0ecd530d8bdc55cc
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-400-normal.woff2
+          path: fonts/planetaire-mono-text-latin-400-normal.woff2
+          source: package
+        - content_hash: 4665ca22f8e64518
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-700-italic.woff2
+          path: fonts/planetaire-mono-text-latin-700-italic.woff2
+          source: package
+        - content_hash: 5b01f48d9a28b265
+          kind: package
+          media_type: font/woff2
+          output_path: _kpress/assets/fonts/planetaire-mono-text-latin-700-normal.woff2
+          path: fonts/planetaire-mono-text-latin-700-normal.woff2
           source: package
         - content_hash: cb373bde18855c82
           kind: package
@@ -1112,10 +1750,10 @@ hashed:
           output_path: _kpress/assets/js/runtime.17fe05340c4c6480.js
           path: js/runtime.js
           source: package
-        - content_hash: 29aa1292b1757639
+        - content_hash: c90a7454d24aae69
           kind: package
           media_type: text/javascript
-          output_path: _kpress/assets/js/settings-widget.29aa1292b1757639.js
+          output_path: _kpress/assets/js/settings-widget.c90a7454d24aae69.js
           path: js/settings-widget.js
           source: package
         - content_hash: 9e4a1c0b3df97b9b
@@ -1130,10 +1768,10 @@ hashed:
           output_path: _kpress/assets/js/theme.eef4b6281e1a2cdd.js
           path: js/theme.js
           source: package
-        - content_hash: d427e1160ca7c8cb
+        - content_hash: 0d651991ea723da2
           kind: package
           media_type: text/javascript
-          output_path: _kpress/assets/js/tooltips.d427e1160ca7c8cb.js
+          output_path: _kpress/assets/js/tooltips.0d651991ea723da2.js
           path: js/tooltips.js
           source: package
         - content_hash: acab9e9c3e7e92ce
@@ -1154,7 +1792,7 @@ hashed:
     about.html:
       text: |
         <!doctype html>
-        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif">
+        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif" data-kpress-math-text="prose" data-kpress-mono-font="planetaire">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1189,6 +1827,15 @@ hashed:
         // hosts never load this bootstrap at all (fragment path).
         (() => {
           const root = document.documentElement;
+          // Native MathML uses the browser's math face. Reserve its space until the
+          // enhanced result is ready, with recovery if scripts or font loads fail.
+          root.dataset.kpressMathPending = "true";
+          const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+            globalThis
+          );
+          mathState.kpressMathPendingTimer = setTimeout(() => {
+            delete root.dataset.kpressMathPending;
+          }, 3000);
           /** @param {string} key */
           const stored = (key) => {
             try {
@@ -1222,14 +1869,19 @@ hashed:
           }
         })();
         </script>
-          <script type="importmap">{"imports": {"/_kpress/assets/js/icons.js": "/_kpress/assets/js/icons.0240229bae537638.js", "/_kpress/assets/js/menu.js": "/_kpress/assets/js/menu.25be240a6ae709b9.js", "/_kpress/assets/js/runtime.js": "/_kpress/assets/js/runtime.17fe05340c4c6480.js", "/_kpress/assets/js/settings-widget.js": "/_kpress/assets/js/settings-widget.29aa1292b1757639.js", "/_kpress/assets/js/theme-controls.js": "/_kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js", "/_kpress/assets/js/theme.js": "/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"}}</script>
-        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.0554b3a1d96a854f.css">
+          <script type="importmap">{"imports": {"/_kpress/assets/js/icons.js": "/_kpress/assets/js/icons.0240229bae537638.js", "/_kpress/assets/js/menu.js": "/_kpress/assets/js/menu.25be240a6ae709b9.js", "/_kpress/assets/js/runtime.js": "/_kpress/assets/js/runtime.17fe05340c4c6480.js", "/_kpress/assets/js/settings-widget.js": "/_kpress/assets/js/settings-widget.c90a7454d24aae69.js", "/_kpress/assets/js/theme-controls.js": "/_kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js", "/_kpress/assets/js/theme.js": "/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"}}</script>
+        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.a95c97e3e024901f.css">
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/document.d86525c4bb370b43.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/components.763595ddf1a251e9.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/print.86c6396bc77060cd.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/document.20d6af8f353834cf.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/components.ea01e51f26c5ecfb.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print.f94d203df8621af9.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.94482bb5f8c9001e.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css">
         <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
-        <script type="module" src="/_kpress/assets/js/settings-widget.29aa1292b1757639.js"></script>
+        <script type="module" src="/_kpress/assets/js/settings-widget.c90a7454d24aae69.js"></script>
         </head>
         <body class="kpress-frame" data-kpress-frame>
           <main class="kpress-page-main kpress-viewport" data-kpress-viewport>
@@ -1319,12 +1971,12 @@ hashed:
         </body>
         </html>
     about.html.gz:
-      bytes: 3397
-      sha256_16: 98cf6f2dad6dc06f
+      bytes: 3711
+      sha256_16: ffd8883433b0965a
     index.html:
       text: |
         <!doctype html>
-        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif">
+        <html lang="en" data-kpress-theme="system" data-kpress-resolved-theme="light" data-kpress-palette="neutral" data-kpress-prose-font="serif" data-kpress-math-text="prose" data-kpress-mono-font="planetaire">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1359,6 +2011,15 @@ hashed:
         // hosts never load this bootstrap at all (fragment path).
         (() => {
           const root = document.documentElement;
+          // Native MathML uses the browser's math face. Reserve its space until the
+          // enhanced result is ready, with recovery if scripts or font loads fail.
+          root.dataset.kpressMathPending = "true";
+          const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+            globalThis
+          );
+          mathState.kpressMathPendingTimer = setTimeout(() => {
+            delete root.dataset.kpressMathPending;
+          }, 3000);
           /** @param {string} key */
           const stored = (key) => {
             try {
@@ -1392,15 +2053,20 @@ hashed:
           }
         })();
         </script>
-          <script type="importmap">{"imports": {"/_kpress/assets/js/history.js": "/_kpress/assets/js/history.9cf96b2ecad0462a.js", "/_kpress/assets/js/icons.js": "/_kpress/assets/js/icons.0240229bae537638.js", "/_kpress/assets/js/menu.js": "/_kpress/assets/js/menu.25be240a6ae709b9.js", "/_kpress/assets/js/overlay.js": "/_kpress/assets/js/overlay.319f55d3699ca5f1.js", "/_kpress/assets/js/runtime.js": "/_kpress/assets/js/runtime.17fe05340c4c6480.js", "/_kpress/assets/js/settings-widget.js": "/_kpress/assets/js/settings-widget.29aa1292b1757639.js", "/_kpress/assets/js/theme-controls.js": "/_kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js", "/_kpress/assets/js/theme.js": "/_kpress/assets/js/theme.eef4b6281e1a2cdd.js", "/_kpress/assets/js/tooltips.js": "/_kpress/assets/js/tooltips.d427e1160ca7c8cb.js", "/_kpress/assets/js/viewport.js": "/_kpress/assets/js/viewport.acab9e9c3e7e92ce.js"}}</script>
-        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.0554b3a1d96a854f.css">
+          <script type="importmap">{"imports": {"/_kpress/assets/js/history.js": "/_kpress/assets/js/history.9cf96b2ecad0462a.js", "/_kpress/assets/js/icons.js": "/_kpress/assets/js/icons.0240229bae537638.js", "/_kpress/assets/js/menu.js": "/_kpress/assets/js/menu.25be240a6ae709b9.js", "/_kpress/assets/js/overlay.js": "/_kpress/assets/js/overlay.319f55d3699ca5f1.js", "/_kpress/assets/js/runtime.js": "/_kpress/assets/js/runtime.17fe05340c4c6480.js", "/_kpress/assets/js/settings-widget.js": "/_kpress/assets/js/settings-widget.c90a7454d24aae69.js", "/_kpress/assets/js/theme-controls.js": "/_kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js", "/_kpress/assets/js/theme.js": "/_kpress/assets/js/theme.eef4b6281e1a2cdd.js", "/_kpress/assets/js/tooltips.js": "/_kpress/assets/js/tooltips.0d651991ea723da2.js", "/_kpress/assets/js/viewport.js": "/_kpress/assets/js/viewport.acab9e9c3e7e92ce.js"}}</script>
+        <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.a95c97e3e024901f.css">
         <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/document.d86525c4bb370b43.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/components.763595ddf1a251e9.css">
-        <link rel="stylesheet" href="/_kpress/assets/css/print.86c6396bc77060cd.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/document.20d6af8f353834cf.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/components.ea01e51f26c5ecfb.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print.f94d203df8621af9.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.94482bb5f8c9001e.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css">
+        <link rel="stylesheet" href="/_kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css">
         <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
-        <script type="module" src="/_kpress/assets/js/settings-widget.29aa1292b1757639.js"></script>
-        <script type="module" src="/_kpress/assets/js/tooltips.d427e1160ca7c8cb.js"></script>
+        <script type="module" src="/_kpress/assets/js/settings-widget.c90a7454d24aae69.js"></script>
+        <script type="module" src="/_kpress/assets/js/tooltips.0d651991ea723da2.js"></script>
         <script type="module" src="/_kpress/assets/js/history.9cf96b2ecad0462a.js"></script>
         </head>
         <body class="kpress-frame" data-kpress-frame>
@@ -1496,62 +2162,77 @@ hashed:
         </body>
         </html>
     index.html.gz:
-      bytes: 3612
-      sha256_16: d5c4053f1677d329
+      bytes: 3928
+      sha256_16: 257ec4f524e6d625
     robots.txt:
       text: |
         User-agent: *
         Allow: /
 categories:
   hashed:
-  - _kpress/assets/css/components.763595ddf1a251e9.css
-  - _kpress/assets/css/document.d86525c4bb370b43.css
-  - _kpress/assets/css/print.86c6396bc77060cd.css
-  - _kpress/assets/css/style-tokens.0554b3a1d96a854f.css
+  - _kpress/assets/css/components.ea01e51f26c5ecfb.css
+  - _kpress/assets/css/document.20d6af8f353834cf.css
+  - _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css
+  - _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css
+  - _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css
+  - _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css
+  - _kpress/assets/css/print-fonts.94482bb5f8c9001e.css
+  - _kpress/assets/css/print.f94d203df8621af9.css
+  - _kpress/assets/css/style-tokens.a95c97e3e024901f.css
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css
   - _kpress/assets/js/history.9cf96b2ecad0462a.js
   - _kpress/assets/js/icons.0240229bae537638.js
   - _kpress/assets/js/menu.25be240a6ae709b9.js
   - _kpress/assets/js/overlay.319f55d3699ca5f1.js
   - _kpress/assets/js/runtime.17fe05340c4c6480.js
-  - _kpress/assets/js/settings-widget.29aa1292b1757639.js
+  - _kpress/assets/js/settings-widget.c90a7454d24aae69.js
   - _kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js
   - _kpress/assets/js/theme.eef4b6281e1a2cdd.js
-  - _kpress/assets/js/tooltips.d427e1160ca7c8cb.js
+  - _kpress/assets/js/tooltips.0d651991ea723da2.js
   - _kpress/assets/js/viewport.acab9e9c3e7e92ce.js
   compressed:
-  - _kpress/assets/css/components.763595ddf1a251e9.css.gz
-  - _kpress/assets/css/document.d86525c4bb370b43.css.gz
-  - _kpress/assets/css/print.86c6396bc77060cd.css.gz
-  - _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz
+  - _kpress/assets/css/components.ea01e51f26c5ecfb.css.gz
+  - _kpress/assets/css/document.20d6af8f353834cf.css.gz
+  - _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css.gz
+  - _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css.gz
+  - _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css.gz
+  - _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css.gz
+  - _kpress/assets/css/print-fonts.94482bb5f8c9001e.css.gz
+  - _kpress/assets/css/print.f94d203df8621af9.css.gz
+  - _kpress/assets/css/style-tokens.a95c97e3e024901f.css.gz
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
   - _kpress/assets/js/history.9cf96b2ecad0462a.js.gz
   - _kpress/assets/js/icons.0240229bae537638.js.gz
   - _kpress/assets/js/menu.25be240a6ae709b9.js.gz
   - _kpress/assets/js/overlay.319f55d3699ca5f1.js.gz
   - _kpress/assets/js/runtime.17fe05340c4c6480.js.gz
-  - _kpress/assets/js/settings-widget.29aa1292b1757639.js.gz
+  - _kpress/assets/js/settings-widget.c90a7454d24aae69.js.gz
   - _kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js.gz
   - _kpress/assets/js/theme.eef4b6281e1a2cdd.js.gz
-  - _kpress/assets/js/tooltips.d427e1160ca7c8cb.js.gz
+  - _kpress/assets/js/tooltips.0d651991ea723da2.js.gz
   - _kpress/assets/js/viewport.acab9e9c3e7e92ce.js.gz
   - about.html.gz
   - index.html.gz
   hashed_only:
-  - _kpress/assets/css/components.763595ddf1a251e9.css.gz
-  - _kpress/assets/css/document.d86525c4bb370b43.css.gz
-  - _kpress/assets/css/print.86c6396bc77060cd.css.gz
-  - _kpress/assets/css/style-tokens.0554b3a1d96a854f.css.gz
+  - _kpress/assets/css/components.ea01e51f26c5ecfb.css.gz
+  - _kpress/assets/css/document.20d6af8f353834cf.css.gz
+  - _kpress/assets/css/mono-planetaire-400-italic.34bd1d5b7aa5a794.css.gz
+  - _kpress/assets/css/mono-planetaire-400-normal.9a5f82ca54019902.css.gz
+  - _kpress/assets/css/mono-planetaire-700-italic.8fe04148a6caac2d.css.gz
+  - _kpress/assets/css/mono-planetaire-700-normal.c5232ad5d38dc5a6.css.gz
+  - _kpress/assets/css/print-fonts.94482bb5f8c9001e.css.gz
+  - _kpress/assets/css/print.f94d203df8621af9.css.gz
+  - _kpress/assets/css/style-tokens.a95c97e3e024901f.css.gz
   - _kpress/assets/css/syntax.807cf5be35b5a8dd.css.gz
   - _kpress/assets/js/history.9cf96b2ecad0462a.js.gz
   - _kpress/assets/js/icons.0240229bae537638.js.gz
   - _kpress/assets/js/menu.25be240a6ae709b9.js.gz
   - _kpress/assets/js/overlay.319f55d3699ca5f1.js.gz
   - _kpress/assets/js/runtime.17fe05340c4c6480.js.gz
-  - _kpress/assets/js/settings-widget.29aa1292b1757639.js.gz
+  - _kpress/assets/js/settings-widget.c90a7454d24aae69.js.gz
   - _kpress/assets/js/theme-controls.9e4a1c0b3df97b9b.js.gz
   - _kpress/assets/js/theme.eef4b6281e1a2cdd.js.gz
-  - _kpress/assets/js/tooltips.d427e1160ca7c8cb.js.gz
+  - _kpress/assets/js/tooltips.0d651991ea723da2.js.gz
   - _kpress/assets/js/viewport.acab9e9c3e7e92ce.js.gz
   - about.html.gz
   - index.html.gz
@@ -1559,9 +2240,29 @@ categories:
   shared:
   - _kpress/assets/css/components.css
   - _kpress/assets/css/document.css
+  - _kpress/assets/css/mono-planetaire-400-italic.css
+  - _kpress/assets/css/mono-planetaire-400-normal.css
+  - _kpress/assets/css/mono-planetaire-700-italic.css
+  - _kpress/assets/css/mono-planetaire-700-normal.css
+  - _kpress/assets/css/print-fonts.css
   - _kpress/assets/css/print.css
   - _kpress/assets/css/style-tokens.css
   - _kpress/assets/css/syntax.css
+  - _kpress/assets/fonts/kpress-print-sans-latin-370-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-370-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-400-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-400-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-550-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-550-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-600-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-600-normal.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-650-italic.woff2
+  - _kpress/assets/fonts/kpress-print-sans-latin-650-normal.woff2
+  - _kpress/assets/fonts/kpress-quotes.woff2
+  - _kpress/assets/fonts/planetaire-mono-text-latin-400-italic.woff2
+  - _kpress/assets/fonts/planetaire-mono-text-latin-400-normal.woff2
+  - _kpress/assets/fonts/planetaire-mono-text-latin-700-italic.woff2
+  - _kpress/assets/fonts/planetaire-mono-text-latin-700-normal.woff2
   - _kpress/assets/fonts/pt-serif-latin-400-italic.woff2
   - _kpress/assets/fonts/pt-serif-latin-400-normal.woff2
   - _kpress/assets/fonts/pt-serif-latin-700-italic.woff2

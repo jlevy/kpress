@@ -16,6 +16,13 @@
   block-size: 100dvh;
   overflow-y: auto;
   container: kpress-doc / inline-size;
+  /* The containing block for the popover layer: footnote and link previews are
+     appended here and placed with `position: absolute` in PAGE coordinates, so
+     they scroll with the paragraph they belong to (tooltips.js,
+     `tooltipParent`). `position: relative` is not one of the properties the
+     warning above names: it does NOT make this a containing block for
+     `position: fixed` descendants, so that rule stands unchanged. */
+  position: relative;
   /* In-document hash navigation (TOC and section links) is native browser
      navigation; the glide lives here so it also honors the reduced-motion
      override below. */
@@ -79,25 +86,54 @@
    grid track, so against the 48rem cap it eats 5rem of measure). Under
    toc_rail "auto" (the default) nothing is stamped and that fallback stands.
 
-   TWO elements carry the reading-measure cap and BOTH centre via
-   margin:auto (in document.css): `.kpress-doc` (max-width measure + 2rem)
-   and the inner `.kpress-doc-layout` (max-width = measure). Plain single-
-   column reading wants both caps. Any layout that needs the full pane must
-   uncap BOTH — uncapping only the article leaves `.kpress-doc-layout`
-   centred at the measure, which reads as a large left margin with the
-   grid tracks spilling off its right edge.
+   THE WIDTH CHAIN. `--kpress-measure` is the width of the TEXT, padding
+   excluded. Three nested elements bound the column, and each adds back exactly
+   the padding that sits between it and the text:
+
+     .kpress-doc         measure + 2x inset + 2x gutter   (document.css)
+     .kpress-doc-layout  measure + 2x inset               (document.css)
+     .kpress-long-text   measure + 2x inset, padded by the inset
+
+   so the text lands at the measure in every band. `--kpress-column-inset` is
+   the band's inline padding inside the column (1.5rem phone / 4rem single
+   column / 2.5rem in the wide TOC grid) and `--kpress-doc-gutter` is the page
+   margin outside it; the bands reset those two tokens on `.kpress-doc` and the
+   caps follow. Nothing in the chain restates a length the tokens already carry.
+
+   Write any new cap the same way. The bug this shape replaced was three caps
+   that each added a different subset of the padding: `.kpress-long-text` used a
+   literal `48rem` that duplicated the measure and omitted the inset, so the
+   same token meant "the text" in the wide band and "the text plus 8rem" in the
+   single-column one — a 10rem step in reading width across the 75rem boundary —
+   and a host that set the token moved almost nothing, because two of the three
+   caps and the grid track never read it.
+
+   All three cap elements centre via margin:auto. Plain single-column reading
+   wants all of them. Any layout that needs the full pane must uncap the outer
+   two — uncapping only the article leaves `.kpress-doc-layout` centred at the
+   measure, which reads as a large left margin with the grid tracks spilling off
+   its right edge.
 
    Everything responsive keys off `@container kpress-doc` — the width of the
    scroll pane (`.kpress-viewport`), NOT the window — so it is correct both
    standalone and embedded in a host pane narrower than the window. Three
    mutually exclusive bands, each defined once below:
 
-     >= 75rem   WIDE     TOC is a sticky left sidebar. Uncaps both caps;
-                         grid is `15rem 53rem`, left-aligned (justify-
-                         content: start) so the reading column is a constant
-                         48rem and all extra width is one right-hand margin.
+     >= 75rem   WIDE     TOC is a sticky left sidebar. Uncaps the outer two
+                         caps; grid is `15rem <column box>`, left-aligned
+                         (justify-content: start) so the reading text is a
+                         constant measure and all extra width is one right-hand
+                         margin. Column inset 2.5rem.
      48-75rem   TABLET   Single column; TOC is a fixed drawer + toggle.
-     < 48rem    MOBILE   Single column; drawer; tighter type.
+                         Column inset 4rem.
+     < 48rem    MOBILE   Single column; drawer; tighter type. Column inset
+                         1.5rem.
+
+   The band conditions are literal lengths because a container query cannot read
+   var(). They are therefore the one part of this system that does NOT follow
+   the measure: a host that changes the measure changes the reading width, not
+   where the bands switch. The wide band's track carries a `min()` guard so an
+   over-large measure degrades instead of overflowing the pane at the floor.
 
    TABLE INVARIANT: only tables marked `data-kpress-table-scale="wide"`
    (stamped by the renderer / tables.js past the TABLE_WIDE_MIN_* cutoff)
@@ -124,11 +160,17 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Cap #3 of the width chain: the column itself. max-width is a border box, so
+   it is the measure PLUS the inset; the padding then gives the measure back as
+   text. The two must be written from the same token or they drift -- this rule
+   previously capped at a literal `48rem` that duplicated the measure and did
+   not add the inset, so the text came out one inset-pair narrower than the
+   measure asked for, and the literal ignored a host that set the token. */
 .kpress-long-text {
   background: var(--kpress-doc-bg);
   margin-inline: auto;
-  max-width: min(100%, 48rem);
-  padding: 1rem 1.5rem;
+  max-width: min(100%, calc(var(--kpress-measure) + 2 * var(--kpress-column-inset)));
+  padding: 1rem var(--kpress-column-inset);
 }
 
 /* Container, not viewport: the phone band that undoes this
@@ -137,8 +179,11 @@
    differ — which is every embedded host. 48rem is the same boundary from the
    other side. */
 @container kpress-doc (min-width: 48rem) {
-  .kpress-long-text {
-    padding-inline: 4rem;
+  /* Set on .kpress-doc, not on the column: all three caps in the chain read the
+     inset, so a band that changed only the column's padding would move the text
+     inside a box the outer two still sized for 1.5rem. */
+  .kpress-doc {
+    --kpress-column-inset: 4rem;
   }
 }
 
@@ -686,40 +731,61 @@
   visibility: visible;
 }
 
+/* Footnotes take the small rung of the ramp, not a bare ratio. `0.9em` scaled
+   whatever font-size it happened to inherit and compounded with it -- the prose
+   size in a standalone page, but a card, a table cell or an embedding host can
+   hand the block something else. It also named no rung: against an 18px base it
+   resolved to 16.2px, while `--kpress-font-size-small`, the size every other
+   small surface uses, is 17.1px. */
 .kpress-footnotes {
   border-top: 1px solid var(--kpress-doc-border);
   color: var(--kpress-doc-muted);
   font-family: var(--kpress-font-footnote);
-  font-size: 0.9em;
+  font-size: var(--kpress-font-size-small);
   margin-top: 2rem;
   padding-top: 1rem;
 }
 
+/* Footnote controls. The reference in the text, the ↑ after its footnote and the ↓
+   in its hover preview are one family: each takes the reader to or from a footnote,
+   so they look alike at rest and answer a hover the same way the document's other
+   small controls do -- the link colour on the glyph, a link-coloured border, and the
+   link wash behind it. The border is present at rest, transparent, so nothing moves
+   on hover; the wash is the same `--kpress-doc-surface-hover` every hover here uses.
+
+   `.kpress a.…backref` and `.kpress-tooltip …nav-link` carry a class beyond the bare
+   one: the generic `.kpress a:hover` underline is (0,2,1) and a bare
+   `.kpress-footnote-backref:hover` (0,2,0) would lose to it and underline. */
 .kpress-footnote-ref a,
-.kpress-footnote-backref {
+.kpress a.kpress-footnote-backref,
+.kpress-tooltip .kpress-footnote-nav-link {
   background-color: var(--color-bg-meta-solid);
+  border: 1px solid transparent;
   border-radius: var(--kpress-radius-md);
   color: var(--color-hint-strong);
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
   font-style: normal;
   font-weight: 600;
-  margin-right: 0.15rem;
   padding: 0 0.15rem;
   text-decoration: none;
   /* Hover properties only, never `all` (late-applied styles must not animate). */
   transition:
     color var(--kpress-transition-fast),
-    background-color var(--kpress-transition-fast);
+    background-color var(--kpress-transition-fast),
+    border-color var(--kpress-transition-fast);
 }
 
-/* `a.…backref` qualifier: the generic `.kpress a:hover` underline is specificity
-   (0,2,1); a bare `.kpress-footnote-backref:hover` is only (0,2,0) and loses, so the
-   ↑ back-link would underline on hover. Adding the `a` type wins it back. */
+.kpress-footnote-ref a {
+  margin-right: 0.15rem;
+}
+
 .kpress-footnote-ref a:hover,
-.kpress a.kpress-footnote-backref:hover {
+.kpress a.kpress-footnote-backref:hover,
+.kpress-tooltip .kpress-footnote-nav-link:hover {
   background-color: var(--color-hover-bg);
-  color: var(--color-primary-light);
+  border-color: var(--kpress-doc-link);
+  color: var(--kpress-doc-link);
   text-decoration: none;
 }
 
@@ -744,7 +810,12 @@
   overflow-wrap: break-word;
   padding: 0.5rem 0.75rem;
   pointer-events: none;
-  position: fixed;
+  /* A callout belongs to a place in the text, not to a place on the screen.
+     tooltips.js appends it inside the `.kpress-viewport` scroller and writes
+     page coordinates (screen position + the scroller's scroll offset), so it
+     stays beside the word that opened it while the reader scrolls. The one
+     exception is the mobile sheet below, which goes back to `fixed`. */
+  position: absolute;
   transition:
     opacity 0.6s ease-in-out,
     visibility 0.6s ease-in-out;
@@ -877,11 +948,18 @@
   transform: translateY(-50%);
 }
 
+/* The narrow-screen presentation is a sheet across the bottom of the pane, not
+   a callout beside an anchor: it has no anchor to stay beside, and a bar that
+   slid up the screen as the reader scrolled would read as broken. So it keeps
+   the window-fixed frame (and is appended to the body, outside the scroller, by
+   tooltips.js) while every other placement scrolls with the text. This rule
+   ties with `.kpress-tooltip` on specificity and wins on source order. */
 .kpress-tooltip-mobile-bottom {
   box-shadow: 0 -4px 16px oklch(0.00% 0 0 / 0.18);
   box-sizing: border-box;
   max-width: none;
   padding: 0.75rem 1rem;
+  position: fixed;
   text-align: left;
 }
 
@@ -892,14 +970,6 @@
 .kpress-footnote-nav {
   float: right;
   margin-inline-start: 0.5rem;
-}
-
-.kpress-tooltip .kpress-footnote-nav-link {
-  text-decoration: none;
-}
-
-.kpress-tooltip .kpress-footnote-nav-link:hover {
-  text-decoration: none;
 }
 
 /* Tables: only tables marked wide (data-kpress-table-scale="wide", stamped by
@@ -945,16 +1015,18 @@
 }
 
 /* Code inside a table steps down a mono tier, at EVERY width.
-   The two ramps in style-tokens.css pair by index — mono/normal 0.82,
-   mono-small/smaller 0.833, mono-tiny/tiny 0.824 — so code keeps one optical
-   weight against whatever text surrounds it. A table is the one surface whose
-   text is reduced (`small`) while its code was not, leaving code at 0.863 of
-   its own cell: heavier inside a table than the identical span in prose, which
-   mono's larger x-height exaggerates further.
+   The two ramps in style-tokens.css pair by index — mono/normal, mono-small/smaller,
+   mono-tiny/tiny, all three at 0.87 — so code keeps one optical weight against
+   whatever text surrounds it. A table is the one surface whose text is reduced
+   (`small`) while its code was not, leaving code at 0.916 of its own cell: heavier
+   inside a table than the identical span in prose, which mono's larger x-height
+   exaggerates further.
 
-   `small` has no mono partner (the text ramp has four tiers, mono has three),
-   so neither choice is exact; mono-small at 0.789 lands closer to the ramp's
-   0.82 than mono's 0.863, and reads as subordinate rather than competing.
+   `small` has no mono partner (the text ramp has four tiers, mono has three), so
+   neither choice is exact, and since the rungs were re-derived neither is even
+   closer: mono-small sits at 0.824 of the cell and mono at 0.916, equidistant
+   either side of the ramp's 0.87. The tie breaks on direction — code that reads
+   as subordinate to the cell rather than competing with it.
 
    This rule was previously scoped inside the narrow band, where it looked
    correct only because that band ALSO drops table text to `smaller` — the
@@ -1148,6 +1220,51 @@
   max-width: 100%;
 }
 
+/* KaTeX sizing. The vendored `katex/katex.min.css` is a pinned upstream bundle
+   and stays byte-identical through the next KaTeX bump, so the correction lives
+   here instead. Upstream sets `.katex { font-size: 1.21em }` to seat KaTeX_Main
+   beside a Times-like body face; KPress reads in PT Serif, whose larger x-height
+   makes that lift roughly a fifth too much, and worse inside the small Source
+   Sans contexts, where the surrounding text is already below prose size. The
+   ratios are the `--kpress-katex-size-*` tokens (style-tokens.css); this is the
+   KaTeX counterpart of the `1.02em` nudge `.kpress-math math` gives the MathML
+   fallback.
+
+   SPECIFICITY: katex.min.css is linked AFTER these stylesheets (KaTeX is a lazy
+   per-document asset merged onto the end of the manifest), so a bare `.katex`
+   rule here would lose the tie to upstream's own `.katex`. Every selector below
+   therefore carries at least one extra class or type. For the same reason the
+   sans-context rule comes after the prose and display rules: it ties them at
+   (0,3,0) and wins on order, which is what puts math in a caption at caption
+   size.
+
+   THE PREVIEW OVERLAY takes the same tokens. A footnote or section preview is a
+   clone of already-rendered math that tooltips.js mounts on the viewport pane or
+   the body, outside every `.kpress`, so without a scope of its own it would fall
+   back to upstream's 1.21em while the document beside it reads at the token. The
+   token's value comes from wherever the overlay sits in the cascade: 1em when
+   katex-text-face.css matches the overlay's stamped math mode, style-tokens.css's
+   1.05em otherwise, which is exactly the document's own rule. */
+.kpress .katex,
+.kpress-tooltip .katex {
+  font-size: var(--kpress-katex-size-prose);
+}
+
+.kpress .katex-display .katex,
+.kpress-tooltip .katex-display .katex {
+  font-size: var(--kpress-katex-size-display);
+}
+
+.kpress .kpress-figcaption .katex,
+.kpress .sans-text .katex,
+.kpress .kpress-toc-title .katex,
+.kpress .kpress-table th .katex,
+.kpress .tab-button .katex,
+.kpress .kpress-tab-button .katex,
+.kpress summary .katex {
+  font-size: var(--kpress-katex-size-sans);
+}
+
 /* KaTeX progressive enhancement: the semantic MathML renders by default and
    as the no-JS fallback; the TeX source node stays hidden until KaTeX
    replaces it. Once rendered, KaTeX is shown and the MathML is kept in the
@@ -1172,6 +1289,12 @@
   position: absolute;
   white-space: nowrap;
   width: 1px;
+}
+
+[data-kpress-math-pending="true"]
+  .kpress-math:not([data-kpress-math-rendered="true"])
+  .kpress-math-semantic {
+  visibility: hidden;
 }
 
 .kpress-math[data-kpress-math-error="true"] {
@@ -1452,12 +1575,83 @@
   position: relative;
 }
 
+/* The same drawn square as the prose and concepts markers; document.css carries
+   the measurement it reproduces. This rule is where the glyph cost most: .claim
+   is sans, so U+25AA fell through a different stack than the prose one and came
+   out 5.20px against the prose marker's 3.26px at a 16px base -- 60% larger,
+   for a token whose whole purpose is that every bulleted list matches. */
 .kpress .claim::before {
-  content: "\25AA\FE0E";
+  background: currentColor;
+  content: "";
   font-size: var(--kpress-bullet-size);
-  left: calc(var(--kpress-font-size-base) * -0.85);
+  height: 0.226em;
+  inset-inline-start: calc(var(--kpress-font-size-base) * -0.85 + 0.064em);
   position: absolute;
-  top: calc(var(--kpress-font-size-base) * 0.1);
+  top: calc(var(--kpress-font-size-base) * 0.1 + 0.689em);
+  width: 0.226em;
+}
+
+/* Every mark KPress paints rather than sets, in forced colors (Windows High
+   Contrast and the browser settings that emulate it).
+
+   The UA forces `background-color` to `Canvas` there, so a box filled with
+   `currentColor` paints the page background onto the page background and
+   disappears: measured in Chromium under `forced_colors: active`, the marker
+   painted 0 ink pixels where the U+25AA glyph it replaces painted 196. That is
+   the one behaviour a drawn mark does not inherit from a glyph, and it is lost
+   for the readers a high-contrast mode exists for. `CanvasText` is the forced
+   foreground, and `forced-color-adjust: none` is what lets it through.
+
+   One rule for all four, and it lives here rather than beside each base rule
+   because this file loads after document.css and ties it on specificity. The
+   nested print marker needs its own copy in print.css, whose selector is more
+   specific still. The disclosure chevron is in the same list for the same
+   reason: it is a mask filled with `background-color`. */
+@media (forced-colors: active) {
+  .kpress-prose ul > li::before,
+  .kpress .concepts ul > li::before,
+  .kpress .claim::before,
+  .kpress summary::before {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
+}
+
+/* Every heading inside a sans block takes the sans face, so its mathematics and its
+   words are set in the same one.
+
+   WHY THIS RULE IS NEEDED AT ALL: document.css redeclares the prose face directly on
+   the heading -- `.kpress-prose h1`, `h2`, `h5` and `h6` each carry their own
+   `font-family: var(--kpress-font-prose, ...)` -- and a declaration on the element
+   itself beats the sans family a container sets on an ancestor, which reaches the
+   heading only by inheritance. So `## Heading` inside one of these blocks drew PT
+   Serif while the block around it drew Source Sans.
+
+   WHY THAT MATTERS MORE THAN A FONT SLIP: the sans math composite is scoped by
+   CONTAINER, not by the heading's own face. katex-init.js resolves its `SANS_CONTEXT`
+   with `closest()` from each node it renders, which climbs straight past the heading
+   to `.description`, so mathematics in a heading here is laid out from the sans tables
+   and stamped for the sans rules in katex-text-face.css to draw from `KPress Math Text
+   Sans`. The heading therefore read as serif words wrapped around a sans formula,
+   which is the disagreement that whole mechanism exists to remove. Headings are
+   deliberately not sans-math roles of their own (katex-text-face.css records why: a
+   heading's sans weight is not the weight the pinned tables were built at), so the
+   agreement has to be reached from the text side, here.
+
+   `.sans-text` is in the list too. It already redeclares the sans family on its own
+   `h1` and `h2` above -- that pair is where this pattern comes from -- but it stops
+   there, so its `h5` and `h6` were on the prose face exactly like the other five
+   containers. `h3` and `h4` reach the sans face through the `.kpress-prose h1..h6`
+   group rule rather than a rule of their own; they are listed anyway so this states
+   the whole invariant and does not quietly depend on that group rule keeping them.
+
+   SPECIFICITY: (0,2,1), which clears `.kpress-prose h1` at (0,1,1). It ties the
+   `.sans-text` heading rules above at (0,2,1) and wins on source order, declaring the
+   same family they do -- their size, weight and margins are untouched. */
+.kpress :is(.sans-text, .description, .key-claims, .summary, .concepts, .claim)
+  :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--kpress-font-sans);
+  font-feature-settings: var(--kpress-font-features-sans);
 }
 
 .kpress .full-text {
@@ -1555,6 +1749,8 @@
   outline-offset: 3px;
 }
 
+/* One sans bold across the design system: these two carried a literal 700, the
+   only sans chrome above the bold token, until 2026-09-07. */
 .kpress .kpress-video-placeholder-action {
   align-items: center;
   background: oklch(100.00% 0 0 / 0.92);
@@ -1562,7 +1758,7 @@
   color: oklch(17.76% 0 0);
   display: inline-flex;
   font-size: var(--kpress-font-size-small);
-  font-weight: 700;
+  font-weight: var(--kpress-font-weight-sans-bold);
   height: 3rem;
   justify-content: center;
   line-height: 1;
@@ -1571,7 +1767,7 @@
 
 .kpress .kpress-video-placeholder-title {
   font-size: var(--kpress-font-size-small);
-  font-weight: 700;
+  font-weight: var(--kpress-font-weight-sans-bold);
 }
 
 .kpress-video-popover iframe {
@@ -1587,6 +1783,9 @@
   width: 100%;
 }
 
+/* The caps-label idiom, at the label weight the TOC title, the disclosure
+   summaries and the print tab label all use. It asked for a literal 600 until
+   2026-09-07, so the same label came out heavier on screen than on paper. */
 .kpress .tab-button,
 .kpress-tab-button {
   background: transparent;
@@ -1599,7 +1798,7 @@
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-caps-label-size);
   font-variant-caps: var(--kpress-caps-variant);
-  font-weight: 600;
+  font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: var(--kpress-caps-spacing);
   line-height: 1.2;
   max-width: 10rem;
@@ -1755,14 +1954,46 @@
     max-width: none;
   }
 
-  /* BOTH columns are fixed widths, and the pair is left-aligned with
-     justify-content. Neither track contains a pane-coupled term (no cqw/vw, no
-     1fr), so the content column is a hard constant 48rem at every pane width.
+  /* The whole wide band carries a tighter inset than the single-column bands:
+     the large outer margin (and, with a TOC, the 3rem rail gap) already holds
+     the column off its surroundings, so 2.5rem is enough for the content card's
+     chrome to breathe.
+
+     UNCONDITIONAL, and it must stay that way. This is the band's inset, not the
+     grid's: 0.3.3 applied it through `.kpress-content-with-toc .kpress-long-text`,
+     a selector that matches whether or not a TOC was rendered, because
+     `.kpress-content-with-toc` is on the layout wrapper always. 0.3.4 briefly
+     gated this on the rail conditions, which quietly moved every TOC-less wide
+     document from 2.5rem to 4rem -- the text still landed at the measure, since
+     the caps follow the inset, but the card's inner padding changed and a host
+     sizing its own surfaces to `measure + 2 x 2.5rem` (the documented wide track)
+     no longer matched the document inside them.
+
+     Do not add the rail conditions back here. The neighbouring rules carry them
+     because they build the two-column grid, which genuinely needs a rail; the
+     inset is the band's and applies to a single column too. */
+  .kpress-doc {
+    --kpress-column-inset: 2.5rem;
+  }
+
+  /* BOTH columns are width-bounded and the pair is left-aligned with
+     justify-content, so the content column is a constant at every pane width.
      The earlier `clamp(.., 15cqw, ..)` TOC column grew with the pane and, under
      a fixed 68rem group cap, ate into the 1fr content column -- so the text got
-     narrower the wider you dragged. Fixed tracks remove that coupling entirely;
-     left-aligning pins the TOC + content to the start so all extra pane width
-     becomes a single trailing margin -- no empty band to the left of the TOC. */
+     narrower the wider you dragged. Left-aligning pins the TOC + content to the
+     start so all extra pane width becomes a single trailing margin -- no empty
+     band to the left of the TOC.
+
+     The content track is the column box, measure + 2x inset, so the TEXT lands
+     at exactly the measure. The `min()` against the pane is a guard, not a
+     resize: this band's floor is the literal 75rem below (a container query
+     cannot read var()), so a host that raises the measure past what the floor
+     assumed would otherwise overflow the pane rather than fit in it. At the
+     default the guard never binds -- at the 75rem floor it evaluates to 55rem
+     against a 50rem track -- so the column stays the promised constant and only
+     an over-large measure degrades, gracefully, instead of spilling.
+     100cqw - 20rem is the pane less the 15rem rail, the 3rem gap and the two
+     1rem page gutters. */
   .kpress-content-with-toc.has-toc,
   .kpress-content-with-toc:has(.kpress-toc),
   .kpress-content-with-toc[data-kpress-toc-rail="reserved"] {
@@ -1772,20 +2003,13 @@
        above; the reserved rail is not, and only becomes a grid inside this
        band — narrow bands have no rail to reserve and stay single-column. */
     display: grid;
-    grid-template-columns: 15rem 53rem;
+    grid-template-columns:
+      15rem
+      min(calc(var(--kpress-measure) + 2 * var(--kpress-column-inset)), calc(100cqw - 20rem));
     justify-content: start;
     min-height: 100dvh;
   }
 
-  /* The content track is 53rem = the 48rem reading measure + 2×2.5rem inset.
-     The base md rule pads .kpress-long-text by 4rem inline (kash's md:px-16,
-     meant to inset text from the screen edge in a full-width single-column
-     view). Here the column is already inset by the 3rem TOC gap and a large
-     symmetric outer margin, so we trim that padding back to 2.5rem (enough
-     inner margin for the content-card chrome to breathe); with the widened
-     track the *text* lands at the full 48rem measure (border-box), not the
-     40rem it shrank to under 4rem padding. The 75rem band floor still fits:
-     15 + 3 + 53 = 71rem + the 2×2rem page gutters = 75rem exactly. */
   /* The site header/footer rows follow the same geometry as the doc grid: with a
      TOC the grid left-anchors inside .kpress-doc (1rem doc pad + 15rem track +
      3rem gap) and .kpress-long-text pads 2.5rem, so the reading text's inline
@@ -1801,11 +2025,14 @@
     padding-inline-start: 21.5rem;
   }
 
+  /* The track above is already the column box, so the column fills it and the
+     inset comes from the token the article set for this band -- the padding is
+     not restated here, or it would be a second place to keep in step with the
+     track. */
   .kpress-content-with-toc .kpress-long-text {
     grid-column: 2;
     margin: 0;
     max-width: none;
-    padding-inline: 2.5rem;
   }
 
   /* The optional thumbnail is the layout's third child and the only one with
@@ -1917,8 +2144,11 @@
      where the 1rem base padding leaves the first characters covered. Hosts
      that add their own pane inset shrink the reservation through the
      clearance variable (their inset already contributes to the gutter). */
+  /* Set the gutter token, not padding-inline: .kpress-doc's cap adds the gutter
+     (box-sizing is border-box), so widening the padding alone would take the
+     extra room out of the reading column instead of out of the page margin. */
   .kpress-doc {
-    padding-inline: max(1rem, var(--kpress-toc-toggle-clearance));
+    --kpress-doc-gutter: max(1rem, var(--kpress-toc-toggle-clearance));
   }
 
   .kpress-toc-backdrop {

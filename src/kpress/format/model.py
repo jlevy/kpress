@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from kpress.errors import KPressPublishError
+from kpress.errors import KPressInvalidRequestError, KPressPublishError
 from kpress.models import PrintProfile, ThemeMode
 
 if TYPE_CHECKING:
@@ -26,6 +26,52 @@ MathMode = Literal["off", "auto"]
 DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
 ProseFont = Literal["serif", "sans"]
+MathTextFont = Literal["prose", "katex"]
+# Which family draws code: the shipped Planetaire Mono Text subsets, or the
+# platform's own mono stack. See RenderOptions.mono_font.
+MonoFont = Literal["planetaire", "system"]
+# The Planetaire styles KPress vendors, named as `mono_weights` names them.
+# devtools/subset_mono.py generates one subset and one stylesheet per entry.
+MonoWeight = Literal["regular", "bold", "italic", "bold-italic", "medium", "semibold", "extrabold"]
+#: Declaration order, so a stylesheet list is deterministic whatever order a host
+#: wrote its weights in. Mirrors devtools/subset_mono.py's SOURCES.
+MONO_WEIGHT_ORDER: tuple[MonoWeight, ...] = (
+    "regular",
+    "bold",
+    "italic",
+    "bold-italic",
+    "medium",
+    "semibold",
+    "extrabold",
+)
+#: What a document declares when a host says nothing: every style the stylesheets ask
+#: for. `code` and the highlighter's keywords resolve to upright and bold; `syntax.css`
+#: sets comments italic and docstrings italic-and-700, so all four are reachable from
+#: default markup, and a style a rule asks for and this list withholds is drawn by
+#: synthesis -- outlines no foundry drew, which is the rule this feature exists to keep.
+#:
+#: Declaring is not loading. A browser fetches a declared face only when a glyph
+#: resolves to it, so the cost of a declaration falls on the page that uses the style
+#: and on no other. Measured with all four declared: a prose page with no code fetches
+#: nothing and leaves all four `unloaded`; a page of Python fetches 400-italic for its
+#: comments and leaves 700-italic `unloaded`, because Pygments' Python lexer emits no
+#: italic-and-700 token -- a page of C, whose `#include` does, fetches that one too.
+#: KPress declares four PT Serif faces on the same reasoning.
+#:
+#: What declaring buys is that no glyph is invented. In print it takes the synthesized
+#: shear runs on a page to zero, for 40% to 73% more mono font-program bytes in the PDF
+#: (+5.5 KB to +9.3 KB across fixtures from 12 to 1,497 syntax tokens), part of which
+#: comes back as the regular subset shrinks and those glyphs leave it. Slant synthesis
+#: at least stays Type0; weight synthesis does not, and puts Type 3 outlines in the PDF.
+#:
+#: Every style stays selectable: a host that wants fewer names them in `mono_weights`,
+#: subject to the synthesis check in `publish/config.py`.
+DEFAULT_MONO_WEIGHTS: tuple[MonoWeight, ...] = (
+    "regular",
+    "bold",
+    "italic",
+    "bold-italic",
+)
 AssetMode = Literal["hosted", "linked", "hashed", "inline"]
 AssetPolicy = Literal["none", "auto", "all"]
 OptimizerMode = Literal["none", "full"]
@@ -121,6 +167,48 @@ class RenderOptions:
     # selector would tie with the root one and the reader could never switch
     # back. Embedding hosts stamp their own root attribute instead.
     prose_font: ProseFont = "serif"
+    # Which faces draw the letters and digits inside KaTeX mathematics. "prose"
+    # draws the Latin letters and digits from the reading face (PT Serif), in
+    # every weight and style, and scales KaTeX's Greek to it, with KaTeX laid
+    # out from matching metrics; operators, relations, delimiters and the rest
+    # stay in the KaTeX faces. "katex" keeps KaTeX's own faces throughout.
+    # Stamped as data-kpress-math-text on <html> by the standalone page shell
+    # only; fragments bake no attribute and the CSS reads the absence of the
+    # attribute as "prose" (the feature is on by default), so an embedding host
+    # that wants KaTeX's faces stamps data-kpress-math-text="katex" on its own
+    # root. Independent of prose_font: the reader's serif/sans reading choice
+    # does not change the math face. See "Math Text Face" in
+    # docs/kpress-design.md.
+    math_text_font: MathTextFont = "prose"
+    # Which family draws code. "planetaire" (the default) leads
+    # --kpress-font-mono with the shipped Planetaire Mono Text subsets, so a
+    # document sets code in the same face on every machine and a printed page
+    # embeds it. "system" hands code back to the platform stack (ui-monospace,
+    # SFMono-Regular, Menlo, Consolas, monospace) AND drops every Planetaire
+    # face from the asset manifest, so nothing is fetched, copied, or inlined.
+    # That asset consequence is why this is a render option and not only a CSS
+    # switch. Stamped as data-kpress-mono-font on <html> by the standalone page
+    # shell only; fragments bake no attribute and the CSS reads the absence of
+    # the attribute as "planetaire", so an embedding host that wants the
+    # platform mono stamps data-kpress-mono-font="system" on its own root and
+    # passes the same value here so the faces are pruned. Independent of
+    # font_mode: font_mode="system" is a display switch that leaves the asset
+    # set alone, the way it does for PT Serif. See "Mono Face" in
+    # docs/kpress-design.md.
+    mono_font: MonoFont = "planetaire"
+    # Which Planetaire styles the document declares. Only declared faces exist
+    # in the stylesheet, so a page copies and links only what was enabled, and
+    # fetches only the subset of that its own code reaches. A style a rule asks
+    # for and this list withholds is drawn by synthesis, so the two axes the
+    # default stylesheets use -- weight and slant -- must both be covered:
+    # __post_init__ below and publish/config.py both reject a set that would
+    # leave either synthesized, through the one message
+    # format.assets.mono_weights_rejection writes, and italic and bold-italic
+    # are added and dropped as a pair. The three extra
+    # weights (medium, semibold, extrabold) are opt-in and synthesize nothing.
+    # Order does not matter: the manifest emits MONO_WEIGHT_ORDER. Ignored when
+    # mono_font is "system".
+    mono_weights: tuple[MonoWeight, ...] = DEFAULT_MONO_WEIGHTS
     # Content card: render the reading column as a bordered sheet floating over
     # the page (textpress's long-text card; chrome only appears at md+ widths).
     # Stamped as data-kpress-card on the document article; the CSS lives in
@@ -242,6 +330,27 @@ class RenderOptions:
     header_html: str = ""
     footer_html: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Refuse a mono set that would leave a style for the browser to invent.
+
+        The same gate `format.mono_weights` meets at config load, in the same
+        words. It lived only in `publish/config.py`, so `kpress build --config`
+        refused `mono_weights=("regular",)` while
+        `RenderOptions(mono_weights=("regular",))` accepted it and shipped the
+        `/Type3` PDF the gate exists to prevent -- and every other entry point
+        (export, render request, an embedding host's own call) builds its
+        options here rather than through the YAML surface.
+
+        Deferred import: `kpress.format.assets` imports this module, so the mono
+        helpers cannot be named at module scope.
+        """
+
+        from kpress.format.assets import mono_weights_rejection
+
+        rejection = mono_weights_rejection(self.mono_weights, mono_font=self.mono_font)
+        if rejection is not None:
+            raise KPressInvalidRequestError(rejection)
 
 
 # Built-in widget defaults, merged UNDER a host's widgets map: the settings

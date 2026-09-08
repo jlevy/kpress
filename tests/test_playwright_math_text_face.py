@@ -1,0 +1,738 @@
+"""Real-browser regression for the math text face.
+
+The feature routes the Latin letters and digits inside KaTeX mathematics to the
+reading face through the ``KPress Math Text`` composite (see kpress-design.md
+"Math Text Face"), and hands KaTeX the reading face's metrics before it renders.
+Neither can be checked without a real cascade and real glyphs: which face drew a
+glyph shows only in its advance, and whether KaTeX's boxes fit the glyphs shows
+only in a layout.
+
+The invariants, each measured on a rendered page:
+
+- a digit inside math advances by PT Serif's 0.533em rather than KaTeX_Main's
+  0.500em, and reverts when the document opts out (``format.math_text_font:
+  katex``) and when the reader's persisted font set is ``system``, which the
+  pre-paint bootstrap stamps on ``<html>`` and which loads no reading face;
+- a display fraction is laid out for the taller PT Serif digits: KaTeX sizes the
+  fraction's vertical list from its metric table, so the list is taller with the
+  reading face's table installed than with KaTeX's own, which is what the metrics
+  asset buys and what a CSS-only swap would leave undone;
+- ``\\mathit`` Greek is drawn and laid out by the same face: its slot draws with
+  KaTeX_Math-Italic, so its table's Greek advances and accent skews have to be
+  that face's rows, not the Main-Italic rows KaTeX would otherwise supply;
+- ``\\textrm{\\textit{...}}`` stays italic, in both nesting orders and with bold:
+  KaTeX emits one leaf for the pair and lays it out from the italic table;
+- the reader's font-set chooser carries typeset mathematics with it, in both
+  directions, and a footnote preview -- a clone mounted outside ``.kpress`` --
+  keeps the mode and the size of the document it was opened from;
+- an opt-out stamped directly on the wrapper reaches the stylesheet as well as
+  the script, so the composite family and the metrics can never disagree;
+- the mathematics paints once: every face the mode draws from has finished
+  loading before each typeset expression becomes visible, so no formula is
+  painted in a fallback and repainted in the reading face.
+"""
+
+from __future__ import annotations
+
+import threading
+from collections.abc import Generator
+from contextlib import contextmanager
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any, TypedDict, cast
+
+import pytest
+
+from devtools.katex_text_metrics import ASSET_PATH, parse_asset
+from kpress.publish import build_site
+
+from .math_font_probe import FONT_ADVANCE_INIT
+
+#: Advance width of the digit glyphs, per em, in the two faces a digit can come
+#: from. PT Serif's tabular figures are 533 units; KaTeX_Main's are 500.
+PT_SERIF_DIGIT_ADVANCE = 0.533
+KATEX_DIGIT_ADVANCE = 0.500
+
+
+class _QuietHandler(SimpleHTTPRequestHandler):
+    def log_message(self, format: str, *args: object) -> None:
+        _ = (format, args)
+
+
+DEFAULT_MARKDOWN = (
+    "# Math text face smoke\n\n"
+    "Stromquist settled $s(10) = 3 + 1/\\sqrt{2}$ in 2003, and the mass is\n\n"
+    "$$\\mu(Q) = \\frac{4001}{4000} = 1.00025.$$\n"
+)
+
+
+def _build_fixture_site(
+    tmp_path: Path,
+    *,
+    math_text_font: str | None,
+    markdown: str = DEFAULT_MARKDOWN,
+    choosers: str | None = None,
+) -> Path:
+    (tmp_path / "content").mkdir(parents=True)
+    (tmp_path / "content" / "index.md").write_text(markdown, encoding="utf-8")
+    fmt = "" if math_text_font is None else f"  math_text_font: {math_text_font}\n"
+    if choosers is not None:
+        fmt += f"  widgets:\n    settings:\n      choosers: [{choosers}]\n"
+    (tmp_path / "kpress.yml").write_text(
+        "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n"
+        + (f"format:\n{fmt}" if fmt else ""),
+        encoding="utf-8",
+    )
+    build_site(tmp_path / "kpress.yml")
+    return tmp_path / "public"
+
+
+class Probe(TypedDict):
+    """What the page reports once KaTeX has typeset it."""
+
+    advance: float
+    family: str
+    fractionHeightEm: float
+    rendered: int
+
+
+#: Measured once KaTeX has typeset: the advance of the first digit glyph inside
+#: inline math as a fraction of the math font size, and the height KaTeX gave the
+#: display fraction's vertical list, in em, which it computes from its metric
+#: table for the numerator and denominator glyphs.
+_PROBE = """(() => {
+  const inline = document.querySelector('.kpress-math-inline .katex');
+  const digit = [...inline.querySelectorAll('.mord')].find(
+    (el) => /^[0-9]$/.test(el.textContent) && el.children.length === 0
+  );
+  const fraction = document.querySelector('.katex-display .mfrac .vlist');
+  return {
+    advance: __kpressFontAdvance(digit),
+    family: getComputedStyle(digit).fontFamily,
+    fractionHeightEm: parseFloat(fraction.style.height),
+    rendered: document.querySelectorAll('[data-kpress-math-rendered="true"]').length,
+  };
+})()"""
+
+#: How much taller KaTeX's vertical list for `4001/4000` comes out with PT Serif's
+#: metrics installed than with Computer Modern's: the digits are 0.046em taller
+#: (0.712 against 0.664), and the fraction's shift rules add a little on top.
+#: Bounded on both sides, so a metrics asset that never applied (zero) and one
+#: that applied something wild both fail.
+FRACTION_GROWTH_EM = (0.03, 0.15)
+
+
+def _probe(tmp_path: Path, math_text_font: str | None, *, font_set: str | None = None) -> Probe:
+    sync_api = pytest.importorskip("playwright.sync_api")
+    public = _build_fixture_site(tmp_path, math_text_font=math_text_font)
+    handler = partial(_QuietHandler, directory=str(public))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_api.sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except sync_api.Error:
+                try:
+                    browser = playwright.chromium.launch(headless=True, channel="chrome")
+                except sync_api.Error as exc:
+                    pytest.skip(f"No Playwright Chromium or system Chrome available: {exc}")
+            try:
+                context = browser.new_context(viewport={"width": 900, "height": 900})
+                context.add_init_script(FONT_ADVANCE_INIT)
+                if font_set is not None:
+                    # What theme-bootstrap.js reads before first paint.
+                    context.add_init_script(f"localStorage.setItem('kpress.fontSet', '{font_set}')")
+                page = context.new_page()
+                page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+                page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+                page.evaluate("document.fonts.ready")
+                return cast(Probe, page.evaluate(_PROBE))
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+# Each of these builds a site and drives a real browser, and the heaviest measured
+# 22.8s on a warm Apple-silicon machine against the 60s `timeout` pyproject.toml sets
+# for every test. A shared runner with a cold font cache has no margin at that ceiling,
+# so this file takes the same allowance the sans one does.
+@pytest.mark.timeout(180)
+def test_reading_face_draws_and_lays_out_the_digits(tmp_path: Path) -> None:
+    default = _probe(tmp_path / "prose", None)
+    katex = _probe(tmp_path / "katex", "katex")
+    for probe in (default, katex):
+        assert probe["rendered"] == 2
+
+    # Drawn: the digit advances by PT Serif's width by default and by
+    # KaTeX_Main's when the document opts out.
+    assert "KPress Math Text" in default["family"]
+    assert default["advance"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
+    assert katex["advance"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+
+    # The reader's persisted system font set opts out too, faces and metrics alike.
+    system = _probe(tmp_path / "system", None, font_set="system")
+    assert system["rendered"] == 2
+    assert system["advance"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+    assert system["fractionHeightEm"] == pytest.approx(katex["fractionHeightEm"], abs=0.001)
+
+    # Laid out: the metrics asset makes KaTeX size the fraction for the glyphs
+    # it now draws, so the vertical list is taller than the opt-out's.
+    growth = default["fractionHeightEm"] - katex["fractionHeightEm"]
+    low, high = FRACTION_GROWTH_EM
+    assert low <= growth <= high, (default["fractionHeightEm"], katex["fractionHeightEm"])
+
+
+# ---- The `\mathit` slot, the `\textrm` slot, the chooser and the preview overlay ----
+
+
+def _serve(public: Path) -> tuple[ThreadingHTTPServer, threading.Thread]:
+    handler = partial(_QuietHandler, directory=str(public))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
+
+
+def _launch(playwright: Any, sync_api: Any) -> Any:
+    try:
+        return playwright.chromium.launch(headless=True)
+    except sync_api.Error:
+        try:
+            return playwright.chromium.launch(headless=True, channel="chrome")
+        except sync_api.Error as exc:
+            pytest.skip(f"No Playwright Chromium or system Chrome available: {exc}")
+
+
+@contextmanager
+def _served_page(public: Path) -> Generator[Any]:
+    """One built site, one browser, one loaded page: the probes are cheap, the setup is not."""
+    sync_api = pytest.importorskip("playwright.sync_api")
+    server, thread = _serve(public)
+    try:
+        with sync_api.sync_playwright() as playwright:
+            browser = _launch(playwright, sync_api)
+            try:
+                context = browser.new_context(viewport={"width": 1100, "height": 900})
+                context.add_init_script(FONT_ADVANCE_INIT)
+                page = context.new_page()
+                page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+                page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+                page.evaluate("document.fonts.ready")
+                yield page
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def _asset_row(face: str, code_point: int) -> list[float]:
+    """One row of the shipped metric table: what KaTeX is told the glyph measures."""
+    table = cast("dict[str, dict[str, list[float]]]", parse_asset(ASSET_PATH.read_text("utf-8")))
+    return table[face][str(code_point)]
+
+
+#: `\mathit` Greek, as the shipped Main-Italic table now describes it. The rows come
+#: from KaTeX_Math-Italic, the face the composite's italic slot actually draws them
+#: with; Main-Italic's own rows, which this table used to be scaled from, put Upsilon
+#: on a 0.88166em advance and give Gamma no skew at all.
+UPSILON_WIDTH_EM = _asset_row("Main-Italic", 0x3A5)[4]
+GAMMA_SKEW_EM = _asset_row("Main-Italic", 0x393)[3]
+#: Half the `^` advance: KaTeX centres an accent by `skew - width/2` (an inline
+#: `left` on `.accent-body`), so the skew row is directly readable off the page.
+HAT_HALF_WIDTH_EM = _asset_row("Main-Regular", 0x5E)[4] / 2
+#: What a Main-Italic-sourced table would have produced instead.
+UNSCALED_MAIN_ITALIC_UPSILON_EM = 0.88166
+
+_GREEK_MARKDOWN = (
+    "# Greek and nested text styles\n\n"
+    "Capital $\\mathit{\\Upsilon}$, accented $\\hat{\\mathit{\\Gamma}}$.\n\n"
+    "Nested $\\textrm{\\textit{n123}}$, $\\textit{\\textrm{n123}}$ and "
+    "$\\textrm{\\textbf{\\textit{n123}}}$.\n"
+)
+
+#: Advance of the `\mathit` Upsilon and the inline `left` KaTeX gives the accent
+#: over `\hat{\mathit{\Gamma}}`, plus every `\text...` leaf's resolved style.
+_GREEK_PROBE = """(() => {
+  const upsilon = [...document.querySelectorAll('.katex .mathit')].find(
+    (el) => el.textContent === '\\u03a5'
+  );
+  const accent = document.querySelector('.katex .accent-body');
+  return {
+    upsilonAdvance: __kpressFontAdvance(upsilon),
+    accentLeftEm: parseFloat(accent.style.left),
+    textLeaves: [...document.querySelectorAll('.katex .textrm, .katex .textbf')]
+      .filter((el) => el.textContent === 'n123')
+      .map((el) => ({
+        cls: el.className,
+        style: getComputedStyle(el).fontStyle,
+        advance: __kpressFontAdvance(el),
+      })),
+  };
+})()"""
+
+
+def test_mathit_greek_is_drawn_and_laid_out_by_the_same_face(tmp_path: Path) -> None:
+    """The `\\mathit` slot draws its Greek with KaTeX_Math-Italic, so its table must too.
+
+    `\\mathit` is laid out from KaTeX's Main-Italic table but the composite's italic
+    slot claims U+0370-03FF for KaTeX_Math-Italic, and the two faces disagree about
+    both advance and skew. A table scaled from Main-Italic measures Upsilon a fifth
+    of an em wider than the browser draws it and centres the accent over
+    `\\hat{\\mathit{\\Gamma}}` about a tenth of an em off the glyph.
+    """
+    public = _build_fixture_site(tmp_path, math_text_font=None, markdown=_GREEK_MARKDOWN)
+    with _served_page(public) as page:
+        probe = cast("dict[str, Any]", page.evaluate(_GREEK_PROBE))
+
+    # Drawn advance and shipped table row agree, and neither is Main-Italic's own.
+    assert probe["upsilonAdvance"] == pytest.approx(UPSILON_WIDTH_EM, abs=0.005)
+    assert probe["upsilonAdvance"] < UNSCALED_MAIN_ITALIC_UPSILON_EM - 0.1
+
+    # The accent sits at the drawn face's skew, not at the zero Main-Italic reports.
+    assert probe["accentLeftEm"] == pytest.approx(GAMMA_SKEW_EM - HAT_HALF_WIDTH_EM, abs=0.001)
+    assert probe["accentLeftEm"] > -HAT_HALF_WIDTH_EM + 0.05
+
+
+def test_textrm_does_not_suppress_an_explicit_nested_italic(tmp_path: Path) -> None:
+    """`\\textrm{\\textit{n}}` is one `.mord.textrm.textit` leaf and stays italic.
+
+    KaTeX lays the run out from the italic table either way, so pinning the upright
+    slot on `.textrm` would draw one face over another's metrics. Both nesting
+    orders and the bold combination collapse onto the same leaf, so one fixture
+    covers all three.
+    """
+    public = _build_fixture_site(tmp_path, math_text_font=None, markdown=_GREEK_MARKDOWN)
+    with _served_page(public) as page:
+        probe = cast("dict[str, Any]", page.evaluate(_GREEK_PROBE))
+
+    leaves = probe["textLeaves"]
+    assert [leaf["cls"] for leaf in leaves] == [
+        "mord textrm textit",
+        "mord textrm textit",
+        "mord textrm textbf textit",
+    ]
+    for leaf in leaves:
+        assert leaf["style"] == "italic", leaf
+    # The italic advance, not the upright 2.193em the pinned rule produced.
+    assert leaves[0]["advance"] == pytest.approx(2.085, abs=0.01)
+    assert leaves[2]["advance"] > leaves[0]["advance"], (
+        "the bold combination is bolder, not upright"
+    )
+
+
+_FOOTNOTE_MARKDOWN = (
+    "# Previews and the reader's font set\n\n"
+    "Stromquist settled $s(10) = 3 + 1/\\sqrt{2}$ in 2003, and the mass is "
+    "$\\frac{4001}{4000}$, repeated in a footnote[^mass].\n\n"
+    "[^mass]: The mass is $\\frac{4001}{4000}$ exactly.\n"
+)
+
+#: The same expression twice, because the two are set in different composites: prose
+#: takes the reading face, and a footnote is a sans role, so it takes `KPress Math Text
+#: Sans` (see katex-text-face.css). The reading face is therefore read where the reading
+#: face is, and the overlay -- a clone of the FOOTNOTE -- is compared against the
+#: footnote it was cloned from rather than against prose.
+PROSE_SCOPE = ".kpress-prose > p"
+FOOTNOTE_SCOPE = ".kpress-footnotes"
+
+#: Source Sans 3 sets its digits on 0.497em, which is 0.003 from KaTeX_Main's 0.500 and
+#: so cannot tell a mode change apart on its own; that is the whole reason the document
+#: reading below is taken in prose.
+SOURCE_SANS_DIGIT_ADVANCE = 0.497
+
+#: One reading of a math host: the advance of its `4001` digit run per em, whether the
+#: composite family drew it, and the ratio the KaTeX root was sized at against the prose
+#: around it. `scope` is either the document or the preview overlay, which must report
+#: the same three; the ratio rather than the size, because a preview sets its own prose
+#: a little smaller and it is the lift over that prose which has to match.
+_MODE_PROBE = """((selector) => {
+  const scope = document.querySelector(selector);
+  const digits = [...scope.querySelectorAll('.katex .mord')].find(
+    (el) => el.textContent === '4001' && el.children.length === 0
+  );
+  const style = getComputedStyle(digits);
+  const katex = scope.querySelector('.katex');
+  return {
+    advancePerDigit: __kpressFontAdvance(digits) / 4,
+    composite: style.fontFamily.includes('KPress Math Text'),
+    katexSizeRatio:
+      parseFloat(getComputedStyle(katex).fontSize) /
+      parseFloat(getComputedStyle(katex.parentElement).fontSize),
+    mathText: scope.getAttribute('data-kpress-math-text'),
+  };
+})"""
+
+
+def _open_preview(page: Any) -> dict[str, Any]:
+    page.locator("a[data-kpress-footnote-ref]").first.hover()
+    page.wait_for_selector(".kpress-tooltip", state="visible", timeout=5_000)
+    page.evaluate("document.fonts.ready")
+    probe = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, ".kpress-tooltip"))
+    page.keyboard.press("Escape")
+    return probe
+
+
+def _choose_font_set(page: Any, value: str) -> None:
+    page.locator(".kpress-settings-btn").first.click()
+    page.select_option("select.kpress-menu-select", value)
+    page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+    page.evaluate("document.fonts.ready")
+
+
+@pytest.mark.timeout(180)
+def test_the_font_set_chooser_carries_math_and_previews_with_it(tmp_path: Path) -> None:
+    """Both directions through the real chooser, and the preview overlay with them.
+
+    The chooser flips CSS instantly, but KaTeX was handed its metric tables once,
+    at load, so the switch is completed by a reload into the persisted choice (see
+    `fontSetSwitchNeedsReload` in settings-widget.js). Whatever mode the page ends
+    up in, the footnote preview -- a clone mounted outside `.kpress` -- has to be
+    drawn and sized in it too, or its glyphs sit in boxes measured for the others.
+
+    The clone comes from a footnote, which is a sans role, so the overlay is measured
+    against the footnote rather than against prose: matching prose would be the wrong
+    invariant and would put PT Serif glyphs on boxes measured for Source Sans.
+    """
+    public = _build_fixture_site(
+        tmp_path,
+        math_text_font=None,
+        markdown=_FOOTNOTE_MARKDOWN,
+        choosers="theme, font-set",
+    )
+    with _served_page(public) as page:
+        custom = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+        custom_note = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, FOOTNOTE_SCOPE))
+        custom_preview = _open_preview(page)
+
+        _choose_font_set(page, "system")
+        system = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+        system_note = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, FOOTNOTE_SCOPE))
+        system_preview = _open_preview(page)
+        persisted = page.evaluate("localStorage.getItem('kpress.fontSet')")
+
+        _choose_font_set(page, "custom")
+        back = cast("dict[str, Any]", page.evaluate(_MODE_PROBE, PROSE_SCOPE))
+
+    # The document: the reader's choice reaches the glyphs, not only the stylesheet.
+    assert custom["advancePerDigit"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
+    assert custom["composite"]
+    assert system["advancePerDigit"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+    assert not system["composite"]
+    assert persisted == "system"
+    assert back["advancePerDigit"] == pytest.approx(PT_SERIF_DIGIT_ADVANCE, abs=0.01)
+    assert back["composite"]
+
+    # The footnote follows the same switch, in the sans composite rather than the serif.
+    assert custom_note["advancePerDigit"] == pytest.approx(SOURCE_SANS_DIGIT_ADVANCE, abs=0.01)
+    assert custom_note["composite"]
+    assert not system_note["composite"]
+
+    # The size follows too: the reading face needs no lift, KaTeX's own does.
+    assert custom["katexSizeRatio"] == pytest.approx(1.0, abs=0.01)
+    assert system["katexSizeRatio"] == pytest.approx(1.05, abs=0.01)
+
+    # The overlay carries the mode of the document it was opened from and the metrics of
+    # the footnote it was cloned from, in both modes.
+    for document_probe, note, preview in (
+        (custom, custom_note, custom_preview),
+        (system, system_note, system_preview),
+    ):
+        assert preview["mathText"] == ("prose" if document_probe["composite"] else "katex")
+        assert preview["composite"] is document_probe["composite"]
+        assert preview["advancePerDigit"] == pytest.approx(note["advancePerDigit"], abs=0.005)
+        assert preview["katexSizeRatio"] == pytest.approx(note["katexSizeRatio"], abs=0.01)
+
+
+def test_a_font_set_stamped_on_the_wrapper_opts_out_of_both_guards(tmp_path: Path) -> None:
+    """The CSS scope and the JS guard have to agree wherever the attribute is stamped.
+
+    The built-in producers stamp `data-kpress-font-set` on `<html>`, and katex-init.js
+    reads it with `closest()`, which matches the element it starts from. So the
+    stylesheet excludes each opt-out bare as well as as an ancestor; otherwise a host
+    that stamped the wrapper directly would get the composite family with KaTeX's own
+    metrics, which is the one state the design forbids.
+    """
+    public = _build_fixture_site(tmp_path, math_text_font=None)
+    index = public / "index.html"
+    stamped = index.read_text(encoding="utf-8").replace(
+        'data-kpress-fonts="custom"',
+        'data-kpress-fonts="custom" data-kpress-font-set="system"',
+        1,
+    )
+    assert 'data-kpress-font-set="system"' in stamped, "the wrapper markup has moved"
+    index.write_text(stamped, encoding="utf-8")
+
+    with _served_page(public) as page:
+        probe = cast(Probe, page.evaluate(_PROBE))
+
+    assert probe["rendered"] == 2
+    assert "KPress Math Text" not in probe["family"]
+    assert probe["advance"] == pytest.approx(KATEX_DIGIT_ADVANCE, abs=0.01)
+
+
+# ---- The mathematics paints once ----
+
+
+#: Observe actual paint opportunities, including formulas inserted while hidden.
+#: Each formula has its own readiness boundary: a serif formula may be ready
+#: before a later sans formula. Keep face identity/timing as diagnostic evidence,
+#: and check the exact glyph requests when each formula first becomes visible.
+_PAINT_PROBE_INIT = """(() => {
+  const probe = { firstKatex: null, painted: [], faces: [] };
+  globalThis.__kpressPaintProbe = probe;
+  const seen = new WeakSet();
+  const requests = new Map();
+  const load = Object.getPrototypeOf(document.fonts).load;
+  const glyphRequests = node => {
+    const glyphs = [];
+    const html = node.querySelector('.katex-html');
+    if (!html) return glyphs;
+    const walker = document.createTreeWalker(html, NodeFilter.SHOW_TEXT);
+    for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+      if (!text.textContent || !text.parentElement) continue;
+      const css = getComputedStyle(text.parentElement);
+      // Fixture names have no commas. Keep this oracle independent of the
+      // runtime's parser and cache, and observe single-family load promises:
+      // WebKit can return check() true even with the required transfer held.
+      for (const family of css.fontFamily.split(',')) {
+        const spec = `${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${family.trim()}`;
+        const medium = matchMedia('print').matches ? 'print' : 'screen';
+        const key = JSON.stringify([medium, spec, text.textContent]);
+        if (!requests.has(key)) {
+          const record = { ready: false };
+          requests.set(key, record);
+          load.call(document.fonts, spec, text.textContent).then(
+            faces => { record.ready = faces.every(face => face.status === 'loaded'); },
+            () => {},
+          );
+        }
+        glyphs.push({ spec, text: text.textContent, ready: requests.get(key).ready });
+      }
+    }
+    return glyphs;
+  };
+  // Start the independent observations while markup is staged, before its
+  // first visible animation frame. Already-loaded promises settle in between.
+  new MutationObserver(() => {
+    for (const node of document.querySelectorAll('.kpress-math-render .katex')) {
+      glyphRequests(node);
+    }
+  }).observe(document, { childList: true, subtree: true, attributes: true });
+  const paint = () => {
+    for (const node of document.querySelectorAll('.kpress-math-render .katex')) {
+      if (seen.has(node)) continue;
+      const style = getComputedStyle(node);
+      if (style.visibility !== 'visible' || !node.getBoundingClientRect().width) continue;
+      seen.add(node);
+      const at = performance.now();
+      if (probe.firstKatex === null) probe.firstKatex = at;
+      const glyphs = glyphRequests(node);
+      probe.painted.push({ at, text: node.textContent, glyphs });
+    }
+    requestAnimationFrame(paint);
+  };
+  requestAnimationFrame(paint);
+
+  const watched = new WeakSet();
+  const byKey = new Map();
+  const watch = () => {
+    document.fonts.forEach((face) => {
+      if (watched.has(face)) return;
+      watched.add(face);
+      const key = [face.family, face.style, face.weight, face.unicodeRange].join("|");
+      let record = byKey.get(key);
+      if (record === undefined) {
+        record = {
+          family: face.family,
+          style: face.style,
+          weight: face.weight,
+          unicodeRange: face.unicodeRange,
+          loaded: null,
+          objects: 0,
+        };
+        byKey.set(key, record);
+        probe.faces.push(record);
+      }
+      record.objects += 1;
+      face.loaded.then(
+        () => {
+          if (record.loaded === null) record.loaded = performance.now();
+        },
+        () => {},
+      );
+    });
+    setTimeout(watch, 1);
+  };
+  watch();
+})()"""
+
+
+class FaceTiming(TypedDict):
+    """One `@font-face` of the page, and when it finished loading."""
+
+    family: str
+    style: str
+    weight: str
+    unicodeRange: str
+    loaded: float | None
+    objects: int
+
+
+class WaitEntry(TypedDict):
+    """One request `katex-init.js` made of the font loading API, and its outcome.
+
+    ``request`` is a face key when the init asked for a face it can see in
+    ``document.fonts`` and a CSS ``font`` shorthand when it asked the matching
+    algorithm for one; ``outcome`` is ``loaded``, ``empty``, ``error`` or (only if
+    the three-second deadline beat the loads) ``pending``.
+    """
+
+    request: str
+    outcome: str
+    faces: list[str]
+
+
+class GlyphPaint(TypedDict):
+    spec: str
+    text: str
+    ready: bool
+
+
+class MathPaint(TypedDict):
+    at: float
+    text: str
+    glyphs: list[GlyphPaint]
+
+
+class PaintProbe(TypedDict):
+    """Each formula's first visible frame and the fonts that draw its glyphs."""
+
+    firstKatex: float | None
+    painted: list[MathPaint]
+    faces: list[FaceTiming]
+    wait: list[WaitEntry]
+
+
+#: The composite family the mathematics is drawn from where the face is on.
+TEXT_FACE_FAMILY = "KPress Math Text"
+
+#: A normal load must complete comfortably before the runtime's recovery deadline.
+FACE_WAIT_MS = 3000
+FACE_WAIT_BOUND_MS = 2000
+
+
+def _face_key(face: FaceTiming) -> str:
+    """The identity `katex-init.js` records a face under (its `faceKey`)."""
+    return "|".join((face["family"], face["style"], face["weight"], face["unicodeRange"]))
+
+
+def _paint_probe(tmp_path: Path, math_text_font: str | None) -> PaintProbe:
+    sync_api = pytest.importorskip("playwright.sync_api")
+    public = _build_fixture_site(tmp_path, math_text_font=math_text_font)
+    server, thread = _serve(public)
+    url = f"http://127.0.0.1:{server.server_address[1]}/"
+    try:
+        with sync_api.sync_playwright() as playwright:
+            browser = _launch(playwright, sync_api)
+            try:
+                context = browser.new_context(viewport={"width": 900, "height": 900})
+                context.add_init_script(_PAINT_PROBE_INIT)
+                page = context.new_page()
+                page.goto(url)
+                page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+                page.evaluate("document.fonts.ready")
+                page.wait_for_function(
+                    "__kpressPaintProbe.painted.length === document.querySelectorAll('.kpress-math-render .katex').length"
+                )
+                probe = cast(PaintProbe, page.evaluate("globalThis.__kpressPaintProbe"))
+                # Diagnostics distinguish failed requests from faces already decoded by CSS.
+                probe["wait"] = cast(
+                    "list[WaitEntry]", page.evaluate("globalThis.kpressMathFaceWait ?? []")
+                )
+                return probe
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def _faces(probe: PaintProbe, family: str) -> list[FaceTiming]:
+    return [face for face in probe["faces"] if face["family"] == family]
+
+
+def _report(probe: PaintProbe) -> str:
+    """Everything the page recorded, so a failure here explains itself.
+
+    A browser that loads a different set of faces than the one this machine loads
+    is the whole difficulty of this test, and the assertions below cannot say which
+    face it was. This can.
+    """
+    lines = [f"first .katex painted at {probe['firstKatex']}ms", "the init's font wait:"]
+    lines += [
+        f"  {entry['outcome']:<7} {entry['request']} -> {entry['faces'] or '(none)'}"
+        for entry in probe["wait"]
+    ] or ["  (nothing recorded)"]
+    lines.append(f"visible formulas and required glyphs: {probe['painted']}")
+    lines.append("every @font-face of the page, and when it loaded:")
+    lines += [
+        f"  {face['loaded']} {_face_key(face)} ({face['objects']} object(s))"
+        for face in probe["faces"]
+    ]
+    return "\n".join(lines)
+
+
+def _all_painted_fonts_ready(probe: PaintProbe, count: int) -> None:
+    """Every expected formula is visible, and its own glyph faces were ready then."""
+    assert len(probe["painted"]) == count, _report(probe)
+    for paint in probe["painted"]:
+        assert paint["glyphs"], _report(probe)
+        assert all(glyph["ready"] for glyph in paint["glyphs"]), _report(probe)
+        assert paint["at"] < FACE_WAIT_BOUND_MS, _report(probe)
+
+
+def _settled_before_the_deadline(probe: PaintProbe) -> None:
+    """Normal rendering completed without relying on the font recovery deadline."""
+    first = probe["firstKatex"]
+    assert first is not None
+    pending = [entry for entry in probe["wait"] if entry["outcome"] == "pending"]
+    assert pending == [], f"the deadline cut the wait short\n{_report(probe)}"
+    assert first < FACE_WAIT_BOUND_MS, (
+        f"the first .katex painted at {first:.1f}ms, past the {FACE_WAIT_BOUND_MS}ms"
+        f" bound on the init's {FACE_WAIT_MS}ms ceiling\n{_report(probe)}"
+    )
+
+
+@pytest.mark.timeout(180)
+def test_math_paints_once_in_its_final_faces(tmp_path: Path) -> None:
+    """A hidden layout is revealed only when the glyphs that draw it are decoded."""
+    default = _paint_probe(tmp_path / "prose", None)
+    _settled_before_the_deadline(default)
+    _all_painted_fonts_ready(default, 2)
+    assert len(_faces(default, TEXT_FACE_FAMILY)) == 8, _report(default)
+    assert any(
+        TEXT_FACE_FAMILY in glyph["spec"]
+        for paint in default["painted"]
+        for glyph in paint["glyphs"]
+    ), _report(default)
+    # The optional broad warmup must not become a render prerequisite again.
+    assert all("|" not in entry["request"] for entry in default["wait"]), _report(default)
+
+    katex = _paint_probe(tmp_path / "katex", "katex")
+    _settled_before_the_deadline(katex)
+    _all_painted_fonts_ready(katex, 2)
+    assert [face for face in _faces(katex, TEXT_FACE_FAMILY) if face["loaded"] is not None] == [], (
+        _report(katex)
+    )
+    assert [entry for entry in katex["wait"] if TEXT_FACE_FAMILY in entry["request"]] == [], (
+        _report(katex)
+    )

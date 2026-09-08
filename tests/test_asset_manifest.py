@@ -107,6 +107,22 @@ def test_math_render_manifest_includes_classic_scripts_and_font_closure() -> Non
     assert assets["katex/katex.min.js"].loading == "classic"
     assert assets["katex/katex.min.js"].entry_point is True
     assert assets["katex/fonts/KaTeX_Main-Regular.woff2"].loading == "resource"
+    # The math text face travels with KaTeX: the composite stylesheet is linked
+    # after katex.min.css, and the metric tables load before katex-init.js reads
+    # them. Both are entry points, and both are absent from a no-math document.
+    assert assets["katex/katex-text-face.css"].loading == "stylesheet"
+    assert assets["katex/katex-text-face.css"].entry_point is True
+    assert assets["katex/katex-text-metrics.js"].loading == "classic"
+    assert assets["katex/katex-text-metrics.js"].entry_point is True
+    order = [asset.id for asset in rendered.assets.assets]
+    assert order.index("katex/katex.min.css") < order.index("katex/katex-text-face.css")
+    assert order.index("katex/katex-text-metrics.js") < order.index("katex/katex-init.js")
+    assert order.index("katex/katex-text-metrics.js") < order.index("katex/katex-math-runtime.js")
+    assert order.index("katex/katex-math-runtime.js") < order.index("katex/katex-init.js")
+    # Everything under katex/ keeps a stable, unhashed name so the stylesheets'
+    # relative font URLs resolve; hashed mode must not touch the new files either.
+    assert assets["katex/katex-text-face.css"].output_path == "katex/katex-text-face.css"
+    assert assets["katex/katex-text-metrics.js"].output_path == "katex/katex-text-metrics.js"
 
 
 def test_manifests_declare_every_relative_css_and_module_dependency() -> None:
