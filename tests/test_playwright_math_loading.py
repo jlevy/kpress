@@ -8,7 +8,9 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, TypedDict
+from unittest.mock import Mock
 
 import pytest
 
@@ -56,6 +58,29 @@ def _omit_native(route: Any) -> None:
     route.fulfill(body="")
 
 
+def _launch_math_browser(playwright: Any, api: Any, *, browser_name: str, required: bool) -> Any:
+    if not required and browser_name == "chromium":
+        return _launch(playwright, api)
+    try:
+        return getattr(playwright, browser_name).launch(headless=True)
+    except api.Error as error:
+        if required:
+            raise
+        pytest.skip(f"No Playwright {browser_name} available: {error}")
+
+
+@pytest.mark.parametrize("browser_name", ["chromium", "firefox", "webkit"])
+@pytest.mark.parametrize("required", [False, True])
+def test_missing_browser_skips_only_when_not_required(browser_name: str, required: bool) -> None:
+    """Python-only jobs may omit browsers; the dedicated browser job must fail."""
+    unavailable = SimpleNamespace(launch=Mock(side_effect=RuntimeError("missing browser")))
+    playwright = SimpleNamespace(**{browser_name: unavailable})
+    api = SimpleNamespace(Error=RuntimeError)
+    expected = RuntimeError if required else pytest.skip.Exception
+    with pytest.raises(expected, match="missing browser"):
+        _launch_math_browser(playwright, api, browser_name=browser_name, required=required)
+
+
 @contextmanager
 def _page(
     public: Path,
@@ -75,10 +100,9 @@ def _page(
     server, thread = _serve(public)
     try:
         with api.sync_playwright() as playwright:
-            if required or browser_name != "chromium":
-                browser = getattr(playwright, browser_name).launch(headless=True)
-            else:
-                browser = _launch(playwright, api)
+            browser = _launch_math_browser(
+                playwright, api, browser_name=browser_name, required=required
+            )
             try:
                 context = browser.new_context(java_script_enabled=javascript)
                 context.add_init_script(FONT_ADVANCE_INIT)
