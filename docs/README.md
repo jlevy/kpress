@@ -9,6 +9,9 @@ Use this index for implementation, maintenance, and release work.
 
 - [KPress Design](kpress-design.md): architecture, public contracts, extension seams,
   static publishing, assets, icons, and optimization
+- [Font and Math Loading](project/architecture/arch-2026-09-08-font-and-math-loading.md):
+  font composition, layout, readiness, prepared geometry, hydration, fallback, and print
+- [Rendering Mathematics in a Host](math-rendering-api.md): the shared runtime API
 - [Icon System](kpress-design.md#icon-system): the icon set, its SVG contract, and how
   glyphs are added or replaced (within KPress Design)
 - [Declarative Embedding](done/declarative-embedding.plan.md): the completed

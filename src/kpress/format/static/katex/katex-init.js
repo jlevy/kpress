@@ -37,20 +37,8 @@ function enhanceMath() {
   return Promise.all(pending).then(() => globalThis.kpressMathText.complete());
 }
 
-function startMath() {
-  const nodes = document.querySelectorAll(".kpress-math-render");
-  const loads = mathFaceLoads(nodes);
-  if (loads === null) {
-    enhanceMath();
-  } else {
-    // Warm both profiles together. The render boundary reuses these requests
-    // and their original deadline, then checks the individual expression.
-    waitForLoads(loads).then(enhanceMath, enhanceMath);
-  }
-}
-
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", startMath, { once: true });
+  document.addEventListener("DOMContentLoaded", enhanceMath, { once: true });
 } else {
-  startMath();
+  enhanceMath();
 }
