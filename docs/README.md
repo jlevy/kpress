@@ -52,6 +52,9 @@ Use this index for implementation, maintenance, and release work.
 
 ## Publishing and Validation
 
+- [Publication-Quality PDF Research](project/research/research-2026-09-05-print-ready-pdf-output.md):
+  current Chromium and Squares evidence, proposed publication profiles, and the
+  evaluation still needed for dedicated paged-media engines
 - [Static Publish Runbook](kpress-static-publish.runbook.md): build configuration, asset
   modes, wrapper integration, and output verification
 - [End-to-End Validation](kpress-validation.runbook.md): package gates, contract review,
