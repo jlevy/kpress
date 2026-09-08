@@ -269,6 +269,68 @@ describe("settings widget", () => {
     document.documentElement.removeAttribute("data-kpress-math-text");
   });
 
+  // The reading font is the second switch over the same tables, and the one that
+  // is easiest to mistake for text-only: it does not turn the math text face off,
+  // it moves the page between the face's two composites. katex-init.js selects
+  // `KPress Math Text Sans` for every node inside a sans context, and
+  // `[data-kpress-prose-font="sans"]` is one of them, so the stamp alone would
+  // redraw prose mathematics in Source Sans while KaTeX went on holding the PT
+  // Serif tables it was handed at load. Same guard as the font set, for the same
+  // reason.
+  async function chooseReadingFont(value) {
+    await importFresh("settings-widget.js");
+    const el = settingsMount();
+    sharedWidgets.mount("settings", el, { choosers: ["reading-font"] });
+    const seg = /** @type {HTMLElement} */ (
+      el.querySelector(`[data-kpress-prose-choice="${value}"]`)
+    );
+    seg.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
+
+  it("reloads into the persisted reading face when the page has typeset math", async () => {
+    const reload = vi.spyOn(globalThis.location, "reload").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<article class="kpress" data-kpress-fonts="custom"><span class="katex">4</span></article>';
+
+    await chooseReadingFont("sans");
+
+    expect(document.documentElement.dataset.kpressProseFont).toBe("sans");
+    expect(localStorage.getItem("kpress.proseFont")).toBe("sans");
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    // Choosing the face the page is already in changes nothing, so it rebuilds
+    // nothing: a reader clicking the checked segment must not lose their place.
+    await chooseReadingFont("sans");
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats the unstamped reading face as serif, so choosing serif is a no-op", async () => {
+    // Nothing has stamped <html>, which is the state a first visit is in, and the
+    // default that leaves the page in is the serif composite. Reading the missing
+    // attribute as a change would reload every page whose reader opened the menu
+    // and clicked the segment already marked.
+    const reload = vi.spyOn(globalThis.location, "reload").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<article class="kpress" data-kpress-fonts="custom"><span class="katex">4</span></article>';
+
+    await chooseReadingFont("serif");
+
+    expect(document.documentElement.dataset.kpressProseFont).toBe("serif");
+    expect(localStorage.getItem("kpress.proseFont")).toBe("serif");
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("switches the reading face in place when there is no math to re-lay-out", async () => {
+    const reload = vi.spyOn(globalThis.location, "reload").mockImplementation(() => {});
+    document.body.innerHTML = '<article class="kpress" data-kpress-fonts="custom"></article>';
+
+    await chooseReadingFont("sans");
+
+    expect(document.documentElement.dataset.kpressProseFont).toBe("sans");
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it("changing the reading font leaves the active theme segment checked", async () => {
     await importFresh("settings-widget.js");
     const el = settingsMount();

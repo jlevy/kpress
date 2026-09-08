@@ -12,7 +12,7 @@ regression this one cannot tell the faces apart by advance either. Chromium answ
 directly through ``CSS.getPlatformFontsForNode``, which names the face it resolved, and
 that is what this measures.
 
-Four invariants on one document:
+Four invariants on one document, and a fifth on the reader control that moves it:
 
 - the digits of mathematics in a table cell resolve to Source Sans 3 and the digits of
   the same expression in prose resolve to PT Serif;
@@ -28,6 +28,12 @@ Four invariants on one document:
   it in the serif composite would put PT Serif glyphs on Source Sans metrics. This is
   the one place the two engines are decoupled -- nothing re-renders in the overlay --
   so only the cascade can keep them together.
+
+And one on a reader control: the reading-font chooser moves prose between the two
+composites, so it moves prose between the two table sets as well. The chooser reloads
+into the persisted choice for that reason, and the measurement here is that the reload
+re-selects the tables -- prose comes back laid out from the sans set, not merely drawn
+from the sans faces.
 """
 
 from __future__ import annotations
@@ -41,7 +47,7 @@ from typing import Any, TypedDict, cast
 import pytest
 
 from devtools.instance_sans import FAMILY
-from devtools.katex_text_metrics import SANS_REGULAR_WEIGHT
+from devtools.katex_text_metrics import ASSET_PATH, SANS_KEY, SANS_REGULAR_WEIGHT, parse_asset
 from kpress.publish import build_site
 
 from .test_playwright_math_text_face import (
@@ -53,6 +59,7 @@ from .test_playwright_math_text_face import (
     _faces,  # pyright: ignore[reportPrivateUsage]
     _loaded_first,  # pyright: ignore[reportPrivateUsage]
     _report,  # pyright: ignore[reportPrivateUsage]
+    _served_page,  # pyright: ignore[reportPrivateUsage]
     _settled_before_the_deadline,  # pyright: ignore[reportPrivateUsage]
 )
 
@@ -65,11 +72,50 @@ VARIABLE_FACE = "Source Sans 3 ExtraLight"
 PRINT_INSTANCE = f"{FAMILY.replace(' ', '')}-{SANS_REGULAR_WEIGHT}"
 SERIF_FACE = "PT Serif"
 
-#: How much shorter KaTeX's vertical list for `4001/4000` comes out from the sans table
-#: than from the serif one: the digits are 0.074em shorter (0.638 against 0.712), and the
-#: fraction's shift rules take a little off that. Bounded on both sides, so a page that
-#: never switched sets (zero) and one that installed something wild both fail.
-FRACTION_SHRINK_EM = (0.02, 0.15)
+#: KaTeX sets a text-style fraction's numerator one style down, in script style, at 0.7
+#: of the size around it. The multiplier is KaTeX's (`Style.SCRIPT.sizeMultiplier`), not
+#: this face's, and it is the same in both modes.
+SCRIPT_STYLE_MULTIPLIER = 0.7
+#: The numerator of the fixture's fraction, whose digits the vertical list is built over.
+NUMERATOR = "4001"
+
+
+def _numerator_height_em(tables: dict[str, Any]) -> float:
+    """How tall `4001` stands in one table set: the tallest row among its digits."""
+    regular = cast("dict[str, list[float]]", tables["Main-Regular"])
+    return max(regular[str(ord(digit))][1] for digit in NUMERATOR)
+
+
+def _expected_fraction_shrink_em() -> float:
+    """How much shorter the sans set makes the `4001/4000` vertical list, from the tables.
+
+    KaTeX gives the list a height of `numShift + numerator height`: the numerator's box
+    is the topmost thing in it and `numShift` is how far above the baseline it sits.
+    That shift is computed from KaTeX's own global metrics -- `num2`, the axis height,
+    the default rule thickness -- which `__setFontMetrics` does not replace, so it is
+    the same number in both modes and cancels out of the difference. The denominator
+    sets the list's DEPTH rather than its height, and the two tables give `4000` the
+    same depth in any case. What is left is the numerator: the tallest of its digits'
+    height rows, taken at script style.
+
+    So the expected shrink is read off the two shipped tables instead of being a band
+    around a remembered number. PT Serif puts its digits at 0.712em and Source Sans at
+    0.65em, and 0.7 of that 0.062em difference is the 0.0434em the browser reports. Any
+    sans set that is only half installed -- serif rows left in a sans slot, or a table
+    the loop never swapped -- moves this figure, which is what the old (0.02, 0.15) band
+    was too wide to notice: it accepted anything from 46% of the real shrink to 3.5x it.
+    """
+    metrics = parse_asset(ASSET_PATH.read_text("utf-8"))
+    serif = _numerator_height_em(metrics)
+    sans = _numerator_height_em(cast("dict[str, Any]", metrics[SANS_KEY]))
+    return SCRIPT_STYLE_MULTIPLIER * (serif - sans)
+
+
+EXPECTED_FRACTION_SHRINK_EM = _expected_fraction_shrink_em()
+#: KaTeX writes the list's height into a style attribute rounded to four decimals, and
+#: the shrink is a difference of two such readings. The tolerance is that rounding and
+#: float noise, not room for a table set that is wrong.
+FRACTION_SHRINK_TOLERANCE_EM = 0.001
 
 
 class _QuietHandler(SimpleHTTPRequestHandler):
@@ -77,12 +123,15 @@ class _QuietHandler(SimpleHTTPRequestHandler):
         _ = (format, args)
 
 
-def _build_fixture_site(tmp_path: Path) -> Path:
+def _build_fixture_site(tmp_path: Path, *, choosers: str | None = None) -> Path:
     """A document with the same expression in prose and in a sans role.
 
     A table cell, not a figure caption: kpress escapes a figcaption's text, so the one
     sans role a Markdown document cannot put mathematics into is the caption. The
     footnote is the second role and rides along on the same page.
+
+    `choosers` renders the settings widget's menu, for the one test that switches the
+    reading face through the control a reader has rather than by stamping the attribute.
     """
     (tmp_path / "content").mkdir(parents=True)
     (tmp_path / "content" / "index.md").write_text(
@@ -94,10 +143,10 @@ def _build_fixture_site(tmp_path: Path) -> Path:
         "[^a]: The note repeats $s(n) = \\frac{4001}{4000}$ in the sans face.\n",
         encoding="utf-8",
     )
-    (tmp_path / "kpress.yml").write_text(
-        "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n",
-        encoding="utf-8",
-    )
+    config = "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n"
+    if choosers is not None:
+        config += f"format:\n  widgets:\n    settings:\n      choosers: [{choosers}]\n"
+    (tmp_path / "kpress.yml").write_text(config, encoding="utf-8")
     build_site(tmp_path / "kpress.yml")
     return tmp_path / "public"
 
@@ -198,6 +247,11 @@ def _settled(page: Any, selector: str, media: str) -> dict[str, Any]:
     return _platform_font(page, selector)
 
 
+# One `build_site`, one browser, three KaTeX renders, a footnote preview and a print
+# re-layout with a retry loop behind it: 3s to 13s across runs on a warm Apple-silicon
+# machine and 34.5s measured on a cold font cache, against the 60s `timeout`
+# pyproject.toml sets for every test, which is too thin a margin on a shared runner.
+@pytest.mark.timeout(180)
 def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path) -> None:
     sync_api = pytest.importorskip("playwright.sync_api")
     public = _build_fixture_site(tmp_path)
@@ -261,10 +315,13 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
     assert overlay["familyName"] == VARIABLE_FACE, overlay
 
     # Laid out: the sans table makes KaTeX size the fraction for the shorter digits it
-    # now draws there, so the vertical list is shorter than the prose one's.
+    # now draws there, so the vertical list is shorter than the prose one's -- by the
+    # amount the two shipped tables say, which is what makes a half-installed set fail.
     shrink = probe["prose"] - probe["table"]
-    low, high = FRACTION_SHRINK_EM
-    assert low <= shrink <= high, (probe["prose"], probe["table"])
+    assert shrink == pytest.approx(EXPECTED_FRACTION_SHRINK_EM, abs=FRACTION_SHRINK_TOLERANCE_EM), (
+        probe["prose"],
+        probe["table"],
+    )
     assert probe["footnote"] == pytest.approx(probe["table"], abs=0.001)
 
 
@@ -318,6 +375,10 @@ def _sans_paint_probe(tmp_path: Path) -> PaintProbe:
         thread.join(timeout=5)
 
 
+# A second `build_site` and browser, with the face wait's own font loading in front of
+# the render this one measures. As heavy as the test above and more variable: 2s to 21s
+# across runs on the same warm machine, so it takes the same allowance.
+@pytest.mark.timeout(180)
 def test_sans_role_mathematics_paints_once_in_its_final_faces(tmp_path: Path) -> None:
     """A table cell's and a footnote's mathematics waits for the sans composite.
 
@@ -356,3 +417,74 @@ def test_sans_role_mathematics_paints_once_in_its_final_faces(tmp_path: Path) ->
         for weight in ("400", "italic 400", "650", "italic 650")
     ], _report(probe)
     assert {entry["outcome"] for entry in sans} == {"loaded"}, _report(probe)
+
+
+# ---- The reading-face chooser moves prose between the two table sets ----
+
+
+def _choose_reading_font(page: Any, value: str) -> None:
+    """Click a segment of the reading-font chooser and wait out the reload it triggers.
+
+    Waiting on `data-kpress-math-rendered` alone would race the navigation: the document
+    on its way out carries that attribute too, so the wait can return against it and
+    leave the probe reading a page that is being replaced. The marker is set on the
+    document that exists before the click and cannot survive into the one after it.
+
+    A chooser that stamped the attribute without reloading therefore fails here rather
+    than in an assertion: nothing else on the page would ever clear the marker.
+    """
+    page.evaluate("globalThis.__kpressBeforeSwitch = true")
+    page.locator(".kpress-settings-btn").first.click()
+    page.locator(f'[data-kpress-prose-choice="{value}"]').first.click()
+    page.wait_for_function("globalThis.__kpressBeforeSwitch === undefined", timeout=30_000)
+    page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
+    page.evaluate("document.fonts.ready")
+
+
+# One more `build_site` and browser, and a full reload of the page inside it: 2s to 6s
+# warm, with the same cold-cache exposure as the two above.
+@pytest.mark.timeout(180)
+def test_the_reading_face_chooser_carries_typeset_mathematics_with_it(tmp_path: Path) -> None:
+    """Choosing the sans reading face re-lays prose out, rather than only redrawing it.
+
+    The chooser used to stamp `data-kpress-prose-font` and persist it, which was
+    harmless while the attribute changed text alone. It no longer does: katex-init.js
+    selects a node's table set from its list of sans contexts, and
+    `[data-kpress-prose-font="sans"]` is one of them, so the stamp moves every
+    expression on the page into the sans composite while KaTeX goes on holding the PT
+    Serif tables it was handed at load. That is Source Sans glyphs on PT Serif boxes --
+    6.8% too narrow on a `2`, 14.4% on `\\mathbf{D}` -- and it persists until the reader
+    happens to reload.
+
+    So the chooser reloads, and this is the measurement that the reload does the work:
+    prose comes back not merely drawn from the sans faces (the stamp alone would do
+    that) but laid out from the sans table, shrinking by exactly the amount the two
+    shipped tables differ by and landing on the height the table cell was already at.
+    """
+    public = _build_fixture_site(tmp_path, choosers="theme, reading-font")
+    with _served_page(public) as page:
+        before = cast(Probe, page.evaluate(_PROBE))
+        serif_prose = _platform_font(page, "#kpress-probe-prose")
+        _choose_reading_font(page, "sans")
+        after = cast(Probe, page.evaluate(_PROBE))
+        sans_prose = _platform_font(page, "#kpress-probe-prose")
+        persisted = cast(str, page.evaluate("localStorage.getItem('kpress.proseFont')"))
+
+    assert before["rendered"] == 3
+    assert after["rendered"] == 3
+    assert persisted == "sans"
+
+    # Drawn: prose was PT Serif and is Source Sans now. The stamp alone would have got
+    # this far, which is why it is the layout below that carries the finding.
+    assert serif_prose["familyName"] == SERIF_FACE, serif_prose
+    assert sans_prose["familyName"] == VARIABLE_FACE, sans_prose
+
+    # Laid out: prose shrank by the table sets' own difference and now matches the cell
+    # it shares a composite with. Without the reload it would still read `before`.
+    shrink = before["prose"] - after["prose"]
+    assert shrink == pytest.approx(EXPECTED_FRACTION_SHRINK_EM, abs=FRACTION_SHRINK_TOLERANCE_EM), (
+        before["prose"],
+        after["prose"],
+    )
+    assert after["prose"] == pytest.approx(before["table"], abs=0.001)
+    assert after["prose"] == pytest.approx(after["table"], abs=0.001)
