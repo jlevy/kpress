@@ -24,7 +24,7 @@ import pytest
 from fontTools.ttLib import TTFont
 
 from devtools.subset_mono import CSS, DEFAULT_SOURCE, FAMILY, FONTS, SOURCES, check
-from kpress.errors import KPressPublishError
+from kpress.errors import KPressInvalidRequestError, KPressPublishError
 from kpress.format import DocumentInput, RenderOptions, render_page
 from kpress.format.assets import (
     MONO_FONT_ASSETS,
@@ -195,6 +195,27 @@ def test_the_default_declares_every_style_the_stylesheets_ask_for() -> None:
     assert set(DEFAULT_MONO_WEIGHTS) < set(MONO_FONT_ASSETS)
 
 
+#: Sets measured to leave a demand the packaged stylesheets make unanswered. The
+#: weight-axis ones put `/Type3` in the PDF. Shared by the two surfaces that take the
+#: setting, because the point of the gate is that they agree.
+_SYNTHESIZING_SETS: tuple[tuple[MonoWeight, ...], ...] = (
+    ("regular",),
+    ("regular", "bold"),
+    ("regular", "italic"),
+    ("regular", "bold", "italic"),
+    ("medium", "bold"),
+    (),
+)
+
+#: Sets a host may legally declare: the four the stylesheets ask for, plus any of the
+#: three additive weights nothing packaged reaches for.
+_ADMISSIBLE_SETS: tuple[tuple[MonoWeight, ...], ...] = (
+    DEFAULT_MONO_WEIGHTS,
+    (*DEFAULT_MONO_WEIGHTS, "medium"),
+    MONO_WEIGHT_ORDER,
+)
+
+
 def test_a_set_that_would_synthesize_a_style_is_refused() -> None:
     """The trap this closes: a legal-looking set that silently prints outlines.
 
@@ -202,15 +223,7 @@ def test_a_set_that_would_synthesize_a_style_is_refused() -> None:
     put `/Type3` in the PDF. `mono_font: system` declares no face at all, so it is the
     supported way to ship none rather than a set that ships some.
     """
-    cases: tuple[tuple[MonoWeight, ...], ...] = (
-        ("regular",),
-        ("regular", "bold"),
-        ("regular", "italic"),
-        ("regular", "bold", "italic"),
-        ("medium", "bold"),
-        (),
-    )
-    for weights in cases:
+    for weights in _SYNTHESIZING_SETS:
         assert mono_synthesis_gaps(weights), weights
         with pytest.raises(KPressPublishError, match="mono_weights"):
             _ = validate_config(_config(weights, "planetaire"))
@@ -221,12 +234,52 @@ def test_a_set_that_would_synthesize_a_style_is_refused() -> None:
         )
 
 
+def test_render_options_refuses_the_same_sets_the_config_refuses() -> None:
+    """The Python API is the other surface that takes the setting, and it gates too.
+
+    The check lived only in `publish/config.py`, so the documented guarantee held for
+    `kpress build --config` and not for `RenderOptions`, which every other entry point
+    -- `export_document`, a render request, an embedding host's own call -- builds. A
+    set that reached a render unchecked shipped the outlines the gate exists to
+    prevent, which is how the verification that found this produced its `/Type3`
+    measurements.
+    """
+    for weights in _SYNTHESIZING_SETS:
+        with pytest.raises(KPressInvalidRequestError, match="mono_weights"):
+            _ = RenderOptions(mono_weights=weights)
+        # `system` declares no Planetaire face, so nothing can be synthesized from one.
+        assert RenderOptions(mono_font="system", mono_weights=weights).mono_weights == weights
+    for weights in _ADMISSIBLE_SETS:
+        assert RenderOptions(mono_weights=weights).mono_weights == weights
+
+
+def test_both_surfaces_refuse_in_the_same_words() -> None:
+    """One message, so a host that meets the refusal once recognizes it anywhere.
+
+    Only the two setting names differ -- `format.mono_weights` in YAML against
+    `mono_weights` on the dataclass -- because a message that named the YAML key at the
+    Python API would send a host looking for a config file it does not have.
+    """
+    for weights in _SYNTHESIZING_SETS:
+        with pytest.raises(KPressPublishError) as from_config:
+            _ = validate_config(_config(weights, "planetaire"))
+        with pytest.raises(KPressInvalidRequestError) as from_options:
+            _ = RenderOptions(mono_weights=weights)
+        yaml_worded = str(from_config.value)
+        assert str(from_options.value) == yaml_worded.replace("format.mono", "mono")
+        # The part that tells a host what to fix is present verbatim in both.
+        assert "no declared face answers" in yaml_worded, yaml_worded
+
+
 def test_an_unknown_style_name_says_which_names_are_valid() -> None:
     """A typo should not send a host to the source to find the vocabulary."""
     with pytest.raises(ValueError, match="expected one of"):
         _ = mono_weight_order(cast("list[MonoWeight]", ["semi-bold"]))
     with pytest.raises(KPressPublishError, match="expected one of"):
         _ = validate_config(_config(cast("tuple[MonoWeight, ...]", ("semi-bold",)), "planetaire"))
+    # And the Python API says the same thing rather than accepting the typo.
+    with pytest.raises(ValueError, match="expected one of"):
+        _ = RenderOptions(mono_weights=cast("tuple[MonoWeight, ...]", ("semi-bold",)))
 
 
 def test_declaration_order_is_the_generator_s_order_not_the_host_s() -> None:
