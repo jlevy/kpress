@@ -202,8 +202,24 @@ usual: when it inlines `@font-face` sources it must rewrite the composite’s Ka
 URLs as well as the `../fonts/…` reading-face ones, and it must include
 `katex-text-metrics.js` before any script of its own that calls `katex.render` — the
 tables have to be set before the first render.
-Inlining also pays for a second copy of each reading face the composite names, roughly
-44 KB per face as base64.
+
+A host whose own script calls `katex.render` **after** the page has loaded —
+re-typesetting a live-filtered table, or mathematics it inserted itself — has one more
+obligation, and one call that discharges it.
+`katex-init.js` leaves the *serif* table set installed when its loop finishes, so a
+later render is laid out from PT Serif’s numbers wherever it lands; in a caption, a
+footnote or a table cell the stylesheet then draws it from Source Sans, which is the
+disagreement between drawn face and laid-out box the whole design exists to remove.
+Call `globalThis.kpressMathText.installTablesFor(node)` with the node about to be
+rendered, first. It installs the table set that node’s context asks for, stamps
+`data-kpress-math-face="sans"` on the node when that set is the sans one so the
+stylesheet draws the matching composite, and returns `"sans"`, `"prose"`, or `null` when
+the tables are not KPress’s to install (the reader opted out, or the metrics asset did
+not load). The mark and the table come out of that one call, which is the point: a host
+cannot stamp one without the other.
+The caller owns what happens after — KPress does not restore the serif set behind a
+host’s render. Inlining also pays for a second copy of each reading face the composite
+names, roughly 44 KB per face as base64.
 
 Document sizing is one knob, not many: every KPress font size derives from
 `--kpress-font-size-base` (default `1rem`), so a host that pins its own typography

@@ -54,9 +54,10 @@ defined by a contract a host can satisfy with a reading face other than PT Serif
 ## Non-Goals
 
 - Mathematics in a heading or the TOC of a *serif* document from Source Sans 3. Both are
-  sans roles, and both are set at the sans bold weight, where the sans composite’s
-  pinned regular weight would draw the mathematics a step lighter than the words;
-  recorded under Future Work.
+  sans roles and both are left out, but for two unrelated reasons, and neither is the
+  “both are set at the sans bold weight” one this plan first gave: a sans heading is at
+  550 (`h3`) or 540 (`h4`) against tables built at 400, and the TOC receives no rendered
+  mathematics at all. Recorded under Future Work.
   Under the sans reading face the whole document is sans and headings get the composite
   with everything else.
 - Greek from the reading face; the vendored subset has none.
@@ -187,13 +188,35 @@ bold slots, which `.mathbf` and `.boldsymbol` ask for instead of upstream’s 70
 
 | Sans slot | Source Sans 3 | KaTeX face for Greek, scaled, and next in the stack | Factor |
 | --- | --- | --- | ---: |
-| normal 400 | Variable, clamped to 400 | KaTeX_Main-Regular | 96.6% |
+| normal 400 | Variable, clamped to 400 | KaTeX_Main-Regular | 96.0% |
 | italic 400 | Variable italic, clamped to 400 | KaTeX_Math-Italic | 110.2% |
-| normal 650 | Variable, clamped to 650 | KaTeX_Main-Bold | 96.2% |
+| normal 650 | Variable, clamped to 650 | KaTeX_Main-Bold | 95.2% |
 | italic 650 | Variable italic, clamped to 650 | KaTeX_Math-BoldItalic | 109.3% |
 
-The upright factors are below 1, which the serif composite’s never were: Computer
-Modern’s Greek capitals are 3.5% taller than Source Sans’s.
+The upright factors are below 1, which the serif composite’s never were: KaTeX_Main’s
+`H` is 683 per 1000 em against the 656 Source Sans 3 draws at 400, so the upright slots
+pull the Greek capitals down rather than up.
+That 4.1% is a ratio of *Latin* cap heights, which is what the generator derives the
+factor from, and not a measurement of the Greek outlines, whose own heights fall either
+side of it -- `devtools/katex_text_metrics.py` records the 5.7pp spread it leaves.
+The numerator is the drawn `H` rather than the declared `sCapHeight`, because Source
+Sans reports a weight-invariant 660 at every instance while the glyph it actually draws
+is 656 at 400 and 653 at 650; `OS2_INK_TOLERANCE` at 0.003 is what catches that.
+
+**Accents are outside every range and stay at 1.0.** No accent code point the bundle
+uses -- `^` U+005E for `\hat`, `~` U+007E for `\tilde`, U+02C9 for `\bar`, U+00A8 for
+`\ddot`, U+20D7 for `\vec`, U+02C7–U+02DA for the rest -- falls inside a slot’s ranges,
+so every accent draws from the KaTeX face unscaled and the generator leaves its metric
+row alone. Over a reading-face Latin base that is right.
+Over Greek the base is scaled and the accent is not: `\hat{\alpha}` in a sans role gets
+a correctly positioned circumflex 9.3% narrow for its base (1/1.102), and `\hat{\Gamma}`
+one 4.2% wide (1/0.960); the serif composite carries the same residual and a larger one,
+13.0% narrow (1/1.15) and 2.4% narrow (1/1.025). It is recorded rather than fixed.
+[kpress-design.md](kpress-design.md#math-text-face) has why widening the Greek ranges to
+cover the accent code points was the option not taken: one glyph and one table row serve
+both kinds of base, so scaling them repairs the rare construct at the common one’s
+expense, and scaling the drawn glyph without the row would put the accent in the one
+state this design forbids.
 
 **Print.** Chromium’s PDF writer turns a variable face away from its default position
 into Type3 outline paths, which is why the sans role has static instances at all
@@ -217,9 +240,30 @@ footnote is a sans role in every mode, so drawing it in the serif composite woul
 Serif glyphs on Source Sans boxes.
 It is the one place the two engines are decoupled — nothing re-renders in an overlay, so
 the per-node selection below never reaches it — and the cascade alone holds them
-together. The three scopes are separate rules so each selector stays inside the
-400-character budget the consuming host’s stylesheet check applies; the longest is 395.
-Headings and the TOC are left out; see Future Work.
+together. Two scopes, not three: the document reaches the composite through the
+`data-kpress-math-face="sans"` mark `katex-init.js` stamps, which covers the reader’s
+sans reading face as well, and the overlay reaches it by position and mode stamp.
+That is what keeps the selectors inside the 400-character budget the consuming host’s
+stylesheet check applies — measured the host’s way, on `len(prelude.strip())`, the
+longest rule in the file is 339 and none reaches 400. Spelling the twelve roles into
+every rule ran to 477. Headings and the TOC are left out; see Future Work.
+
+**What can actually carry mathematics.** The scope is where the composite applies, which
+is not the same as where an author can put an expression today, and the two differ
+enough to matter before the feature is judged on a page.
+A Markdown image caption is HTML-escaped in `format/markdown.py`
+(`_render_paragraph_close`), so `![caption with $x$](img.png)` never produces
+mathematics at all; the branch’s own test file notes it.
+Rendering each of the other containers through the pipeline shows the rest.
+The natural inline spellings -- a one-line `<figcaption>`,
+`<p class="para-caption">...</p>`, `<details><summary>...</summary>` -- leave `$x$`
+literal, because markdown-it consumes a line that opens with a block-level HTML tag as
+an HTML block and never runs the inline parser over it.
+The same containers written as raw-HTML blocks, with blank lines around their content,
+do render, and so does an inline-level wrapper such as
+`<span class="sans-text">$x$</span>`; blank lines rather than newlines are what decides
+it. Tables and footnotes need none of that and are the roles the composite pays off in
+today, so caption mathematics specifically has to be written in the block form.
 
 **Per-node metrics.** `__setFontMetrics` replaces a table in the KaTeX singleton, so
 only one set exists at a time.
@@ -355,12 +399,27 @@ contract. Upstreaming to `main` is decided after a consuming site has shipped wi
   small lift while letters stay at prose size.
 - Byte cost in a page that inlines every asset: the explainer grew from 1,177 KB to
   1,441 KB (three reading faces and three scaled Greek faces, its bold-italic slot being
-  pruned as unreachable, plus the 32 KB metrics table); the sans composite adds the two
-  variable faces again, the four static instances a printed copy uses, and a second
-  metrics table. The upright Greek faces buy a 2–2.5% cap-height match for about 75 KB of
-  that; if the cost matters more than the match, drop them and stop scaling the upright
-  Greek entries in the generator together.
+  pruned as unreachable, plus the metrics table, 32,622 B at the time of that
+  measurement); the sans composite adds the two variable faces again, the four static
+  instances a printed copy uses, and a second metrics table.
+  The upright Greek faces buy a 2–2.5% cap-height match for about 75 KB of that; if the
+  cost matters more than the match, drop them and stop scaling the upright Greek entries
+  in the generator together.
   The duplicate bytes themselves are `kpr-hhdc` under Font Consistency.
+- Byte cost in a page that links its assets, which is the ordinary case and the one the
+  sans composite makes concrete.
+  `katex-text-metrics.js` is 69,455 bytes against the serif-only asset’s 34,960, or
+  11,336 against 6,032 gzipped, so the sans tables are +5,304 bytes gzipped;
+  `katex-text-face.css` adds a few kilobytes more, most of it comment, and under half a
+  kilobyte gzipped once comments are stripped.
+  Both files are linked on every page with any mathematics, whether or not that page has
+  mathematics in a sans role, so the first visit pays roughly 8–9 KB gzipped and every
+  later one pays nothing: the files are cacheable, no `@font-face` URL is new, and the
+  rendered HTML is byte-identical either way.
+  Making it lazy needs a `has_sans_math` beside `has_math` through `format/markdown.py`,
+  `format/model.py` and `format/render.py`, the sans set in a file of its own, and
+  `applyTextMetrics` in `katex-init.js` taught to accept one set rather than requiring
+  both. Deliberately not done here; filed as a follow-up.
 - Whether to upstream to `main`, and under what option name.
 - The composite’s accents: the generator keeps KaTeX’s `skew` for the swapped italic
   letters, so `\hat{x}` over a PT Serif Italic `x` is placed for Computer Modern’s
@@ -436,11 +495,23 @@ changes when they land (`think-9r58`).
 
 Not part of this plan:
 
-- **Mathematics in a heading or the TOC.** Both are sans roles set at the sans bold
-  weight. Drawing them from the sans composite would set the mathematics at its pinned
-  400 against 650 words, and routing a heading’s mathematics to the composite’s bold
-  slots is not possible with a per-class table: KaTeX picks the table from the TeX, not
-  from the CSS.
+- **Mathematics in a heading.** A heading is a sans role, but not at a weight either
+  composite has a table for.
+  `css/document.css` gives `h3` `--kpress-font-weight-sans-medium` (550) and `h4` 540,
+  and the shared `h1`–`h6` rule’s `--kpress-font-weight-sans-bold` (650) is overridden
+  at every level; `h1`, `h2`, `h5` and `h6` re-declare `--kpress-font-prose` and are not
+  sans at all, `h2` being serif italic 400. Drawing a heading’s mathematics from the
+  sans composite would set it at the pinned 400 against 550 or 540 words, and routing it
+  to the bold slots instead is not possible with a per-class table: KaTeX picks the
+  table from the TeX, not from the CSS. A third pair of slots pinned at the heading
+  weights would be the honest fix, at the cost of another face and another table for
+  each.
+- **Mathematics in the TOC** is not future work at all, because the TOC never receives
+  any. `_plain_inline_text` in `format/markdown.py` keeps only the `text` and
+  `code_inline` children of a heading’s inline token, so a `math_inline` token is
+  dropped before `Heading.title` exists, and `_render_toc` in `format/render.py` escapes
+  what is left. A heading written `## Bound with $x$ inside` reaches the TOC with the
+  expression simply absent from its title.
 
 Sans math, once listed here, shipped as its own subsection above (`kpr-7f9z`). Greek
 sizing, also once listed here, shipped inside the feature: the composite’s italic slots
