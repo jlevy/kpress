@@ -528,15 +528,13 @@ class PaintProbe(TypedDict):
     wait: list[WaitEntry]
 
 
-#: The families the mathematics is drawn from: the composite, and the two KaTeX
-#: families every rule in katex-text-face.css names after it (and that draw the
-#: letters and digits themselves when the face is off).
+#: The composite family the mathematics is drawn from where the face is on.
 TEXT_FACE_FAMILY = "KPress Math Text"
-KATEX_MATH_FAMILIES = ("KaTeX_Main", "KaTeX_Math")
 
-#: How many `@font-face` rules the pinned KaTeX bundle declares for each of the two
-#: families the init waits on. The init asks for each of them by name, so a bump that
-#: adds or drops one has to be seen here.
+#: The two KaTeX families every rule in katex-text-face.css names after the composite
+#: (and that draw the letters and digits themselves when the face is off), against how
+#: many `@font-face` rules the pinned bundle declares for each. The init asks for every
+#: one of them by name, so a bump that adds or drops a face has to be seen here.
 KATEX_FACE_COUNTS = {"KaTeX_Main": 4, "KaTeX_Math": 2}
 
 #: The KaTeX faces every expression on the fixture page is drawn from, whatever it
