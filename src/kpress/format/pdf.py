@@ -105,8 +105,9 @@ _PRINT_FONTS_TIMEOUT_MS: Final = 15_000
 
 #: Print layout asks for faces screen layout never did: the static sans instances are
 #: declared inside ``@media print``, so they start loading only once print layout
-#: requests them, and ``font-display: block`` leaves their text invisible until they
-#: arrive. Force print layout, wait for what it asked for, then request the margin-box
+#: requests them, and a print issued at that moment draws before they arrive -- in the
+#: variable face and its Type3 outline paths, which is what the instances exist to
+#: replace. Force print layout, wait for what it asked for, then request the margin-box
 #: families by name and wait again.
 _PRINT_FONTS_READY_JS: Final = """
 async ([tokens, sample, timeoutMs]) => {
