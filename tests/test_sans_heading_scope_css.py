@@ -402,7 +402,7 @@ def test_the_blocks_here_are_the_sans_math_roles_they_claim_to_be() -> None:
     and the reader's own sans reading face) are not containers kpress renders author
     headings into.
     """
-    script = read_package_text("katex/katex-init.js")
+    script = read_package_text("katex/katex-math-runtime.js")
     declared = _SANS_CONTEXT.search(script)
     assert declared, "katex-init.js declares no SANS_CONTEXT"
     listed = {role.strip() for role in declared.group("value")[1:-1].split(",")}

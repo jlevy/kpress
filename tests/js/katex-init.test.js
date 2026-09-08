@@ -17,7 +17,10 @@ const SCRIPT_PATH = resolve(
 );
 
 function runInitScript() {
-  const source = readFileSync(SCRIPT_PATH, "utf8");
+  const source =
+    readFileSync(resolve(dirname(SCRIPT_PATH), "katex-math-runtime.js"), "utf8") +
+    "\n" +
+    readFileSync(SCRIPT_PATH, "utf8");
   return new Function(`${source}\nreturn { enhanceMath, applyTextMetrics };`)();
 }
 

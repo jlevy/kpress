@@ -183,7 +183,7 @@ def _preludes(css: str) -> list[str]:
 
 def _js_sans_context() -> list[str]:
     """The one list of sans roles, read out of `katex-init.js`."""
-    script = read_package_text("katex/katex-init.js")
+    script = read_package_text("katex/katex-math-runtime.js")
     found = _JS_SANS_CONTEXT.search(script)
     assert found, "katex-init.js declares no SANS_CONTEXT"
     return [role.strip() for role in found.group("value")[1:-1].split(",")]
@@ -396,7 +396,7 @@ def test_the_stylesheet_names_no_role_and_reaches_the_document_only_by_the_mark(
     on what the mark is called.
     """
     css = _COMMENT_RE.sub("", _css())
-    script = read_package_text("katex/katex-init.js")
+    script = read_package_text("katex/katex-math-runtime.js")
 
     for role in (*REQUIRED_ROLES, *ADDED_ROLES, PROSE_FONT_SANS):
         assert role not in css, f"{role} is spelled in the stylesheet; the script owns the list"

@@ -182,26 +182,27 @@ face of its own (full contract: [Math Text Face](kpress-design.md#math-text-face
 first is CSS: redeclare the `KPress Math Text` faces after KPress’s
 `katex/katex-text-face.css`, and the host’s faces win for the Latin and digit ranges
 they declare while KPress’s KaTeX fallbacks keep the symbols.
-`katex-init.js` waits for the composite by description (`700 1em 'KPress Math Text'` and
-its three siblings) rather than face by face, so the browser matches the host’s faces
-and those are the ones waited on and fetched; the host’s mathematics paints once as
-well, and the KPress faces it replaced are not pulled onto the page.
-`KPress Math Text` is the whole of that seam: the same wait takes the `KaTeX_Main` and
-`KaTeX_Math` faces off `document.fonts` by name, on the assumption that the pinned
-bundle is the only thing declaring them, so a host that redeclares either family gets
-both sets loaded and KPress’s shadowed files fetched onto pages that never draw them.
-Substitute a math face through the composite, not by redeclaring the KaTeX families.
-The second is JS: regenerate `globalThis.kpressKatexTextMetrics` for that face with
-`devtools/katex_text_metrics.py` and load it before `katex-init.js`, since KaTeX lays
-out from those tables and faces swapped without them leave Computer Modern boxes around
-the host’s glyphs. Both seams have a sans twin, `KPress Math Text Sans` and the
-generator’s `sans` table set, which is what a caption, a footnote, a table and the
-reader’s sans reading face draw from.
-A host that pins only its serif leaves them alone and keeps Source Sans there; a host
-that pins its sans as well redeclares both families and regenerates both sets, and must
-keep the `sans` key present — `katex-init.js` treats a missing sans set the way it
-treats missing tables anywhere else and turns the whole face off, since sans faces laid
-out from serif numbers is the state the design forbids.
+`katex-math-runtime.js` waits for the composite by description
+(`700 1em 'KPress Math Text'` and its three siblings) rather than face by face, so the
+browser matches the host’s faces and those are the ones waited on and fetched; the
+host’s mathematics paints once as well, and the KPress faces it replaced are not pulled
+onto the page. `KPress Math Text` is the whole of that seam: the same wait takes the
+`KaTeX_Main` and `KaTeX_Math` faces off `document.fonts` by name, on the assumption that
+the pinned bundle is the only thing declaring them, so a host that redeclares either
+family gets both sets loaded and KPress’s shadowed files fetched onto pages that never
+draw them. Substitute a math face through the composite, not by redeclaring the KaTeX
+families. The second is JS: regenerate `globalThis.kpressKatexTextMetrics` for that face
+with `devtools/katex_text_metrics.py` and load it before `katex-math-runtime.js`, since
+KaTeX lays out from those tables and faces swapped without them leave Computer Modern
+boxes around the host’s glyphs.
+Both seams have a sans twin, `KPress Math Text Sans` and the generator’s `sans` table
+set, which is what a caption, a footnote, a table and the reader’s sans reading face
+draw from.
+A host that pins only its serif leaves them alone and keeps Source Sans there;
+a host that pins its sans as well redeclares both families and regenerates both sets,
+and must keep the `sans` key present — `katex-math-runtime.js` treats a missing sans set
+the way it treats missing tables anywhere else and turns the whole face off, since sans
+faces laid out from serif numbers is the state the design forbids.
 A host that redeclares the sans faces gives each slot a single `font-weight`, not a
 range: the table it ships describes one weight, and a variable face is clamped to the
 range its `@font-face` declares.
@@ -211,23 +212,18 @@ URLs as well as the `../fonts/…` reading-face ones, and it must include
 `katex-text-metrics.js` before any script of its own that calls `katex.render` — the
 tables have to be set before the first render.
 
-A host whose own script calls `katex.render` **after** the page has loaded —
-re-typesetting a live-filtered table, or mathematics it inserted itself — has one more
-obligation, and one call that discharges it.
-`katex-init.js` leaves the *serif* table set installed when its loop finishes, so a
-later render is laid out from PT Serif’s numbers wherever it lands; in a caption, a
-footnote or a table cell the stylesheet then draws it from Source Sans, which is the
-disagreement between drawn face and laid-out box the whole design exists to remove.
-Call `globalThis.kpressMathText.installTablesFor(node)` with the node about to be
-rendered, first. It installs the table set that node’s context asks for, stamps
-`data-kpress-math-face="sans"` on the node when that set is the sans one so the
-stylesheet draws the matching composite, and returns `"sans"`, `"prose"`, or `null` when
-the tables are not KPress’s to install (the reader opted out, or the metrics asset did
-not load). The mark and the table come out of that one call, which is the point: a host
-cannot stamp one without the other.
-The caller owns what happens after — KPress does not restore the serif set behind a
-host’s render. Inlining also pays for a second copy of each reading face the composite
-names, roughly 44 KB per face as base64.
+A host that renders its own mathematics loads `katex-math-runtime.js` after the bundle
+and metrics asset, then calls
+`await globalThis.kpressMathText.render(source, node, options, context)`. The runtime
+initializes independently of the native render loop, selects and restores the metric
+tables, and waits for the fonts used by the rendered result before showing it.
+This also covers early event callbacks and large operators whose fonts the initial
+warmup does not request.
+A host can extend the sans-context decision with `context.isSansContext(node)` and
+prepare a batch with `ready(nodes, context)`. Call `complete()` once the initial batch
+settles, to release the head bootstrap’s pending MathML state.
+See [Rendering Mathematics in a Host](math-rendering-api.md) for the complete API, error
+fallback and self-contained-page options.
 
 Document sizing is one knob, not many: every KPress font size derives from
 `--kpress-font-size-base` (default `1rem`), so a host that pins its own typography

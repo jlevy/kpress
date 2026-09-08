@@ -9,6 +9,15 @@
 // hosts never load this bootstrap at all (fragment path).
 (() => {
   const root = document.documentElement;
+  // Native MathML uses the browser's math face. Reserve its space until the
+  // enhanced result is ready, with recovery if scripts or font loads fail.
+  root.dataset.kpressMathPending = "true";
+  const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+    globalThis
+  );
+  mathState.kpressMathPendingTimer = setTimeout(() => {
+    delete root.dataset.kpressMathPending;
+  }, 3000);
   /** @param {string} key */
   const stored = (key) => {
     try {

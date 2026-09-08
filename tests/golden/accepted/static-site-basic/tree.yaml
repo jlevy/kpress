@@ -1,10 +1,10 @@
 files:
-  _kpress/assets/css/components.efdbac1d6fc59b32.css:
-    bytes: 81742
-    sha256_16: efdbac1d6fc59b32
-  _kpress/assets/css/components.efdbac1d6fc59b32.css.gz:
-    bytes: 22718
-    sha256_16: 861b950c3489df4d
+  _kpress/assets/css/components.e96de24af66b8d9d.css:
+    bytes: 81882
+    sha256_16: e96de24af66b8d9d
+  _kpress/assets/css/components.e96de24af66b8d9d.css.gz:
+    bytes: 22756
+    sha256_16: ee5cc8c7a97871e5
   _kpress/assets/css/document.20d6af8f353834cf.css:
     bytes: 15075
     sha256_16: 20d6af8f353834cf
@@ -126,17 +126,17 @@ files:
     json:
       files:
       - applied_pipeline: []
-        content_hash: efdbac1d6fc59b32
+        content_hash: e96de24af66b8d9d
         kind: css
-        path: _kpress/assets/css/components.efdbac1d6fc59b32.css
-        size: 81742
+        path: _kpress/assets/css/components.e96de24af66b8d9d.css
+        size: 81882
       - applied_pipeline: []
         compression: gzip
-        content_hash: 861b950c3489df4d
+        content_hash: ee5cc8c7a97871e5
         kind: gz
-        path: _kpress/assets/css/components.efdbac1d6fc59b32.css.gz
-        size: 22718
-        source_path: _kpress/assets/css/components.efdbac1d6fc59b32.css
+        path: _kpress/assets/css/components.e96de24af66b8d9d.css.gz
+        size: 22756
+        source_path: _kpress/assets/css/components.e96de24af66b8d9d.css
       - applied_pipeline: []
         content_hash: 20d6af8f353834cf
         kind: css
@@ -355,16 +355,16 @@ files:
         size: 1722
         source_path: _kpress/assets/js/theme.eef4b6281e1a2cdd.js
       - applied_pipeline: []
-        content_hash: da035b66eeff3606
+        content_hash: 05400baeff73791a
         kind: html
         path: about.html
-        size: 10714
+        size: 11132
       - applied_pipeline: []
         compression: gzip
-        content_hash: 7e29025eca0491fb
+        content_hash: d6060ce8905e2460
         kind: gz
         path: about.html.gz
-        size: 3429
+        size: 3616
         source_path: about.html
       - applied_pipeline: []
         content_hash: 5945811896b61c26
@@ -372,16 +372,16 @@ files:
         path: assets/logo.svg
         size: 133
       - applied_pipeline: []
-        content_hash: c05668208d552af9
+        content_hash: a9e00ebc5a99e683
         kind: html
         path: index.html
-        size: 10972
+        size: 11390
       - applied_pipeline: []
         compression: gzip
-        content_hash: b7137b916674ddfa
+        content_hash: b4f1695d1eef7a53
         kind: gz
         path: index.html.gz
-        size: 3526
+        size: 3713
         source_path: index.html
       - applied_pipeline: []
         content_hash: 16ceb5ee3e0dc13a
@@ -389,10 +389,10 @@ files:
         path: robots.txt
         size: 23
       assets:
-      - content_hash: efdbac1d6fc59b32
+      - content_hash: e96de24af66b8d9d
         kind: package
         media_type: text/css
-        output_path: _kpress/assets/css/components.efdbac1d6fc59b32.css
+        output_path: _kpress/assets/css/components.e96de24af66b8d9d.css
         path: css/components.css
         source: package
       - content_hash: 20d6af8f353834cf
@@ -610,6 +610,15 @@ files:
       // hosts never load this bootstrap at all (fragment path).
       (() => {
         const root = document.documentElement;
+        // Native MathML uses the browser's math face. Reserve its space until the
+        // enhanced result is ready, with recovery if scripts or font loads fail.
+        root.dataset.kpressMathPending = "true";
+        const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+          globalThis
+        );
+        mathState.kpressMathPendingTimer = setTimeout(() => {
+          delete root.dataset.kpressMathPending;
+        }, 3000);
         /** @param {string} key */
         const stored = (key) => {
           try {
@@ -647,7 +656,7 @@ files:
       <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.ebb7ea8f99a3f702.css">
       <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
       <link rel="stylesheet" href="/_kpress/assets/css/document.20d6af8f353834cf.css">
-      <link rel="stylesheet" href="/_kpress/assets/css/components.efdbac1d6fc59b32.css">
+      <link rel="stylesheet" href="/_kpress/assets/css/components.e96de24af66b8d9d.css">
       <link rel="stylesheet" href="/_kpress/assets/css/print.f94d203df8621af9.css">
       <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.94482bb5f8c9001e.css">
       <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
@@ -741,8 +750,8 @@ files:
       </body>
       </html>
   about.html.gz:
-    bytes: 3429
-    sha256_16: 7e29025eca0491fb
+    bytes: 3616
+    sha256_16: d6060ce8905e2460
   assets/logo.svg:
     text: |
       <svg xmlns="http://www.w3.org/2000/svg" width="80" height="20" role="img" aria-label="KPress"><text x="0" y="15">KPress</text></svg>
@@ -784,6 +793,15 @@ files:
       // hosts never load this bootstrap at all (fragment path).
       (() => {
         const root = document.documentElement;
+        // Native MathML uses the browser's math face. Reserve its space until the
+        // enhanced result is ready, with recovery if scripts or font loads fail.
+        root.dataset.kpressMathPending = "true";
+        const mathState = /** @type {typeof globalThis & {kpressMathPendingTimer?: number}} */ (
+          globalThis
+        );
+        mathState.kpressMathPendingTimer = setTimeout(() => {
+          delete root.dataset.kpressMathPending;
+        }, 3000);
         /** @param {string} key */
         const stored = (key) => {
           try {
@@ -821,7 +839,7 @@ files:
       <link rel="stylesheet" href="/_kpress/assets/css/style-tokens.ebb7ea8f99a3f702.css">
       <link rel="stylesheet" href="/_kpress/assets/css/syntax.807cf5be35b5a8dd.css">
       <link rel="stylesheet" href="/_kpress/assets/css/document.20d6af8f353834cf.css">
-      <link rel="stylesheet" href="/_kpress/assets/css/components.efdbac1d6fc59b32.css">
+      <link rel="stylesheet" href="/_kpress/assets/css/components.e96de24af66b8d9d.css">
       <link rel="stylesheet" href="/_kpress/assets/css/print.f94d203df8621af9.css">
       <link rel="stylesheet" href="/_kpress/assets/css/print-fonts.94482bb5f8c9001e.css">
       <script type="module" src="/_kpress/assets/js/theme.eef4b6281e1a2cdd.js"></script>
@@ -918,8 +936,8 @@ files:
       </body>
       </html>
   index.html.gz:
-    bytes: 3526
-    sha256_16: b7137b916674ddfa
+    bytes: 3713
+    sha256_16: b4f1695d1eef7a53
   robots.txt:
     text: |
       User-agent: *
