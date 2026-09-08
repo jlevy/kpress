@@ -275,8 +275,8 @@ def test_table_code_steps_down_a_mono_tier_at_every_width() -> None:
     The size ramps pair by index (mono/normal, mono-small/smaller,
     mono-tiny/tiny), so code holds one optical weight against the text around
     it. A table reduces its text to ``small`` but used to leave code at ``mono``
-    everywhere except the narrow band — 0.863 of its own cell, heavier than the
-    same span in prose at 0.820.
+    everywhere except the narrow band — 0.916 of its own cell, heavier than the
+    same span in prose at 0.870.
 
     The narrow band looked right only because it ALSO drops table text to
     ``smaller``; the pairing came from the text side. So scoping this
@@ -456,6 +456,12 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/kpress-print-sans-latin-550-italic.woff2",
         "fonts/kpress-print-sans-latin-600-italic.woff2",
         "fonts/kpress-print-sans-latin-650-italic.woff2",
+        # The mono face and the stylesheets that declare it: the default pair only,
+        # since mono_weights decides the rest (see tests/test_mono_face.py).
+        "css/mono-planetaire-400-normal.css",
+        "css/mono-planetaire-700-normal.css",
+        "fonts/planetaire-mono-text-latin-400-normal.woff2",
+        "fonts/planetaire-mono-text-latin-700-normal.woff2",
     } <= asset_ids
     assert all("latest" not in asset.path for asset in manifest.assets)
     # The shipped set and the generator cannot drift apart: the ten names above are

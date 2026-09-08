@@ -14,6 +14,12 @@ ThemeMode = Literal["system", "light", "dark"]
 # values either way.
 TocRail = Literal["auto", "reserved"]
 TocMode = Literal["auto", "on", "off"]
+# Mirror format.model.MonoFont / MonoWeight / DEFAULT_MONO_WEIGHTS, for the same
+# reason as the two above. tests/test_public_contract.py asserts the mirror against
+# the format package, so the two cannot drift apart silently.
+MonoFont = Literal["planetaire", "system"]
+MonoWeight = Literal["regular", "bold", "italic", "bold-italic", "medium", "semibold", "extrabold"]
+DEFAULT_MONO_WEIGHTS: tuple[MonoWeight, ...] = ("regular", "bold", "italic", "bold-italic")
 
 
 @dataclass(frozen=True)
@@ -82,6 +88,11 @@ class KPressRenderRequest:
     # the counterpart of RenderOptions.extra_attributes / format.html.extra_attributes,
     # so embeds and exports carry the same attribute policy as static publish.
     extra_attributes: tuple[str, ...] = ()
+    # Which family draws code, and which of its styles the document declares — the
+    # counterpart of RenderOptions.mono_font / mono_weights. A host that publishes
+    # without the vendored mono face has to be able to embed without it too.
+    mono_font: MonoFont = "planetaire"
+    mono_weights: tuple[MonoWeight, ...] = DEFAULT_MONO_WEIGHTS
 
 
 @dataclass(frozen=True)
@@ -108,3 +119,9 @@ class KPressExportRequest:
     # the counterpart of RenderOptions.extra_attributes / format.html.extra_attributes,
     # so embeds and exports carry the same attribute policy as static publish.
     extra_attributes: tuple[str, ...] = ()
+    # Which family draws code, and which of its styles the document declares — the
+    # counterpart of RenderOptions.mono_font / mono_weights. Without these an export
+    # (`--pdf` included) always shipped the vendored face with no way to decline it,
+    # while a static publish of the same document could set format.mono_font: system.
+    mono_font: MonoFont = "planetaire"
+    mono_weights: tuple[MonoWeight, ...] = DEFAULT_MONO_WEIGHTS

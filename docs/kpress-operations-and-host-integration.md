@@ -242,6 +242,31 @@ sizing too).
 See [Sizing Policy](kpress-design.md#sizing-policy) for the contract and the
 deliberately root-relative layout lengths.
 
+Code is the one role with an asset-pruning setting rather than only a display switch.
+By default a document declares four Planetaire Mono Text faces — regular, bold, italic
+and bold-italic, 57,260 bytes of woff2, about 56KB — plus their four
+`mono-planetaire-*.css` stylesheets.
+That is what a **static build copies**, not what a reader downloads: a browser fetches a
+declared face only when a glyph resolves to it, so a prose page with no code fetches
+none of the four, and a page of Python fetches three.
+No asset mode base64s a font — inline mode leaves woff2 external and `single-file`
+export is refused — so a declared face costs a page nothing until its style appears on
+it. A host that sets `mono_font: "system"` gets none of it: the faces and their
+stylesheets never enter the manifest, so there is nothing to link, copy, or inline, and
+`--kpress-font-mono` resolves to the platform stack.
+That prunes all seven subsets, about 104KB, from the built tree.
+A host that wants the three heavier upright weights names them in `mono_weights`
+(`medium`, `semibold`, `extrabold`) and pays about 16 KB each in the built tree.
+Narrowing below the four is refused rather than accepted: KPress’s own stylesheets ask
+for all four, and a style they ask for and a document withholds is drawn by synthesis —
+which on the weight axis puts `/Type3` outlines in an exported PDF. See
+[Mono Face](kpress-design.md#mono-face) for the table of what is refused and why.
+The reader-facing `font_mode: "system"` is a different lever: it also puts code in the
+platform mono, but it changes only the cascade, so the faces stay in the manifest.
+Sizing the mono against a family of its own goes through `--kpress-host-font-size-mono`,
+which carries the small and tiny rungs with it; see
+[Mono Face](kpress-design.md#mono-face) for how the default ratio is derived.
+
 Theming is equally declarative: rendered fragments carry no baked theme or palette
 attributes, so a host stamps `data-kpress-resolved-theme` (and optionally
 `data-kpress-palette`) on one scope — `:root` or a wrapper — and updates it on toggle;

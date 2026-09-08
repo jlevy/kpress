@@ -239,8 +239,9 @@ feature guarantees); the sections named in the table carry the architecture deta
   popover with a `system`/`light`/`dark` icon chooser; embedded hosts own the control
   instead.
 - **Font model.** A global `font_mode` selects vendored reader faces (`custom`) or the
-  platform stack (`system`); reader fonts are vendored package assets rather than CDN
-  dependencies.
+  platform stack (`system`); `mono_font` and `mono_weights` decide separately which mono
+  faces a document declares at all.
+  Reader fonts are vendored package assets rather than CDN dependencies.
 
 ### Interactions
 
@@ -1869,12 +1870,88 @@ paints.
 
 ### Mono Face
 
-Code is set in the platform’s own monospace stack -- `ui-monospace`, `SFMono-Regular`,
-Menlo, Consolas -- so it is the one role a KPress document does not draw from a face
-KPress ships, and `--kpress-font-size-mono` stays at `0.82` of the base, a ratio tuned
-for those faces.
-Planetaire Mono Text is the face chosen to replace it, sized by x-height
-at `0.87`, and lands with on/off and weight settings under `kpr-v731` and `kpr-hqrr`.
+Code is set in **Planetaire Mono Text**: B612 Mono’s letterforms with Hack’s punctuation
+and symbols, under the SIL Open Font License, vendored as latin subsets from
+[jlevy/planetaire](https://github.com/jlevy/planetaire).
+It was chosen from a four-way comparison beside PT Serif (Menlo, Source Code Pro, Hack
+and Planetaire), each sized from its own ink rather than from its nominal point size.
+Before it, code was the one role a document did not draw from a face KPress ships, so a
+printed page carried whatever mono the exporting machine had: the explainer PDF that
+started this work embedded 56 KB of the build machine’s Menlo.
+
+**The size, derived rather than picked.** `--kpress-font-size-mono` is `0.87` of the
+prose size. Planetaire draws an x-height of 1120/2000 = 0.560 em against PT Serif’s
+500/1000 = 0.500, so at 0.87 code’s x-height is 0.487 em, about **97%** of the prose
+x-height beside it — under parity, so a code span reads as an inset rather than bulging
+out of its line. The width follows from the same number: a mono column is 1204/2000 =
+0.602 em wide, so 45 / (0.87 × 0.602) ≈ **85 columns** fit the `--kpress-measure`
+reading column (85.9, and a column is not divisible).
+`tests/test_mono_face.py` re-derives both figures from the shipped faces, so the token
+and the ink cannot drift apart.
+The `-small` and `-tiny` rungs derive from the mono rung rather than from the base, so
+`--kpress-host-font-size-mono` retunes all three at once.
+Their multipliers are `0.9` and `0.85` — the prose ramp’s own steps, since the two ramps
+pair by index — which is what holds all three rungs at the same 97%. They were `0.915`
+and `0.855`, the pre-Planetaire absolutes rescaled and tuned for the system monos this
+face replaced, which left the small and tiny rungs at 99% and 98%, drifting toward the
+parity the rung above them is chosen to stay under.
+
+**What ships, and what a document declares.** `devtools/subset_mono.py` subsets seven
+upstream styles to the same latin `unicode-range` every other vendored face covers and
+writes each one beside a stylesheet of its own: `mono-planetaire-<weight>-<style>.css`,
+one `@font-face` each.
+One stylesheet per style is the mechanism behind `mono_weights`, and selecting
+stylesheets is how a render says so without rewriting CSS. What it buys is the built
+tree: a style nobody declared is never linked or copied, so the default set leaves three
+of the seven subsets (48 KB of woff2) out of a static build, and `mono_font: system`
+leaves all seven out (104 KB). It does not buy fewer fetched bytes on top of that, and
+the earlier claim that it did — that a single-file page inlines every face it declares —
+described behaviour KPress does not have: `single-file` export is refused, inline mode
+leaves woff2 external, and no asset mode base64s a font.
+
+**The default is every style the packaged stylesheets ask for**: regular, bold, italic
+and bold-italic. `code` resolves to 400 and the highlighter’s keywords to 700;
+`syntax.css` sets comment tokens italic and preprocessor and docstring tokens italic
+*and* 700. A style a rule asks for and a document does not declare is not absent from
+the page — the browser invents it, which is the one thing this face was vendored to
+stop.
+
+Two facts settle the default, and they pull the same way:
+
+- **Declaring is not loading.** A browser fetches a declared face only when a glyph
+  resolves to it, so the cost of a declaration falls on the page that uses the style and
+  on no other. Measured with all four declared: a prose page with no code fetches nothing
+  and leaves all four faces `unloaded`; a page of Python fetches `400-italic` for its
+  comments and leaves `700-italic` `unloaded`, because Pygments’ Python lexer emits no
+  italic-and-700 token — a page of C, whose `#include` does, fetches that one too.
+  KPress already declares four PT Serif faces on this reasoning; mono declaring two of
+  four was the outlier.
+- **Synthesis is what breaks the rule that every glyph comes from a shipped face.** The
+  two axes fail differently.
+  A missing slant is drawn by shearing the upright face: still `/Type0` in a PDF, but
+  leaning about 3° steeper than the drawn italic (Chromium’s shear is a flat 0.25, i.e.
+  14.04°, against the 11° the face is drawn with).
+  A missing weight is drawn by emboldening a lighter face, which Chromium cannot express
+  as an embedded font and emits as **`/Type3` glyph procedures** — a page of paths that
+  only looks like text, unsearchable and unselectable, and the precise failure this
+  feature exists to remove.
+
+Because of the second, a set that leaves either axis synthesized is refused at the
+config surface rather than accepted and quietly degraded — see the table below.
+The three heavier italics upstream offers are not vendored at all, since no rule reaches
+an italic above 700.
+
+`mono_font: system` declares none of them, hands `--kpress-font-mono` back to
+`ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`, and drops the faces from the
+manifest, so a hosted page fetches nothing and an inlining host carries nothing.
+That asset consequence is why it is a render option and not only a CSS switch; the
+reader-facing `font_mode="system"` also puts code in the platform mono, but leaves the
+asset set alone, exactly as it does for PT Serif.
+
+Provenance, sha256 and licences are in
+[`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md); what a host
+that inlines assets prunes is in
+[Operations and Host Integration](kpress-operations-and-host-integration.md#host-integration).
 
 ### Document Actions Widget
 
@@ -1948,7 +2025,47 @@ override any single role on its own, and otherwise the vendored reader faces app
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
 | `--kpress-font-body` | sans: Source Sans 3 | `.kpress` wrapper base (a fallback; `.kpress-prose` overrides it for content) | `--kpress-host-font-body` |
-| `--kpress-font-mono` | mono: system mono stack | code fences, inline code | `--kpress-host-font-mono` |
+| `--kpress-font-mono` | mono: Planetaire Mono Text | code fences, inline code | `--kpress-host-font-mono` |
+
+**Every font setting, on one surface.** Four settings and two sizing hooks decide which
+faces a document uses; each is a `RenderOptions` field, most are also a `kpress.yml`
+key, and each is readable from the rendered markup:
+
+| Setting | Options | Config key | Data attribute | Host hook |
+| --- | --- | --- | --- | --- |
+| `font_mode` | `custom` (default), `system` | none (render option only) | `data-kpress-fonts` on the `.kpress` article; the reader’s own choice is `data-kpress-font-set` on `<html>` | none: `system` overrides the role tokens outright |
+| `prose_font` | `serif` (default), `sans` | `format.prose_font` | `data-kpress-prose-font` on `<html>` | `--kpress-host-font-prose-sans` for the sans reading stack |
+| `math_text_font` | `prose` (default), `katex` | `format.math_text_font` | `data-kpress-math-text` on `<html>` | `--kpress-host-font-prose` (the composite follows the reading face) |
+| `mono_font` | `planetaire` (default), `system` | `format.mono_font` | `data-kpress-mono-font` on `<html>` | `--kpress-host-font-mono` |
+| `mono_weights` | `regular`, `bold`, `italic`, `bold-italic` (all four the default), plus any of `medium`, `semibold`, `extrabold` | `format.mono_weights` | none: it selects stylesheets, not a switch | none |
+| the type ramp | — | — | — | `--kpress-host-font-size-base`, the one knob everything derives from |
+| the mono rung | — | — | — | `--kpress-host-font-size-mono`, which carries small and tiny with it |
+
+`mono_weights` is checked rather than merely parsed, because the interesting values fail
+quietly. Under `mono_font: planetaire` the set must cover all four styles the packaged
+stylesheets ask for; anything less is refused at config load, naming the missing styles
+and what the browser would have drawn instead:
+
+| set | what it leaves to the browser | verdict |
+| --- | --- | --- |
+| the four defaults, with or without `medium`/`semibold`/`extrabold` | nothing | accepted |
+| `[regular, bold]` | comment and docstring tokens sheared from the upright faces | refused (slant synthesis) |
+| `[regular, bold, italic]` | docstring tokens emboldened from `400-italic` | refused — measured `/Type3` |
+| `[regular, italic]`, `[regular]` | keyword tokens emboldened too | refused — measured `/Type3`, up to 2.8× the PDF size |
+| `[medium, bold]` | nothing, but no 400 face exists, so ordinary code is set in Medium | refused (no `regular`) |
+| `[]` | everything: the page names a family nothing declares, keeps Planetaire’s 0.87 size ratio, and draws in the platform mono | refused — use `mono_font: system` |
+
+Under `mono_font: system` no Planetaire face is declared at all, so `mono_weights` is
+ignored and any value is accepted, `[]` included.
+That is the supported way to ship no mono face; an empty weight list is not.
+
+Two of those change what ships rather than only how it renders.
+`mono_font: system` drops every Planetaire face and its stylesheets from the manifest,
+and `mono_weights` narrows that set to the styles named; the rest are display switches
+over an unchanged asset set.
+A reader’s persisted `font_mode` and `prose_font` choices override the site default at
+display time, which is why those two are stamped where a bootstrap can re-stamp them;
+`mono_font` and `mono_weights` are publishing decisions and are not reader-switchable.
 
 The reading body is therefore serif by default and is settable serif↔sans per role: a
 host flips it by setting `--kpress-host-font-prose` (a host app’s serif/sans
@@ -1962,8 +2079,8 @@ footnote preview tooltips, so the two always agree.
 Every text stack leads with a face KPress ships, so a document draws the same glyphs on
 any machine and a printed page embeds them rather than borrowing from the renderer; the
 system stacks trailing each family are the fallback for a face that failed to load, not
-part of the design. Mono is the standing exception, and `font_mode="system"` is the one
-place the platform is asked for a font on purpose.
+part of the design. `font_mode="system"` and `mono_font="system"` are the two places the
+platform is asked for a font on purpose.
 
 Vendored font files ship as package assets and static builds copy them into the output
 tree; per-file provenance, sha256 and licence are recorded in
