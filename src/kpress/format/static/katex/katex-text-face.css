@@ -34,8 +34,8 @@
  * `KPress Math Text` and the sans `KPress Math Text Sans` below -- as on the
  * prose PT Serif faces in style-tokens.css and unlike the vendored KaTeX
  * bundle's `swap`. A late slot can visibly repaint the letters and digits.
- * `katex-math-runtime.js` waits for the selected composite slots and then the
- * glyphs used by each hidden rendered formula, including its KaTeX construct
+ * `katex-math-runtime.js` waits for the glyphs used by each hidden rendered
+ * formula, including its composite slots and KaTeX construct
  * families. The formula is revealed only when its required faces are ready;
  * `block` also briefly suppresses fallback glyphs when the CSS is used without
  * that JavaScript boundary.

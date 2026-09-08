@@ -535,7 +535,20 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
 }
 
 # Classic KaTeX assets expose one host API after the metrics asset has loaded.
-PUBLIC_MATH_RUNTIME_METHODS = ("ready", "render", "installTablesFor", "restore", "complete")
+PUBLIC_MATH_RUNTIME_METHODS = (
+    "ready",
+    "render",
+    "hydrate",
+    "installTablesFor",
+    "restore",
+    "complete",
+)
+PUBLIC_MATH_PREPARED_ATTRIBUTES = (
+    "data-kpress-math-source",
+    "data-kpress-math-display",
+    "data-kpress-math-profile",
+    "data-kpress-math-prepared",
+)
 
 BUILD_MANIFEST_REQUIRED_KEYS = (
     "schema_version",
@@ -565,6 +578,7 @@ __all__ = [
     "PUBLIC_HOST_CSS_VARIABLES",
     "PUBLIC_JS_EXPORTS",
     "PUBLIC_MATH_RUNTIME_METHODS",
+    "PUBLIC_MATH_PREPARED_ATTRIBUTES",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",
     "PUBLIC_PASS_THROUGH_ATTRIBUTES",

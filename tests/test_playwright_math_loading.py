@@ -14,18 +14,26 @@ import pytest
 
 from .math_font_probe import FONT_ADVANCE_INIT
 from .test_playwright_math_text_face import (
+    _PAINT_PROBE_INIT,  # pyright: ignore[reportPrivateUsage]
     _build_fixture_site,  # pyright: ignore[reportPrivateUsage]
     _launch,  # pyright: ignore[reportPrivateUsage]
     _serve,  # pyright: ignore[reportPrivateUsage]
 )
 
 _DELAY_ALL = """(() => {
-  const gate = new Promise(resolve => { globalThis.releaseMathFonts = resolve; });
+  let held = true;
+  const gate = new Promise(resolve => {
+    globalThis.releaseMathFonts = () => { held = false; resolve(); };
+  });
   const faceLoad = FontFace.prototype.load;
   FontFace.prototype.load = function(...args) {
     return faceLoad.apply(this, args).then(face => gate.then(() => face));
   };
   const fontSet = Object.getPrototypeOf(document.fonts);
+  const check = fontSet.check;
+  fontSet.check = function(spec, text) {
+    return held ? false : check.call(this, spec, text);
+  };
   const setLoad = fontSet.load;
   fontSet.load = function(...args) {
     return setLoad.apply(this, args).then(faces => gate.then(() => faces));
@@ -94,8 +102,11 @@ def test_native_fallback_does_not_flash_during_font_preparation(tmp_path: Path) 
     with _page(public, script=_DELAY_ALL) as page:
         page.wait_for_function("globalThis.kpressMathFaceWait?.length > 0")
         assert page.locator(".kpress-math-semantic").count() == 2
-        assert not page.locator(".kpress-math-semantic").first.is_visible()
-        assert page.locator(".katex").count() == 0
+        assert page.locator(".kpress-math-semantic").first.evaluate(
+            "el => { const s = getComputedStyle(el); return s.visibility === 'hidden' || s.clipPath === 'inset(50%)'; }"
+        )
+        assert page.locator(".katex").count() == 2
+        assert not page.locator(".katex").first.is_visible()
         page.evaluate("releaseMathFonts()")
         page.wait_for_selector(".katex")
         page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
@@ -109,6 +120,20 @@ def test_mathml_stays_readable_without_javascript(tmp_path: Path) -> None:
     with _page(public, javascript=False) as page:
         assert page.locator(".kpress-math-semantic").first.is_visible()
         assert page.locator(".katex").count() == 0
+
+
+def test_paint_probe_detects_bypassing_the_required_font_gate(tmp_path: Path) -> None:
+    public = _build_fixture_site(tmp_path, math_text_font=None)
+    with _page(public, script=f"{_DELAY_ALL}\n{_PAINT_PROBE_INIT}", native=False) as page:
+        page.evaluate("""() => {
+          const node = document.querySelector('.kpress-math-render');
+          node.closest('[data-kpress-math]').dataset.kpressMathRendered = 'true';
+          katex.render('1', node);
+        }""")
+        page.wait_for_function("__kpressPaintProbe.painted.length > 0")
+        glyphs = page.evaluate("__kpressPaintProbe.painted[0].glyphs")
+        assert glyphs
+        assert any(not glyph["ready"] for glyph in glyphs)
 
 
 def test_large_operator_waits_for_its_font_without_loading_every_family(tmp_path: Path) -> None:
@@ -149,6 +174,61 @@ def test_failed_required_font_restores_readable_mathml(tmp_path: Path) -> None:
         assert page.locator('[data-kpress-math-rendered="true"]').count() == 0
 
 
+def test_pending_required_font_restores_mathml_at_the_deadline(tmp_path: Path) -> None:
+    public = _build_fixture_site(tmp_path, math_text_font=None)
+    with _page(public, script=_DELAY_ALL) as page:
+        page.wait_for_function("globalThis.kpressMathFaceWait?.length > 0")
+        assert page.locator(".kpress-math-semantic").first.evaluate(
+            "el => { const s = getComputedStyle(el); return s.visibility === 'hidden' || s.clipPath === 'inset(50%)'; }"
+        )
+        page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
+        page.wait_for_function(
+            "!document.querySelector('.kpress-math-render[data-kpress-math-pending]')"
+        )
+        assert page.locator(".kpress-math-semantic").first.is_visible()
+        assert not page.locator(".katex").first.is_visible()
+        assert page.locator('[data-kpress-math-rendered="true"]').count() == 0
+        assert all(entry["outcome"] == "pending" for entry in page.evaluate("kpressMathFaceWait"))
+
+
+def test_host_hydrates_prepared_geometry_only_after_its_fonts_settle(tmp_path: Path) -> None:
+    public = _build_fixture_site(tmp_path, math_text_font=None)
+    with _page(public, script=_DELAY_ALL, native=False) as page:
+        page.evaluate("""async () => {
+          const target = document.createElement('span');
+          target.id = 'prepared';
+          document.querySelector('.kpress').append(target);
+          const profile = kpressMathText.installTablesFor(target);
+          katex.render('1', target);
+          kpressMathText.restore();
+          await document.fonts.ready;
+          const base = target.querySelector('.base');
+          base.style.width = base.getBoundingClientRect().width + 'px';
+          globalThis.preparedBase = base;
+          globalThis.preparedWidth = target.getBoundingClientRect().width;
+          Object.assign(target.dataset, {
+            kpressMathPrepared: 'true',
+            kpressMathSource: '1',
+            kpressMathDisplay: 'inline',
+            kpressMathProfile: profile,
+          });
+          katex.render = () => { throw new Error('prepared markup was replaced'); };
+          globalThis.hydration = kpressMathText.hydrate('1', target).then(result => {
+            globalThis.hydrated = result;
+            kpressMathText.complete();
+          });
+        }""")
+        assert not page.locator("#prepared .katex").is_visible()
+        assert page.evaluate("document.querySelector('#prepared .base') === preparedBase")
+        page.evaluate("releaseMathFonts()")
+        page.wait_for_function("globalThis.hydrated?.status === 'ready'")
+        assert page.locator("#prepared .katex").is_visible()
+        assert page.evaluate("document.querySelector('#prepared .base') === preparedBase")
+        assert page.locator("#prepared").evaluate(
+            "node => node.getBoundingClientRect().width"
+        ) == pytest.approx(page.evaluate("preparedWidth"), abs=0.001)
+
+
 def test_host_first_render_waits_keeps_latest_and_supports_mixed_faces(tmp_path: Path) -> None:
     public = _build_fixture_site(tmp_path, math_text_font=None)
     with _page(public, script=_DELAY_ALL, native=False) as page:
@@ -167,7 +247,8 @@ def test_host_first_render_waits_keeps_latest_and_supports_mixed_faces(tmp_path:
             globalThis.hostResults = results;
           });
         }""")
-        assert page.locator("#host-sans .katex").count() == 0
+        assert page.locator("#host-sans .katex").count() == 1
+        assert not page.locator("#host-sans .katex").is_visible()
         page.evaluate("releaseMathFonts()")
         page.wait_for_function("globalThis.hostResults?.length === 2")
         assert page.evaluate("hostResults.map(result => result.status)") == [
@@ -269,7 +350,10 @@ def test_missing_composite_uses_matching_stock_fonts_and_metrics(
         page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
         actual: list[_MathFaceProbe] = page.evaluate(_FALLBACK_PROBE)
         assert page.locator('[data-kpress-math-rendered="true"]').count() == 2
-        assert any(entry["outcome"] == "empty" for entry in page.evaluate("kpressMathFaceWait"))
+        assert all(
+            entry["outcome"] == "loaded"
+            for entry in page.evaluate("globalThis.kpressMathFaceWait ?? []")
+        )
 
     for index, result in enumerate(actual):
         reference = references["custom" if missing == "serif" and index == 1 else "stock"][index]
@@ -287,11 +371,13 @@ def test_required_font_failure_differs_from_an_unused_weight(tmp_path: Path, wei
     (public / f"_kpress/assets/fonts/pt-serif-latin-{weight}-normal.woff2").unlink()
     with _page(public) as page:
         page.wait_for_function("!document.documentElement.dataset.kpressMathPending")
-        assert any(entry["outcome"] == "error" for entry in page.evaluate("kpressMathFaceWait"))
+        requests = page.evaluate("globalThis.kpressMathFaceWait ?? []")
         if weight == "400":
+            assert any(entry["outcome"] == "error" for entry in requests)
             assert page.locator('[data-kpress-math-rendered="true"]').count() == 0
             assert page.locator(".kpress-math-semantic").is_visible()
         else:
+            assert all(entry["outcome"] == "loaded" for entry in requests)
             assert page.locator('[data-kpress-math-rendered="true"]').count() == 1
             result = page.evaluate(_FALLBACK_PROBE)[0]
             assert result["profile"] == "prose"

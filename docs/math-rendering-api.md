@@ -51,22 +51,61 @@ events.
 Calls for the same node follow the latest request: an older pending call resolves
 as `superseded` and cannot replace the newer formula.
 Metric installation, KaTeX rendering, and metric restoration run synchronously together
-after preparation.
+as soon as the call starts.
 
-The runtime initially warms the selected composite slots and the KaTeX Main and Math
-families. It then renders with visibility suppressed, reads the font descriptions and
+The runtime renders with visibility suppressed, reads the font descriptions and
 characters of the resulting HTML, and loads the faces those glyphs need before revealing
 the formula. This also covers large operators, delimiters, AMS symbols and explicit math
-alphabets, without downloading those families on pages that never use them.
-A failed unused warmup face does not discard a formula whose required faces loaded
-successfully.
+alphabets. Already decoded faces need no additional wait; unused families, styles and
+weights do not delay a formula.
 
 If the selected composite family has no registered font declarations, the runtime uses
 stock KaTeX families and their original metric tables for that formula.
 This covers a missing composite stylesheet as well as an omitted family; another
 composite family can still render normally.
-The warmup diagnostics retain the empty requests even when the stock rendering succeeds.
 Declared faces that fail to load still follow the required-face error handling above.
+
+## Hydrating Prepared Geometry
+
+A host can prepare KaTeX markup and reserve its exact geometry during publication, then
+call `hydrate()` to await its glyph fonts without replacing that markup:
+
+```javascript
+await kpressMathText.hydrate(source, node, { displayMode: false }, context);
+```
+
+The runtime does not measure or reserve initial geometry itself.
+Plain KaTeX HTML still takes its text widths from the browser’s current fonts, so a host
+that needs stable space before font decoding must reserve measured widths, heights and
+baselines in its publication output.
+Keeping reservations per unbreakable KaTeX `.base` preserves the formula’s line-breaking
+opportunities. This optional publication step does not add a browser dependency to
+ordinary KPress HTML generation.
+
+`render()` stamps the following metadata on its target:
+
+| Attribute | Value |
+| --- | --- |
+| `data-kpress-math-source` | The exact TeX string passed to the runtime |
+| `data-kpress-math-display` | `inline` or `display` |
+| `data-kpress-math-profile` | `prose`, `sans` or `katex` |
+
+After reserving geometry, the host adds `data-kpress-math-prepared="true"`. `hydrate()`
+retains the DOM only when all four attributes match the request and its resolved
+profile, and a `.katex` descendant exists.
+A changed source, display mode, sans context, stock opt-out or missing composite family
+causes normal rendering, which removes the prepared mark and replaces the old geometry.
+The host must supply the same KaTeX bundle, generated metrics, math styles, remaining
+rendering options and macros used at publication.
+`render()` always replaces markup; it never reuses prepared content implicitly.
+
+Hydration uses the same actual-glyph font checks, three-second deadline and
+latest-request handling as rendering.
+Screen and print font requests are cached separately.
+The host controls initial visibility before its scripts run and may reveal each prepared
+target when its hydration promise succeeds.
+It should retain a readable no-JavaScript fallback and handle a rejected hydration just
+like a rejected render.
 
 ## Sans Contexts and Opt-Outs
 
@@ -95,10 +134,13 @@ existing metric tables untouched, including a host’s experimental replacements
 
 ## Preparing a Batch
 
-`ready(nodes, context)` optionally warms fonts before rendering a batch.
+`ready(nodes, context)` explicitly warms the selected composite slots and KaTeX Main and
+Math families before rendering a batch.
 It initializes the tables independently of the native initializer and returns a promise
 with status `ready`, `empty`, `error`, `timeout` or `unavailable`. The diagnostic
 `globalThis.kpressMathFaceWait` lists the individual requests and outcomes.
+Neither `render()`, `hydrate()` nor native enhancement calls `ready()` automatically.
+An unused warmup failure does not discard a formula whose own glyph faces load.
 
 ```javascript
 await kpressMathText.ready(nodes, context);
@@ -110,7 +152,7 @@ kpressMathText.complete();
 
 A host that embeds a deliberately pruned set of fonts can pass
 `{ ...context, allEmbeddedFonts: true }` to prepare all of its declared font faces.
-This option is intended for self-contained documents.
+This option applies only to `ready()` and is intended for self-contained documents.
 It would download unused faces if enabled on an ordinary site with the complete KPress
 font set.
 
@@ -118,7 +160,8 @@ For synchronous measurements after preparation, `installTablesFor(node, context)
 returns `prose`, `sans`, `katex` or `null`, and `restore()` reinstalls the default serif
 tables. If tables have already been installed but the next selected set is unavailable,
 `installTablesFor()` throws before rendering can use mismatched metrics.
-These methods do not wait for fonts; application rendering should use `render()`.
+These methods do not wait for fonts; application rendering should use `render()` or
+`hydrate()`.
 
 The composite fonts are CSS families over separate PT Serif, Source Sans and KaTeX font
 files. They are not merged font binaries.

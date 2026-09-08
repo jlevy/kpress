@@ -325,58 +325,73 @@ function renderMathNode(node, renderer, options = {}) {
   renderVersions.set(node, version);
   const expires = performance.now() + FACE_WAIT_MS;
   hideNode(node);
-  const run = () => {
-    if (renderVersions.get(node) !== version) {
-      return Promise.resolve({ status: "superseded" });
-    }
-    try {
-      installTablesFor(node, options);
-      renderer();
-    } catch (error) {
-      showNode(node);
-      return Promise.reject(error);
-    } finally {
-      restore();
-    }
-    let loads;
-    try {
-      loads = renderedFaceLoads(node);
-    } catch (error) {
-      showNode(node);
-      return Promise.reject(error);
-    }
-    if (loads === null || !loads.length) {
-      showNode(node);
-      return Promise.resolve({ status: loads === null ? "unavailable" : "ready" });
-    }
-    return waitForLoads(loads, Math.max(0, expires - performance.now())).then((result) => {
-      if (renderVersions.get(node) !== version) {
-        return { status: "superseded" };
-      }
-      showNode(node);
-      if (result.status !== "ready") {
-        // Keep native MathML (or the host's text fallback) instead of showing
-        // fallback glyphs positioned with the unavailable face's metrics.
-        throw new Error(`kpress: required mathematics fonts are unavailable (${result.status})`);
-      }
-      return result;
-    });
-  };
-  // Preserve synchronous enhancement on browsers without font loading support.
-  // With fonts, readiness belongs to every render, including observer callbacks.
-  if (!document.fonts || typeof document.fonts.load !== "function") {
-    return run();
-  }
+  // The metric tables are already available. Lay out now so requests for the
+  // actual glyphs do not wait behind unused font families, styles, or weights.
   try {
-    return ready([node], options).then(run);
+    const profile = installTablesFor(node, options) ?? KATEX_SET;
+    renderer(profile);
+  } catch (error) {
+    showNode(node);
+    return Promise.reject(error);
+  } finally {
+    restore();
+  }
+  let loads;
+  try {
+    loads = renderedFaceLoads(node);
   } catch (error) {
     showNode(node);
     return Promise.reject(error);
   }
+  if (loads === null || !loads.length) {
+    showNode(node);
+    return Promise.resolve({ status: loads === null ? "unavailable" : "ready" });
+  }
+  return waitForLoads(loads, Math.max(0, expires - performance.now())).then((result) => {
+    if (renderVersions.get(node) !== version) {
+      return { status: "superseded" };
+    }
+    showNode(node);
+    if (result.status !== "ready") {
+      // Keep native MathML (or the host's text fallback) instead of showing
+      // fallback glyphs positioned with the unavailable face's metrics.
+      throw new Error(`kpress: required mathematics fonts are unavailable (${result.status})`);
+    }
+    return result;
+  });
+}
+
+function renderMarkup(tex, node, katexOptions, profile) {
+  delete node.dataset.kpressMathPrepared;
+  globalThis.katex.render(tex, node, katexOptions);
+  node.dataset.kpressMathSource = tex;
+  node.dataset.kpressMathDisplay = katexOptions.displayMode ? "display" : "inline";
+  node.dataset.kpressMathProfile = profile;
 }
 
 function renderMath(tex, node, katexOptions = {}, options = {}) {
-  return renderMathNode(node, () => globalThis.katex.render(tex, node, katexOptions), options);
+  return renderMathNode(node, (profile) => renderMarkup(tex, node, katexOptions, profile), options);
+}
+
+// A publication pass can reserve measured geometry in prepared markup. Reuse is
+// explicit: hosts must supply the same rendering options used at publication.
+function hydrateMath(tex, node, katexOptions = {}, options = {}) {
+  return renderMathNode(
+    node,
+    (profile) => {
+      if (
+        node.dataset.kpressMathPrepared === "true" &&
+        node.dataset.kpressMathSource === tex &&
+        node.dataset.kpressMathDisplay === (katexOptions.displayMode ? "display" : "inline") &&
+        node.dataset.kpressMathProfile === profile &&
+        node.querySelector(".katex")
+      ) {
+        return;
+      }
+      renderMarkup(tex, node, katexOptions, profile);
+    },
+    options,
+  );
 }
 
 function complete() {
@@ -387,6 +402,7 @@ function complete() {
 globalThis.kpressMathText = {
   ready,
   render: renderMath,
+  hydrate: hydrateMath,
   installTablesFor,
   restore,
   complete,

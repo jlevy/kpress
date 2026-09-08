@@ -1420,8 +1420,8 @@ Splitting the asset means giving all three a `has_sans_math` to follow.
 
 **First visible mathematics.** The composite families use separate font files, and an
 inlined font still decodes lazily.
-The shared `katex-math-runtime.js` prepares both the selected composite slots and KaTeX
-Main/Math before rendering.
+The shared `katex-math-runtime.js` lays out each formula immediately with the selected
+metric tables, then waits for the glyph fonts its HTML actually uses.
 Every render uses the same boundary, including a host’s early resize or input callbacks.
 
 The runtime renders each formula with visibility suppressed, reads the font combinations
@@ -1430,6 +1430,16 @@ revealing it. Large operators, delimiters and AMS symbols are therefore covered 
 eagerly downloading every KaTeX family.
 Source Sans and PT Serif metrics are selected immediately before rendering and restored
 afterwards; an older pending request cannot overwrite a newer formula on the same node.
+`ready()` remains an explicit batch warmup API; neither native enhancement nor an
+ordinary render waits for unused families, styles or weights.
+
+A host that needs exact space before its initial scripts execute can prepare measured
+KaTeX markup during publication and explicitly `hydrate()` it.
+Matching source, display mode and resolved font profile preserve the prepared DOM; a
+changed request or unavailable composite declaration causes normal rendering.
+The host owns the geometry reservations and other rendering options.
+This keeps browser measurement optional for hosts that need it, without adding a browser
+dependency to ordinary KPress generation.
 
 The head bootstrap also suppresses the native MathML fallback during enhancement.
 Otherwise a reader would first see the browser’s own math fonts, even if the first KaTeX
@@ -1458,15 +1468,16 @@ a little over double — and 4 requests and 76,692 B more in `math_text_font: ka
 of it is shared with the prose faces or the composite, but `KaTeX_Main-Italic` (17,288
 B) and `KaTeX_Main-BoldItalic` (17,080 B) are drawn by nothing else and are fresh on
 every math page in either mode.
-Over loopback the render costs about 12ms more; on a real connection the transfer is the
-whole of the cost, and it now sits in front of the first formula.
-It buys the case the earlier CI failure was chasing: `\mathbf`, `\mathit` and
-`\boldsymbol` repaint nothing at all, which waiting only on the two regular faces would
-give back. `kpr-hhdc` (composite subsets) shrinks the same bytes from the other end.
+That earlier warmup added about 12ms over loopback and put the transfer before the first
+formula.
+The current render path requests the actual glyphs instead, including `\mathbf`,
+`\mathit` and `\boldsymbol` when they occur.
+These figures describe the earlier implementation, not a current performance result.
+`kpr-hhdc` (composite subsets) addresses the font bytes separately.
 
-The two are asked for differently, and the difference is the host contract.
+The optional `ready()` warmup asks for the two kinds of faces differently.
 The KaTeX faces come from the pinned bundle, which is the only thing that declares them,
-so the init takes every face of those two families off `document.fonts` and calls
+so `ready()` takes every face of those two families off `document.fonts` and calls
 `FontFace.load()` on it: the bundle’s four and two rules are the complete list, all of
 them are wanted, and naming each face leaves no font matching between the script and
 faces the page already holds — which also makes the set the wait covers exact rather
@@ -1484,9 +1495,9 @@ What the wait asked for and what came back is left on `globalThis.kpressMathFace
 one entry per request, in order, each `{ request, outcome, faces, detail }`, where
 `outcome` is `loaded`, `empty` (matched no face, so it waited on nothing), `error` (with
 the reason in `detail`) or `pending` (the deadline won).
-Nothing in the page reads it; it is where mathematics that still repaints is diagnosed,
-and what `tests/test_playwright_math_text_face.py` asserts the ordering against, so that
-a face a browser declined to load is told apart from one the wait was supposed to cover.
+Nothing in the page reads it; it is where mathematics that still repaints is diagnosed.
+The browser tests inspect glyph readiness at each formula’s first visible frame,
+including formulas inserted into the DOM while hidden.
 The wait record is a diagnostic hook; the rendering methods themselves are pinned in
 `kpress.contract.PUBLIC_MATH_RUNTIME_METHODS`. The composite carries
 `font-display: block`, like the prose faces and unlike the KaTeX bundle’s `swap`, for

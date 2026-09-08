@@ -21,6 +21,16 @@ function node() {
   return document.getElementById("math");
 }
 
+function prepared(target) {
+  target.dataset.kpressMathPrepared = "true";
+  target.dataset.kpressMathSource = "1";
+  target.dataset.kpressMathDisplay = "inline";
+  target.dataset.kpressMathProfile = "prose";
+  target.innerHTML =
+    '<span class="katex"><span class="katex-html"><span style="font-family:KaTeX_Main">1</span></span></span>';
+  return target.firstElementChild;
+}
+
 beforeEach(() => {
   vi.useRealTimers();
   Reflect.deleteProperty(document, "fonts");
@@ -37,6 +47,212 @@ beforeEach(() => {
 });
 
 describe("the host math runtime", () => {
+  it("lays out immediately without waiting for an unrelated declared face", async () => {
+    const target = node();
+    let releaseUnused;
+    const unused = {
+      family: "KaTeX_Main",
+      style: "italic",
+      weight: "700",
+      load: vi.fn(
+        () =>
+          new Promise((resolveLoad) => {
+            releaseUnused = resolveLoad;
+          }),
+      ),
+    };
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: {
+        forEach(callback) {
+          callback(unused);
+          callback({ family: "KPress Math Text" });
+        },
+        check: () => true,
+        load: vi.fn(() => Promise.resolve([])),
+      },
+    });
+    const rendering = boot().render("1", target);
+    try {
+      expect(globalThis.katex.render).toHaveBeenCalledTimes(1);
+      expect(unused.load).not.toHaveBeenCalled();
+      expect(await rendering).toEqual({ status: "ready" });
+    } finally {
+      releaseUnused?.(unused);
+      await rendering;
+    }
+  });
+
+  it("hydrates matching prepared markup without replacing its geometry", async () => {
+    const target = node();
+    const markup = prepared(target);
+    await boot().hydrate("1", target);
+    expect(target.firstElementChild).toBe(markup);
+    expect(globalThis.katex.render).not.toHaveBeenCalled();
+    expect(target.dataset.kpressMathPrepared).toBe("true");
+  });
+
+  it("keeps prepared geometry hidden until its actual glyphs load", async () => {
+    const target = node();
+    const markup = prepared(target);
+    let release;
+    const fonts = {
+      forEach: (callback) => callback({ family: "KPress Math Text" }),
+      check: () => false,
+      load: vi.fn(
+        () =>
+          new Promise((resolveLoad) => {
+            release = resolveLoad;
+          }),
+      ),
+    };
+    Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+    const hydration = boot().hydrate("1", target);
+    expect(target.style.visibility).toBe("hidden");
+    expect(target.firstElementChild).toBe(markup);
+    expect(fonts.load).toHaveBeenCalledTimes(1);
+    expect(fonts.load.mock.calls[0][1]).toBe("1");
+    release([{ family: "KaTeX_Main" }]);
+    expect(await hydration).toEqual({ status: "ready" });
+    expect(target.style.visibility).toBe("");
+    expect(target.firstElementChild).toBe(markup);
+  });
+
+  it("cannot reveal an older hydration while a newer render waits", async () => {
+    const target = node();
+    prepared(target);
+    const releases = [];
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: {
+        forEach: (callback) => callback({ family: "KPress Math Text" }),
+        check: () => false,
+        load: () => new Promise((resolveLoad) => releases.push(resolveLoad)),
+      },
+    });
+    globalThis.katex.render.mockImplementation((tex, el) => {
+      el.innerHTML = `<span class="katex"><span class="katex-html"><span style="font-family:KaTeX_Main">${tex}</span></span></span>`;
+    });
+    const api = boot();
+    const older = api.hydrate("1", target);
+    const newer = api.render("2", target);
+    releases[0]([{ family: "KaTeX_Main" }]);
+    expect(await older).toEqual({ status: "superseded" });
+    expect(target.style.visibility).toBe("hidden");
+    expect(target.textContent).toBe("2");
+    releases[1]([{ family: "KaTeX_Main" }]);
+    expect(await newer).toEqual({ status: "ready" });
+    expect(target.style.visibility).toBe("");
+  });
+
+  it("checks a print face separately after the screen face settled", async () => {
+    const target = node();
+    prepared(target);
+    let printing = false;
+    vi.spyOn(globalThis, "matchMedia").mockImplementation(() => ({ matches: printing }));
+    const fonts = {
+      forEach: (callback) => callback({ family: "KPress Math Text" }),
+      check: () => false,
+      load: vi.fn(() => Promise.resolve([{ family: "KaTeX_Main" }])),
+    };
+    Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+    const api = boot();
+    await api.hydrate("1", target);
+    printing = true;
+    await api.hydrate("1", target);
+    expect(fonts.load).toHaveBeenCalledTimes(2);
+    expect(fonts.load.mock.calls[0]).toEqual(fonts.load.mock.calls[1]);
+  });
+
+  it("rejects a prepared formula when a required font times out", async () => {
+    vi.useFakeTimers();
+    const target = node();
+    prepared(target);
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: {
+        forEach: (callback) => callback({ family: "KPress Math Text" }),
+        check: () => false,
+        load: () => new Promise(() => {}),
+      },
+    });
+    const failed = expect(boot().hydrate("1", target)).rejects.toThrow(
+      "required mathematics fonts are unavailable (timeout)",
+    );
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(target.style.visibility).toBe("hidden");
+    await vi.advanceTimersByTimeAsync(1);
+    await failed;
+    expect(target.style.visibility).toBe("");
+  });
+
+  it.each([
+    {
+      name: "source",
+      source: "2",
+      displayMode: false,
+      sans: false,
+      stock: false,
+      profile: "prose",
+    },
+    {
+      name: "display",
+      source: "1",
+      displayMode: true,
+      sans: false,
+      stock: false,
+      profile: "prose",
+    },
+    {
+      name: "sans context",
+      source: "1",
+      displayMode: false,
+      sans: true,
+      stock: false,
+      profile: "sans",
+    },
+    {
+      name: "stock opt-out",
+      source: "1",
+      displayMode: false,
+      sans: false,
+      stock: true,
+      profile: "katex",
+    },
+  ])("rerenders prepared markup after a $name change", async (change) => {
+    const target = node();
+    const markup = prepared(target);
+    if (change.stock) {
+      target.dataset.kpressMathText = "katex";
+    }
+    await boot().hydrate(
+      change.source,
+      target,
+      { displayMode: change.displayMode },
+      {
+        isSansContext: () => change.sans,
+      },
+    );
+    expect(target.firstElementChild).not.toBe(markup);
+    expect(globalThis.katex.render).toHaveBeenCalledTimes(1);
+    expect(target.dataset.kpressMathPrepared).toBeUndefined();
+    expect(target.dataset.kpressMathSource).toBe(change.source);
+    expect(target.dataset.kpressMathProfile).toBe(change.profile);
+  });
+
+  it("rerenders custom prepared markup when the composite declarations are missing", async () => {
+    const target = node();
+    prepared(target);
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { forEach() {}, check: () => true, load: () => Promise.resolve([]) },
+    });
+    await boot().hydrate("1", target);
+    expect(globalThis.katex.render).toHaveBeenCalledTimes(1);
+    expect(target.dataset.kpressMathProfile).toBe("katex");
+    expect(target.dataset.kpressMathPrepared).toBeUndefined();
+  });
+
   it("initializes and renders a host node without the native enhancement loop", async () => {
     const target = node();
     const api = boot();
@@ -81,19 +297,27 @@ describe("the host math runtime", () => {
       configurable: true,
       value: {
         forEach() {},
-        check: () => true,
+        check: () => false,
         load: () => new Promise((resolveLoad) => loads.push(resolveLoad)),
       },
+    });
+    globalThis.katex.render.mockImplementation((tex, el) => {
+      el.innerHTML = `<span class="katex"><span class="katex-html"><span style="font-family:KaTeX_Main">${tex}</span></span></span>`;
     });
     const api = boot();
     const first = api.render("old", target);
     const last = api.render("latest", target);
-    expect(globalThis.katex.render).not.toHaveBeenCalled();
+    expect(globalThis.katex.render).toHaveBeenCalledTimes(2);
+    expect(target.style.visibility).toBe("hidden");
+    expect(target.textContent).toBe("latest");
     for (const finish of loads) {
-      finish([]);
+      finish([{ family: "KaTeX_Main" }]);
     }
-    await Promise.all([first, last]);
-    expect(globalThis.katex.render).toHaveBeenCalledTimes(1);
+    expect(await Promise.all([first, last])).toEqual([
+      { status: "superseded" },
+      { status: "ready" },
+    ]);
+    expect(target.style.visibility).toBe("");
     expect(target.textContent).toBe("latest");
   });
 
