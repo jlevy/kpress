@@ -168,6 +168,11 @@ The sans role has one further hook that applies under print only,
 `--kpress-host-font-sans-print`; a host that changes the sans weights owes its printed
 pages a set of static faces, described in
 [Print Sans Faces and Host Weights](#print-sans-faces-and-host-weights).
+The serif role has one too: `--kpress-host-font-punctuation` names the family that
+answers the quotation marks and the apostrophe, which lead the prose stack because PT
+Serif draws those six glyphs badly.
+Setting it to `"PT Serif"` gives them back to the reading face; the reasoning is in
+[Quotation Marks](kpress-design.md#quotation-marks).
 
 Mathematics carries two further font seams, both for a host that has pinned a reading
 face of its own (full contract: [Math Text Face](kpress-design.md#math-text-face)). The

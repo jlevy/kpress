@@ -1402,42 +1402,73 @@ A host that overrides the sans weight tokens needs instances at its own weights;
 
 ### Quotation Marks
 
-Quotation marks and apostrophes come from **PT Serif**, like every other glyph in the
-reading face.
+Quotation marks and apostrophes come from **KPress Quotes**, a six-glyph subset of
+Source Serif 4 that KPress ships.
+It leads `--kpress-font-prose` over `U+0022`, `U+0027`, `U+2018`, `U+2019`, `U+201C` and
+`U+201D`, and every other character passes down to PT Serif.
 
-They did not always.
-`style-tokens.css` declares a family `LocalPunct` whose `src` is `local("Georgia")` and
-whose `unicode-range` is six code points — the straight and curly quotes and the
-apostrophe — and that family used to *lead* `--kpress-font-prose`. So a reader with
-Georgia installed saw Georgia’s marks in Georgia’s metrics, a reader without saw PT
-Serif’s, and a printed page saw PT Serif’s either way, because a `local()` face cannot
-be embedded. One document, three answers.
+**The history.** Georgia was once the reading face.
+When PT Serif replaced it, someone kept Georgia’s quotation marks on purpose: a family
+`LocalPunct` whose `src` was `local("Georgia")` and whose `unicode-range` was those same
+six code points, placed at the head of the prose stack.
+That was deliberate work, and its reason was never written down.
+It was nearly lost, because from the outside the borrowing looks like an oversight.
+A document’s punctuation came from Georgia when the reader had Georgia, from PT Serif
+when they did not, and from PT Serif on paper either way, since a `local()` face cannot
+be embedded in a PDF. One document, three answers.
 
-**Why it was there.** Georgia’s marks were preferred, and the preference is a real one,
-not an accident. Measured in Chromium at a 16px base: PT Serif sets its curly doubles
-7.584px wide against Georgia’s 6.563px, 16% more, and hangs the opening pair 13.184px
-above the baseline while setting the closing pair at 11.184px — a 2px difference in
-height between the marks that open a quotation and the ones that close it, where
-Georgia’s sit level at 11.92 and 11.95. PT Serif’s opening single quote reads as a
-near-vertical tapered tick rather than a comma.
-Georgia’s marks are quieter and more even.
+**What it was buying.** PT Serif draws these six glyphs badly, and the fault is
+measurable. In Chromium at 18px, `measureText` on the four curly marks:
 
-That is a fair criticism of PT Serif and not a reason to draw a document’s punctuation
-from the reader’s machine.
-The rule wins: one face, one document, on screen and on paper.
+| Face | `“` `”` width | `‘` `’` width | Opening pair, ink above baseline | Closing pair |
+| --- | --- | --- | --- | --- |
+| PT Serif | 8.53px | 5.26px | 14.83px | 12.58px |
+| Georgia | 7.38px | 4.08px | 13.41px | 13.44px |
+| KPress Quotes | 7.92px | 4.05px | 13.34px | 13.34px |
 
-**Opting back in.** The `LocalPunct` face is still declared, and a host that wants it
-takes it in one line:
+Two things are wrong with the PT Serif row.
+Its opening pair hangs 2.25px above its closing pair, so a quotation does not sit level
+with the marks that close it, and its doubles are 16% wider than Georgia’s, which makes
+them loud in a line of text.
+Georgia’s open and close are level to within 0.03px. PT Serif’s opening single quote
+also reads as a near-vertical tapered tick rather than a comma.
+The preference for Georgia was real, and it was right.
+
+**Why it is shipped rather than borrowed.** The rule is that every glyph in a KPress
+document comes from a face KPress ships, on screen and in print
+([Vendored Fonts](../src/kpress/format/static/fonts/README.md)). Borrowing broke it in
+the way that matters most: a reader without Georgia saw the marks the borrowing existed
+to avoid, and a printed page always did.
+So the marks are shipped instead.
+Source Serif 4 is the companion of the Source Sans 3 and Source Code Pro faces KPress
+already vendors, and its marks are level to 0.00px and only 7% wider than Georgia’s.
+Taking six glyphs of it costs 724 bytes, which is why the whole 20 KB face is not
+vendored: `devtools/subset_quotes.py` reads the upstream `@fontsource/source-serif-4`
+file from outside the repository, subsets it to those six code points, renames the
+result to the family `KPress Quotes`, and writes `static/fonts/kpress-quotes.woff2`.
+`python -m devtools.subset_quotes --check` runs in `make lint`, comparing the shipped
+bytes against a fresh subset when the source is at hand and against a pinned digest when
+it is not; provenance and both hashes are in the fonts README.
+
+Print needs nothing special.
+A static face embeds like any other, so `KPressQuotes-Regular` appears in the exported
+PDF’s font list beside `PTSerif-Regular`; `tests/test_playwright_print_pdf_fonts.py`
+pins that, and `tests/test_playwright_quote_face.py` pins that the marks resolve to the
+face on screen and under print media while the letters beside them stay PT Serif.
+
+**The host hook.** `--kpress-font-punctuation` names the family that answers those six
+code points, and it is the first entry in the prose stack.
+`--kpress-host-font-punctuation` points it somewhere else: another family for different
+marks, or the reading face itself to give the marks back to PT Serif.
 
 ```css
 :root {
-  --kpress-host-font-prose: var(--kpress-font-punctuation), "PT Serif", Georgia, serif;
+  --kpress-host-font-punctuation: "PT Serif";
 }
 ```
 
-`--kpress-font-punctuation` is that slot, and `--kpress-host-font-punctuation` points it
-at some family other than `LocalPunct`. Nothing in KPress reads the slot by default, so
-a page that does not ask for the borrowing does not get it.
+A host that replaces the whole reading stack through `--kpress-host-font-prose` decides
+for itself whether to keep `var(--kpress-font-punctuation)` at the head of it.
 
 ### List Markers
 
@@ -1564,7 +1595,7 @@ override any single role on its own, and otherwise the vendored reader faces app
 
 | Variable | Default (vendored) | Used by | Host hook |
 | --- | --- | --- | --- |
-| `--kpress-font-prose` | serif: PT Serif | reading body (`.kpress-prose`), H1/H2 | `--kpress-host-font-prose` |
+| `--kpress-font-prose` | serif: KPress Quotes, then PT Serif | reading body (`.kpress-prose`), H1/H2 | `--kpress-host-font-prose` |
 | `--kpress-font-sans` | sans: Source Sans 3 | UI chrome: TOC, captions, H3–H6, code-copy, **tooltips** | `--kpress-host-font-sans` |
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
