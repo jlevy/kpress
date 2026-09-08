@@ -1936,8 +1936,9 @@ Two facts settle the default, and they pull the same way:
   only looks like text, unsearchable and unselectable, and the precise failure this
   feature exists to remove.
 
-Because of the second, a set that leaves either axis synthesized is refused at the
-config surface rather than accepted and quietly degraded — see the table below.
+Because of the second, a set that leaves either axis synthesized is refused rather than
+accepted and quietly degraded, at both surfaces that take it (`format.mono_weights` and
+`RenderOptions.mono_weights`) and in one shared message — see the table below.
 The three heavier italics upstream offers are not vendored at all, since no rule reaches
 an italic above 700.
 
@@ -1947,6 +1948,11 @@ manifest, so a hosted page fetches nothing and an inlining host carries nothing.
 That asset consequence is why it is a render option and not only a CSS switch; the
 reader-facing `font_mode="system"` also puts code in the platform mono, but leaves the
 asset set alone, exactly as it does for PT Serif.
+The two are not equivalent in print, though: `mono_font: system` prints code from the
+platform mono as an embedded `/Type0` font, while `font_mode: system` prints the *sans*
+roles as `/Type3` outlines on macOS, because Chromium cannot embed the system UI face at
+any weight. Measured in
+[System Fonts and Printed Outlines](#system-fonts-and-printed-outlines).
 
 Provenance, sha256 and licences are in
 [`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md); what a host
@@ -2029,22 +2035,53 @@ override any single role on its own, and otherwise the vendored reader faces app
 
 **Every font setting, on one surface.** Four settings and two sizing hooks decide which
 faces a document uses; each is a `RenderOptions` field, most are also a `kpress.yml`
-key, and each is readable from the rendered markup:
+key, and each is readable from the rendered markup.
+Two of the rows carry a consequence the row itself cannot hold: none of the five is a
+`kpress render` flag ([The CLI Is Not a Font Surface](#the-cli-is-not-a-font-surface)),
+and `font_mode: system` changes what an exported PDF is made of
+([System Fonts and Printed Outlines](#system-fonts-and-printed-outlines)).
 
 | Setting | Options | Config key | Data attribute | Host hook |
 | --- | --- | --- | --- | --- |
-| `font_mode` | `custom` (default), `system` | none (render option only) | `data-kpress-fonts` on the `.kpress` article; the reader’s own choice is `data-kpress-font-set` on `<html>` | none: `system` overrides the role tokens outright |
+| `font_mode` | `custom` (default), `system` | none (render option only) | `data-kpress-fonts` on the `.kpress` article; the reader’s own choice is `data-kpress-font-set` on `<html>` | `--kpress-host-font-mono` still leads under `system`; every other role token is overridden outright |
 | `prose_font` | `serif` (default), `sans` | `format.prose_font` | `data-kpress-prose-font` on `<html>` | `--kpress-host-font-prose-sans` for the sans reading stack |
-| `math_text_font` | `prose` (default), `katex` | `format.math_text_font` | `data-kpress-math-text` on `<html>` | `--kpress-host-font-prose` (the composite follows the reading face) |
+| `math_text_font` | `prose` (default), `katex` | `format.math_text_font` | `data-kpress-math-text` on `<html>` | none: the composite hard-names `KPress Math Text` and reads no host hook; a host substitutes a math face through the two seams below |
 | `mono_font` | `planetaire` (default), `system` | `format.mono_font` | `data-kpress-mono-font` on `<html>` | `--kpress-host-font-mono` |
 | `mono_weights` | `regular`, `bold`, `italic`, `bold-italic` (all four the default), plus any of `medium`, `semibold`, `extrabold` | `format.mono_weights` | none: it selects stylesheets, not a switch | none |
 | the type ramp | — | — | — | `--kpress-host-font-size-base`, the one knob everything derives from |
 | the mono rung | — | — | — | `--kpress-host-font-size-mono`, which carries small and tiny with it |
 
+**Two cells above read “none”, and each reads that way for its own reason.**
+`math_text_font` reads no host hook because the composite is more than a family name.
+`katex/katex-text-face.css` names `KPress Math Text` in all 44 of its `font-family`
+declarations and reads none of the `--kpress-host-font-*` variables, so a host that sets
+`--kpress-host-font-prose: Palatino` moves the prose and the headings and leaves the
+mathematics in PT Serif.
+Measured: `.kpress-prose p` computes `Palatino, serif` while `.katex .mord.mathnormal`
+computes `"KPress Math Text", KaTeX_Math, serif` on the same page.
+That is the design and not a gap in it.
+KaTeX lays out from the per-face metric tables in `globalThis.kpressKatexTextMetrics`,
+and the Greek slots carry `size-adjust` values computed against PT Serif’s x-height and
+cap height, so a family swapped by CSS variable alone would leave Computer Modern boxes
+around the new face’s glyphs.
+A host substitutes a math face by redeclaring the `KPress Math Text` faces after
+`katex/katex-text-face.css` and regenerating the tables with
+`devtools/katex_text_metrics.py`; both seams, the sans twin, and the two KaTeX families
+a host must *not* redeclare are in
+[Operations and Host Integration](kpress-operations-and-host-integration.md#host-integration).
+`mono_weights` reads no host hook for an unrelated reason: it selects stylesheets rather
+than setting a token, and `--kpress-host-font-mono` is the hook for the face those
+stylesheets declare.
+
 `mono_weights` is checked rather than merely parsed, because the interesting values fail
-quietly. Under `mono_font: planetaire` the set must cover all four styles the packaged
-stylesheets ask for; anything less is refused at config load, naming the missing styles
-and what the browser would have drawn instead:
+quietly. Both surfaces that accept it refuse the same sets: `format.mono_weights` at
+config load, and `RenderOptions.mono_weights` in `__post_init__`, so an export or an
+embedding host’s own call cannot slip a set past the gate a `kpress.yml` could not.
+One message serves both (`format.assets.mono_weights_rejection`), differing only in
+whether it names the YAML key or the dataclass field.
+Under `mono_font: planetaire` the set must cover all four styles the packaged
+stylesheets ask for; anything less is refused, naming the missing styles and what the
+browser would have drawn instead:
 
 | set | what it leaves to the browser | verdict |
 | --- | --- | --- |
@@ -2087,6 +2124,50 @@ tree; per-file provenance, sha256 and licence are recorded in
 [`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md).
 The sans role resolves to a different stack under print, through its own hook
 `--kpress-host-font-sans-print`: see [Print Sans Faces](#print-sans-faces).
+
+#### System Fonts and Printed Outlines
+
+`font_mode: system` prints outlines on macOS, and a reader can reach it.
+The setting changes no assets, but an exported PDF carries `/Type3` glyph procedures for
+every sans role: unsearchable, unselectable paths that only look like text.
+That is the same failure the `mono_weights` gate exists to prevent, reached through the
+settings widget’s own **System fonts** toggle rather than through a config file.
+Measured on one page (prose, a sans heading, a footnote, a table and a code block) taken
+through `render_pdf`:
+
+| `font_mode` | PDF size | what the PDF embeds | `/Type3` |
+| --- | --- | --- | --- |
+| `custom` | 31,846 bytes | PT Serif, the three print-sans instances, three Planetaire styles | none |
+| `system` | 91,339 bytes (2.9×) | Georgia and Menlo from the exporting machine, plus PT Serif and one print-sans instance for the print-only roles | 7 objects over 3 descriptors, every one `.SFNS` |
+
+The cause is the face, not the weight.
+Chromium writes the macOS system UI font’s descriptors (`EAAAAA+.SFNS-Regular`,
+`JAAAAA+.SFNS-Regular`, `LAAAAA+.SFNS-Bold`) with **no `FontFile` at all**, so every
+glyph drawn in that face becomes a path.
+Rounding KPress’s own sans weight tokens (550 and 650, which no platform face has) to
+400 and 700 inside the `system` block was measured and does not remove them: the same
+three descriptors appear, still with no `FontFile`, and the PDF only shrinks to 83,363
+bytes because the synthetic embolden strokes go away.
+So this is written down rather than rounded away.
+`mono_font: system` is not affected: code goes to Menlo, which Chromium does embed, as
+`/Type0`. A reader who wants the platform faces on screen and a printable PDF should
+export from the default `custom` setting.
+
+#### The CLI Is Not a Font Surface
+
+`kpress render`, `kpress format` and `kpress export` take no font flags, so a document
+that wants a non-default face is produced through `kpress build --config`, through
+`KPressExportRequest`, or through `RenderOptions` directly.
+That is the CLI’s shape rather than a gap in this feature: no per-document command
+exposes *any* `RenderOptions` field beyond `--output` and `--asset-mode`, so there is no
+`--theme`, `--palette`, `--content-card` or `--no-toc` either.
+Adding five font flags to `render` alone would leave `format` and `export` behind, which
+moves the asymmetry instead of removing it, and would pin a new public command surface
+in `kpress.contract` on the strength of one feature.
+What matters is that the surfaces which *do* carry the settings agree:
+`format.mono_weights` and `RenderOptions.mono_weights` refuse the same sets in the same
+words, and `KPressExportRequest` carries `mono_font` and `mono_weights` through to both
+the render and the emitted asset tree.
 
 ## Document Components
 
