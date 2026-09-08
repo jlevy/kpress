@@ -121,6 +121,7 @@ const SET_FACES = [
   ["KaTeX_Size1", "normal", "400"],
   ["PT Serif", "normal", "400"],
   ["KPress Math Text", "normal", "400"],
+  ["KPress Math Text Sans", "normal", "400"],
 ];
 
 /** The identity `katex-init.js` records a face under, and the tests name it by. */
