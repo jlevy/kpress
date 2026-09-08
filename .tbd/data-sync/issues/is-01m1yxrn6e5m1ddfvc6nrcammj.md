@@ -5,7 +5,7 @@ title: "[epic] Every glyph from a shipped face, on screen and in print"
 kind: epic
 status: open
 priority: 1
-version: 26
+version: 29
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
@@ -36,7 +36,10 @@ child_order_hints:
   - is-01m1zs31any75ehnn70qb2rvh7
   - is-01m1zsamjqhrkmtdsp9h2s16va
   - is-01m1zsckx8fma5tbwjf3ksyedj
+  - is-01m215grmbc38xm0abqe23pkp9
+  - is-01m215h3jrb38j3yedkt15rtys
+  - is-01m215haewzqpqrx8jkczdq7e8
 created_at: 2026-09-07T21:53:06.765Z
-updated_at: 2026-09-08T05:55:52.346Z
+updated_at: 2026-09-08T18:47:23.867Z
 ---
 Rule: a kpress document resolves every text run to a face kpress ships (PT Serif, Source Sans 3 variable on screen and static in print, the KaTeX faces and KPress Math Text composite, and a shipped mono), never to whatever the reader's or the renderer's machine has. Measured on the squares explainer PDF (946 KB): the sans was 345 KB of Type3 paths (kpr-w0s9), inline code was Menlo from the system (56 KB embedded), the list bullet U+25AA fell through PT Serif to Georgia (16 KB), and quotation marks come from Georgia on screen via LocalPunct. Children: kpr-w0s9 (print sans), the mono face, the list marker, LocalPunct, and the composite subsets (kpr-hhdc).
