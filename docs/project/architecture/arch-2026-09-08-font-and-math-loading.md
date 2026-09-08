@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-08
 
-**Status:** In review with the font-readiness and prepared-math changes.
+**Status:** Approved.
 
 ## Overview
 
@@ -116,6 +116,24 @@ selectable math HTML inside.
 Separate boxes preserve KaTeX’s breaks between bases.
 Reserving a whole formula as one inline block would remove those breaks.
 
+The geometry must cover every saved font setting the host supports.
+A reader’s choice of custom or system fonts and serif or sans prose can change the
+resolved math profile and its dimensions.
+Preparing only the publisher’s default leaves other readers on the normal-render path,
+where hidden glyphs still change width as fonts arrive.
+
+A host can publish measured variants and select the matching one declaratively from the
+root attributes applied by the head bootstrap.
+Exactly one variant should participate in layout before the first paint; inactive
+variants must also stay out of the accessibility tree.
+Preserve a readable default when JavaScript is disabled.
+Variants with identical markup and geometry can share one copy.
+Keep profile metadata on each actual render target; an ancestor must not force another
+variant’s face onto it.
+Hydrate the selected target with its matching source and options.
+Choosing a matching variant only after client rendering starts cannot protect earlier
+layout from the default variant’s dimensions.
+
 The host writes only the prepared math fragments and their geometry back into its
 original HTML. It should not serialize transient canvas state, tooltips, observer
 mutations, or the browser’s entire modified document.
@@ -145,9 +163,14 @@ MathML clipped.
 
 Print changes the font cascade.
 Export tools must wait for math requests and print faces after switching media.
-Host canvas work also needs an explicit completion path: deferring a heat map on screen
-must not omit it from a PDF. Print visibility is determined by computed CSS, which can
-differ from an element’s `hidden` attribute.
+Reservations in em units scale with the formula’s computed font size.
+Reusing them for print also requires equivalent glyph advances: KPress’s static sans
+math instances preserve those of the screen face.
+A host whose print styling changes the math profile or relative dimensions must prepare
+matching print geometry; waiting for fonts alone does not correct an incompatible
+reservation. Host canvas work also needs an explicit completion path: deferring a heat
+map on screen must not omit it from a PDF. Print visibility is determined by computed
+CSS, which can differ from an element’s `hidden` attribute.
 
 ## Trade-offs and Alternatives
 
@@ -171,10 +194,17 @@ Correctness checks should establish:
   selected metrics agree with the intended prose or sans context.
 - Required-font failure, missing declarations, explicit opt-outs, early repeated input,
   no-JavaScript output, and print all preserve their contracts.
+- Each supported saved font setting selects matching prepared content before the first
+  paint. Run coverage and geometry checks under that setting in each supported browser
+  and print style.
+- Enumerate the mathematical bases that should occupy layout and require a reservation
+  for each one. Scanning only surviving reservation wrappers misses a formula whose
+  entire prepared wrapper disappeared during profile fallback.
 - Prepared boxes retain position, dimensions, and line breaks through genuinely delayed
   font loads, and final reserved widths agree with final intrinsic widths.
 - Negative controls are rejected: an unavailable glyph shown early, a missing box width,
-  a consistently wrong reserved width, and stale print or fallback state.
+  a missing entire reservation, a consistently wrong reserved width, and stale print or
+  fallback state.
 
 Normal startup measurements must leave font loads and input untouched.
 Record the first correct visible parameter set, adjacent-text movement, viewport, cache
