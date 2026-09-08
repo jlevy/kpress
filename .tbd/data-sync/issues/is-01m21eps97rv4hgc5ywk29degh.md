@@ -5,13 +5,13 @@ title: Refuse mono weight sets by what the document needs, not by what the packa
 kind: feature
 status: open
 priority: 2
-version: 1
+version: 2
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
 dependencies: []
 parent_id: is-01m1yxrn6e5m1ddfvc6nrcammj
 created_at: 2026-09-08T21:27:40.070Z
-updated_at: 2026-09-08T21:27:40.070Z
+updated_at: 2026-09-08T21:37:39.479Z
 ---
-Measured on the squares explainer while adopting Planetaire (squares#134, 2026-09-08): the page has 11 code spans, 179 characters, no fenced block, so syntax.css never matches a token and nothing on the page is italic or bold code. The export proves it: before the change it embedded Menlo-Regular and nothing else; after, PlanetaireMonoText-Regular and nothing else. So one declared style would have drawn every glyph, but mono_weights_rejection refuses any set that leaves a style the packaged stylesheets could ask for undeclared, so the page ships all four (79,421 bytes of base64 where about 20,000 would do, and it inlines every face). The rule is right for a document with highlighted code and wrong for one without. Options: let a host declare that it runs no highlighting (a setting, or inferred from the absence of fenced blocks in the rendered tree) and refuse only the styles that document can actually reach; or expose the analysis kpress already does so a host can compute the needed set and pass it. Either way keep the guarantee that no glyph is synthesized. Measure the saving on a page with fences and one without before choosing.
+Correction (2026-09-08, from an audit of kpress's own chrome): the original premise of this bead was too narrow and the refusal rule is better justified than it looked. Code does not take a second face only from syntax highlighting. It inherits weight and slant from whatever surrounds it, and kpress's own stylesheets make that ordinary: code inside a heading is bold (h1 to h6 at 650, h5 at 700), inside h2 or h6 it is italic, inside h4 it is italic at 540 which CSS matching resolves upward to the bold face, inside strong or b it is bold (650), inside a table header cell it is bold, and inside a summary it is 550 which resolves to bold. kpress also injects Pygments spans into every fenced block and syntax.css sets them bold, italic and bold-italic. So 'the document has no fenced block' is not sufficient to conclude that one face suffices; a page with a code span in any heading, strong, table header or summary needs more. What remains true is the measurement on the squares explainer (squares#134): its export embedded only PlanetaireMonoText-Regular before and after, so on that page one face would have served and four ship, about 60 KB of base64 it cannot use, because it inlines every face. So the useful version of this bead is narrower: give a host a way to declare or compute the styles its rendered tree actually demands, taking inheritance into account rather than only fenced blocks, and refuse only what that tree can reach. An analysis over the rendered DOM (which elements carrying code resolve to which weight and style) is the honest way to compute it, and kpress is the only side that can do it correctly.
