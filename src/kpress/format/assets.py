@@ -218,10 +218,15 @@ DEFAULT_FONT_ASSETS = [
 # devtools.subset_mono --check` is the gate that keeps the files themselves current.
 #
 # One stylesheet per style, rather than one stylesheet naming all seven, is what makes
-# RenderOptions.mono_weights mean anything: an inlined single-file page carries every
-# face it declares, so a style nobody asked for must not be declared. The renderer
-# picks the pairs a document enabled and the rest never enter the manifest, so they are
-# never linked, copied, fetched or inlined. mono_font="system" selects none of them.
+# RenderOptions.mono_weights mean anything: the renderer picks the pairs a document
+# enabled and the rest never enter the manifest, so they are never linked or copied.
+# That is what the mechanism buys -- the built tree. The default set leaves three of
+# the seven subsets (48 KB of woff2) out of a static build and mono_font="system"
+# leaves all seven out (104 KB). It does not buy fewer fetched bytes on top of that: a
+# browser fetches a declared face only when a glyph resolves to it, and no asset mode
+# base64s a font (inline leaves woff2 external, single-file export is refused), so the
+# earlier reasoning here -- that an inlined single-file page carries every face it
+# declares -- described behaviour KPress does not have.
 MONO_FONT_ASSETS: dict[MonoWeight, tuple[str, str]] = {
     "regular": (
         "css/mono-planetaire-400-normal.css",
@@ -254,15 +259,58 @@ MONO_FONT_ASSETS: dict[MonoWeight, tuple[str, str]] = {
 }
 
 
+#: The styles the packaged stylesheets ask code to be drawn in. `components.css` sets
+#: code upright at the root weight; `syntax.css` sets keyword and name tokens to 700,
+#: comment tokens to italic, and preprocessor and docstring tokens to italic AND 700.
+#: Nothing packaged asks for 500, 600 or 800, so `medium`, `semibold` and `extrabold`
+#: are additive -- they answer a host's own highlighter theme and leave nothing
+#: synthesized by their absence.
+MONO_REQUIRED_STYLES: tuple[MonoWeight, ...] = ("regular", "bold", "italic", "bold-italic")
+
+#: What a browser does for each style the stylesheets ask for and the document did not
+#: declare. The two axes fail differently, and only one of them is visible in a PDF's
+#: font list, so the refusal message says which is which.
+_MONO_SYNTHESIS_AXIS: dict[MonoWeight, str] = {
+    "regular": "the upright face code itself is set in",
+    "bold": "synthesized by emboldening a lighter face, which prints as /Type3 outlines",
+    "italic": "synthesized by shearing the upright face, which leans steeper than the drawn italic",
+    "bold-italic": "synthesized on both axes, which prints as /Type3 outlines",
+}
+
+
 def mono_weight_order(weights: Iterable[MonoWeight]) -> tuple[MonoWeight, ...]:
     """The requested styles, deduplicated and in declaration order."""
 
     requested = set(weights)
     unknown = requested.difference(MONO_FONT_ASSETS)
     if unknown:
-        msg = f"Unknown KPress mono weights: {', '.join(sorted(unknown))}"
+        msg = (
+            f"Unknown KPress mono weights: {', '.join(sorted(unknown))}; "
+            f"expected one of {', '.join(repr(name) for name in MONO_WEIGHT_ORDER)}"
+        )
         raise ValueError(msg)
     return tuple(weight for weight in MONO_WEIGHT_ORDER if weight in requested)
+
+
+def mono_synthesis_gaps(weights: Iterable[MonoWeight]) -> tuple[tuple[MonoWeight, str], ...]:
+    """The styles the packaged stylesheets ask for that this set leaves to synthesis.
+
+    A style a rule asks for and the document does not declare is not absent from the
+    page: the browser makes one up from the nearest declared face. That puts glyphs in
+    front of a reader that no foundry drew, which is the rule the vendored mono face
+    exists to keep, and on the weight axis it also puts `/Type3` outlines in an exported
+    PDF -- the precise failure this feature was built to remove. So a gap is a config
+    error rather than a warning, raised by the caller that knows its own error type.
+
+    Returns `(style, what the browser does instead)` pairs in declaration order.
+    """
+
+    declared = set(mono_weight_order(weights))
+    return tuple(
+        (style, _MONO_SYNTHESIS_AXIS[style])
+        for style in MONO_REQUIRED_STYLES
+        if style not in declared
+    )
 
 
 def mono_css_assets(

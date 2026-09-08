@@ -117,6 +117,8 @@ PUBLIC_RENDER_REQUEST_FIELDS = (
     "widgets",
     "extra_tags",
     "extra_attributes",
+    "mono_font",
+    "mono_weights",
 )
 
 PUBLIC_CSS_CLASSES = (

@@ -106,9 +106,23 @@ The seven `planetaire-mono-text-latin-<weight>-<style>.woff2` files are **latin 
 of a vendored face**, not instances or a rename: `devtools/subset_mono.py` reduces each
 upstream style to the same `unicode-range` above and keeps its family, style and
 PostScript names, its copyright and its OFL notice exactly as upstream wrote them.
-Planetaire reserves no font name of its own — its license reserves only “Bitstream” and
-“Vera”, inherited from Hack’s symbols and untouched here — so unlike the two generated
-families below there is no reserved name to step around.
+Planetaire declares no Reserved Font Name — contrast the first line of
+`src/kpress/licenses/source-sans-3.txt` — so unlike the two generated families below
+there is no OFL name to step around and the subsets keep the upstream one.
+A separate condition arrives through Hack: the Bitstream Vera license asks that a
+modified font be renamed to a name containing neither “Bitstream” nor “Vera”, and no
+family, style, full or PostScript name in any of the seven files contains either.
+Both words do stand in the copyright and license-description records, which is the
+attribution that license asks be kept.
+
+The copyright record names four holders: Joshua Levy for Planetaire, The B612 Project
+Authors for the letterforms, Source Foundry Authors and Bitstream for Hack, and Ryan L
+McIntyre for the Nerd Fonts glyph patches.
+The last is attribution the upstream face carries rather than glyphs KPress ships: the
+latin subsets map no Private Use Area code point at all, so no Nerd Fonts glyph reaches
+a page. Its license text ships regardless, because the faces’ own license record cites
+it.
+
 Each subset ships beside a stylesheet of its own,
 `../css/mono-planetaire-<weight>-<style>.css`, because `RenderOptions.mono_weights`
 decides which styles a document declares and a single-file page carries every face it
@@ -118,6 +132,7 @@ declares.
 | --- | --- |
 | Package | [`jlevy/planetaire`](https://github.com/jlevy/planetaire) |
 | Version | `v0.2.0`, published 2026-09-08 (OFL-1.1) |
+| Version records inside the files | `Version 0.1.5`, see below |
 | Source files | `fonts/web/PlanetaireMonoText-<style>.woff2`, 51 to 66 KB each |
 | Command | `python -m devtools.subset_mono` |
 | Output | 7 subsets of 13 to 17 KB, plus 7 stylesheets |
@@ -127,15 +142,27 @@ The upstream repository is one we publish ourselves, so the 14-day cool-off in
 the tag and the per-file sha256 below are the pin, and nothing here is an installed
 dependency.
 
-| Style | Source sha256 | Subset | Bytes |
-| --- | --- | --- | --- |
-| `Regular` | `f412b36c96e0b92dcb0d9d476e572375706d449616d341c7429af02eac7b408f` | `planetaire-mono-text-latin-400-normal.woff2` | 13,424 |
-| `Bold` | `3c56f2c14f843426a868cbd0730cdeff061eddb2614a7d9481ab885a4cf84820` | `planetaire-mono-text-latin-700-normal.woff2` | 13,960 |
-| `Italic` | `348c6582e8ec6822a3d5d3fda89196f04320b5ed0b873ab1fb7404ede0ac7d7b` | `planetaire-mono-text-latin-400-italic.woff2` | 14,840 |
-| `BoldItalic` | `a477f92124203bb20fc02c31ff6817584d879caa568ae3d88cc89e432fbba133` | `planetaire-mono-text-latin-700-italic.woff2` | 15,036 |
-| `Medium` | `fcfc30f97d941c24058aab40f9f1d3744dde4c19194df85327f2837227eaaf7f` | `planetaire-mono-text-latin-500-normal.woff2` | 16,232 |
-| `SemiBold` | `16d6807dc7157e4a2e9d86a7087ea2ebddf58d95b5909aca1305131d12b17bdc` | `planetaire-mono-text-latin-600-normal.woff2` | 16,564 |
-| `ExtraBold` | `51da9327a03ca057ccf156636086929d784ebd7037ce02f9d3763841802b7bdc` | `planetaire-mono-text-latin-800-normal.woff2` | 16,524 |
+The bytes are v0.2.0 and their version records say 0.1.5. Upstream’s release script
+built the fonts before it created the tag, and the version resolves from
+`git describe --tags --abbrev=0`, so the release commit stamped the preceding tag.
+The published v0.2.0 archives and the jsDelivr `@v0.2.0` pin above serve those bytes
+permanently, and re-fetching does not change them.
+Only name IDs 3 and 5 and `head.fontRevision` carry the older number; the outlines,
+metrics and glyph order are v0.2.0’s, and the source hashes below are the hashes of
+`@v0.2.0`. A PDF font list or a browser font panel will say 0.1.5.
+
+| Style | Subset | Bytes | Source sha256 | Subset sha256 |
+| --- | --- | --- | --- | --- |
+| `Regular` | `planetaire-mono-text-latin-400-normal.woff2` | 13,424 | `f412b36c96e0b92dcb0d9d476e572375706d449616d341c7429af02eac7b408f` | `0ecd530d8bdc55cc58ace248b570949c17043a16638b93c19a8c1a16591a23ed` |
+| `Bold` | `planetaire-mono-text-latin-700-normal.woff2` | 13,960 | `3c56f2c14f843426a868cbd0730cdeff061eddb2614a7d9481ab885a4cf84820` | `5b01f48d9a28b2657a74cc1f36043544eb19800726a08775088d1478be2edb7b` |
+| `Italic` | `planetaire-mono-text-latin-400-italic.woff2` | 14,840 | `348c6582e8ec6822a3d5d3fda89196f04320b5ed0b873ab1fb7404ede0ac7d7b` | `079d54b75f6d5822224ccb27d9d62e9fac0f12b6f6ee467b215ed8022ad87954` |
+| `BoldItalic` | `planetaire-mono-text-latin-700-italic.woff2` | 15,036 | `a477f92124203bb20fc02c31ff6817584d879caa568ae3d88cc89e432fbba133` | `4665ca22f8e645185e6137e53a535a021f1d0e1a8b68f7a20c1c7f31f948b71b` |
+| `Medium` | `planetaire-mono-text-latin-500-normal.woff2` | 16,232 | `fcfc30f97d941c24058aab40f9f1d3744dde4c19194df85327f2837227eaaf7f` | `ad5b7520c3a8c54c1752a14800cc1791590c17e8321637b2c74b7f963dae53ff` |
+| `SemiBold` | `planetaire-mono-text-latin-600-normal.woff2` | 16,564 | `16d6807dc7157e4a2e9d86a7087ea2ebddf58d95b5909aca1305131d12b17bdc` | `d480c09ee43ab1f749ce1637555acd09e6f3674faae365ed2604e7314b6cc804` |
+| `ExtraBold` | `planetaire-mono-text-latin-800-normal.woff2` | 16,524 | `51da9327a03ca057ccf156636086929d784ebd7037ce02f9d3763841802b7bdc` | `18e5a3f5eb67ade69a4ae21a64ab94a46e7064190f0f4468fceaec2fce622f9f` |
+
+The subset hashes are the ones `devtools/subset_mono.py` pins in `SUBSET_SHA256` and
+falls back to when the sources are absent.
 
 Only regular and bold are declared by default: `code` at 400 and the syntax
 highlighter’s keywords at 700. The other five opt in through `format.mono_weights`.
@@ -159,10 +186,18 @@ byte when the sources are present, and falls back to checking the shipped files 
 the output hashes pinned in the tool when they are not.
 The stylesheets are checked either way, since they are generated from the tool alone.
 
-Three licences travel with these files: **Planetaire Mono**
-(`src/kpress/licenses/planetaire-mono.txt`, which carries the OFL text and the upstream
-notices), and its two sources, **B612 Mono** (`b612-mono.txt`, OFL-1.1) and **Hack**
-(`hack.txt`, MIT plus the Bitstream Vera license).
+Five licence texts travel with these files, all under `src/kpress/licenses/`:
+**Planetaire Mono** (`planetaire-mono.txt`, the OFL text plus the upstream notices) and
+its three constituents — **B612 Mono** (`b612-mono.txt`, OFL-1.1, and
+`b612-mono-epl-2.0.txt`, the Eclipse Public License 2.0 it is also offered under),
+**Hack** (`hack.txt`, MIT plus the Bitstream Vera license), and **Nerd Fonts**
+(`nerd-fonts.txt`, MIT for the tooling and OFL-1.1 for the glyph fonts).
+That is the set the faces’ own license record names, which is what makes its closing
+sentence — that the full texts ship with the distribution — true inside the wheel.
+
+`planetaire-mono.txt` points at `fonts/source/licenses/B612-OFL.txt`, `Hack-LICENSE.md`
+and `NerdFonts-LICENSE`. Those are paths in the Planetaire repository; here the same
+texts are `b612-mono.txt`, `hack.txt` and `nerd-fonts.txt`, byte for byte.
 
 ## A Naming Quirk Worth Knowing
 

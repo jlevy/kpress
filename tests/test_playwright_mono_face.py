@@ -171,14 +171,28 @@ def test_code_is_set_in_the_shipped_mono_face_on_screen_and_in_print(tmp_path: P
         # would carry too.
         assert font["postScriptName"] == "PlanetaireMonoText-Regular", (selector, media, font)
 
-    # And the reader paid for exactly the two faces the default declares, both of
-    # them: the fenced block's syntax highlighting sets keywords at 700, which is why
-    # bold is in the default pair and not an opt-in.
+    # And the reader paid for the three styles this page reaches, not the four it
+    # declares. That gap is the whole argument for the default set: declaring a face
+    # is not loading it, so covering every style the stylesheets ask for costs a page
+    # nothing until the style appears on it.
+    #
+    # This fixture is Python: the fenced block sets keywords at 700 and its comment at
+    # italic 400, so three faces load. Nothing here is italic AND 700 -- Pygments'
+    # Python lexer emits no such token; C's `#include` does -- so bold-italic is
+    # declared, never requested, and the reader never pays for it.
     fetched = sorted({url.rsplit("/", 1)[-1] for url in requested if "planetaire-mono-text" in url})
     assert fetched == [
+        "planetaire-mono-text-latin-400-italic.woff2",
         "planetaire-mono-text-latin-400-normal.woff2",
         "planetaire-mono-text-latin-700-normal.woff2",
     ], fetched
+    declared = sorted({url.rsplit("/", 1)[-1] for url in requested if "mono-planetaire" in url})
+    assert declared == [
+        "mono-planetaire-400-italic.css",
+        "mono-planetaire-400-normal.css",
+        "mono-planetaire-700-italic.css",
+        "mono-planetaire-700-normal.css",
+    ], declared
 
 
 def test_system_mono_leaves_code_to_the_platform(tmp_path: Path) -> None:

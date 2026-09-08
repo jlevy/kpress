@@ -20,16 +20,22 @@ import re
 from pathlib import Path
 from typing import Any, cast
 
+import pytest
 from fontTools.ttLib import TTFont
 
-from devtools.subset_mono import CSS, FAMILY, FONTS, SOURCES, check
+from devtools.subset_mono import CSS, DEFAULT_SOURCE, FAMILY, FONTS, SOURCES, check
+from kpress.errors import KPressPublishError
 from kpress.format import DocumentInput, RenderOptions, render_page
 from kpress.format.assets import (
     MONO_FONT_ASSETS,
+    MONO_REQUIRED_STYLES,
+    mono_synthesis_gaps,
+    mono_weight_order,
     package_asset_manifest,
     package_asset_refs,
 )
 from kpress.format.model import DEFAULT_MONO_WEIGHTS, MONO_WEIGHT_ORDER, MonoWeight
+from kpress.publish.config import FormatConfig, KPressConfig, validate_config
 
 _STATIC = Path(__file__).resolve().parents[1] / "src" / "kpress" / "format" / "static"
 _STYLE_TOKENS = _STATIC / "css" / "style-tokens.css"
@@ -63,9 +69,23 @@ def _ink(path: Path, character: str) -> tuple[float, float]:
     return float(pen.bounds[3]) / upm, advance / upm
 
 
-def test_the_generator_agrees_with_the_shipped_files() -> None:
-    """The same gate ``make lint-check`` runs, so a stale asset fails the suite too."""
+def test_the_generator_agrees_with_the_shipped_files(capsys: pytest.CaptureFixture[str]) -> None:
+    """The same gate ``make lint-check`` runs, so a stale asset fails the suite too.
+
+    Which of the two checks this is depends on the machine: with the upstream faces
+    fetched it rebuilds every subset and compares byte for byte, and without them it
+    only hashes the shipped files against their recorded digests. Both are worth
+    running, but they are not the same assertion, so the mode is read back out of the
+    tool's own output rather than left ambiguous -- a green line here meant one thing
+    on a developer's machine and a weaker thing in CI, and nothing said which.
+    """
     assert check() == 0
+    printed = capsys.readouterr().out
+    assert ("[fresh-subset]" in printed) ^ ("[pinned-hash]" in printed), printed
+    if not DEFAULT_SOURCE.is_dir() or not any(DEFAULT_SOURCE.glob("PlanetaireMonoText-*.woff2")):
+        assert "[pinned-hash]" in printed, printed
+    else:
+        assert "[fresh-subset]" in printed, printed
 
 
 def test_every_offered_style_ships_a_subset_and_a_stylesheet() -> None:
@@ -113,7 +133,7 @@ def test_the_subsets_keep_the_upstream_identity() -> None:
         assert font["OS/2"].usWeightClass == style.weight, style.font_name
 
 
-def test_the_default_declares_the_upright_and_bold_faces_and_nothing_else() -> None:
+def test_the_default_declares_its_four_faces_and_nothing_else() -> None:
     manifest = package_asset_manifest(mode="hashed")
     ids = {asset.id for asset in manifest.assets}
     declared = {path for weight in DEFAULT_MONO_WEIGHTS for path in MONO_FONT_ASSETS[weight]}
@@ -148,22 +168,64 @@ def test_mono_weights_selects_exactly_the_declared_faces() -> None:
         assert not unexpected & ids, (weights, sorted(unexpected & ids))
 
 
-def test_the_default_pair_leaves_the_syntax_italics_to_the_browser() -> None:
-    """The default is short, not complete, and the docs say which.
+def _config(weights: tuple[MonoWeight, ...], mono_font: str) -> KPressConfig:
+    """A programmatic config carrying one mono setting, as a host would build it."""
+    return KPressConfig(format=FormatConfig(mono_font=cast("Any", mono_font), mono_weights=weights))
 
-    `syntax.css` sets comments and docstrings italic, and the default `mono_weights`
-    declares no italic face, so a browser slants the upright one. That is a deliberate
-    trade -- 15 KB for an italic a prose page uses in one comment -- and it stops being
-    a trade the moment either half changes: an italic added to the default pair, or the
-    italic rules removed from the highlighter. Either way this fails and the paragraphs
-    in `kpress-design.md` and the fonts README get revisited.
+
+def test_the_default_declares_every_style_the_stylesheets_ask_for() -> None:
+    """Nothing KPress's own CSS asks for is left for the browser to invent.
+
+    `syntax.css` sets comment tokens italic and preprocessor and docstring tokens
+    italic AND 700, so all four styles are reachable from default markup. A style a
+    rule asks for and the document does not declare is not absent from the page: the
+    browser synthesizes it, which on the weight axis puts `/Type3` outlines in an
+    exported PDF and on the slant axis leans about 3 degrees steeper than the drawn
+    italic. Declaring a face is not loading it -- a prose page with no code fetches
+    none of the four -- so the default covers the demand instead of trading against it.
+
+    This fails if the highlighter grows a demand the default does not answer.
     """
     syntax = (_STATIC / "css" / "syntax.css").read_text(encoding="utf-8")
     assert "font-style: italic;" in syntax
-    assert "italic" not in DEFAULT_MONO_WEIGHTS
-    assert "bold-italic" not in DEFAULT_MONO_WEIGHTS
-    # But the drawn faces are vendored, so naming them is all a host has to do.
-    assert {"italic", "bold-italic"} <= set(MONO_FONT_ASSETS)
+    assert set(MONO_REQUIRED_STYLES) <= set(DEFAULT_MONO_WEIGHTS)
+    assert not mono_synthesis_gaps(DEFAULT_MONO_WEIGHTS)
+    # The three additive weights stay opt-in: nothing packaged asks for them.
+    assert set(DEFAULT_MONO_WEIGHTS) < set(MONO_FONT_ASSETS)
+
+
+def test_a_set_that_would_synthesize_a_style_is_refused() -> None:
+    """The trap this closes: a legal-looking set that silently prints outlines.
+
+    Each of these was measured to leave a demand unanswered, and the weight-axis ones
+    put `/Type3` in the PDF. `mono_font: system` declares no face at all, so it is the
+    supported way to ship none rather than a set that ships some.
+    """
+    cases: tuple[tuple[MonoWeight, ...], ...] = (
+        ("regular",),
+        ("regular", "bold"),
+        ("regular", "italic"),
+        ("regular", "bold", "italic"),
+        ("medium", "bold"),
+        (),
+    )
+    for weights in cases:
+        assert mono_synthesis_gaps(weights), weights
+        with pytest.raises(KPressPublishError, match="mono_weights"):
+            _ = validate_config(_config(weights, "planetaire"))
+        # Ignored under `system`, which is what "ship no face" actually looks like.
+        # The value still normalizes to declaration order, as it does everywhere.
+        assert validate_config(_config(weights, "system")).format.mono_weights == tuple(
+            name for name in MONO_WEIGHT_ORDER if name in set(weights)
+        )
+
+
+def test_an_unknown_style_name_says_which_names_are_valid() -> None:
+    """A typo should not send a host to the source to find the vocabulary."""
+    with pytest.raises(ValueError, match="expected one of"):
+        _ = mono_weight_order(cast("list[MonoWeight]", ["semi-bold"]))
+    with pytest.raises(KPressPublishError, match="expected one of"):
+        _ = validate_config(_config(cast("tuple[MonoWeight, ...]", ("semi-bold",)), "planetaire"))
 
 
 def test_declaration_order_is_the_generator_s_order_not_the_host_s() -> None:
@@ -186,8 +248,12 @@ def test_the_page_stamps_and_links_what_each_setting_selected() -> None:
     body = "# Doc\n\nProse with `inline code` in it.\n"
     default = _document(body, RenderOptions(asset_mode="linked"))
     assert 'data-kpress-mono-font="planetaire"' in default
-    assert "mono-planetaire-400-normal.css" in default
-    assert "mono-planetaire-400-italic.css" not in default
+    for weight in DEFAULT_MONO_WEIGHTS:
+        assert MONO_FONT_ASSETS[weight][0].removeprefix("css/") in default, weight
+    # And the three additive weights, which nothing packaged asks for, stay out.
+    assert "mono-planetaire-500-normal.css" not in default
+    assert "mono-planetaire-600-normal.css" not in default
+    assert "mono-planetaire-800-normal.css" not in default
 
     system = _document(body, RenderOptions(asset_mode="linked", mono_font="system"))
     assert 'data-kpress-mono-font="system"' in system
@@ -204,11 +270,24 @@ def test_the_style_tokens_switch_on_the_stamped_attribute() -> None:
     assert f'"{FAMILY}"' in default_stack
     override = css.split('.kpress[data-kpress-mono-font="system"]', 1)[1].split("}", 1)[0]
     assert FAMILY not in override
-    assert "ui-monospace" in override
+    assert "--kpress-mono-stack-platform" in override
     # font_mode="system" is the other way to ask for the platform mono, and it has to
     # cover code now that code is a shipped face rather than the platform's own.
     font_mode = css.split('.kpress[data-kpress-fonts="system"]', 1)[1].split("}", 1)[0]
     assert "--kpress-font-mono:" in font_mode
+
+    # The platform stack is written once and read three times. Three hand-copied
+    # stacks drift, and this is the token that stops them.
+    assert css.count("ui-monospace") == 1, "the platform mono stack is duplicated again"
+    stack = css.split("--kpress-mono-stack-platform:", 1)[1].split(";", 1)[0]
+    assert "ui-monospace" in stack and "monospace" in stack
+
+    # Every rule that sets --kpress-font-mono reads the host hook first, the reader's
+    # system-font toggle included: a documented public seam must not stop working on a
+    # control the reader owns. Before this, that block set a bare stack and the host's
+    # chosen face was discarded the moment a reader flipped system fonts on.
+    for declaration in re.findall(r"--kpress-font-mono:([^;]+);", css):
+        assert "var(--kpress-host-font-mono," in re.sub(r"\s+", "", declaration), declaration
     assert FAMILY not in font_mode
 
 
@@ -240,11 +319,28 @@ def test_the_mono_size_token_is_the_ratio_the_two_faces_ask_for() -> None:
     assert 0.95 <= relative_x_height <= 1.0, relative_x_height
     assert round(relative_x_height, 2) == 0.97, relative_x_height
 
-    # And the reading measure holds 85 columns of it.
-    columns = int(_MEASURE_EM / (ratio * mono_advance))
-    assert columns == 85, columns
+    # And the reading measure holds 85 columns of it: 45 / (0.87 x 0.602) = 85.9, and
+    # a column is not divisible, so the floor is the number that fits.
+    exact_columns = _MEASURE_EM / (ratio * mono_advance)
+    assert round(exact_columns, 2) == 85.92, exact_columns
+    assert int(exact_columns) == 85, exact_columns
 
     # The small and tiny rungs derive from the mono rung, so a host that retunes it
     # through --kpress-host-font-size-mono keeps the proportions between the three.
     for rung in ("small", "tiny"):
         assert f"--kpress-font-size-mono-{rung}: calc(var(--kpress-font-size-mono)" in css, rung
+
+    # And they hold the same ratio the mono rung does, which is the whole claim the
+    # three-rung ramp makes. The two ramps pair by index, so each mono multiplier is
+    # its prose partner's own step and the ratio collapses to 0.87 in every rung. Left
+    # unchecked, these were 0.915 and 0.855 -- the pre-Planetaire absolutes rescaled --
+    # which put small and tiny at 99% and 98% of the prose x-height beside them while
+    # the rung above sat at 97%. Nothing failed, because nothing measured them.
+    for rung, prose_step in (("small", 0.9), ("tiny", 0.85)):
+        found = re.search(
+            rf"--kpress-font-size-mono-{rung}:\s*calc\(var\(--kpress-font-size-mono\) \* ([\d.]+)\)",
+            re.sub(r"\s+", " ", css),
+        )
+        assert found is not None, rung
+        rung_parity = (ratio * float(found.group(1)) * mono_x) / (prose_step * prose_x)
+        assert round(rung_parity, 4) == round(relative_x_height, 4), (rung, rung_parity)

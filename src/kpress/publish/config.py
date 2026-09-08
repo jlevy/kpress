@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from kpress.errors import KPressPublishError
+from kpress.format.assets import mono_synthesis_gaps
 from kpress.format.model import (
     DEFAULT_MONO_WEIGHTS,
     MONO_WEIGHT_ORDER,
@@ -287,14 +288,21 @@ def _validated_precompress(value: object) -> list[str]:
     return methods
 
 
-def _validated_mono_weights(value: object) -> tuple[MonoWeight, ...]:
+def _validated_mono_weights(value: object, *, mono_font: str) -> tuple[MonoWeight, ...]:
     """Return format.mono_weights in declaration order, raising on unknown names.
 
-    Omitted (``None``) keeps the default pair. A single string is accepted the way
+    Omitted (``None``) keeps the default set. A single string is accepted the way
     ``format.html.extra_tags`` accepts one, since declaring exactly one style is a
-    reasonable thing to write. An empty list is a legitimate answer -- it declares
-    no faces while leaving ``mono_font`` alone -- and is not the same as omitting
-    the key, so it is kept rather than defaulted.
+    reasonable thing to write.
+
+    Under ``mono_font: planetaire`` the set must cover every style the packaged
+    stylesheets ask for, because a style they ask for and this list withholds is not
+    absent from the page -- the browser synthesizes it, and a synthesized glyph is one
+    no foundry drew. See ``mono_synthesis_gaps``. The three additive weights (medium,
+    semibold, extrabold) are free to include or omit: nothing packaged asks for them.
+
+    Under ``mono_font: system`` no Planetaire face is declared at all, so the value is
+    ignored and any set -- including the empty list -- is accepted unchecked.
     """
 
     if value is None:
@@ -312,7 +320,24 @@ def _validated_mono_weights(value: object) -> tuple[MonoWeight, ...]:
     for name in names:
         _ = _checked_choice("format.mono_weights entry", name, MONO_WEIGHT_ORDER)
     requested = set(names)
-    return tuple(weight for weight in MONO_WEIGHT_ORDER if weight in requested)
+    weights: tuple[MonoWeight, ...] = tuple(
+        weight for weight in MONO_WEIGHT_ORDER if weight in requested
+    )
+    if mono_font != "system":
+        gaps = mono_synthesis_gaps(weights)
+        if gaps:
+            missing = ", ".join(f"{style!r} ({effect})" for style, effect in gaps)
+            declared = ", ".join(repr(name) for name in weights) or "nothing"
+            msg = (
+                f"format.mono_weights declares {declared}, which leaves the packaged "
+                f"stylesheets asking for a style no declared face answers: {missing}. "
+                f"Every style KPress's own CSS asks for must be declared, so no glyph "
+                f"is invented: add the missing names, or set format.mono_font to "
+                f"'system' to hand code back to the platform and ship no face at all. "
+                f"'italic' and 'bold-italic' are added and dropped together."
+            )
+            raise KPressPublishError(msg)
+    return weights
 
 
 def _validated_extra_tags(value: object) -> tuple[str, ...]:
@@ -524,7 +549,9 @@ def validate_config(config: KPressConfig) -> KPressConfig:
     _ = _checked_choice("format.prose_font", config.format.prose_font, _PROSE_FONTS)
     _ = _checked_choice("format.math_text_font", config.format.math_text_font, _MATH_TEXT_FONTS)
     _ = _checked_choice("format.mono_font", config.format.mono_font, _MONO_FONTS)
-    mono_weights = _validated_mono_weights(list(config.format.mono_weights))
+    mono_weights = _validated_mono_weights(
+        list(config.format.mono_weights), mono_font=config.format.mono_font
+    )
     extra_tags = _validated_extra_tags(list(config.format.extra_tags))
     extra_attributes = _validated_extra_attributes(list(config.format.extra_attributes))
     widgets = parse_widgets(config.format.widgets)
@@ -671,7 +698,7 @@ def load_config(path: Path | str = "kpress.yml") -> KPressConfig:
             prose_font=cast(ProseFont, prose_font),
             math_text_font=cast(MathTextFont, math_text_font),
             mono_font=cast(MonoFont, mono_font),
-            mono_weights=_validated_mono_weights(fmt.get("mono_weights")),
+            mono_weights=_validated_mono_weights(fmt.get("mono_weights"), mono_font=mono_font),
             content_card=_bool_value(fmt.get("content_card"), True),
             show_doc_header=_bool_value(fmt.get("show_doc_header"), True),
             toc=cast(TocMode, toc),

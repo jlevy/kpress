@@ -16,7 +16,7 @@ deferred for v1".
 from __future__ import annotations
 
 import mimetypes
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path, PurePosixPath
 
 from kpress.format.assets import (
@@ -27,7 +27,12 @@ from kpress.format.assets import (
     package_asset_manifest,
     read_package_bytes,
 )
-from kpress.format.model import AssetMode
+from kpress.format.model import (
+    DEFAULT_MONO_WEIGHTS,
+    AssetMode,
+    MonoFont,
+    MonoWeight,
+)
 from kpress.output import write_bytes_atomic
 from kpress.publish.manifest import ManifestAsset, OutputFile
 
@@ -73,12 +78,23 @@ def copy_package_assets(
     asset_mode: AssetMode,
     optimizer: AssetOptimizer | None = None,
     manifest: AssetManifest | None = None,
+    mono_font: MonoFont = "planetaire",
+    mono_weights: Iterable[MonoWeight] = DEFAULT_MONO_WEIGHTS,
 ) -> tuple[list[OutputFile], list[ManifestAsset]]:
-    """Copy package-owned KPress assets into the static output tree."""
+    """Copy package-owned KPress assets into the static output tree.
+
+    ``manifest`` is the document's own asset set and decides everything when it is
+    given. The fallback built when it is ``None`` has no document to read, so it takes
+    ``mono_font``/``mono_weights`` directly: without them it rebuilt the manifest at
+    the package defaults and copied the vendored mono faces into an output tree whose
+    document had declined them.
+    """
 
     files: list[OutputFile] = []
     assets: list[ManifestAsset] = []
-    resolved_manifest = manifest or package_asset_manifest(mode=asset_mode)
+    resolved_manifest = manifest or package_asset_manifest(
+        mode=asset_mode, mono_font=mono_font, mono_weights=mono_weights
+    )
     manifest_assets = resolved_manifest.assets
 
     if optimizer is None and asset_mode != "inline":

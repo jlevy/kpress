@@ -8,10 +8,14 @@ Open Font License, from https://github.com/jlevy/planetaire.
 This tool subsets the upstream web faces down to the same latin ``unicode-range``
 every other vendored face here covers, writes them to ``static/fonts/``, and writes
 one stylesheet per style beside them in ``static/css/``. One stylesheet per style is
-the point rather than an accident: ``RenderOptions.mono_weights`` decides which
-styles a document declares, and a single-file page inlines every face it declares,
-so a style that was not asked for must not reach the page at all. The renderer
-selects among these files; nothing at render time rewrites CSS.
+the point rather than an accident: ``RenderOptions.mono_weights`` decides which styles
+a document declares, and a style nobody asked for must not be declared, linked or
+copied. What that buys is the built tree -- the default set declares four of the seven,
+so the other three (48 KB of woff2) are never copied into a static build, and
+``mono_font: "system"`` prunes all seven (104 KB). It does not buy fewer *fetched*
+bytes on top of that: a browser fetches a declared face only when a glyph resolves to
+it, so a prose page with no code already fetches none of them. The renderer selects
+among these files; nothing at render time rewrites CSS.
 
 The upstream faces are **not** vendored: they are between 50 and 66 KB each and the
 subsets are a third of that. Fetch them once into :data:`DEFAULT_SOURCE` (or pass
@@ -24,21 +28,33 @@ subsets are a third of that. Fetch them once into :data:`DEFAULT_SOURCE` (or pas
 
 Run ``python -m devtools.subset_mono`` to regenerate and ``--check`` to verify. As in
 ``devtools/subset_quotes.py``, which check runs depends on whether the sources are at
-hand:
+hand, and ``--check`` prints which of the two it ran:
 
-* **Sources present** (each sha256 must match :data:`SOURCES`): every subset is rebuilt
-  and compared byte for byte against the shipped file. This is the real check.
-* **Sources absent** -- CI, and any checkout that has not fetched them: each shipped
-  file is hashed against :data:`SUBSET_SHA256`, which catches a corrupted or
-  hand-edited asset but cannot catch a stale one.
+* ``[fresh-subset]`` -- **all seven sources present** (each sha256 must match
+  :data:`SOURCES`): every subset is rebuilt and compared byte for byte against the
+  shipped file. This is the real check, and the only one that catches a change to this
+  generator that alters what it would now write.
+* ``[pinned-hash]`` -- **no source present**, which is CI and any checkout that has not
+  fetched them: each shipped file is hashed against :data:`SUBSET_SHA256`. That catches
+  a corrupted or hand-edited asset and cannot catch a stale one, so it is named in the
+  output rather than left to look like the check above.
+
+A directory holding *some* of the seven is an error, not a reason to downgrade: it is a
+broken cache rather than an absent one, and silently taking the weak path there is how
+a developer who lost one file gets CI's green line while the strong check stops running.
 
 The stylesheets are checked either way: they are generated from this file alone.
 
-The subsets keep the upstream family name. Planetaire reserves no font name of its own
-(its LICENSE reserves only "Bitstream" and "Vera", inherited from Hack's symbols, which
-this subset does not rename), so unlike ``instance_sans.py`` and ``subset_quotes.py``
-there is no reserved name to step around. ``static/fonts/README.md`` records the
-provenance and ``src/kpress/licenses/planetaire-mono.txt`` carries the license text.
+The subsets keep the upstream family name, because two separate mechanisms both allow
+it. Planetaire's OFL declares no Reserved Font Name at all (contrast
+``src/kpress/licenses/source-sans-3.txt``, which reserves "Source"), so unlike
+``instance_sans.py`` and ``subset_quotes.py`` there is no OFL name to step around.
+Separately, the Bitstream Vera license inherited through Hack's symbols carries a rename
+condition on the names "Bitstream" and "Vera"; neither appears in any family, style, full
+or PostScript name these subsets write, so that condition is satisfied. Both words do
+stand in the copyright and license-description records, which is the attribution that
+license asks be kept. ``static/fonts/README.md`` records the provenance and
+``src/kpress/licenses/planetaire-mono.txt`` carries the license text.
 """
 
 from __future__ import annotations
@@ -101,12 +117,14 @@ class MonoStyle:
         return f"mono-planetaire-{self.weight}-{self.style}.css"
 
 
-#: The seven styles KPress offers, in declaration order. Regular and bold are the
-#: default pair; the rest opt in by name through ``mono_weights``, which is where a site
-#: whose code carries italic comments buys the drawn italic instead of the browser's
-#: synthesized one. The three remaining upstream italics (Medium, SemiBold and ExtraBold
-#: Italic) are deliberately not vendored: no KPress rule asks for an italic above 700,
-#: and every vendored file is bytes in the wheel whether or not a document declares it.
+#: The seven styles KPress offers, in declaration order. The first four are the default
+#: set, because those are the four the packaged stylesheets ask for and a style they ask
+#: for and a document does not declare is drawn by synthesis. The last three opt in by
+#: name through ``mono_weights``, for a host whose own highlighter theme reaches for a
+#: weight KPress's does not. The three remaining upstream italics (Medium, SemiBold and
+#: ExtraBold Italic) are deliberately not vendored: no KPress rule asks for an italic
+#: above 700, and every vendored file is bytes in the wheel whether or not a document
+#: declares it.
 SOURCES: Final[tuple[MonoStyle, ...]] = (
     MonoStyle(
         name="regular",
@@ -293,16 +311,25 @@ def _shown(path: Path) -> str:
 
 
 def _resolve_sources(source: Path | None) -> dict[str, Path] | None:
-    """The upstream faces if they are all present and are the versions we pinned."""
+    """The upstream faces if they are all present and are the versions we pinned.
+
+    ``None`` means the fresh-subset check cannot run, and it is returned for exactly
+    one reason: the source directory holds none of the seven faces, which is what a
+    machine that never fetched them looks like (CI, a fresh clone). A directory
+    holding *some* of them is a broken cache, not an absent one, and downgrading
+    there is how a developer who lost one file gets the same green output as CI
+    while the strong check silently stops running. Every file present is hashed
+    against its pin whichever way this ends, so a tampered face beside a missing one
+    is still caught.
+    """
     directory = source if source is not None else DEFAULT_SOURCE
     found: dict[str, Path] = {}
+    missing: list[str] = []
     for style in SOURCES:
         path = directory / style.source_name
         if not path.exists():
-            if source is not None:
-                print(f"no such file: {path}", file=sys.stderr)
-                raise SystemExit(2)
-            return None
+            missing.append(style.source_name)
+            continue
         digest = _sha256(path.read_bytes())
         if digest != style.source_sha256:
             print(f"{path} is not the pinned source", file=sys.stderr)
@@ -310,7 +337,19 @@ def _resolve_sources(source: Path | None) -> dict[str, Path] | None:
             print(f"  found    sha256 {digest}", file=sys.stderr)
             raise SystemExit(2)
         found[style.name] = path
-    return found
+    if not missing:
+        return found
+    if source is None and not found:
+        return None
+    print(f"incomplete upstream sources in {directory}", file=sys.stderr)
+    for name in missing:
+        print(f"  missing: {name}", file=sys.stderr)
+    print(
+        f"  {len(found)} of {len(SOURCES)} present; fetch the rest or remove the "
+        f"directory to fall back to the pinned-hash check",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
 
 
 def stylesheets() -> dict[Path, bytes]:
@@ -340,7 +379,22 @@ def write(source: Path | None = None) -> int:
     return 0
 
 
+#: The two things `--check` can mean, named in its own output so a reader of a CI log
+#: can tell which one ran. The pinned-hash mode compares the shipped subsets against
+#: recorded digests: it catches a corrupted or hand-edited file, and cannot catch a
+#: generator change that alters what the tool would now write. The fresh-subset mode
+#: rebuilds every subset from the pinned upstream faces and compares byte for byte,
+#: which is the check that actually holds the generator to its output.
+_PINNED_MODE = "pinned-hash"
+_FRESH_MODE = "fresh-subset"
+
+
 def check(source: Path | None = None) -> int:
+    """Verify the shipped mono files, in whichever mode the machine can support.
+
+    The mode is printed, because the two are not equally strong and a green line that
+    does not say which one ran is how the weak one passes for the strong one.
+    """
     failed = False
     for path, data in stylesheets().items():
         if not path.exists():
@@ -365,10 +419,15 @@ def check(source: Path | None = None) -> int:
                 print(f"  found    sha256 {digest}", file=sys.stderr)
                 failed = True
         if failed:
+            print(f"[{_PINNED_MODE}] mono faces failed", file=sys.stderr)
             print("regenerate with `python -m devtools.subset_mono`", file=sys.stderr)
             return 1
-        print(f"mono faces match their recorded sha256 ({len(SOURCES)} subsets)")
-        print(f"fetch the upstream faces into {DEFAULT_SOURCE} for the fresh-subset check")
+        print(f"[{_PINNED_MODE}] mono faces match their recorded sha256 ({len(SOURCES)} subsets)")
+        print(
+            f"[{_PINNED_MODE}] this mode cannot catch a generator change that alters "
+            f"output; fetch the upstream faces into {DEFAULT_SOURCE} to run "
+            f"[{_FRESH_MODE}]"
+        )
         return 0
     for path, data in subsets(sources).items():
         if not path.exists():
@@ -378,9 +437,10 @@ def check(source: Path | None = None) -> int:
             print(f"stale: {_shown(path)}", file=sys.stderr)
             failed = True
     if failed:
+        print(f"[{_FRESH_MODE}] mono faces failed", file=sys.stderr)
         print("regenerate with `python -m devtools.subset_mono`", file=sys.stderr)
         return 1
-    print(f"mono faces current: {len(SOURCES)} subsets and their stylesheets")
+    print(f"[{_FRESH_MODE}] mono faces current: {len(SOURCES)} subsets and their stylesheets")
     return 0
 
 

@@ -58,6 +58,22 @@ jobs:
           node-version: "24.18.0"
           cache: "npm"
 
+      # Without these, `subset_mono --check` takes its pinned-hash path, which compares
+      # the shipped subsets against recorded digests and so cannot catch a change to
+      # the generator that alters what it would now write. With them it rebuilds every
+      # subset and compares byte for byte. The download is self-verifying: the tool
+      # hashes each file against the `source_sha256` pinned in SOURCES and exits 2 on a
+      # mismatch, and it now refuses a partly populated cache rather than downgrading,
+      # so a failed fetch fails the job instead of quietly weakening the gate.
+      - name: Fetch the pinned upstream mono faces
+        run: |
+          mkdir -p ~/.cache/kpress/fonts
+          cd ~/.cache/kpress/fonts
+          for f in Regular Bold Italic BoldItalic Medium SemiBold ExtraBold; do
+            curl -fLO --retry 3 --retry-all-errors \
+              "https://cdn.jsdelivr.net/gh/jlevy/planetaire@v0.2.0/fonts/web/PlanetaireMonoText-$f.woff2"
+          done
+
       - name: Run quality gates and audits
         run: make lint-check audit
 

@@ -29,22 +29,45 @@ import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from devtools.instance_sans import FAMILY
 from devtools.subset_mono import SOURCES as MONO_STYLES
+from devtools.subset_mono import MonoStyle
 from devtools.subset_quotes import POSTSCRIPT_NAME as QUOTE_FACE
+from kpress.format.model import MonoWeight
 from kpress.format.pdf import PdfOptions, render_pdf
 from kpress.workflow.format import format_document
+
+
+def _mono_style(name: str) -> MonoStyle:
+    """The one `SOURCES` entry with this `mono_weights` name."""
+    return next(style for style in MONO_STYLES if style.name == name)
+
 
 #: The static instance every default KPress page needs in print: the footer margin box
 #: names the sans stack at the root's own weight, which font matching lands on 400.
 FOOTER_FACE = f"{FAMILY.replace(' ', '')}-400"
 
 #: The mono face code resolves to, by the PostScript name the subset keeps from
-#: upstream (devtools/subset_mono.py renames nothing).
-MONO_FACE = f"PlanetaireMonoText-{MONO_STYLES[0].upstream}"
+#: upstream (devtools/subset_mono.py renames nothing). Selected by name rather than by
+#: position: `SOURCES` is a declaration-ordered tuple and nothing stops a style being
+#: inserted ahead of regular, which would silently repoint this constant.
+MONO_FACE = f"PlanetaireMonoText-{_mono_style('regular').upstream}"
+
+#: Every face a KPress page is allowed to print with: the two reader faces, the static
+#: print sans, the quote subset, and the mono styles the document declared. A denylist
+#: of the two the developing machine happens to own passes on a runner that falls back
+#: to DejaVu or Liberation instead, so the guard is a subset test against what KPress
+#: ships -- anything else in the font list came from the machine.
+OWNED_FACE_PREFIXES = (
+    "PTSerif",
+    f"{FAMILY.replace(' ', '')}",
+    QUOTE_FACE,
+    "PlanetaireMonoText",
+)
 
 #: How long the delaying server holds a static instance back. Long enough that an export
 #: which does not wait prints before the face arrives (measured: it prints immediately),
@@ -55,6 +78,17 @@ _INSTANCE_FILE = re.compile(r"/kpress-print-sans-latin-\d{3}-(?:normal|italic)\.
 _BASE_FONT = re.compile(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)")
 _OBJECT = re.compile(rb"\d+ 0 obj(.*?)endobj", re.DOTALL)
 _TYPE0 = re.compile(rb"/Subtype\s*/Type0\b")
+
+
+def assert_only_owned_faces(fonts: set[str]) -> None:
+    """Every face in the PDF is one KPress ships.
+
+    The inverse of a denylist: naming the faces we own catches a fallback to whatever
+    mono the exporting machine happens to have, on any platform, rather than only the
+    two a macOS developer would see.
+    """
+    borrowed = [name for name in fonts if not name.startswith(OWNED_FACE_PREFIXES)]
+    assert not borrowed, f"faces not shipped by KPress reached the PDF: {sorted(borrowed)}"
 
 
 def _embedded_fonts(pdf: Path) -> set[str]:
@@ -196,8 +230,8 @@ def test_code_embeds_the_shipped_mono_face_in_the_exported_pdf(tmp_path: Path) -
     # The prose beside the code printed too, and nothing anywhere fell back to paths.
     assert any(name.startswith("PTSerif") for name in fonts), fonts
     assert b"/Type3" not in output.read_bytes(), fonts
-    # Nothing borrowed the exporting machine's own mono.
-    assert not [name for name in fonts if "Menlo" in name or "Courier" in name], fonts
+    # Nothing borrowed the exporting machine's own anything.
+    assert_only_owned_faces(fonts)
 
 
 def test_quotation_marks_embed_in_the_exported_pdf(tmp_path: Path) -> None:
@@ -217,3 +251,80 @@ def test_quotation_marks_embed_in_the_exported_pdf(tmp_path: Path) -> None:
     assert QUOTE_FACE in fonts, fonts
     # The letters beside the marks are still the reading face, so the page did print.
     assert any(name.startswith("PTSerif") for name in fonts), fonts
+
+
+#: Code that reaches all four styles the packaged stylesheets ask for: prose-weight
+#: tokens, keywords at 700, a `c1` comment in italic, and a `cp` preprocessor token,
+#: which `syntax.css` sets italic AND 700. Python alone never emits `cp`, so a Python
+#: fixture leaves bold-italic unreached and the set that omits it looks clean.
+_FOUR_STYLE_CODE = (
+    "# Every style\n\n"
+    "A paragraph that mentions `render_page(document, options)` inline.\n\n"
+    "```python\n"
+    "def measure(face: str) -> int:\n"
+    "    return len(face)  # 0123456789\n"
+    "```\n\n"
+    "```c\n"
+    "#include <stdio.h>\n"
+    "int main(void) { return 0; }\n"
+    "```\n"
+)
+
+
+def _page_with_mono_weights(tmp_path: Path, weights: tuple[str, ...]) -> Path:
+    """One standalone page exported with an explicit `mono_weights` set.
+
+    Through `export_document` rather than `build_site`, for two reasons: it emits the
+    relative asset tree a `file://` render can actually resolve, and it is the path
+    that carries the mono setting on `KPressExportRequest` -- so this doubles as the
+    check that a single-document export can choose its own mono face at all.
+    """
+    from kpress.models import KPressExportRequest
+    from kpress.publish.build import export_document
+
+    source = tmp_path / "doc.md"
+    source.write_text(_FOUR_STYLE_CODE, encoding="utf-8")
+    destination = tmp_path / "out" / "doc.html"
+    export_document(
+        KPressExportRequest(
+            path=str(source),
+            kind="markdown",
+            view="document",
+            destination=str(destination),
+            mono_weights=cast("tuple[MonoWeight, ...]", weights),
+        )
+    )
+    return destination
+
+
+@pytest.mark.parametrize(
+    "weights",
+    [
+        pytest.param(tuple(style.name for style in MONO_STYLES[:4]), id="default"),
+        pytest.param(tuple(style.name for style in MONO_STYLES), id="all-seven"),
+    ],
+)
+def test_no_shipped_mono_set_prints_type3(tmp_path: Path, weights: tuple[str, ...]) -> None:
+    """Every set a host may legally declare prints as embedded fonts, never as outlines.
+
+    `/Type3` is a page of drawn paths wearing text's clothes: unsearchable, unselectable
+    and unsmoothed. It is what a browser produces when it has to invent a weight, and
+    removing it is the whole reason this face is vendored. `_validated_mono_weights`
+    refuses the sets that would cause it, so this is the other half of that guarantee --
+    the sets it *admits* are measured here rather than argued about.
+    """
+    _require_chromium()
+    html = _page_with_mono_weights(tmp_path, weights)
+    output = tmp_path / "code.pdf"
+
+    render_pdf(html, PdfOptions(output=output))
+
+    fonts = _embedded_fonts(output)
+    assert b"/Type3" not in output.read_bytes(), fonts
+    assert MONO_FACE in _type0_fonts(output), fonts
+    # Both italic styles are reachable from this fixture, so both must be real faces.
+    assert f"PlanetaireMonoText-{_mono_style('italic').upstream}" in _type0_fonts(output), fonts
+    assert f"PlanetaireMonoText-{_mono_style('bold-italic').upstream}" in _type0_fonts(output), (
+        fonts
+    )
+    assert_only_owned_faces(fonts)

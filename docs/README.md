@@ -56,6 +56,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
+- [KPress 0.3.6](releases/0.3.6.md): code is set in a shipped mono face, with the
+  default declaring every style the stylesheets ask for and synthesizing sets refused
 - [KPress 0.3.3](releases/0.3.3.md): maintenance release making an automatic TOC take
   both a heading count and a document length, and letting dynamic hosts switch it off
 - [KPress 0.3.2](releases/0.3.2.md): maintenance release fixing two typographic rules

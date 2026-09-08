@@ -44,17 +44,34 @@ MONO_WEIGHT_ORDER: tuple[MonoWeight, ...] = (
     "semibold",
     "extrabold",
 )
-#: What a document declares when a host says nothing: upright and bold. Those are the
-#: two `code` and the syntax highlighter's keywords resolve to, and they carry the two
-#: shapes a reader meets code in.
+#: What a document declares when a host says nothing: every style the stylesheets ask
+#: for. `code` and the highlighter's keywords resolve to upright and bold; `syntax.css`
+#: sets comments italic and docstrings italic-and-700, so all four are reachable from
+#: default markup, and a style a rule asks for and this list withholds is drawn by
+#: synthesis -- outlines no foundry drew, which is the rule this feature exists to keep.
 #:
-#: It is a deliberately short default, not a complete one. `syntax.css` also sets
-#: comments and docstrings italic, so under this pair a browser slants the upright face
-#: itself -- a synthesized oblique, legible but not the drawn italic. Adding "italic"
-#: (and "bold-italic" for the italic-and-700 tokens) buys the real ones for another
-#: 15 KB apiece, which a page that is mostly prose with a few code spans should not pay
-#: by default and a page of annotated code probably should.
-DEFAULT_MONO_WEIGHTS: tuple[MonoWeight, ...] = ("regular", "bold")
+#: Declaring is not loading. A browser fetches a declared face only when a glyph
+#: resolves to it, so the cost of a declaration falls on the page that uses the style
+#: and on no other. Measured with all four declared: a prose page with no code fetches
+#: nothing and leaves all four `unloaded`; a page of Python fetches 400-italic for its
+#: comments and leaves 700-italic `unloaded`, because Pygments' Python lexer emits no
+#: italic-and-700 token -- a page of C, whose `#include` does, fetches that one too.
+#: KPress declares four PT Serif faces on the same reasoning.
+#:
+#: What declaring buys is that no glyph is invented. In print it takes the synthesized
+#: shear runs on a page to zero, for 40% to 73% more mono font-program bytes in the PDF
+#: (+5.5 KB to +9.3 KB across fixtures from 12 to 1,497 syntax tokens), part of which
+#: comes back as the regular subset shrinks and those glyphs leave it. Slant synthesis
+#: at least stays Type0; weight synthesis does not, and puts Type 3 outlines in the PDF.
+#:
+#: Every style stays selectable: a host that wants fewer names them in `mono_weights`,
+#: subject to the synthesis check in `publish/config.py`.
+DEFAULT_MONO_WEIGHTS: tuple[MonoWeight, ...] = (
+    "regular",
+    "bold",
+    "italic",
+    "bold-italic",
+)
 AssetMode = Literal["hosted", "linked", "hashed", "inline"]
 AssetPolicy = Literal["none", "auto", "all"]
 OptimizerMode = Literal["none", "full"]
@@ -180,12 +197,15 @@ class RenderOptions:
     # docs/kpress-design.md.
     mono_font: MonoFont = "planetaire"
     # Which Planetaire styles the document declares. Only declared faces exist
-    # in the stylesheet, so a hosted page fetches only what its code uses and an
-    # inlined page carries only what was enabled. A style a rule asks for and
-    # this list withholds is not an error: the browser synthesizes it from the
-    # nearest declared face, which is why DEFAULT_MONO_WEIGHTS can be two files
-    # rather than four. Order does not matter: the manifest emits
-    # MONO_WEIGHT_ORDER. Ignored when mono_font is "system".
+    # in the stylesheet, so a page copies and links only what was enabled, and
+    # fetches only the subset of that its own code reaches. A style a rule asks
+    # for and this list withholds is drawn by synthesis, so the two axes the
+    # default stylesheets use -- weight and slant -- must both be covered:
+    # publish/config.py rejects a set that would leave either synthesized, and
+    # italic and bold-italic are added and dropped as a pair. The three extra
+    # weights (medium, semibold, extrabold) are opt-in and synthesize nothing.
+    # Order does not matter: the manifest emits MONO_WEIGHT_ORDER. Ignored when
+    # mono_font is "system".
     mono_weights: tuple[MonoWeight, ...] = DEFAULT_MONO_WEIGHTS
     # Content card: render the reading column as a bordered sheet floating over
     # the page (textpress's long-text card; chrome only appears at md+ widths).

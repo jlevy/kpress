@@ -85,20 +85,22 @@
     "Segoe UI",
     sans-serif
   );
+  /* The platform's own mono stack, named once. Three rules need it -- the mono
+     token below (as the fallback behind the shipped face), the reader's
+     system-font switch, and mono_font="system" -- and three hand-copied stacks
+     drift apart. Internal, not a host hook: a host swaps the mono face through
+     --kpress-host-font-mono, which leads every one of those three rules. */
+  --kpress-mono-stack-platform: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   /* "Planetaire Mono Text" leads: B612 Mono's letterforms with Hack's
      punctuation and symbols, vendored as latin subsets by
      devtools/subset_mono.py. Which of its styles a document actually declares
      is RenderOptions.mono_weights; whether it declares any is
      RenderOptions.mono_font, whose "system" value swaps this token for the
-     platform stack below and drops the faces from the manifest. */
+     platform stack alone and drops the faces from the manifest. */
   --kpress-font-mono: var(
     --kpress-host-font-mono,
     "Planetaire Mono Text",
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Consolas,
-    monospace
+    var(--kpress-mono-stack-platform)
   );
   --kpress-font-footnote: var(--kpress-host-font-footnote, var(--kpress-font-sans));
   --kpress-font-table: var(--kpress-host-font-table, var(--kpress-font-sans));
@@ -138,19 +140,28 @@
      0.87 x 0.560 = 0.487 em, about 97% of the prose x-height beside it -- a hair
      smaller, which is what keeps a code span from bulging out of the line it sits
      in. The cost is width: Planetaire advances 1204/2000 = 0.602 em per column, so
-     45 / (0.87 x 0.602) = about 85 columns fit the --kpress-measure reading column.
-     `tests/test_mono_face.py` re-derives both numbers from the shipped faces.
+     45 / (0.87 x 0.602) = 85.9, and 85 columns fit the --kpress-measure reading
+     column. `tests/test_mono_face.py` re-derives both numbers from the shipped faces.
 
      A host retunes the three rungs together through --kpress-host-font-size-mono,
      the one sizing hook beside --kpress-host-font-size-base: small and tiny derive
      from the mono rung rather than from the base, so a host that sets it keeps the
-     internal proportions instead of forking three tokens. */
+     internal proportions instead of forking three tokens.
+
+     The two ramps pair by index -- mono/normal, mono-small/smaller,
+     mono-tiny/tiny -- so the small and tiny multipliers are the prose ramp's own
+     steps, 0.9 and 0.85. That is what makes the ratio hold: 0.87 x 0.9 / 0.9 is
+     0.87 again, so all three rungs sit at the same 97% of the prose x-height
+     beside them instead of only the first one. They were 0.915 and 0.855, the
+     pre-Planetaire absolutes rescaled (0.75/0.82, 0.70/0.82) and tuned for the
+     system monos this face replaced, which left small and tiny at 99% and 98% --
+     drifting toward the parity the rung above is chosen to stay under. */
   --kpress-font-size-mono: var(
     --kpress-host-font-size-mono,
     calc(var(--kpress-font-size-base) * 0.87)
   );
-  --kpress-font-size-mono-small: calc(var(--kpress-font-size-mono) * 0.915);
-  --kpress-font-size-mono-tiny: calc(var(--kpress-font-size-mono) * 0.855);
+  --kpress-font-size-mono-small: calc(var(--kpress-font-size-mono) * 0.9);
+  --kpress-font-size-mono-tiny: calc(var(--kpress-font-size-mono) * 0.85);
 
   /* KaTeX sizing. Context-relative (em) on purpose, like the sup/sub sizes the
      policy above exempts and for the same reason: these are ratios against
@@ -410,7 +421,11 @@
   --kpress-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --kpress-font-prose: Georgia, "Times New Roman", Times, serif;
   --kpress-font-punctuation: Georgia, "Times New Roman", Times, serif;
-  --kpress-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* The host hook still leads. This block opts a reader out of the fonts KPress
+     downloads; it is not a statement about the face a host installed itself, and
+     dropping the var() here would silently retire a documented public seam on a
+     control the reader owns. Same shape as the mono_font block below. */
+  --kpress-font-mono: var(--kpress-host-font-mono, var(--kpress-mono-stack-platform));
 }
 
 /* Mono face switch. Default ("planetaire", the absent attribute) sets code in
@@ -429,14 +444,7 @@
 [data-kpress-mono-font="system"] .kpress,
 [data-kpress-mono-font="system"] .kpress-page-main,
 [data-kpress-mono-font="system"] .kpress-tooltip {
-  --kpress-font-mono: var(
-    --kpress-host-font-mono,
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Consolas,
-    monospace
-  );
+  --kpress-font-mono: var(--kpress-host-font-mono, var(--kpress-mono-stack-platform));
 }
 
 /* Reading-font chooser (settings widget): "sans" flips the prose body from the
