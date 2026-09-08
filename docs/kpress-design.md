@@ -1375,20 +1375,30 @@ request, since a weight the set does not carry is matched to the nearest instanc
 The variable face stays behind it for the case where the family cannot answer at all, a
 build that ships without the instances, which is the behavior before this feature.
 
-**The set.** Six weights (370, 400, 550, 600, 650, 700) in normal and italic, twelve
-files of about 15KB, generated from the vendored variable faces by
-`devtools/instance_sans.py` into `static/fonts/` together with the stylesheet
-`static/css/print-fonts.css` that declares them.
-Both are generated files; `python -m devtools.instance_sans --check` verifies the
-shipped bytes and runs in both `make lint` and `make lint-check`, the second of which is
-what CI runs. The weights are the ones KPress’s own sans contexts request: the three
-weight tokens (370, 550, 650), the footnote controls’ 600, bold’s 700, and 400 for the
-resets. The two sans-mode headings ask for 380 and 440, which CSS weight matching lands
-on 370 and 400; `.kpress-prose h4`’s 540 lands on 550. `tests/test_print_sans_faces.py`
-pins every landing place and fails if a stylesheet asks for a weight the set does not
-account for, and `tests/test_playwright_print_sans_face.py` measures the same table in
-Chromium. The `@font-face` rules sit inside `@media print`, so a reader on screen never
-downloads one, and `print-fonts.css` is registered right after `print.css` in
+**The set.** Five weights (370, 400, 550, 600, 650) in normal and italic, ten files of
+about 15KB, generated from the vendored variable faces by `devtools/instance_sans.py`
+into `static/fonts/` together with the stylesheet `static/css/print-fonts.css` that
+declares them. Both are generated files; `python -m devtools.instance_sans --check`
+verifies the shipped bytes and runs in both `make lint` and `make lint-check`, the
+second of which is what CI runs.
+The weights are the ones KPress’s own sans contexts request: the three weight tokens
+(370, 550, 650), the footnote controls’ 600, and 400 for the resets.
+The two sans-mode headings ask for 380 and 440, which CSS weight matching lands on 370
+and 400; `.kpress-prose h4`’s 540 lands on 550.
+
+A 700 pair shipped until 2026-09-07, on the belief that bold asked for it.
+It does not: `.kpress b, .kpress strong` sets the bold token, so a UA-default `bold`
+never reaches a sans element inside `.kpress`, and the only `font-weight: 700` rules
+left in the stylesheets are `.kpress-prose h5` (a prose family) and the syntax
+highlighting (a mono family), neither of which can resolve to `KPress Print Sans`.
+Measured in Chromium across both media and both reading-font modes, no sans element
+resolves above 650. The pair was 30,912 bytes for nothing, and a host that raises a
+weight token past 650 lands on 650 by the fallback rule below.
+`tests/test_print_sans_faces.py` pins every landing place and fails if a stylesheet asks
+for a weight the set does not account for, and
+`tests/test_playwright_print_sans_face.py` measures the same table in Chromium.
+The `@font-face` rules sit inside `@media print`, so a reader on screen never downloads
+one, and `print-fonts.css` is registered right after `print.css` in
 `DEFAULT_CSS_ASSETS`.
 
 The instances copy the variable faces’ `unicode-range` verbatim, so their coverage is
@@ -1438,15 +1448,30 @@ Source Serif 4 that KPress ships.
 It leads `--kpress-font-prose` over `U+0022`, `U+0027`, `U+2018`, `U+2019`, `U+201C` and
 `U+201D`, and every other character passes down to PT Serif.
 
-**The history.** Georgia was once the reading face.
-When PT Serif replaced it, someone kept Georgia’s quotation marks on purpose: a family
-`LocalPunct` whose `src` was `local("Georgia")` and whose `unicode-range` was those same
-six code points, placed at the head of the prose stack.
-That was deliberate work, and its reason was never written down.
+**The history, as far as the record goes.** The borrowing was a family `LocalPunct`
+whose `src` was `local("Georgia")` and whose `unicode-range` was those same six code
+points, placed at the head of the prose stack.
+It is present in the first commit this repository has, the 2026-06-10 extraction
+`5f2d466`, and so is PT Serif: the prose token there already reads
+`"LocalPunct", "PT Serif", Georgia, …`. The two arrive together, so nothing here shows
+Georgia being replaced as the reading face and the marks then being kept back.
+What the record shows is narrower and still worth recovering: reaching outside the
+document for six glyphs was a deliberate part of the design from the beginning, and its
+reason was never written down.
 It was nearly lost, because from the outside the borrowing looks like an oversight.
+
+One document with three answers is what it cost.
 A document’s punctuation came from Georgia when the reader had Georgia, from PT Serif
 when they did not, and from PT Serif on paper either way, since a `local()` face cannot
-be embedded in a PDF. One document, three answers.
+be embedded in a PDF.
+
+The one text that pairs a Georgia prose stack with `LocalPunct` is a token table in the
+extraction commit’s own copy of this document, listing
+`--kpress-font-prose: ui-serif, Georgia, serif` beside
+`--kpress-font-punctuation: LocalPunct`. The 2026-07-13 consolidation `7b09584` removed
+it. It contradicted the shipped stylesheet on the day it was written, so it is evidence
+of an earlier default somewhere behind this repository, not of the order things happened
+in.
 
 **What it was buying.** PT Serif draws these six glyphs badly, and the fault is
 measurable. In Chromium at 18px, `measureText` on the four curly marks:
@@ -1506,8 +1531,19 @@ marks, or the reading face itself to give the marks back to PT Serif.
 }
 ```
 
-A host that replaces the whole reading stack through `--kpress-host-font-prose` decides
-for itself whether to keep `var(--kpress-font-punctuation)` at the head of it.
+A host that replaces the whole reading stack through `--kpress-host-font-prose` gives
+the marks up as a side effect rather than as a choice: the host hook is the first entry
+in `--kpress-font-prose`, so a value for it discards the rest of the list, and
+`var(--kpress-font-punctuation)` is the head of that list.
+Keeping the marks means naming them at the head of the replacement stack.
+[The Prose Hook and the Quote Face](kpress-operations-and-host-integration.md#the-prose-hook-and-the-quote-face)
+has both declarations and the migration note for a host already setting the hook.
+
+The built-in sans reading mode takes the same path deliberately.
+`data-kpress-prose-font="sans"` repoints `--kpress-font-prose` at the sans stack, so the
+marks there come from Source Sans 3 on screen and `KPress Print Sans` in print — both
+shipped faces, and a serif quote face in a sans paragraph would be the mismatch this
+token exists to prevent.
 
 ### List Markers
 
@@ -1550,9 +1586,25 @@ Two static weights need no print-only set, so `print-fonts.css` says nothing abo
 
 **The size.** `--kpress-font-size-mono` is `0.925` of the base, set by x-height rather
 than by eye. Inline code interrupts a line of PT Serif, so what has to agree is the
-height of a lowercase letter, and the two faces measure that against different em boxes:
-PT Serif’s x-height is 500/1000, Source Code Pro’s 486/1000 (Source Sans 3 is 486 too --
-the two Source faces are siblings and share an x-height by design).
+height of a lowercase letter, and the two faces measure that against different em boxes.
+Read from the shipped woff2 files with fontTools, as `OS/2.sxHeight` over
+`head.unitsPerEm`:
+
+| Face | sxHeight/1000 |
+| --- | --- |
+| PT Serif 400 | 500 |
+| Source Code Pro 400 | 486 |
+| Source Code Pro 700 | 496 |
+| Source Sans 3 Variable | 478 at its default axis position, 486 instanced at 400 |
+
+The sans number needs a word, because the file and the page disagree.
+Source Sans 3’s variable file has a default `wght` of 200, so a bare read of its `OS/2`
+table says 478; instanced at 400 the `MVAR` deltas put it at 486, which is what a page
+draws and what `devtools/instance_sans.py` writes into the 400 static instance.
+The two Source faces are therefore not siblings holding one x-height on purpose.
+They land 8 units apart at the file default and together at 400, and neither fact enters
+the derivation below, which uses only PT Serif 500 and Source Code Pro 486.
+
 The rule is that code’s x-height sits at **90% of the prose x-height around it**, one
 deliberate step below rather than level with it, because a monospaced face at the
 serif’s x-height reads wider and heavier than the line it interrupts: every advance is
@@ -1562,10 +1614,21 @@ base against PT Serif’s `0.500`, so 89.9%.
 The apparent size of code does not change; only which face draws it.
 The `0.82` this replaces was tuned for the system monos, and Menlo -- what a Mac
 actually drew -- carries a 0.5468 em x-height, so `0.82` landed at 7.175px against the
-prose’s 8.000px, or 89.7%. Source Code Pro at `0.925` draws 7.193px. The cost is a 12%
-wider advance, so a code block fits about one character in nine fewer per line before it
-scrolls. `--kpress-font-size-mono-small` and `-mono-tiny` keep their old proportions to
-the mono size to within half a percent.
+prose’s 8.000px, or 89.7%. Source Code Pro at `0.925` draws 7.193px.
+`--kpress-font-size-mono-small` and `-mono-tiny` keep their old proportions to the mono
+size to within half a percent.
+
+**The column budget.** The cost of the larger scale is measured in columns of code, and
+it is **82**. A code block at the default reading measure has 700px of text between its
+paddings at a 16px base, and a column is `0.575em`: Source Code Pro advances 600/1000
+and the `.kpress code, .kpress-code` rule takes 0.025em back as letter-spacing.
+At `0.925` that is 8.510px, so 82 columns fit in 697.8px and 83 do not.
+The `0.82` this replaces held 92. Eighty is the standard code-line budget, so the number
+is pinned by `tests/test_playwright_mono_face.py` rather than left to be rediscovered
+when a later retune crosses it.
+A pane too narrow to show the full measure holds fewer columns, which is
+`--kpress-measure` clamping and not this token; the lever for a wider code block is the
+measure, not the mono size.
 
 ### Document Actions Widget
 

@@ -22,7 +22,7 @@ KPress generates rather than vendors carry names of their own.
 | --- | --- | --- |
 | PT Serif | prose reading face, and the Latin letters inside mathematics | 4 static, 400/700 x normal/italic |
 | Source Sans 3 Variable | sans on screen, at whatever weight a context asks for | 2 variable, `wght` x normal/italic |
-| KPress Print Sans | sans in print, one static instance per weight | 12 generated from Source Sans 3, see below |
+| KPress Print Sans | sans in print, one static instance per weight | 10 generated from Source Sans 3, see below |
 | Source Code Pro | mono: code fences, inline code, math error text | 2 static, 400/700 normal |
 | KPress Quotes | the quotation marks and the apostrophe inside prose | 1 generated from Source Serif 4, 6 glyphs |
 
@@ -61,7 +61,7 @@ so the 14-day cool-off in
 None is an installed dependency: the bytes are vendored, and the package name and
 version record where they came from.
 
-The twelve `kpress-print-sans-latin-<weight>-<style>.woff2` files are **generated, not
+The ten `kpress-print-sans-latin-<weight>-<style>.woff2` files are **generated, not
 vendored**. `devtools/instance_sans.py` instances them from the variable faces above,
 and `python -m devtools.instance_sans --check` verifies the shipped bytes against a
 fresh run, so they carry no hash here.
@@ -107,9 +107,13 @@ Both hashes are pinned in the tool.
 position is ExtraLight and did not rewrite the name table.
 The outlines are the real 400 and 700 (`usWeightClass` 400 and 700; the stems differ),
 and `@font-face` names the family, so nothing about rendering is affected.
-It matters in one place: Chromium’s `CSS.getPlatformFontsForNode` reports the face’s own
-name, so `tests/test_playwright_mono_face.py` asserts a `Source Code Pro` prefix rather
-than an exact family name.
+It surfaces in two places.
+Chromium’s `CSS.getPlatformFontsForNode` reports the face’s own name, so
+`tests/test_playwright_mono_face.py` asserts a `Source Code Pro` prefix rather than an
+exact family name. An exported PDF’s font list names the mono faces
+`SourceCodeProExtraLight-Regular` and `SourceCodeProExtraLight-Bold` for the same
+reason, and those two entries are the real 400 and 700 outlines rather than an
+ExtraLight that slipped into the document.
 The bytes are vendored as published so the sha256 above can be checked against the
 package.
 

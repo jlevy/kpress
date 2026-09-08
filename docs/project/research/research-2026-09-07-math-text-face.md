@@ -69,9 +69,13 @@ carrying a Latin `unicode-range`, plus a `LocalPunct` face whose `src` is
 Sans 3 for the sans contexts.
 The prose token is `--kpress-font-prose: "LocalPunct", "PT Serif", …`; the print
 stylesheet drops `LocalPunct` so a printed file does not depend on which fonts the
-reader owns. KaTeX is a lazy per-document asset: its stylesheet, scripts and faces are
-emitted only for documents that contain math, and `katex.min.css` is linked after
-KPress’s own stylesheets.
+reader owns. (`LocalPunct` was removed later the same day: a six-glyph subset of Source
+Serif 4, the family `KPress Quotes`, now leads that token and answers the same code
+points on screen and in print.
+The rest of this section still describes the faces as they load.)
+KaTeX is a lazy per-document asset: its stylesheet, scripts and faces are emitted only
+for documents that contain math, and `katex.min.css` is linked after KPress’s own
+stylesheets.
 
 KaTeX’s own root rule is
 `.katex { font: normal 1.21em KaTeX_Main, Times New Roman, serif }`. KPress overrides
