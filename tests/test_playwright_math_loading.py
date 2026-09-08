@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+from .math_font_probe import FONT_ADVANCE_INIT
 from .test_playwright_math_text_face import (
     _build_fixture_site,  # pyright: ignore[reportPrivateUsage]
     _launch,  # pyright: ignore[reportPrivateUsage]
@@ -69,6 +70,7 @@ def _page(
             )
             try:
                 context = browser.new_context(java_script_enabled=javascript)
+                context.add_init_script(FONT_ADVANCE_INIT)
                 if not native:
                     context.route("**/katex-init.js", _omit_native)
                 if script:
@@ -196,7 +198,7 @@ def test_host_first_render_waits_keeps_latest_and_supports_mixed_faces(tmp_path:
         }""")
         advances = page.evaluate("""() => ['sans', 'serif', 'stock', 'nested-stock', 'tooltip-stock'].map(kind => {
           const glyph = document.querySelector('#host-' + kind + ' .katex-html .mord');
-          return glyph.getBoundingClientRect().width / parseFloat(getComputedStyle(glyph).fontSize);
+          return __kpressFontAdvance(glyph);
         })""")
         assert advances == pytest.approx([0.497, 0.533, 0.500, 0.500, 0.500], abs=0.001)
         assert page.locator('[data-kpress-math-face="katex"] .katex').evaluate_all(

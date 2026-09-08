@@ -47,6 +47,8 @@ import pytest
 from devtools.katex_text_metrics import ASSET_PATH, parse_asset
 from kpress.publish import build_site
 
+from .math_font_probe import FONT_ADVANCE_INIT
+
 #: Advance width of the digit glyphs, per em, in the two faces a digit can come
 #: from. PT Serif's tabular figures are 533 units; KaTeX_Main's are 500.
 PT_SERIF_DIGIT_ADVANCE = 0.533
@@ -104,10 +106,9 @@ _PROBE = """(() => {
   const digit = [...inline.querySelectorAll('.mord')].find(
     (el) => /^[0-9]$/.test(el.textContent) && el.children.length === 0
   );
-  const size = parseFloat(getComputedStyle(digit).fontSize);
   const fraction = document.querySelector('.katex-display .mfrac .vlist');
   return {
-    advance: digit.getBoundingClientRect().width / size,
+    advance: __kpressFontAdvance(digit),
     family: getComputedStyle(digit).fontFamily,
     fractionHeightEm: parseFloat(fraction.style.height),
     rendered: document.querySelectorAll('[data-kpress-math-rendered="true"]').length,
@@ -140,6 +141,7 @@ def _probe(tmp_path: Path, math_text_font: str | None, *, font_set: str | None =
                     pytest.skip(f"No Playwright Chromium or system Chrome available: {exc}")
             try:
                 context = browser.new_context(viewport={"width": 900, "height": 900})
+                context.add_init_script(FONT_ADVANCE_INIT)
                 if font_set is not None:
                     # What theme-bootstrap.js reads before first paint.
                     context.add_init_script(f"localStorage.setItem('kpress.fontSet', '{font_set}')")
@@ -217,6 +219,7 @@ def _served_page(public: Path) -> Generator[Any]:
             browser = _launch(playwright, sync_api)
             try:
                 context = browser.new_context(viewport={"width": 1100, "height": 900})
+                context.add_init_script(FONT_ADVANCE_INIT)
                 page = context.new_page()
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
                 page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
@@ -258,20 +261,19 @@ _GREEK_MARKDOWN = (
 #: Advance of the `\mathit` Upsilon and the inline `left` KaTeX gives the accent
 #: over `\hat{\mathit{\Gamma}}`, plus every `\text...` leaf's resolved style.
 _GREEK_PROBE = """(() => {
-  const em = (el, px) => px / parseFloat(getComputedStyle(el).fontSize);
   const upsilon = [...document.querySelectorAll('.katex .mathit')].find(
     (el) => el.textContent === '\\u03a5'
   );
   const accent = document.querySelector('.katex .accent-body');
   return {
-    upsilonAdvance: em(upsilon, upsilon.getBoundingClientRect().width),
+    upsilonAdvance: __kpressFontAdvance(upsilon),
     accentLeftEm: parseFloat(accent.style.left),
     textLeaves: [...document.querySelectorAll('.katex .textrm, .katex .textbf')]
       .filter((el) => el.textContent === 'n123')
       .map((el) => ({
         cls: el.className,
         style: getComputedStyle(el).fontStyle,
-        advance: em(el, el.getBoundingClientRect().width),
+        advance: __kpressFontAdvance(el),
       })),
   };
 })()"""
@@ -359,7 +361,7 @@ _MODE_PROBE = """((selector) => {
   const style = getComputedStyle(digits);
   const katex = scope.querySelector('.katex');
   return {
-    advancePerDigit: digits.getBoundingClientRect().width / parseFloat(style.fontSize) / 4,
+    advancePerDigit: __kpressFontAdvance(digits) / 4,
     composite: style.fontFamily.includes('KPress Math Text'),
     katexSizeRatio:
       parseFloat(getComputedStyle(katex).fontSize) /
