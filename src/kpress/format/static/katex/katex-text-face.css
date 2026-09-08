@@ -381,10 +381,15 @@
  *        font-weight, so mathematics in a sans context is set at 400 today and stays
  *        there; a host's 410-weight caption gets a 400-weight mathematics, 0.15% off
  *        in advance and exactly described by the table.
- *   650  the bold slots, `--kpress-font-weight-sans-bold`, which is what bold means in
- *        every other sans context kpress ships. The `.mathbf` and `.boldsymbol` rules
- *        below ask for the token rather than upstream's 700, so `\mathbf{D}` in a
- *        caption reaches the same bold as a bold word in the caption beside it.
+ *   650  the bold slots. 650 is the value of `--kpress-font-weight-sans-bold`, which is
+ *        what bold means in every other sans context kpress ships, so `\mathbf{D}` in a
+ *        caption reaches the same bold as a bold word in the caption beside it rather
+ *        than upstream's 700. The `.mathbf` and `.boldsymbol` rules below name 650
+ *        LITERALLY and do not read the token: the token is public and a host may set it,
+ *        the composite declares 400 and 650 only, and CSS Fonts 4 searches downward for a
+ *        desired weight in [400, 500] -- so a host that set it to 500 got the 400 face
+ *        under the 650 table, drawn 0.6153 em against 0.6300 em laid out. What a host
+ *        means by bold is a question about words; which face the table describes is not.
  *
  * PRINT. The screen draws the Latin ranges from the variable faces; a printed page
  * cannot, because Chromium's PDF writer turns a variable face away from its default
@@ -416,9 +421,16 @@
   font-style: normal;
   font-weight: 400;
   font-display: block;
-  /* Greek to Source Sans's cap height; `katex_text_metrics --print-scale` (Main-Regular).
-     Below 100%: Computer Modern's Greek capitals are taller than Source Sans's. */
-  size-adjust: 96.6%;
+  /* Greek to the cap height Source Sans DRAWS; `katex_text_metrics --print-scale`
+     (Main-Regular). Source Sans declares `sCapHeight` 660 at every instance but draws its
+     `H` at 656 here and 653 at 650, so the generator measures the ink; the declaration is
+     true only at the variable face's own default position, which the composite never uses.
+     Below 100% because Computer Modern's LATIN cap is taller than Source Sans's, 683
+     against 656, which is what the factor equalizes. It does not equalize the Greek, and
+     no scalar could: after it, flat-topped capitals land within half a percent while the
+     pointed and round ones carry Computer Modern's optical overshoot, 5.7pp of spread
+     across the range. KaTeX's own table already declares one height for all of them. */
+  size-adjust: 96%;
   src: url("../katex/fonts/KaTeX_Main-Regular.woff2") format("woff2");
   unicode-range: U+0391-03A9;
 }
@@ -461,8 +473,12 @@
   font-style: normal;
   font-weight: 650;
   font-display: block;
-  /* Greek to Source Sans's cap height; `katex_text_metrics --print-scale` (Main-Bold). */
-  size-adjust: 96.2%;
+  /* Greek to the cap height Source Sans draws at 650, which is 653 rather than the 660 it
+     declares; `katex_text_metrics --print-scale` (Main-Bold). Lower than the regular
+     slot's factor because the ink shortens as the weight rises while the declaration does
+     not move -- which is why deriving from the declaration left this, the bold slot,
+     calibrated worse than the regular one. */
+  size-adjust: 95.2%;
   src: url("../katex/fonts/KaTeX_Main-Bold.woff2") format("woff2");
   unicode-range: U+0391-03A9;
 }

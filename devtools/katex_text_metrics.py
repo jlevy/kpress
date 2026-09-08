@@ -109,7 +109,28 @@ MATH_ITALIC_SCALE: Final = 1.150
 MATH_BOLD_ITALIC_SCALE: Final = 1.126
 
 # Ink-versus-OS/2 disagreement, in em, past which the ink height wins.
-OS2_INK_TOLERANCE: Final = 0.02
+#
+# The value has to separate four measured cases in the faces this tool reads, so it is
+# not a round number picked for comfort:
+#
+#   0.080  KaTeX_Math-BoldItalic's sxHeight: 532 declared against a 452 ink `x`. A
+#          declared value that is simply not the face's x-height, and the reason this
+#          fallback exists at all.
+#   0.007  Source Sans 3's sCapHeight at wght 650: 660 declared against a 653 ink `H`.
+#   0.004  the same at wght 400: 660 declared against a 656 ink `H`. Source Sans varies
+#          its sxHeight along the weight axis, and the drawn x-height tracks it to the
+#          unit, but it does not vary sCapHeight. 660 is drawn only at the fvar default
+#          (wght 200); the `H` shortens monotonically to 650 by wght 900. So the declared
+#          cap describes a weight this composite never draws, and both upright sans slots
+#          have to be scaled to the `H` they do draw.
+#   0.001  KaTeX_Math-Italic's sxHeight: 441 declared against a 442 ink `x`. One unit at
+#          1000 upem is the font build's own rounding rather than a disagreement, and
+#          preferring the ink here would move the serif composite's Math-Italic slot for
+#          no change in what is drawn.
+#
+# 0.003 sits in the one band -- above the fourth case, below the second and third -- that
+# takes the ink where OS/2 misdescribes the outlines and leaves rounding alone.
+OS2_INK_TOLERANCE: Final = 0.003
 X_HEIGHT_GLYPH: Final = "x"
 CAP_HEIGHT_GLYPH: Final = "H"
 
@@ -285,21 +306,39 @@ SCALE_FACTORS: Final = {plan.katex_face: plan.scale for plan in FACE_PLANS}
 # docs/project/research/research-2026-09-07-sans-math-face.md.
 #
 # The Greek factors are derived the same way as the serif set's, against Source Sans's
-# own measures. The upright ones are below 1, which the serif set's never were: Computer
-# Modern's Greek capitals are 3.5% taller than Source Sans's capitals.
+# own measures. The upright numerators are the drawn `H`, not the declared sCapHeight:
+# Source Sans varies its x-height along the weight axis but not its cap height, so OS/2
+# reports 660 at every instance while the `H` this composite draws is 656 at 400 and 653
+# at 650. OS2_INK_TOLERANCE is what catches that, and the reason it is 0.003 and not the
+# 0.02 the serif set alone needed.
 #
 #   face             Source Sans (per 1000 em)      KaTeX face                factor
-#   Main-Regular     cap 660 at 400               /  KaTeX_Main-Regular 683    0.966
-#   Main-Bold        cap 660 at 650               /  KaTeX_Main-Bold 686       0.962
+#   Main-Regular     `H` 656 at 400               /  KaTeX_Main-Regular 683    0.960
+#   Main-Bold        `H` 653 at 650               /  KaTeX_Main-Bold 686       0.952
 #   Math-Italic      x 486 at 400 italic          /  KaTeX_Math-Italic 441     1.102
 #   Math-BoldItalic  x 494 at 650 italic          /  KaTeX_Math-BoldItalic 452 1.093
 #   Main-Italic      as Math-Italic, for the reason the serif set records     1.102
 #   Main-BoldItalic  as Math-BoldItalic                                       1.093
+#
+# The upright factors come out below 1, which the serif set's never did, because KaTeX's
+# LATIN `H` is taller than the one Source Sans draws: 683 against 656 at 400, so 4.1%.
+# That is what the factor equalizes, and it is a statement about Latin capitals rather
+# than about Greek. What it leaves the Greek at is not one number, because Computer
+# Modern's Greek capitals are not one height. Measured on the real outlines after the
+# 0.960 scale, against the 656 the 400 slot draws: the flat-topped capitals land where
+# the factor aims them -- Sigma, Phi and Psi at 99.95% -- while Gamma and Pi sit at
+# 99.51%, Xi at 99.07%, and the pointed and round ones overshoot: Omega 103.02%, Theta
+# and Upsilon 103.17%, Delta and Lambda 104.78%. That is a 5.7pp spread and no scalar
+# removes it, because Computer Modern gives its pointed capitals optical overshoot above
+# the cap line and Source Sans's `H` has none. The factor is aimed at the flat-topped
+# group, which is the group a reader can line up against a neighbouring Latin capital.
+# In fairness to the approach: KaTeX's own table already declares a single height for
+# every Greek capital, so this scales a divergence that was there before it.
 SANS_REGULAR_WEIGHT: Final = 400
 SANS_BOLD_WEIGHT: Final = 650
 
-SANS_MAIN_REGULAR_SCALE: Final = 0.966
-SANS_MAIN_BOLD_SCALE: Final = 0.962
+SANS_MAIN_REGULAR_SCALE: Final = 0.960
+SANS_MAIN_BOLD_SCALE: Final = 0.952
 SANS_MATH_ITALIC_SCALE: Final = 1.102
 SANS_MATH_BOLD_ITALIC_SCALE: Final = 1.093
 
@@ -534,10 +573,14 @@ def read_face(path: Path) -> Face:
 def _vertical_measure(declared: float, ink: float | None) -> float:
     """Prefer OS/2, but fall back to the ink height when OS/2 contradicts the outlines.
 
-    KaTeX_Math-BoldItalic declares an sxHeight 80/1000 above the top of any lowercase
-    glyph it draws. Trusting it there would scale the Greek the wrong way, so a
-    disagreement past OS2_INK_TOLERANCE is resolved in favour of what is drawn. See the
-    scale-factor derivation above.
+    Two of the shipped faces need this. KaTeX_Math-BoldItalic declares an sxHeight 80/1000
+    above the top of any lowercase glyph it draws, and trusting it would scale the Greek
+    the wrong way. Source Sans 3 declares one sCapHeight for its whole weight axis, 4/1000
+    above the `H` the 400 slot draws and 7/1000 above the one the 650 slot draws, so
+    trusting it would scale both upright sans slots to a cap height drawn at no weight the
+    composite pins -- and would scale the bold slot worse than the regular one, since the
+    lie grows with weight. A disagreement past OS2_INK_TOLERANCE is therefore resolved in
+    favour of what is drawn; the constant's own comment records the four cases it splits.
     """
     if ink is None or abs(declared - ink) <= OS2_INK_TOLERANCE:
         return declared
@@ -752,7 +795,7 @@ def _check_face_css() -> list[str]:
 
     Keyed by family as well as by file because the two composites scale the same KaTeX
     woff2 by different factors -- `KaTeX_Main-Regular` reaches PT Serif's cap height at
-    102.5% and Source Sans's at 96.6% -- so the file alone no longer names one face.
+    102.5% and Source Sans's at 96.0% -- so the file alone no longer names one face.
     """
     if not FACE_CSS_PATH.is_file():
         return [f"{_relative(FACE_CSS_PATH)} is missing; the composite has moved or gone"]

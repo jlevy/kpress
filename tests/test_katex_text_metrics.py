@@ -1,26 +1,35 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from fontTools.pens.boundsPen import BoundsPen
+from fontTools.ttLib import TTFont
 
 from devtools.katex_text_metrics import (
     ASSET_HEADER,
     ASSET_PATH,
     GLOBAL_NAME,
     KATEX_BUNDLE,
+    KATEX_FONTS,
     LETTERS_AND_DIGITS,
     MATH_ITALIC_SCALE,
+    OS2_INK_TOLERANCE,
     PRECISION,
+    READING_FONTS,
     SANS_KEY,
     SANS_MATH_ITALIC_SCALE,
     SANS_SCALE_FACTORS,
     SCALE_FACTORS,
     SCALE_KEY,
+    SOURCE_SANS_BOLD,
+    SOURCE_SANS_REGULAR,
     MetricsError,
     check,
     parse_asset,
     parse_katex_table,
+    read_face,
 )
 
 # Ground truth from the reading faces, independent of the generator: PT Serif sets its
@@ -181,8 +190,11 @@ def sans(asset: dict[str, Any]) -> dict[str, Any]:
 def test_sans_set_carries_the_same_faces_and_its_own_factors(sans: dict[str, Any]) -> None:
     assert set(sans) == {*SANS_SCALE_FACTORS, SCALE_KEY}
     assert sans[SCALE_KEY] == SANS_SCALE_FACTORS
-    # Below 1 for the upright slots, which the serif factors never are: Computer Modern's
-    # Greek capitals are taller than Source Sans's and shorter than PT Serif's.
+    # Below 1 for the upright slots, which the serif factors never are, because the factor
+    # equalizes LATIN cap heights: KaTeX's `H` is 683 against the 656 Source Sans draws at
+    # 400 and the 700 PT Serif draws. What it leaves the Greek at is not one number, since
+    # Computer Modern's Greek capitals are not one height; the generator records the
+    # measured spread beside the factors.
     assert SANS_SCALE_FACTORS["Main-Regular"] < 1 < SCALE_FACTORS["Main-Regular"]
 
 
@@ -223,3 +235,115 @@ def test_sans_tables_are_complete(sans: dict[str, Any], bundle: str) -> None:
         original = parse_katex_table(bundle, face)
 
         assert {int(code) for code in _table(sans, face)} >= set(original)
+
+
+# ---- OS/2 against ink ----
+#
+# Every Greek factor is a ratio of two vertical measures, and `_vertical_measure` decides
+# for each one whether to believe the font's OS/2 declaration or the outline it describes.
+# OS2_INK_TOLERANCE is that decision, and it is the whole of it, so these read the fonts
+# themselves rather than the generator's frozen literals.
+
+
+def _os2_field(path: Path, field: str) -> float:
+    """One OS/2 vertical field in em, read straight, with no ink cross-check."""
+    font = cast(Any, TTFont(path))
+    try:
+        return float(cast(int, getattr(font["OS/2"], field))) / float(
+            cast(int, font["head"].unitsPerEm)
+        )
+    finally:
+        font.close()
+
+
+def _ink_height(path: Path, character: str) -> float:
+    """How tall one glyph is actually drawn, in em: the top of its outline bounds."""
+    font = cast(Any, TTFont(path))
+    try:
+        glyph_set = font.getGlyphSet()
+        pen = BoundsPen(glyph_set)
+        glyph_set[cast("dict[int, str]", font.getBestCmap())[ord(character)]].draw(pen)
+        bounds = cast("tuple[float, float, float, float]", pen.bounds)
+        return bounds[3] / float(cast(int, font["head"].unitsPerEm))
+    finally:
+        font.close()
+
+
+def _os2_ink_gap(path: Path, field: str, character: str) -> float:
+    """How far one OS/2 field is from the glyph it claims to describe, in em."""
+    return abs(_os2_field(path, field) - _ink_height(path, character))
+
+
+@pytest.mark.parametrize(
+    ("reading_font", "katex_font", "face", "drawn_cap"),
+    [
+        (SOURCE_SANS_REGULAR, "KaTeX_Main-Regular.woff2", "Main-Regular", 0.656),
+        (SOURCE_SANS_BOLD, "KaTeX_Main-Bold.woff2", "Main-Bold", 0.653),
+    ],
+)
+def test_the_upright_sans_factor_is_the_drawn_cap_not_the_declared_one(
+    reading_font: str, katex_font: str, face: str, drawn_cap: float
+) -> None:
+    """Source Sans declares one cap height for its whole weight axis and draws another.
+
+    It varies sxHeight along the axis and the drawn x-height tracks it to the unit, but
+    sCapHeight stays 0.660 at every instance while the `H` shortens: 0.656 at the 400 slot
+    and 0.653 at the 650 one. Scaling KaTeX's Greek to the declaration puts the bold slot
+    further out than the regular one, which is the opposite of what deriving a factor per
+    weight is for, so the numerator has to be the ink.
+
+    This pins the outcome and not the constant: loosen OS2_INK_TOLERANCE past the gap and
+    `read_face` hands back the declaration, and both of the last two assertions fail.
+    """
+    declared = _os2_field(READING_FONTS / reading_font, "sCapHeight")
+    measured = read_face(READING_FONTS / reading_font).cap_height
+    katex = read_face(KATEX_FONTS / katex_font).cap_height
+
+    assert declared == pytest.approx(0.660), "the axis-invariant declaration is still there"
+    assert measured == pytest.approx(drawn_cap)
+    assert measured != declared, "OS2_INK_TOLERANCE is too loose to see the declared cap"
+    assert SANS_SCALE_FACTORS[face] == round(measured / katex, 3)
+    assert SANS_SCALE_FACTORS[face] != round(declared / katex, 3)
+
+
+def test_the_scaled_upright_greek_is_laid_out_at_the_cap_source_sans_draws(
+    sans: dict[str, Any], bundle: str
+) -> None:
+    """The end of the same chain: what the shipped table says a Greek capital's height is.
+
+    KaTeX declares a single height for every Greek capital in an upright face, so after
+    scaling there is one number per face to check, and it should be the cap height the
+    reading face draws beside it rather than the one its OS/2 table claims. Compared at
+    three decimals because KaTeX's own declaration is not exactly its ink `H` either:
+    Main-Bold's table says 0.68611 where the outline tops out at 0.686.
+    """
+    height_index = 1
+    for face, drawn_cap in (("Main-Regular", 0.656), ("Main-Bold", 0.653)):
+        table = _table(sans, face)
+        greek = [code for code in parse_katex_table(bundle, face) if 0x391 <= code <= 0x3A9]
+        heights = {round(table[str(code)][height_index], 3) for code in greek}
+
+        assert len(greek) == 11, face
+        assert heights == {drawn_cap}, face
+
+
+def test_the_ink_tolerance_sits_between_rounding_and_a_real_disagreement() -> None:
+    """The tolerance is a band and both of its edges carry weight.
+
+    Under it sits KaTeX_Math-Italic, whose sxHeight is 441 against a 442 ink `x`. One unit
+    at 1000 upem is the font build's own rounding, and preferring the ink there would move
+    the serif composite's Math-Italic slot from 115.0% to 114.7% and rewrite four shipped
+    tables for no change in what any glyph is drawn at.
+
+    Over it sit the two Source Sans cap heights, wrong by 4 units at 400 and 7 at 650, and
+    KaTeX_Math-BoldItalic's sxHeight, wrong by 80 -- the case this fallback was written
+    for. A tolerance outside the band is either the defect the caps are or a needless
+    churn of the serif set, so pin both edges against the fonts rather than the number.
+    """
+    rounding = _os2_ink_gap(KATEX_FONTS / "KaTeX_Math-Italic.woff2", "sxHeight", "x")
+    cap_400 = _os2_ink_gap(READING_FONTS / SOURCE_SANS_REGULAR, "sCapHeight", "H")
+    cap_650 = _os2_ink_gap(READING_FONTS / SOURCE_SANS_BOLD, "sCapHeight", "H")
+    declared_lie = _os2_ink_gap(KATEX_FONTS / "KaTeX_Math-BoldItalic.woff2", "sxHeight", "x")
+
+    assert (rounding, cap_400, cap_650, declared_lie) == pytest.approx((0.001, 0.004, 0.007, 0.080))
+    assert rounding < OS2_INK_TOLERANCE < cap_400 < cap_650 < declared_lie
