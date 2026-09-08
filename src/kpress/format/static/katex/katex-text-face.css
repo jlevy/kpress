@@ -30,9 +30,15 @@
  * inlined), so the relative `../fonts/` and `../katex/fonts/` URLs below resolve
  * in `hosted`, `linked`, `hashed` and `inline` alike.
  *
- * `font-display: swap` throughout, as in the vendored bundle and for the same
- * reason: KaTeX lays out from precomputed metrics, so layout never waits on a
- * face and a late one is a clean repaint rather than an invisible-text gap.
+ * `font-display: block` throughout, as on the prose PT Serif faces in
+ * style-tokens.css and unlike the vendored KaTeX bundle's `swap`. The bundle can
+ * afford `swap` because a late KaTeX face repaints glyphs that were already
+ * KaTeX's; a late slot here repaints them from the reading face to Computer
+ * Modern and back, which a reader sees as the digits in every formula changing
+ * font. `katex-init.js` waits for these faces before the first render, so in
+ * practice no mathematics exists during the block period; `block` is what
+ * decides the remaining case, where a slot is somehow still not ready -- hide
+ * the glyphs briefly rather than paint them twice.
  *
  * THE CONTRACT FOR A HOST WITH ANOTHER READING FACE. Two hooks, both additive:
  *
@@ -63,7 +69,7 @@
   font-family: "KPress Math Text";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/pt-serif-latin-400-normal.woff2") format("woff2");
   unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
 }
@@ -72,7 +78,7 @@
   font-family: "KPress Math Text";
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   /* Greek to PT Serif's cap height; `katex_text_metrics --print-scale` (Main-Regular). */
   size-adjust: 102.5%;
   src: url("../katex/fonts/KaTeX_Main-Regular.woff2") format("woff2");
@@ -85,7 +91,7 @@
   font-family: "KPress Math Text";
   font-style: italic;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/pt-serif-latin-400-italic.woff2") format("woff2");
   unicode-range: U+0041-005A, U+0061-007A;
 }
@@ -94,7 +100,7 @@
   font-family: "KPress Math Text";
   font-style: italic;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   /* Greek to PT Serif's x-height; `katex_text_metrics --print-scale` (Math-Italic). */
   size-adjust: 115%;
   src: url("../katex/fonts/KaTeX_Math-Italic.woff2") format("woff2");
@@ -107,7 +113,7 @@
   font-family: "KPress Math Text";
   font-style: normal;
   font-weight: 700;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/pt-serif-latin-700-normal.woff2") format("woff2");
   unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
 }
@@ -116,7 +122,7 @@
   font-family: "KPress Math Text";
   font-style: normal;
   font-weight: 700;
-  font-display: swap;
+  font-display: block;
   /* Greek to PT Serif's cap height; `katex_text_metrics --print-scale` (Main-Bold). */
   size-adjust: 102%;
   src: url("../katex/fonts/KaTeX_Main-Bold.woff2") format("woff2");
@@ -129,7 +135,7 @@
   font-family: "KPress Math Text";
   font-style: italic;
   font-weight: 700;
-  font-display: swap;
+  font-display: block;
   src: url("../fonts/pt-serif-latin-700-italic.woff2") format("woff2");
   unicode-range: U+0041-005A, U+0061-007A;
 }
@@ -138,7 +144,7 @@
   font-family: "KPress Math Text";
   font-style: italic;
   font-weight: 700;
-  font-display: swap;
+  font-display: block;
   /* Greek to PT Serif's x-height; `katex_text_metrics --print-scale` (Math-BoldItalic). */
   size-adjust: 112.6%;
   src: url("../katex/fonts/KaTeX_Math-BoldItalic.woff2") format("woff2");

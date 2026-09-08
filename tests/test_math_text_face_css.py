@@ -142,8 +142,11 @@ def test_declares_eight_composite_faces() -> None:
     assert len(faces) == 8, "four slots x (reading face, scaled Greek)"
     for face in faces:
         assert face.declarations["font-family"] == FAMILY
-        # KaTeX lays out from metrics, so a late face is a clean repaint.
-        assert face.declarations["font-display"] == "swap"
+        # `block`, not the KaTeX bundle's `swap`: katex-init.js waits for these
+        # faces before it renders, and a slot that is somehow still not ready
+        # hides its glyphs rather than painting them in KaTeX_Main and repainting
+        # them in the reading face.
+        assert face.declarations["font-display"] == "block"
         assert face.ranges, "every composite face must declare a unicode-range"
     assert sorted({face.slot for face in faces}) == sorted(SLOTS)
     for slot in SLOTS:
