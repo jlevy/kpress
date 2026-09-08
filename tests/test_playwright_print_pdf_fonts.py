@@ -15,6 +15,10 @@ Chromium embeds a subset of a face only for glyphs it actually drew with it: tex
 never rendered leaves no font behind, and text that fell back to the variable face is
 written as outline paths rather than as an embedded ``SourceSans3-*`` instance. So the
 presence of the static instance is the assertion that the sans text survived the export.
+
+The quote face is here for the other half of the same rule. It replaced a ``local()``
+borrowing of the reader's Georgia, which a PDF could never embed, so what a printed page
+does with a quotation mark is exactly the thing that used to be wrong.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from pathlib import Path
 
 import pytest
 
+from devtools.subset_quotes import POSTSCRIPT_NAME as QUOTE_FACE
 from kpress.format.pdf import PdfOptions, render_pdf
 from kpress.workflow.format import format_document
 
@@ -129,4 +134,23 @@ def test_slow_print_faces_still_embed_in_the_exported_pdf(tmp_path: Path) -> Non
     # The footnote and the footer both resolve to the 400 instance; the prose face is
     # there to show the page itself rendered rather than exporting blank.
     assert FOOTER_FACE in fonts, fonts
+    assert any(name.startswith("PTSerif") for name in fonts), fonts
+
+
+def test_quotation_marks_embed_in_the_exported_pdf(tmp_path: Path) -> None:
+    """A printed quotation mark comes from the shipped face, not from the machine."""
+    _require_chromium()
+    html = _formatted_page(
+        tmp_path,
+        "# Quotation marks\n\n"
+        "She said \u201cthe marks are shipped,\u201d and that\u2019s "
+        "\u2018the whole rule\u2019.\n",
+    )
+    output = tmp_path / "quotes.pdf"
+
+    render_pdf(html, PdfOptions(output=output))
+
+    fonts = _embedded_fonts(output)
+    assert QUOTE_FACE in fonts, fonts
+    # The letters beside the marks are still the reading face, so the page did print.
     assert any(name.startswith("PTSerif") for name in fonts), fonts

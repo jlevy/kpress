@@ -372,10 +372,11 @@ PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-mono",
     "--kpress-host-font-prose",
     "--kpress-host-font-prose-sans",
-    # The family that answers the quote and apostrophe code points if a host splices
-    # --kpress-font-punctuation into its prose stack. No default stack names it: the
-    # LocalPunct borrowing of the reader's Georgia is opt-in, not the design. See
-    # style-tokens.css and kpress-design.md "Quotation Marks".
+    # The family that answers the quote and apostrophe code points. It leads the prose
+    # stack, and defaults to "KPress Quotes" -- six glyphs of Source Serif 4, shipped
+    # because PT Serif draws those six badly (devtools/subset_quotes.py). A host points
+    # this at another family to swap the marks, or at its own reading face to drop them.
+    # See style-tokens.css and kpress-design.md "Quotation Marks".
     "--kpress-host-font-punctuation",
     "--kpress-host-font-sans",
     # Print only: the sans stack the print stylesheet uses, which leads with the static

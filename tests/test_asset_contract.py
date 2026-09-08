@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from devtools.instance_sans import STYLES, WEIGHTS, instance_name
+from devtools.subset_quotes import CODE_POINTS
 from kpress.format.assets import package_asset_manifest, package_asset_refs
 from kpress.runtime import get_static_asset
 
@@ -110,7 +111,7 @@ def test_document_css_contract_has_required_surfaces() -> None:
         "--kpress-caps-heading-size-multiplier",
         "PT Serif",
         "Source Sans 3",
-        "LocalPunct",
+        "KPress Quotes",
         "--kpress-print-page-margin",
         ".kpress-print-surface",
         ".kpress-toc",
@@ -444,6 +445,8 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         # The mono face: static at the two weights code asks for.
         "fonts/source-code-pro-latin-400-normal.woff2",
         "fonts/source-code-pro-latin-700-normal.woff2",
+        # The quote face: six glyphs of Source Serif 4 (devtools/subset_quotes.py).
+        "fonts/kpress-quotes.woff2",
         # The static print instances and the stylesheet that declares them.
         "css/print-fonts.css",
         "fonts/source-sans-3-latin-370-normal.woff2",
@@ -516,28 +519,36 @@ def test_print_css_leads_the_sans_stack_with_the_static_family() -> None:
     assert '"Source Sans 3",' not in tokens
 
 
-def test_prose_stack_does_not_borrow_the_readers_punctuation() -> None:
-    """PT Serif sets its own quotation marks; the Georgia borrowing is opt-in.
+def test_the_quote_face_is_shipped_and_leads_the_prose_stack() -> None:
+    """The quotation marks come from a file KPress ships, not from the reader's Georgia.
 
-    ``LocalPunct`` is ``local("Georgia")`` over the quote and apostrophe code points. It
-    used to lead ``--kpress-font-prose``, so a document's punctuation came from the
-    reader's machine when they had Georgia and from PT Serif when they did not, and a
-    printed page could not embed it either way. The face is still declared, because the
-    host hook is useless without it -- but no default stack may name it.
+    ``LocalPunct`` was ``local("Georgia")`` over these same six code points, and it led
+    ``--kpress-font-prose``: a document's marks came from the reader's machine when they
+    had Georgia and from PT Serif when they did not, and a printed page could embed
+    neither. ``KPress Quotes`` takes that position with the same range and a real
+    ``url()``, so the answer is one face on every machine and in every medium. Nothing
+    may reintroduce a ``local()`` face here.
     """
     css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
     collapsed = re.sub(r"\s+", " ", css)
 
+    # The lead of the prose stack, ahead of PT Serif and reachable through the hook.
     prose = collapsed[collapsed.index("--kpress-font-prose: var(") :]
-    prose = prose[: prose.index(");")]
-    assert "LocalPunct" not in prose, prose
-    assert '"PT Serif"' in prose
-
-    # Declared, and reachable only through the documented hook.
-    assert 'font-family: "LocalPunct"; src: local("Georgia");' in collapsed
-    assert '--kpress-font-punctuation: var(--kpress-host-font-punctuation, "LocalPunct")' in (
+    prose = prose[: prose.index("serif );") + len("serif );")]
+    assert 'var(--kpress-font-punctuation), "PT Serif"' in prose, prose
+    assert '--kpress-font-punctuation: var(--kpress-host-font-punctuation, "KPress Quotes")' in (
         collapsed
     )
+
+    # A shipped file over exactly the six code points the generator subsets.
+    face = collapsed[collapsed.index('font-family: "KPress Quotes";') :]
+    face = face[: face.index("}")]
+    assert 'src: url("../fonts/kpress-quotes.woff2") format("woff2");' in face, face
+    assert "unicode-range: " + ", ".join(f"U+{cp:04X}" for cp in CODE_POINTS) + ";" in face, face
+    assert "font-display: block;" in face, face
+
+    assert "LocalPunct" not in collapsed
+    assert "src: local(" not in collapsed
 
 
 def test_list_markers_are_drawn_not_set() -> None:
