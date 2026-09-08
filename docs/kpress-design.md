@@ -1255,13 +1255,34 @@ reader sees as the digits in every formula changing font: measured on a twenty-f
 page over loopback, the first `.katex` node was inserted at 70ms and the composite’s
 slots decoded between 111ms and 116ms. So `katex-init.js` loads the faces the mode will
 draw from before the first render — the composite’s four slots when the face is on, and
-`KaTeX_Main` and `KaTeX_Math` in either mode — with a sample string (`a1αΩ`) that
-reaches both faces of every slot, since `document.fonts.load` loads a face only for a
-code point its `unicode-range` covers and the upright slots carry the Greek capitals
-alone. It renders when they settle, or after three seconds, whichever comes first; the
-same page then inserts its first expression at 129ms, after every face.
+`KaTeX_Main` and `KaTeX_Math` in either mode.
+It renders when they settle, or after three seconds, whichever comes first; the same
+page then inserts its first expression at 129ms, after every face.
 Where the page inlines its fonts the wait costs tens of milliseconds; in hosted mode it
 delays the mathematics by a font round trip instead of flashing it.
+
+The two are asked for differently, and the difference is the host contract.
+The KaTeX faces come from the pinned bundle, which is the only thing that declares them,
+so the init takes every face of those two families off `document.fonts` and calls
+`FontFace.load()` on it: the bundle’s four and two rules are the complete list, all of
+them are wanted, and naming the face leaves no font matching between the script and a
+face the page already holds — a match that comes back empty buys a wait that loaded
+nothing. The composite is asked for by description instead (`700 1em 'KPress Math Text'`
+and the other three slots), with a sample string (`a1αΩ`) that reaches both faces of
+every slot, since `document.fonts.load` loads a face only for a code point its
+`unicode-range` covers and the upright slots carry the Greek capitals alone.
+That runs the same matching the renderer runs, which is what a host that declares its
+own `KPress Math Text` rules needs: its faces are fetched and the rules it replaced are
+not. Loading the family face by face would instead pull KPress’s PT Serif files onto a
+page that never draws them — the same objection as the preload hints below.
+
+What the wait asked for and what came back is left on `globalThis.kpressMathFaceWait`:
+one entry per request, in order, each `{ request, outcome, faces, detail }`, where
+`outcome` is `loaded`, `empty` (matched no face, so it waited on nothing), `error` (with
+the reason in `detail`) or `pending` (the deadline won).
+Nothing in the page reads it; it is where mathematics that still repaints is diagnosed,
+and what `tests/test_playwright_math_text_face.py` asserts the ordering against, so that
+a face a browser declined to load is told apart from one the wait was supposed to cover.
 The composite carries `font-display: block`, like the prose faces and unlike the KaTeX
 bundle’s `swap`, for the case the wait does not cover: a slot that is somehow still not
 ready hides its glyphs for the block period rather than painting them twice.

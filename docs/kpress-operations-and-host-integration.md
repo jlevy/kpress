@@ -174,8 +174,10 @@ face of its own (full contract: [Math Text Face](kpress-design.md#math-text-face
 first is CSS: redeclare the `KPress Math Text` faces after KPress’s
 `katex/katex-text-face.css`, and the host’s faces win for the Latin and digit ranges
 they declare while KPress’s KaTeX fallbacks keep the symbols.
-`katex-init.js` waits for the composite by family name rather than by URL, so a host’s
-own faces are waited on too and its mathematics paints once as well.
+`katex-init.js` waits for the composite by description (`700 1em 'KPress Math Text'` and
+its three siblings) rather than face by face, so the browser matches the host’s faces
+and those are the ones waited on and fetched; the host’s mathematics paints once as
+well, and the KPress faces it replaced are not pulled onto the page.
 The second is JS: regenerate `globalThis.kpressKatexTextMetrics` for that face with
 `devtools/katex_text_metrics.py` and load it before `katex-init.js`, since KaTeX lays
 out from those tables and faces swapped without them leave Computer Modern boxes around
