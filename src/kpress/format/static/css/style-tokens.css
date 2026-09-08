@@ -125,8 +125,8 @@
      THE MONO SCALE is set by x-height, not by eye. Inline code interrupts a line
      of PT Serif, so what has to agree is the height of a lowercase letter, and
      the em box the two faces measure that against is not the same box. Read from
-     the shipped woff2 files as OS/2.sxHeight over head.unitsPerEm, which
-     `python -c "from fontTools.ttLib import TTFont"` prints for any of them:
+     the shipped woff2 files with fontTools, as OS/2.sxHeight over
+     head.unitsPerEm:
 
        PT Serif 400              500/1000
        Source Code Pro 400       486/1000   (700 is 496)
