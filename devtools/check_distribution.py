@@ -65,6 +65,11 @@ def _inspect_wheel(wheel: Path) -> None:
             # is six glyphs of.
             "kpress/format/static/fonts/kpress-quotes.woff2",
             "kpress/licenses/source-serif-4.txt",
+            # The mono face (devtools/subset_mono.py): the default regular subset, the
+            # stylesheet that declares it, and the licence it ships under.
+            "kpress/format/static/css/mono-planetaire-400-normal.css",
+            "kpress/format/static/fonts/planetaire-mono-text-latin-400-normal.woff2",
+            "kpress/licenses/planetaire-mono.txt",
             "kpress/format/templates/page.html.jinja",
             "kpress/licenses/github-slugger.txt",
             "kpress/licenses/katex.txt",

@@ -6,16 +6,18 @@ text to a face KPress ships, on screen and in print.
 The system stacks that trail each family in
 [`style-tokens.css`](../css/style-tokens.css) are the fallback for a face that failed to
 load, not part of the design.
-Two roles stand outside the rule.
-`font_mode="system"` asks for the platform stack on purpose and downloads none of these
-files. And code is still set in the platform’s own mono, because KPress ships no mono
-face yet; Planetaire Mono Text is the one chosen, under `kpr-v731` and `kpr-hqrr`.
+Two settings stand outside the rule and ask for the platform on purpose:
+`font_mode="system"` swaps every reader face for a system stack, and
+`mono_font="system"` does the same for code and additionally drops the mono faces from
+the asset manifest, so a page under it downloads none of them.
 
 Every face here is under the [SIL Open Font License 1.1](https://openfontlicense.org),
 which permits bundling and redistribution; the license text for each ships in
 `src/kpress/licenses/`, and [`NOTICE.md`](../../../../../NOTICE.md) is the top-level
-record. That license reserves the upstream name for the original, so the two families
-KPress generates rather than vendors carry names of their own.
+record.
+Where that license reserves the upstream name for the original, the family KPress
+generates carries a name of its own; where it does not, the vendored subset keeps the
+upstream name.
 
 ## The Faces
 
@@ -25,6 +27,7 @@ KPress generates rather than vendors carry names of their own.
 | Source Sans 3 Variable | sans on screen, at whatever weight a context asks for | 2 variable, `wght` x normal/italic |
 | KPress Print Sans | sans in print, one static instance per weight | 10 generated from Source Sans 3, see below |
 | KPress Quotes | the quotation marks and the apostrophe inside prose | 1 generated from Source Serif 4, 6 glyphs |
+| Planetaire Mono Text | code, inline and fenced | 7 latin subsets, see below; 2 declared by default |
 
 ## Provenance
 
@@ -96,6 +99,70 @@ tar xzOf fontsource-source-serif-4-5.3.0.tgz \
 byte when that file is present, and falls back to checking the shipped file against the
 output sha256 above when it is not.
 Both hashes are pinned in the tool.
+
+## The Mono Face
+
+The seven `planetaire-mono-text-latin-<weight>-<style>.woff2` files are **latin subsets
+of a vendored face**, not instances or a rename: `devtools/subset_mono.py` reduces each
+upstream style to the same `unicode-range` above and keeps its family, style and
+PostScript names, its copyright and its OFL notice exactly as upstream wrote them.
+Planetaire reserves no font name of its own — its license reserves only “Bitstream” and
+“Vera”, inherited from Hack’s symbols and untouched here — so unlike the two generated
+families below there is no reserved name to step around.
+Each subset ships beside a stylesheet of its own,
+`../css/mono-planetaire-<weight>-<style>.css`, because `RenderOptions.mono_weights`
+decides which styles a document declares and a single-file page carries every face it
+declares.
+
+| Field | Value |
+| --- | --- |
+| Package | [`jlevy/planetaire`](https://github.com/jlevy/planetaire) |
+| Version | `v0.2.0`, published 2026-09-08 (OFL-1.1) |
+| Source files | `fonts/web/PlanetaireMonoText-<style>.woff2`, 51 to 66 KB each |
+| Command | `python -m devtools.subset_mono` |
+| Output | 7 subsets of 13 to 17 KB, plus 7 stylesheets |
+
+The upstream repository is one we publish ourselves, so the 14-day cool-off in
+[`SUPPLY-CHAIN-SECURITY.md`](../../../../../SUPPLY-CHAIN-SECURITY.md) does not apply;
+the tag and the per-file sha256 below are the pin, and nothing here is an installed
+dependency.
+
+| Style | Source sha256 | Subset | Bytes |
+| --- | --- | --- | --- |
+| `Regular` | `f412b36c96e0b92dcb0d9d476e572375706d449616d341c7429af02eac7b408f` | `planetaire-mono-text-latin-400-normal.woff2` | 13,424 |
+| `Bold` | `3c56f2c14f843426a868cbd0730cdeff061eddb2614a7d9481ab885a4cf84820` | `planetaire-mono-text-latin-700-normal.woff2` | 13,960 |
+| `Italic` | `348c6582e8ec6822a3d5d3fda89196f04320b5ed0b873ab1fb7404ede0ac7d7b` | `planetaire-mono-text-latin-400-italic.woff2` | 14,840 |
+| `BoldItalic` | `a477f92124203bb20fc02c31ff6817584d879caa568ae3d88cc89e432fbba133` | `planetaire-mono-text-latin-700-italic.woff2` | 15,036 |
+| `Medium` | `fcfc30f97d941c24058aab40f9f1d3744dde4c19194df85327f2837227eaaf7f` | `planetaire-mono-text-latin-500-normal.woff2` | 16,232 |
+| `SemiBold` | `16d6807dc7157e4a2e9d86a7087ea2ebddf58d95b5909aca1305131d12b17bdc` | `planetaire-mono-text-latin-600-normal.woff2` | 16,564 |
+| `ExtraBold` | `51da9327a03ca057ccf156636086929d784ebd7037ce02f9d3763841802b7bdc` | `planetaire-mono-text-latin-800-normal.woff2` | 16,524 |
+
+Only regular and bold are declared by default: `code` at 400 and the syntax
+highlighter’s keywords at 700. The other five opt in through `format.mono_weights`.
+`syntax.css` also sets comments and docstrings italic, so under the default pair a
+browser synthesizes the oblique; naming `italic` and `bold-italic` buys the drawn ones
+for about 15 KB apiece.
+The three heavier italics upstream offers are not vendored at all, since no rule reaches
+an italic above 700.
+
+Fetch the sources once, then generate:
+
+```bash
+mkdir -p ~/.cache/kpress/fonts && cd ~/.cache/kpress/fonts
+for f in Regular Bold Italic BoldItalic Medium SemiBold ExtraBold; do
+  curl -fLO "https://cdn.jsdelivr.net/gh/jlevy/planetaire@v0.2.0/fonts/web/PlanetaireMonoText-$f.woff2"
+done
+```
+
+`python -m devtools.subset_mono --check` rebuilds every subset and compares it byte for
+byte when the sources are present, and falls back to checking the shipped files against
+the output hashes pinned in the tool when they are not.
+The stylesheets are checked either way, since they are generated from the tool alone.
+
+Three licences travel with these files: **Planetaire Mono**
+(`src/kpress/licenses/planetaire-mono.txt`, which carries the OFL text and the upstream
+notices), and its two sources, **B612 Mono** (`b612-mono.txt`, OFL-1.1) and **Hack**
+(`hack.txt`, MIT plus the Bitstream Vera license).
 
 ## A Naming Quirk Worth Knowing
 

@@ -66,6 +66,7 @@ lint:
 	$(UV_RUN) python -m devtools.katex_text_metrics --check
 	$(UV_RUN) python -m devtools.instance_sans --check
 	$(UV_RUN) python -m devtools.subset_quotes --check
+	$(UV_RUN) python -m devtools.subset_mono --check
 
 # Check-only lint, matching CI (does not modify files).
 lint-check:
@@ -75,6 +76,7 @@ lint-check:
 	$(UV_RUN) python -m devtools.katex_text_metrics --check
 	$(UV_RUN) python -m devtools.instance_sans --check
 	$(UV_RUN) python -m devtools.subset_quotes --check
+	$(UV_RUN) python -m devtools.subset_mono --check
 	$(FLOWMARK) --auto --check .
 
 test:
