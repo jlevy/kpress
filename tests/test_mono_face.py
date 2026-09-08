@@ -80,12 +80,13 @@ def test_the_generator_agrees_with_the_shipped_files(capsys: pytest.CaptureFixtu
     on a developer's machine and a weaker thing in CI, and nothing said which.
     """
     assert check() == 0
-    printed = capsys.readouterr().out
-    assert ("[fresh-subset]" in printed) ^ ("[pinned-hash]" in printed), printed
-    if not DEFAULT_SOURCE.is_dir() or not any(DEFAULT_SOURCE.glob("PlanetaireMonoText-*.woff2")):
-        assert "[pinned-hash]" in printed, printed
-    else:
-        assert "[fresh-subset]" in printed, printed
+    # The first line carries the verdict and names its mode. Later lines may mention the
+    # other mode -- the pinned-hash path ends by saying how to reach the fresh-subset
+    # one -- so the verdict line is the one to read.
+    verdict = capsys.readouterr().out.splitlines()[0]
+    fetched = DEFAULT_SOURCE.is_dir() and any(DEFAULT_SOURCE.glob("PlanetaireMonoText-*.woff2"))
+    expected = "[fresh-subset]" if fetched else "[pinned-hash]"
+    assert verdict.startswith(expected), verdict
 
 
 def test_every_offered_style_ships_a_subset_and_a_stylesheet() -> None:
