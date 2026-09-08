@@ -10,10 +10,11 @@ load, not part of the design.
 The exception is `font_mode="system"`, where a page asks for the platform stack on
 purpose and downloads none of these files.
 
-All five families are under the
-[SIL Open Font License 1.1](https://openfontlicense.org), which permits bundling and
-redistribution; the license text for each ships in `src/kpress/licenses/`, and
-[`NOTICE.md`](../../../../../NOTICE.md) is the top-level record.
+Every face here is under the [SIL Open Font License 1.1](https://openfontlicense.org),
+which permits bundling and redistribution; the license text for each ships in
+`src/kpress/licenses/`, and [`NOTICE.md`](../../../../../NOTICE.md) is the top-level
+record. That license reserves the upstream name for the original, so the two families
+KPress generates rather than vendors carry names of their own.
 
 ## The Faces
 
@@ -21,9 +22,9 @@ redistribution; the license text for each ships in `src/kpress/licenses/`, and
 | --- | --- | --- |
 | PT Serif | prose reading face, and the Latin letters inside mathematics | 4 static, 400/700 x normal/italic |
 | Source Sans 3 Variable | sans on screen, at whatever weight a context asks for | 2 variable, `wght` x normal/italic |
-| Source Sans 3 | sans in print, one static instance per weight | 12 generated, see below |
+| KPress Print Sans | sans in print, one static instance per weight | 12 generated from Source Sans 3, see below |
 | Source Code Pro | mono: code fences, inline code, math error text | 2 static, 400/700 normal |
-| KPress Quotes | the quotation marks and the apostrophe inside prose | 1 generated, 6 glyphs of Source Serif 4 |
+| KPress Quotes | the quotation marks and the apostrophe inside prose | 1 generated from Source Serif 4, 6 glyphs |
 
 ## Provenance
 
@@ -54,12 +55,13 @@ tar xzf fontsource-source-code-pro-5.3.0.tgz
 shasum -a 256 package/files/source-code-pro-latin-400-normal.woff2
 ```
 
-All three packages were published on 2026-07-19, so the 14-day cool-off in
+All four packages, counting the Source Serif 4 one below, were published on 2026-07-19,
+so the 14-day cool-off in
 [`SUPPLY-CHAIN-SECURITY.md`](../../../../../SUPPLY-CHAIN-SECURITY.md) is satisfied.
 None is an installed dependency: the bytes are vendored, and the package name and
 version record where they came from.
 
-The twelve `source-sans-3-latin-<weight>-<style>.woff2` files are **generated, not
+The twelve `kpress-print-sans-latin-<weight>-<style>.woff2` files are **generated, not
 vendored**. `devtools/instance_sans.py` instances them from the variable faces above,
 and `python -m devtools.instance_sans --check` verifies the shipped bytes against a
 fresh run, so they carry no hash here.
@@ -111,12 +113,16 @@ than an exact family name.
 The bytes are vendored as published so the sha256 above can be checked against the
 package.
 
-**Source Sans 3 has two family names on purpose.** The variable face is
-`Source Sans 3 Variable` and the print instances are `Source Sans 3`, which are the
-upstream names of the two releases.
-Keeping them distinct means the two never share a weight range and font matching never
-has to break a tie; see
-[Print Sans Faces](../../../../../docs/kpress-design.md#print-sans-faces).
+**The two generated families are named for KPress, not for their source.** The print
+instances are `KPress Print Sans` and the quote subset is `KPress Quotes`, not
+`Source Sans 3` and `Source Serif 4`. Both are modified versions of an OFL face whose
+license reserves the upstream name for the original, and shipping them under it would
+need Adobe’s permission.
+Adobe’s copyright notice and the OFL notice travel in every generated file’s name table.
+The rename also settles font matching, since a generated family never shares a weight
+range or a code-point range with the face it came from; see
+[Print Sans Faces](../../../../../docs/kpress-design.md#print-sans-faces) and
+[Quotation Marks](../../../../../docs/kpress-design.md#quotation-marks).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

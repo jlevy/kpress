@@ -532,45 +532,61 @@ KPress does not reach outside its `.kpress` container.
 
 ### Print Sans Faces and Host Weights
 
-Under print the sans stack leads with the static `Source Sans 3` instances rather than
-the variable `Source Sans 3 Variable` used on screen, because Chromium’s PDF writer
+Under print the sans stack leads with the static `KPress Print Sans` instances rather
+than the variable `Source Sans 3 Variable` used on screen, because Chromium’s PDF writer
 draws a variable face at a non-default weight as outline paths instead of embedding it,
 and a viewer that smooths embedded text leaves those paths thin.
+The instances are modified versions of Source Sans 3 under a family name of KPress’s
+own, which is what the OFL asks of a derived font whose original reserves its name.
 The full argument and the measurements are in
 [Print Sans Faces](kpress-design.md#print-sans-faces).
-Three consequences for a host:
+Four consequences for a host:
 
 - **A host that keeps KPress’s weights has nothing to do.** The twelve instances ship as
   package assets and `print-fonts.css` is part of the default stylesheet set, so linked
   and hashed builds carry them and print correctly.
+- **A host that sets `--kpress-host-font-sans` must also set
+  `--kpress-host-font-sans-print`.** The screen hook names the sans for both media, and
+  under print it replaces the whole default list, static family included — a host’s own
+  family is not overruled on paper.
+  So a host that pins its own sans and stops there prints whatever that family prints,
+  outline paths and all if it is a variable webfont, with no warning anywhere.
+  Set the print hook to the host’s own instances, or to
+  `"KPress Print Sans", <its own stack>` to keep KPress’s set in front of it.
 - **A host that overrides the sans weight tokens** (`--kpress-font-weight-sans-light` /
-  `-medium` / `-bold`, or any `font-weight` of its own on a sans context) has three
-  options. Instance its own set: `devtools/instance_sans.py` is importable on its own
-  with fontTools as its only dependency, and `instance_face(variable, weight)` returns
-  the woff2 bytes while `face_rule(weight, style, url)` returns the matching
-  `@font-face` rule. Declare those faces for the `Source Sans 3` family inside
-  `@media print` after KPress’s stylesheets, which is enough on its own.
-  Or point the whole print stack elsewhere with `--kpress-host-font-sans-print`, which
-  takes precedence over `--kpress-host-font-sans` under print only.
-  A weight with no instance is not an error: CSS font matching falls to the nearest one
-  KPress ships, so the printed page is a step off the screen rather than broken.
+  `-medium` / `-bold`, or any `font-weight` of its own on a sans context) has two
+  options. Instance its own set and declare it: copy `devtools/instance_sans.py` from the
+  repository — it is a development tool and is not in the wheel — and install fontTools,
+  which is its only dependency; `instance_face(variable, weight, family)` returns the
+  woff2 bytes and `face_rule(weight, style, url, family)` the matching `@font-face`
+  rule, for the six weights in `WEIGHTS` crossed with the two styles in `STYLES`.
+  Declare those faces inside `@media print` after KPress’s stylesheets, under a family
+  name of the host’s own (the same OFL obligation applies to the host’s derived files),
+  and point `--kpress-host-font-sans-print` at it.
+  Or skip the instancing and point `--kpress-host-font-sans-print` at a family the host
+  already ships. A weight with no instance is not an error: CSS font matching falls to
+  the nearest one KPress ships, so the printed page is a step off the screen rather than
+  broken.
 - **A host that inlines assets into one self-contained file** pays for faces that only a
-  printed copy uses: the twelve instances are about 186KB of woff2, which is about 248KB
-  once base64 grows them by a third.
-  Supplying them at PDF time (linked assets for the print or export path, inlined assets
-  for the page) is a supported choice: without them the printed sans falls back to the
-  variable face and its outline paths, which is exactly the behavior before this
-  feature.
-- **A host that drives its own browser print** must let the print faces load before it
+  printed copy uses: the twelve instances are 185,364 bytes of woff2, about 181KB, which
+  base64 grows by a third to 247,164 bytes, about 241KB. Supplying them at PDF time
+  (linked assets for the print or export path, inlined assets for the page) is a
+  supported choice: without them the printed sans falls back to the variable face and
+  its outline paths, which is exactly the behavior before this feature.
+- **A host that drives its own browser print** should let the print faces load before it
   prints. A face declared inside `@media print` starts loading only when print layout
   asks for it, and a face used by an `@page` margin box never enters
-  `document.fonts.ready` at all, so a print issued right after the media switch can
-  write blank space where the sans belongs.
+  `document.fonts.ready` at all, so a print issued right after the media switch draws
+  before the instances arrive.
   After switching to print media, force layout, await `document.fonts.ready`, then
   `document.fonts.load` the families the margin boxes name (`--kpress-font-sans` and
   `--kpress-font-prose`, read from the root under print media) and await it again.
   `kpress.format.pdf.render_pdf` does exactly this, so a host that exports through
   KPress has nothing to do.
+  Skipping the wait is not a broken page: the faces carry `font-display: swap`, so what
+  has not arrived falls back to the variable face and its outline paths.
+  The same is true of a reader who prints from the browser’s own dialog, where nothing
+  can wait on the host’s behalf.
 
 ### Static Export Seam
 

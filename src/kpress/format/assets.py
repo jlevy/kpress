@@ -199,18 +199,18 @@ DEFAULT_FONT_ASSETS = [
     # is the gate that keeps the files themselves current. They are ordinary resources
     # in the manifest: only the print stylesheet's @font-face rules reference them, so a
     # browser fetches them when a page is printed and never for the screen.
-    "fonts/source-sans-3-latin-370-normal.woff2",
-    "fonts/source-sans-3-latin-400-normal.woff2",
-    "fonts/source-sans-3-latin-550-normal.woff2",
-    "fonts/source-sans-3-latin-600-normal.woff2",
-    "fonts/source-sans-3-latin-650-normal.woff2",
-    "fonts/source-sans-3-latin-700-normal.woff2",
-    "fonts/source-sans-3-latin-370-italic.woff2",
-    "fonts/source-sans-3-latin-400-italic.woff2",
-    "fonts/source-sans-3-latin-550-italic.woff2",
-    "fonts/source-sans-3-latin-600-italic.woff2",
-    "fonts/source-sans-3-latin-650-italic.woff2",
-    "fonts/source-sans-3-latin-700-italic.woff2",
+    "fonts/kpress-print-sans-latin-370-normal.woff2",
+    "fonts/kpress-print-sans-latin-400-normal.woff2",
+    "fonts/kpress-print-sans-latin-550-normal.woff2",
+    "fonts/kpress-print-sans-latin-600-normal.woff2",
+    "fonts/kpress-print-sans-latin-650-normal.woff2",
+    "fonts/kpress-print-sans-latin-700-normal.woff2",
+    "fonts/kpress-print-sans-latin-370-italic.woff2",
+    "fonts/kpress-print-sans-latin-400-italic.woff2",
+    "fonts/kpress-print-sans-latin-550-italic.woff2",
+    "fonts/kpress-print-sans-latin-600-italic.woff2",
+    "fonts/kpress-print-sans-latin-650-italic.woff2",
+    "fonts/kpress-print-sans-latin-700-italic.woff2",
 ]
 
 

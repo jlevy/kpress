@@ -62,7 +62,7 @@ def _inspect_wheel(wheel: Path) -> None:
             # Generated assets ship like any other: the print stylesheet and one of the
             # static Source Sans 3 instances it declares (devtools/instance_sans.py).
             "kpress/format/static/css/print-fonts.css",
-            "kpress/format/static/fonts/source-sans-3-latin-550-normal.woff2",
+            "kpress/format/static/fonts/kpress-print-sans-latin-550-normal.woff2",
             # The quote face (devtools/subset_quotes.py) and the licence of the face it
             # is six glyphs of.
             "kpress/format/static/fonts/kpress-quotes.woff2",

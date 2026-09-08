@@ -131,10 +131,12 @@ Specifically:
 - Six weights (370, 400, 550, 600, 650, 700) in normal and italic: the three weight
   tokens, the footnote controls’ 600, bold’s 700, and 400 for the resets.
   Twelve files of about 15KB.
-- The family name `Source Sans 3` for the static set against `Source Sans 3 Variable`
-  for the axis, which are the upstream names of the two releases.
+- The family name `KPress Print Sans` for the static set against
+  `Source Sans 3 Variable` for the axis.
   Distinct names keep the two from sharing a weight range, so font matching never has to
-  break a tie.
+  break a tie. The static set first carried the upstream static release’s own name,
+  `Source Sans 3`; the instances are modified versions of an OFL font whose license
+  reserves “Source”, so the shipped family is named for KPress instead.
 - Generated rather than vendored, by `devtools/instance_sans.py`, with a `--check` mode
   in the lint gate: the instances are derived from files already in the repository, and
   a generator keeps them derivable when the weights change.

@@ -64,10 +64,13 @@ SOURCE_SHA256: Final = "02194deb92d3975dd30e11a3824a1f1db32b48c93654e60560cb81ce
 #: The generated subset, for the check that runs when the source is not at hand.
 SUBSET_SHA256: Final = "c1b4e25238045596fcee7c888f5cc589d5294f59ab8feb2745c57824682df570"
 
-#: The family the subset declares, and its PostScript name. Distinct from
-#: ``Source Serif 4`` because these are six glyphs of it and not the face: a page that
-#: asked for Source Serif 4 by name would get quotation marks and nothing else. The
-#: PostScript name is what a PDF's ``/BaseFont`` carries, after the subset tag.
+#: The family the subset declares, and its PostScript name. Not ``Source Serif 4``: this
+#: is a modified version of an OFL face whose license reserves the upstream name for the
+#: original, the same reason ``devtools/instance_sans.py`` writes ``KPress Print Sans``.
+#: It also settles font matching, since a page that asked for Source Serif 4 by name
+#: would otherwise get quotation marks and nothing else. Adobe's copyright and the OFL
+#: notice stay in the name table. The PostScript name is what a PDF's ``/BaseFont``
+#: carries, after the subset tag.
 FAMILY: Final = "KPress Quotes"
 POSTSCRIPT_NAME: Final = "KPressQuotes-Regular"
 
