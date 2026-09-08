@@ -168,6 +168,11 @@ const TEXT_FACE_FONTS = [
 // the script and faces it already holds, and would leave the set the wait
 // covers implicit. Naming each face makes it exact, and the record below then
 // says which face every request was for.
+//
+// That the bundle is the only declarer is an assumption, and it is the host's to
+// keep: kpress-operations-and-host-integration.md asks a host to substitute a
+// math face through `KPress Math Text` and not by redeclaring these two
+// families, since a page that declares its own would have both sets loaded here.
 const KATEX_FAMILIES = ["KaTeX_Main", "KaTeX_Math"];
 
 // How long the wait may last, matching the block period `font-display: block`

@@ -1261,6 +1261,40 @@ page then inserts its first expression at 129ms, after every face.
 Where the page inlines its fonts the wait costs tens of milliseconds; in hosted mode it
 delays the mathematics by a font round trip instead of flashing it.
 
+The wait covers two of the bundle’s families, not all thirteen, so “paints once” has a
+limit and it is worth naming.
+The construct-specific ones — `KaTeX_AMS`, `KaTeX_Size1` to `KaTeX_Size4`, Caligraphic,
+Fraktur, Script, SansSerif and Typewriter — are outside the wait and keep the bundle’s
+`swap`, so an expression that reaches one of them still repaints: a display `\sum` is
+painted 11.4×18.0px from the fallback and settles at 23.1×36.0px when `KaTeX_Size2`
+lands, about 20ms later over loopback and a fetch later on a real link; `\leqslant` or
+`\square` moves the `.katex` root 77.5px → 87.7px when `KaTeX_AMS` does.
+That is structural rather than a race: with no preload hints in the shell (below), a
+face only these constructs reach cannot be requested before the render has created a
+node that needs it.
+Waiting on them anyway is refused because it would fetch all thirteen
+on every page with math, nearly always for constructs the document does not contain —
+`kpr-prsb` measures deriving the set from the document instead, which is what would
+close this.
+The ceiling behaves the same way: at three seconds the mathematics is painted
+in whatever faces are ready rather than held back further, so a composite that is very
+late still gives one repaint (the first digit measured at `KaTeX_Main`’s 0.500em and
+repainting to PT Serif’s 0.533em), which is the right trade against leaving the reader
+on the MathML.
+
+**What it costs.** The whole set is fetched before the first formula, whatever the page
+draws. On a `\sum … \int` fixture with no bold or italic constructs, that is 11 requests
+and 252,828 B against the pre-fix build’s 5 and 117,432 B — six more requests and
+135,396 B, a little over double — and 4 requests and 76,692 B more in
+`math_text_font: katex`. Most of it is shared with the prose faces or the composite, but
+`KaTeX_Main-Italic` (17,288 B) and `KaTeX_Main-BoldItalic` (17,080 B) are drawn by
+nothing else and are fresh on every math page in either mode.
+Over loopback the render costs about 12ms more; on a real connection the transfer is the
+whole of the cost, and it now sits in front of the first formula.
+It buys the case the earlier CI failure was chasing: `\mathbf`, `\mathit` and
+`\boldsymbol` repaint nothing at all, which waiting only on the two regular faces would
+give back. `kpr-hhdc` (composite subsets) shrinks the same bytes from the other end.
+
 The two are asked for differently, and the difference is the host contract.
 The KaTeX faces come from the pinned bundle, which is the only thing that declares them,
 so the init takes every face of those two families off `document.fonts` and calls
@@ -1284,6 +1318,8 @@ the reason in `detail`) or `pending` (the deadline won).
 Nothing in the page reads it; it is where mathematics that still repaints is diagnosed,
 and what `tests/test_playwright_math_text_face.py` asserts the ordering against, so that
 a face a browser declined to load is told apart from one the wait was supposed to cover.
+It is a debug hook and not part of the pinned public surface — no JS global is, and
+nothing in `kpress.contract` names it — so its shape may change without notice.
 The composite carries `font-display: block`, like the prose faces and unlike the KaTeX
 bundle’s `swap`, for the case the wait does not cover: a slot that is somehow still not
 ready hides its glyphs for the block period rather than painting them twice.
@@ -1634,8 +1670,13 @@ Required document components:
   KaTeX lays out using its precomputed metrics (baked into `katex.min.js`), so layout
   does not wait on fonts; the woff2 faces are declared via `@font-face` and fetched **on
   demand by the browser**, per face, only when a glyph that needs them is painted.
-  A trivial `$x^2$` pulls only the Main/Math faces;
-  Fraktur/Script/Caligraphic/SansSerif/Typewriter are never fetched unless used.
+  That still holds for the construct-specific families:
+  Fraktur/Script/Caligraphic/SansSerif/Typewriter, AMS and Size1–4 are never fetched
+  unless used. The two families every expression draws from are the exception since
+  [Paints once](#math-text-face): `katex-init.js` loads all six `KaTeX_Main` and
+  `KaTeX_Math` faces up front, with the composite’s four slots where the math text face
+  is on, and renders after them, so a trivial `$x^2$` pulls that set rather than the two
+  faces it draws — the transfer cost is measured under that heading.
   All twenty faces are vendored (package size, not client transfer); codepoint
   subsetting is intentionally avoided because needed glyphs are content- and not
   vendor-time-determined, and the per-face native lazy load already bounds client bytes.

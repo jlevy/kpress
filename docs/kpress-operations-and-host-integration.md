@@ -178,6 +178,11 @@ they declare while KPress’s KaTeX fallbacks keep the symbols.
 its three siblings) rather than face by face, so the browser matches the host’s faces
 and those are the ones waited on and fetched; the host’s mathematics paints once as
 well, and the KPress faces it replaced are not pulled onto the page.
+`KPress Math Text` is the whole of that seam: the same wait takes the `KaTeX_Main` and
+`KaTeX_Math` faces off `document.fonts` by name, on the assumption that the pinned
+bundle is the only thing declaring them, so a host that redeclares either family gets
+both sets loaded and KPress’s shadowed files fetched onto pages that never draw them.
+Substitute a math face through the composite, not by redeclaring the KaTeX families.
 The second is JS: regenerate `globalThis.kpressKatexTextMetrics` for that face with
 `devtools/katex_text_metrics.py` and load it before `katex-init.js`, since KaTeX lays
 out from those tables and faces swapped without them leave Computer Modern boxes around
