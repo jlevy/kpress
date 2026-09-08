@@ -5,7 +5,7 @@ title: Vendor Planetaire Mono Text as the mono face at 0.87 of the prose size, r
 kind: feature
 status: in_progress
 priority: 1
-version: 5
+version: 6
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
@@ -16,6 +16,6 @@ dependencies:
     target: is-01m1z831f7394cx7ayh9qkkp5s
 parent_id: is-01m1yxrn6e5m1ddfvc6nrcammj
 created_at: 2026-09-07T21:53:14.059Z
-updated_at: 2026-09-08T00:53:32.774Z
+updated_at: 2026-09-08T01:15:51.680Z
 ---
-Decision (owner, 2026-09-08, from a comparison page of Menlo, Source Code Pro, Hack v3.003 and Planetaire Mono Text beside PT Serif at 18px, sized from the outlines' ink x-heights with a slider per face): Planetaire Mono Text (github.com/jlevy/planetaire, B612 Mono letterforms with Hack's punctuation and symbols) at a mono size token of 0.87 of the prose size. With its ink x-height of 0.560 em that sets code's x-height at 97% of PT Serif's 0.500 and gives about 85 columns at the 45em measure (advance 0.602 em). Vendor it from a pinned planetaire commit or release that includes the OS/2 vertical-metrics fix (the shipped build reports Hack's sxHeight 0.547 and sCapHeight 0.729 while the outlines draw 0.560 and 0.760; a fix PR is in progress on that repo), as a latin subset like the other vendored faces (regular and bold, italic if the reader uses it; the full Text woff2 files are 51 to 58 KB each and the subset should be far smaller), with the source sha256, the subsetting command and the B612 OFL, Hack and Planetaire licences recorded in static/fonts/README.md and NOTICE.md. Replace the interim Source Code Pro vendored on squares/font-consistency (PR #56) and retune the mono size token from 0.925 to 0.87 with the rationale beside it. Companion: the standard on/off setting (see the sibling bead) so a host can drop the face for page weight.
+Decision (owner, 2026-09-08): no Source Code Pro. The interim Source Code Pro vendored on squares/font-consistency (PR #56, commit d80dbaf and the mono parts of the review fixes) is backed out so #56 lands with the system mono stack unchanged (ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --kpress-font-size-mono stays 0.82), keeping the rest of that branch (box list marker, KPress Quotes, the weight tokens, the fonts README and licences for the faces that stay, the system-mode override covering mono). Planetaire Mono Text then lands as its own pull request: vendored from a pinned planetaire commit or release that includes the OS/2 vertical-metrics fix (the shipped build reports Hack's sxHeight 0.547 and sCapHeight 0.729 while the outlines draw 0.560 and 0.760; a fix PR is in progress on that repo), as latin subsets of regular and bold only by default (the other styles opt in through kpr-hqrr's weights setting), the source sha256, the subsetting command and the B612 OFL, Hack and Planetaire licences recorded in static/fonts/README.md and NOTICE.md; the mono size token 0.87 of the prose size (ink x-height 0.560 em puts code's x-height at 97% of PT Serif's 0.500, about 85 columns at the 45em measure), with the rationale beside it; together with the on/off and weights settings of kpr-hqrr in the same PR or the one after. Chosen by the owner from a four-way comparison (Menlo, Source Code Pro, Hack v3.003, Planetaire) beside PT Serif at 18px, sized from the outlines' ink x-heights with a slider per face.
