@@ -1,0 +1,115 @@
+# Vendored Fonts
+
+Every face a KPress document ships is in this directory.
+Nothing is fetched from a CDN at page load: the rule is that a document resolves its
+text to a face KPress ships, on screen and in print.
+The system stacks that trail each family in
+[`style-tokens.css`](../css/style-tokens.css) are the fallback for a face that failed to
+load, not part of the design.
+Two roles stand outside the rule.
+`font_mode="system"` asks for the platform stack on purpose and downloads none of these
+files. And code is still set in the platform’s own mono, because KPress ships no mono
+face yet; Planetaire Mono Text is the one chosen, under `kpr-v731` and `kpr-hqrr`.
+
+Every face here is under the [SIL Open Font License 1.1](https://openfontlicense.org),
+which permits bundling and redistribution; the license text for each ships in
+`src/kpress/licenses/`, and [`NOTICE.md`](../../../../../NOTICE.md) is the top-level
+record. That license reserves the upstream name for the original, so the two families
+KPress generates rather than vendors carry names of their own.
+
+## The Faces
+
+| Family | Role | Files |
+| --- | --- | --- |
+| PT Serif | prose reading face, and the Latin letters inside mathematics | 4 static, 400/700 x normal/italic |
+| Source Sans 3 Variable | sans on screen, at whatever weight a context asks for | 2 variable, `wght` x normal/italic |
+| KPress Print Sans | sans in print, one static instance per weight | 10 generated from Source Sans 3, see below |
+| KPress Quotes | the quotation marks and the apostrophe inside prose | 1 generated from Source Serif 4, 6 glyphs |
+
+## Provenance
+
+The vendored bytes come from the [Fontsource](https://fontsource.org) npm packages,
+which repackage the Google Fonts releases as per-subset woff2. Only the `latin` subset
+is vendored. Each file below is byte-identical to the file of the same name inside the
+pinned package, which is how the origin of the four faces that predate this record was
+established: the extraction commit that brought PT Serif and Source Sans 3 into the
+repository named no source, but their bytes match, so the source is not in doubt.
+
+| File | Package | Version | sha256 |
+| --- | --- | --- | --- |
+| `pt-serif-latin-400-normal.woff2` | `@fontsource/pt-serif` | 5.3.0 | `4271064a37f3ffc0aac5f3806db8a72acc23e19447d1804e4e80d8796cbf6330` |
+| `pt-serif-latin-400-italic.woff2` | `@fontsource/pt-serif` | 5.3.0 | `cb373bde18855c82a0ebf2946ea661ebd0be58a7fbabdf20f7744ecd9c0a9cfd` |
+| `pt-serif-latin-700-normal.woff2` | `@fontsource/pt-serif` | 5.3.0 | `bf23a7a4eebedbb87d4084a69496b29815914a18e339a00f5dc73a03c9c9328f` |
+| `pt-serif-latin-700-italic.woff2` | `@fontsource/pt-serif` | 5.3.0 | `3cb3cfab3c562cbbb5a53accf433f65ed1cd0403ea3bdd6ceeb73bf87f23521c` |
+| `source-sans-3-latin-wght-normal.woff2` | `@fontsource-variable/source-sans-3` | 5.3.0 | `7a19a7027e125257d310c6dbd78ae3a30b5ea1e3794d60b12bb28227a003bfda` |
+| `source-sans-3-latin-wght-italic.woff2` | `@fontsource-variable/source-sans-3` | 5.3.0 | `9a15dafc2c2b2414aaa9d6c30830d9aab4361329d8495b1574633603b994b411` |
+
+Each file is `package/files/<name>` inside the package tarball.
+To re-verify one:
+
+```bash
+npm pack @fontsource/pt-serif@5.3.0 --ignore-scripts
+tar xzf fontsource-pt-serif-5.3.0.tgz
+shasum -a 256 package/files/pt-serif-latin-400-normal.woff2
+```
+
+All three packages, counting the Source Serif 4 one below, were published on 2026-07-19,
+so the 14-day cool-off in
+[`SUPPLY-CHAIN-SECURITY.md`](../../../../../SUPPLY-CHAIN-SECURITY.md) is satisfied.
+None is an installed dependency: the bytes are vendored, and the package name and
+version record where they came from.
+
+The ten `kpress-print-sans-latin-<weight>-<style>.woff2` files are **generated, not
+vendored**. `devtools/instance_sans.py` instances them from the variable faces above,
+and `python -m devtools.instance_sans --check` verifies the shipped bytes against a
+fresh run, so they carry no hash here.
+
+## The Quote Face
+
+`kpress-quotes.woff2` is also generated, from a source that is **not** vendored.
+PT Serif draws its own quotation marks badly, so KPress ships six glyphs of Source Serif
+4 in their place and leads the prose stack with them over that `unicode-range`; the
+reasoning is in [Quotation Marks](../../../../../docs/kpress-design.md#quotation-marks).
+The 20 KB upstream face is a build input, and only the 724-byte subset is committed.
+
+| Field | Value |
+| --- | --- |
+| Package | `@fontsource/source-serif-4` |
+| Version | 5.3.0, published 2026-07-19 (OFL-1.1) |
+| Source file | `package/files/source-serif-4-latin-400-normal.woff2`, 20,088 bytes |
+| Source sha256 | `02194deb92d3975dd30e11a3824a1f1db32b48c93654e60560cb81ce8e7b5f95` |
+| Command | `python -m devtools.subset_quotes` |
+| Output | `kpress-quotes.woff2`, 724 bytes, 6 glyphs plus `.notdef` |
+| Output sha256 | `c1b4e25238045596fcee7c888f5cc589d5294f59ab8feb2745c57824682df570` |
+
+Fetch the source once, then generate:
+
+```bash
+mkdir -p ~/.cache/kpress/fonts && cd ~/.cache/kpress/fonts
+npm pack @fontsource/source-serif-4@5.3.0 --ignore-scripts
+tar xzOf fontsource-source-serif-4-5.3.0.tgz \
+    package/files/source-serif-4-latin-400-normal.woff2 \
+    > source-serif-4-latin-400-normal.woff2
+```
+
+`python -m devtools.subset_quotes --check` rebuilds the subset and compares it byte for
+byte when that file is present, and falls back to checking the shipped file against the
+output sha256 above when it is not.
+Both hashes are pinned in the tool.
+
+## A Naming Quirk Worth Knowing
+
+**The two generated families are named for KPress, not for their source.** The print
+instances are `KPress Print Sans` and the quote subset is `KPress Quotes`, not
+`Source Sans 3` and `Source Serif 4`. Both are modified versions of an OFL face whose
+license reserves the upstream name for the original, and shipping them under it would
+need Adobe’s permission.
+Adobe’s copyright notice and the OFL notice travel in every generated file’s name table.
+The rename also settles font matching, since a generated family never shares a weight
+range or a code-point range with the face it came from; see
+[Print Sans Faces](../../../../../docs/kpress-design.md#print-sans-faces) and
+[Quotation Marks](../../../../../docs/kpress-design.md#quotation-marks).
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

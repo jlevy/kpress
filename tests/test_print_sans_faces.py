@@ -1,7 +1,7 @@
 """Where every sans weight kpress asks for lands on the static print instances.
 
 Under print the sans stack leads with the static ``KPress Print Sans`` family (see
-print.css and devtools/instance_sans.py), which covers six weights rather than the
+print.css and devtools/instance_sans.py), which covers five weights rather than the
 variable face's whole 200-900 axis. A request that has no instance is not an error: CSS
 font matching picks the nearest available weight by a rule with a documented asymmetry
 around 400-500, so the sans-mode headings at 380 and 440 land a step apart in direction.
@@ -34,11 +34,17 @@ from devtools.instance_sans import (
 _CSS = Path(__file__).resolve().parents[1] / "src" / "kpress" / "format" / "static" / "css"
 
 #: Every numeric sans weight kpress's own stylesheets request, and the instance CSS
-#: Fonts 4 matching draws it from. The three weight tokens, the footnote controls' 600,
-#: bold's 700 and the resets' 400 are exact; the sans-mode headings are not, and the
-#: pair 380/440 is where the rule's asymmetry shows: 380 falls to 370 while 440 falls to
-#: 400 rather than rising to 550, because a request inside 400-500 looks up only as far
-#: as 500 before looking down. 540, just outside, rises to 550.
+#: Fonts 4 matching draws it from. The three weight tokens, the footnote controls' 600
+#: and the resets' 400 are exact; the sans-mode headings are not, and the pair 380/440
+#: is where the rule's asymmetry shows: 380 falls to 370 while 440 falls to 400 rather
+#: than rising to 550, because a request inside 400-500 looks up only as far as 500
+#: before looking down. 540, just outside, rises to 550.
+#:
+#: 700 is here because the scan below still finds it in the stylesheets, but it
+#: deliberately has no instance: every rule that asks for it is prose (``.kpress-prose
+#: h5``, which sets the prose family) or mono (the syntax rules), and neither family can
+#: resolve to the print sans. Sans bold is the 650 token, so 650 is the heaviest weight
+#: a sans element reaches, and a stray 700 request lands there.
 EXPECTED_LANDING = {
     370: 370,
     380: 370,
@@ -48,7 +54,7 @@ EXPECTED_LANDING = {
     550: 550,
     600: 600,
     650: 650,
-    700: 700,
+    700: 650,
 }
 
 #: The weight tokens, with the values style-tokens.css must give them.
@@ -167,10 +173,10 @@ def test_each_instance_is_a_static_face_named_by_its_weight() -> None:
     writer embed the face instead of drawing its glyphs as outline paths. The name is
     how the face is identified in a PDF's font list, so it names the weight.
 
-    Twelve faces need twelve identities. Name IDs 1 and 2 hold at most four styles per
-    family, so the weight goes in ID 1 and the family the twelve share goes in the
-    typographic pair, 16 and 17 -- records the variable inputs do not all carry, so the
-    generator has to create them rather than overwrite what is there.
+    Ten faces need ten identities. Name IDs 1 and 2 hold at most four styles per family,
+    so the weight goes in ID 1 and the family the ten share goes in the typographic
+    pair, 16 and 17 -- records the variable inputs do not all carry, so the generator
+    has to create them rather than overwrite what is there.
     """
     identities: set[tuple[str, str]] = set()
     for style in STYLES:

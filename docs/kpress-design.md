@@ -129,7 +129,7 @@ feature guarantees); the sections named in the table carry the architecture deta
 | Media | Image/figure handling, YouTube popover interception | Document Components |
 | Tabs | Tabbed content with keyboard access | Document Components |
 | Theming | Light/dark/system with pre-paint bootstrap; `neutral`/`warm` palettes; container-query responsive layout | Design System; Theme and Fonts |
-| Fonts | Vendored PT Serif / Source Sans 3 / mono with `custom`/`system` modes and per-role host overrides | Theme and Fonts |
+| Fonts | Vendored PT Serif / Source Sans 3 / quote subset with `custom`/`system` modes and per-role host overrides | Theme and Fonts |
 | Widgets and extensions | Page-model block, widget registry (settings gear, choosers), tree/page transforms, head/header/footer slots | Extension and Injection Model |
 | Document dialect | Open custom-tag admission for host plugins (preprocessors emit tags; hosts style them) | Plugins and the Document Dialect |
 | Static publishing | Config, source discovery, routes, manifests, site files, and `hosted`/`linked`/`hashed` site asset modes | Static Publishing; Asset Model |
@@ -219,6 +219,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   long-form measure.
 - **Lists.** Screen markers plus a print ordered-list grid and nested-list print resets,
   including long-list handling.
+  The bulleted marker is a drawn `currentColor` box, not a glyph: see
+  [List Markers](#list-markers).
 - **Links, selection, scrollbars.** Reader-grade selection and scrollbar styling.
 - **Details, metadata, and frontmatter blocks.** Collapsible metadata with a defined
   print policy; a visible, accessible frontmatter parse-error affordance.
@@ -826,7 +828,7 @@ The supported fragment variables are:
 - typography: `--kpress-font-body`, `--kpress-font-prose`, `--kpress-font-sans`,
   `--kpress-font-mono`, `--kpress-font-footnote`, and `--kpress-font-table`
 - sizing: `--kpress-font-size-base`, the one knob the entire type ramp derives from
-  (default `1rem`; every internal font size, the bullet glyph, and its offsets are
+  (default `1rem`; every internal font size, the bullet square, and its offsets are
   `calc(base × ratio)`). Hosts set it once — preferably through the
   `--kpress-host-font-size-base` hook on `:root`, which also reaches the body-level
   overlays. The derived tier is the sanctioned divergence seam: `--kpress-font-size-h2`,
@@ -1653,20 +1655,30 @@ request, since a weight the set does not carry is matched to the nearest instanc
 The variable face stays behind it for the case where the family cannot answer at all, a
 build that ships without the instances, which is the behavior before this feature.
 
-**The set.** Six weights (370, 400, 550, 600, 650, 700) in normal and italic, twelve
-files of about 15KB, generated from the vendored variable faces by
-`devtools/instance_sans.py` into `static/fonts/` together with the stylesheet
-`static/css/print-fonts.css` that declares them.
-Both are generated files; `python -m devtools.instance_sans --check` verifies the
-shipped bytes and runs in both `make lint` and `make lint-check`, the second of which is
-what CI runs. The weights are the ones KPress’s own sans contexts request: the three
-weight tokens (370, 550, 650), the footnote controls’ 600, bold’s 700, and 400 for the
-resets. The two sans-mode headings ask for 380 and 440, which CSS weight matching lands
-on 370 and 400; `.kpress-prose h4`’s 540 lands on 550. `tests/test_print_sans_faces.py`
-pins every landing place and fails if a stylesheet asks for a weight the set does not
-account for, and `tests/test_playwright_print_sans_face.py` measures the same table in
-Chromium. The `@font-face` rules sit inside `@media print`, so a reader on screen never
-downloads one, and `print-fonts.css` is registered right after `print.css` in
+**The set.** Five weights (370, 400, 550, 600, 650) in normal and italic, ten files of
+about 15KB, generated from the vendored variable faces by `devtools/instance_sans.py`
+into `static/fonts/` together with the stylesheet `static/css/print-fonts.css` that
+declares them. Both are generated files; `python -m devtools.instance_sans --check`
+verifies the shipped bytes and runs in both `make lint` and `make lint-check`, the
+second of which is what CI runs.
+The weights are the ones KPress’s own sans contexts request: the three weight tokens
+(370, 550, 650), the footnote controls’ 600, and 400 for the resets.
+The two sans-mode headings ask for 380 and 440, which CSS weight matching lands on 370
+and 400; `.kpress-prose h4`’s 540 lands on 550.
+
+A 700 pair shipped until 2026-09-07, on the belief that bold asked for it.
+It does not: `.kpress b, .kpress strong` sets the bold token, so a UA-default `bold`
+never reaches a sans element inside `.kpress`, and the only `font-weight: 700` rules
+left in the stylesheets are `.kpress-prose h5` (a prose family) and the syntax
+highlighting (a mono family), neither of which can resolve to `KPress Print Sans`.
+Measured in Chromium across both media and both reading-font modes, no sans element
+resolves above 650. The pair was 30,912 bytes for nothing, and a host that raises a
+weight token past 650 lands on 650 by the fallback rule below.
+`tests/test_print_sans_faces.py` pins every landing place and fails if a stylesheet asks
+for a weight the set does not account for, and
+`tests/test_playwright_print_sans_face.py` measures the same table in Chromium.
+The `@font-face` rules sit inside `@media print`, so a reader on screen never downloads
+one, and `print-fonts.css` is registered right after `print.css` in
 `DEFAULT_CSS_ASSETS`.
 
 The instances copy the variable faces’ `unicode-range` verbatim, so their coverage is
@@ -1708,6 +1720,147 @@ That is the case to know about, and
 [Host Integration](kpress-operations-and-host-integration.md#print-sans-faces-and-host-weights)
 states the obligation, along with what a host that overrides the sans weight tokens
 needs.
+
+### Quotation Marks
+
+Quotation marks and apostrophes come from **KPress Quotes**, a six-glyph subset of
+Source Serif 4 that KPress ships.
+It leads `--kpress-font-prose` over `U+0022`, `U+0027`, `U+2018`, `U+2019`, `U+201C` and
+`U+201D`, and every other character passes down to PT Serif.
+
+**The history, as far as the record goes.** The borrowing was a family `LocalPunct`
+whose `src` was `local("Georgia")` and whose `unicode-range` was those same six code
+points, placed at the head of the prose stack.
+It is present in the first commit this repository has, the 2026-06-10 extraction
+`5f2d466`, and so is PT Serif: the prose token there already reads
+`"LocalPunct", "PT Serif", Georgia, …`. The two arrive together, so nothing here shows
+Georgia being replaced as the reading face and the marks then being kept back.
+What the record shows is narrower and still worth recovering: reaching outside the
+document for six glyphs was a deliberate part of the design from the beginning, and its
+reason was never written down.
+It was nearly lost, because from the outside the borrowing looks like an oversight.
+
+One document with three answers is what it cost.
+A document’s punctuation came from Georgia when the reader had Georgia, from PT Serif
+when they did not, and from PT Serif on paper either way, since a `local()` face cannot
+be embedded in a PDF.
+
+The one text that pairs a Georgia prose stack with `LocalPunct` is a token table in the
+extraction commit’s own copy of this document, listing
+`--kpress-font-prose: ui-serif, Georgia, serif` beside
+`--kpress-font-punctuation: LocalPunct`. The 2026-07-13 consolidation `7b09584` removed
+it. It contradicted the shipped stylesheet on the day it was written, so it is evidence
+of an earlier default somewhere behind this repository, not of the order things happened
+in.
+
+**What it was buying.** PT Serif draws these six glyphs badly, and the fault is
+measurable. In Chromium at 18px, `measureText` on the four curly marks:
+
+| Face | `“` `”` width | `‘` `’` width | Opening pair, ink above baseline | Closing pair |
+| --- | --- | --- | --- | --- |
+| PT Serif | 8.53px | 5.26px | 14.83px | 12.58px |
+| Georgia | 7.38px | 4.08px | 13.41px | 13.44px |
+| KPress Quotes | 7.92px | 4.05px | 13.34px | 13.34px |
+
+Two things are wrong with the PT Serif row.
+Its opening pair hangs 2.25px above its closing pair, so a quotation does not sit level
+with the marks that close it, and its doubles are 16% wider than Georgia’s, which makes
+them loud in a line of text.
+Georgia’s open and close are level to within 0.03px. PT Serif’s opening single quote
+also reads as a near-vertical tapered tick rather than a comma.
+The preference for Georgia was real, and it was right.
+
+**Why it is shipped rather than borrowed.** The rule is that every glyph in a KPress
+document comes from a face KPress ships, on screen and in print
+([Vendored Fonts](../src/kpress/format/static/fonts/README.md)). Borrowing broke it in
+the way that matters most: a reader without Georgia saw the marks the borrowing existed
+to avoid, and a printed page always did.
+So the marks are shipped instead.
+Source Serif 4 is the companion of the Source Sans 3 face KPress already vendors, and
+its marks are level to 0.00px and only 7% wider than Georgia’s. Taking six glyphs of it
+costs 724 bytes, which is why the whole 20 KB face is not vendored:
+`devtools/subset_quotes.py` reads the upstream `@fontsource/source-serif-4` file from
+outside the repository, subsets it to those six code points, renames the result to the
+family `KPress Quotes`, and writes `static/fonts/kpress-quotes.woff2`.
+`python -m devtools.subset_quotes --check` runs in `make lint`, comparing the shipped
+bytes against a fresh subset when the source is at hand and against a pinned digest when
+it is not; provenance and both hashes are in the fonts README.
+
+**The name.** The subset is the family `KPress Quotes`, not `Source Serif 4`. It is a
+modified version of an OFL face, and that license reserves the upstream name for the
+original, so shipping it under Adobe’s name would need Adobe’s permission, exactly as
+for the `KPress Print Sans` instances above.
+Adobe’s copyright notice, version string and the OFL URL stay in the subset’s name
+table. The rename also settles font matching, since the generated family never shares a
+code-point range with the face it came from.
+
+Print needs nothing special.
+A static face embeds like any other, so `KPressQuotes-Regular` appears in the exported
+PDF’s font list beside `PTSerif-Regular`; `tests/test_playwright_print_pdf_fonts.py`
+pins that, and `tests/test_playwright_quote_face.py` pins that the marks resolve to the
+face on screen and under print media while the letters beside them stay PT Serif.
+
+**The host hook.** `--kpress-font-punctuation` names the family that answers those six
+code points, and it is the first entry in the prose stack.
+`--kpress-host-font-punctuation` points it somewhere else: another family for different
+marks, or the reading face itself to give the marks back to PT Serif.
+
+```css
+:root {
+  --kpress-host-font-punctuation: "PT Serif";
+}
+```
+
+A host that replaces the whole reading stack through `--kpress-host-font-prose` gives
+the marks up as a side effect rather than as a choice: the host hook is the first entry
+in `--kpress-font-prose`, so a value for it discards the rest of the list, and
+`var(--kpress-font-punctuation)` is the head of that list.
+Keeping the marks means naming them at the head of the replacement stack.
+[The Prose Hook and the Quote Face](kpress-operations-and-host-integration.md#the-prose-hook-and-the-quote-face)
+has both declarations and the migration note for a host already setting the hook.
+
+The built-in sans reading mode takes the same path deliberately.
+`data-kpress-prose-font="sans"` repoints `--kpress-font-prose` at the sans stack, so the
+marks there come from Source Sans 3 on screen and `KPress Print Sans` in print — both
+shipped faces, and a serif quote face in a sans paragraph would be the mismatch this
+token exists to prevent.
+
+### List Markers
+
+The bulleted list marker is a **drawn box**, not a glyph: `content: ""` on the
+`::before`, sized in em of `--kpress-bullet-size`, filled with `currentColor`. It was
+`\25AA\FE0E`, and U+25AA is in none of the faces KPress ships, so it fell down whichever
+stack its rule inherited — Georgia on a Mac, 16 KB of embedded Georgia in a printed PDF
+for 48 bullets, and a different mark on a machine without Georgia.
+A box depends on no font and is identical everywhere.
+
+The size and offsets reproduce what the glyph drew, measured in Chromium at a 16px base:
+a 3.255 × 3.255 px square whose centre sat 11.05px left of and 13.14px below the item’s
+top-left corner. `0.226em` of the marker size is that square, and the offsets carry the
+box from the old text origin onto the ink the glyph put there; both are in em of the
+marker size, so the same pair of numbers serves `print.css`’s smaller nested marker.
+After the change every marker is within 0.02px of its former size and 0.08px of its
+former position.
+
+The one deliberate move is `.claim`. Its rule is sans, so its U+25AA resolved a
+different fallback and drew 5.20px against the prose marker’s 3.26px — 60% larger, under
+a token whose stated purpose is that every bulleted list matches.
+All three rules now draw the one square.
+
+Three rules own the marker: `.kpress-prose ul > li::before` and
+`.kpress .concepts ul > li::before` in `document.css`, `.kpress .claim::before` in
+`components.css`, and `.kpress ol ul > li::before` under `@media print`. A host that
+replaces the marker sets `content` **and** clears `background`, since an empty box still
+paints.
+
+### Mono Face
+
+Code is set in the platform’s own monospace stack -- `ui-monospace`, `SFMono-Regular`,
+Menlo, Consolas -- so it is the one role a KPress document does not draw from a face
+KPress ships, and `--kpress-font-size-mono` stays at `0.82` of the base, a ratio tuned
+for those faces.
+Planetaire Mono Text is the face chosen to replace it, sized by x-height
+at `0.87`, and lands with on/off and weight settings under `kpr-v731` and `kpr-hqrr`.
 
 ### Document Actions Widget
 
@@ -1765,8 +1918,8 @@ actions with the same text badges, keeping one visual vocabulary.
 
 Font mode (`RenderOptions.font_mode`, type `FontMode = Literal["custom", "system"]`):
 
-- `custom` (default): themed custom font stacks (PT Serif, Source Sans 3, mono,
-  punctuation fallback) via CSS variables.
+- `custom` (default): the vendored faces (PT Serif, Source Sans 3, the quote subset) via
+  CSS variables.
 - `system`: `.kpress[data-kpress-fonts="system"]` overrides font variables to system-ui
   stacks with no custom font loading.
 
@@ -1776,12 +1929,12 @@ override any single role on its own, and otherwise the vendored reader faces app
 
 | Variable | Default (vendored) | Used by | Host hook |
 | --- | --- | --- | --- |
-| `--kpress-font-prose` | serif: PT Serif (`LocalPunct` punctuation) | reading body (`.kpress-prose`), H1/H2 | `--kpress-host-font-prose` |
+| `--kpress-font-prose` | serif: KPress Quotes, then PT Serif | reading body (`.kpress-prose`), H1/H2 | `--kpress-host-font-prose`, and `--kpress-host-font-punctuation` for the marks alone |
 | `--kpress-font-sans` | sans: Source Sans 3 (`KPress Print Sans` instances under print) | UI chrome: TOC, captions, H3–H6, code-copy, **tooltips** | `--kpress-host-font-sans`, and `--kpress-host-font-sans-print` for print alone |
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
 | `--kpress-font-body` | sans: Source Sans 3 | `.kpress` wrapper base (a fallback; `.kpress-prose` overrides it for content) | `--kpress-host-font-body` |
-| `--kpress-font-mono` | mono: system mono stack | code blocks | `--kpress-host-font-mono` |
+| `--kpress-font-mono` | mono: system mono stack | code fences, inline code | `--kpress-host-font-mono` |
 
 The reading body is therefore serif by default and is settable serif↔sans per role: a
 host flips it by setting `--kpress-host-font-prose` (a host app’s serif/sans
@@ -1792,8 +1945,16 @@ Footnotes and tables each carry their own stack (`--kpress-font-footnote`,
 **sans**. The bottom footnotes section uses the same `--kpress-font-footnote` as the
 footnote preview tooltips, so the two always agree.
 
+Every text stack leads with a face KPress ships, so a document draws the same glyphs on
+any machine and a printed page embeds them rather than borrowing from the renderer; the
+system stacks trailing each family are the fallback for a face that failed to load, not
+part of the design. Mono is the standing exception, and `font_mode="system"` is the one
+place the platform is asked for a font on purpose.
+
 Vendored font files ship as package assets and static builds copy them into the output
-tree. The sans role resolves to a different stack under print, through its own hook
+tree; per-file provenance, sha256 and licence are recorded in
+[`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md).
+The sans role resolves to a different stack under print, through its own hook
 `--kpress-host-font-sans-print`: see [Print Sans Faces](#print-sans-faces).
 
 ## Document Components

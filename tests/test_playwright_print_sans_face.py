@@ -15,6 +15,12 @@ Two invariants, on one document:
   instance is made at all, so nothing about the reading experience changed and no
   reader downloads one.
 
+One weight assertion lives here too. The tab label is written twice -- a screen rule on
+the button and a print rule on the panel title that replaces it -- and whether the two
+agree is a question about what a browser resolved, not about what the stylesheets say.
+``test_print_sans_faces.py`` reads the declarations; only a real browser can put the two
+resolved values side by side, and a browser is already running here.
+
 What the faces exist for -- the PDF -- is in ``test_playwright_print_pdf_fonts.py``.
 """
 
@@ -32,7 +38,7 @@ import pytest
 from devtools.instance_sans import FAMILY, STYLES, WEIGHTS
 from kpress.publish import build_site
 
-from .test_print_sans_faces import EXPECTED_LANDING, match_weight
+from .test_print_sans_faces import EXPECTED_LANDING, WEIGHT_TOKENS, match_weight
 
 #: The face the print stack must not resolve to, as Chromium names it: a variable web
 #: font is reported by its default instance, and Source Sans 3 Variable's default
@@ -53,6 +59,13 @@ _H4 = ".kpress-prose h4"
 #: One probe span per row of the landing table, in both styles, each asking for its own
 #: weight inside the print sans scope.
 _PROBE_ROWS = [[weight, style] for weight in EXPECTED_LANDING for style in STYLES]
+
+#: The tab label a reader sees. `js/tabs.js` builds the tab strip from the authored
+#: panels, so the button exists only once the page has hydrated.
+_TAB_BUTTON = ".kpress-tab-button"
+#: The tab label a reader prints. Print media hides the tab strip and unhides every
+#: panel, so print.css draws each panel's own title on this pseudo-element instead.
+_TAB_PANEL = ".kpress-tab-panel"
 
 _PROBE_JS = """
 (rows) => {
@@ -97,6 +110,23 @@ def _build_fixture_site(tmp_path: Path) -> Path:
     )
 
 
+def _build_tab_fixture_site(tmp_path: Path) -> Path:
+    """A page with an authored tab group, in the markdown a document author writes."""
+    return _write_site(
+        tmp_path,
+        "# Tab label weight\n\n"
+        "A paragraph before the tabs.\n\n"
+        "::::: tabs\n"
+        "::: tab Overview\n"
+        "Tab overview copy.\n"
+        ":::\n\n"
+        "::: tab Details\n"
+        "Tab detail copy.\n"
+        ":::\n"
+        ":::::\n",
+    )
+
+
 def _platform_font(session: Any, selector: str) -> dict[str, Any]:
     """The face Chromium drew most of a node's glyphs with, as it reports it."""
     root = cast(dict[str, Any], session.send("DOM.getDocument", {"depth": -1}))
@@ -134,6 +164,23 @@ def _settled(page: Any, session: Any, selector: str, media: str) -> dict[str, An
         page.wait_for_timeout(100)
         page.evaluate("document.fonts.ready")
     return _platform_font(session, selector)
+
+
+def _computed_weight(page: Any, selector: str, pseudo: str | None = None) -> int:
+    """The weight the cascade resolved for a node, under whatever media is emulated.
+
+    Computed style reports a number whatever the declaration was spelled as, so this
+    reads what the reader gets rather than what either stylesheet says.
+    """
+    element = "null" if pseudo is None else repr(pseudo)
+    return int(
+        cast(
+            str,
+            page.evaluate(
+                f"getComputedStyle(document.querySelector({selector!r}), {element}).fontWeight"
+            ),
+        )
+    )
 
 
 def _recorder(urls: list[str]) -> Callable[[Any], None]:
@@ -238,3 +285,66 @@ def test_print_media_draws_the_sans_from_a_static_instance(tmp_path: Path) -> No
     # And no reader pays for the print set: the faces are declared inside `@media
     # print`, so a screen session never asks the server for one.
     assert not [url for url in screen_requests if "kpress-print-sans" in url], screen_requests
+
+
+def test_the_tab_label_and_its_print_counterpart_share_one_weight(tmp_path: Path) -> None:
+    """The screen tab button and the print panel title resolve to the same weight.
+
+    The label is written twice: components.css styles the button a reader clicks, and
+    print.css styles the panel title that stands in for it once the tab strip is hidden.
+    Each rule is free to name its own number, and for a while the button's was a literal
+    600 against the print rule's 550, so the same label came out heavier on screen than
+    on paper. Nothing in the suite saw the split -- no test reads a tab weight, and a
+    change to either rule surfaces only as a different golden hash -- which is why the
+    two resolved values are compared here, in a browser that has applied both rules.
+    """
+    sync_api = pytest.importorskip("playwright.sync_api")
+    public = _build_tab_fixture_site(tmp_path)
+    handler = partial(_QuietHandler, directory=str(public))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_api.sync_playwright() as playwright:
+            browser = _launch(playwright, sync_api)
+            try:
+                context = browser.new_context(viewport={"width": 900, "height": 900})
+                page = context.new_page()
+                page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+                # The renderer emits panels, not buttons: js/tabs.js builds the tab
+                # strip from them, so the wait is for hydration and not for the markup.
+                page.wait_for_selector(_TAB_BUTTON)
+                page.evaluate("document.fonts.ready")
+
+                page.emulate_media(media="screen")
+                assert page.evaluate("matchMedia('screen').matches")
+                screen_weight = _computed_weight(page, _TAB_BUTTON)
+                # The token as the page itself defines it, so the comparison below is
+                # against what the stylesheets ship rather than a number restated here.
+                token_weight = int(
+                    cast(
+                        str,
+                        page.evaluate(
+                            f"getComputedStyle(document.querySelector({_TAB_BUTTON!r}))"
+                            ".getPropertyValue('--kpress-font-weight-sans-medium')"
+                        ),
+                    )
+                )
+
+                page.emulate_media(media="print")
+                assert page.evaluate("matchMedia('print').matches")
+                print_weight = _computed_weight(page, _TAB_PANEL, "::before")
+            finally:
+                browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    # One label, one weight, whichever medium the reader is in.
+    assert screen_weight == print_weight, (screen_weight, print_weight)
+    # And the weight is the medium token's, so a literal typed back into either rule --
+    # which is how the split happened the first time -- fails here rather than passing
+    # quietly behind a regenerated golden file.
+    assert screen_weight == token_weight, (screen_weight, token_weight)
+    assert token_weight == WEIGHT_TOKENS["medium"], token_weight

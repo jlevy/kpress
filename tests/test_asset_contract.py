@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from devtools.instance_sans import FAMILY, STYLES, WEIGHTS, instance_name
+from devtools.subset_quotes import CODE_POINTS
 from kpress.format.assets import package_asset_manifest, package_asset_refs
 from kpress.runtime import get_static_asset
 
@@ -110,7 +111,7 @@ def test_document_css_contract_has_required_surfaces() -> None:
         "--kpress-caps-heading-size-multiplier",
         "PT Serif",
         "Source Sans 3",
-        "LocalPunct",
+        "KPress Quotes",
         "--kpress-print-page-margin",
         ".kpress-print-surface",
         ".kpress-toc",
@@ -441,6 +442,8 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/pt-serif-latin-700-italic.woff2",
         "fonts/source-sans-3-latin-wght-normal.woff2",
         "fonts/source-sans-3-latin-wght-italic.woff2",
+        # The quote face: six glyphs of Source Serif 4 (devtools/subset_quotes.py).
+        "fonts/kpress-quotes.woff2",
         # The static print instances and the stylesheet that declares them.
         "css/print-fonts.css",
         "fonts/kpress-print-sans-latin-370-normal.woff2",
@@ -448,16 +451,14 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/kpress-print-sans-latin-550-normal.woff2",
         "fonts/kpress-print-sans-latin-600-normal.woff2",
         "fonts/kpress-print-sans-latin-650-normal.woff2",
-        "fonts/kpress-print-sans-latin-700-normal.woff2",
         "fonts/kpress-print-sans-latin-370-italic.woff2",
         "fonts/kpress-print-sans-latin-400-italic.woff2",
         "fonts/kpress-print-sans-latin-550-italic.woff2",
         "fonts/kpress-print-sans-latin-600-italic.woff2",
         "fonts/kpress-print-sans-latin-650-italic.woff2",
-        "fonts/kpress-print-sans-latin-700-italic.woff2",
     } <= asset_ids
     assert all("latest" not in asset.path for asset in manifest.assets)
-    # The shipped set and the generator cannot drift apart: the twelve names above are
+    # The shipped set and the generator cannot drift apart: the ten names above are
     # exactly the generator's weights crossed with its styles.
     assert {
         f"fonts/{instance_name(weight, style)}" for weight in WEIGHTS for style in STYLES
@@ -467,9 +468,9 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
 def test_print_font_faces_declare_the_static_instances_under_print_only() -> None:
     """print-fonts.css is the generated declaration of the static print sans set.
 
-    Twelve faces, one per weight and style, every one inside the single ``@media print``
+    Ten faces, one per weight and style, every one inside the single ``@media print``
     block so no screen reader downloads them, every ``src`` naming a file that ships.
-    ``font-display: swap`` on all twelve: print layout has one chance to draw, and a
+    ``font-display: swap`` on all ten: print layout has one chance to draw, and a
     caller that cannot wait for the faces must get the fallback rather than nothing.
     """
     css = get_static_asset("css/print-fonts.css").content.decode("utf-8")
@@ -477,7 +478,7 @@ def test_print_font_faces_declare_the_static_instances_under_print_only() -> Non
     assert css.count("@media") == 1
     media_start = css.index("@media print {")
     faces = list(re.finditer(r"@font-face\s*\{(?P<body>[^}]*)\}", css))
-    assert len(faces) == len(WEIGHTS) * len(STYLES) == 12
+    assert len(faces) == len(WEIGHTS) * len(STYLES) == 10
     assert all(face.start() > media_start for face in faces)
 
     fonts_dir = _KPRESS_ROOT / "src/kpress/format/static/fonts"
@@ -491,7 +492,7 @@ def test_print_font_faces_declare_the_static_instances_under_print_only() -> Non
         url = _one(r'src:\s*url\("\.\./fonts/([^"]+)"\)', body)
         assert url == instance_name(weight, style)
         # Size, not just presence: a truncated or empty woff2 is a file too, and the
-        # smallest of the twelve is over 15 KB.
+        # smallest of the ten is over 15 KB.
         assert (fonts_dir / url).is_file(), url
         assert (fonts_dir / url).stat().st_size > 10_000, url
         declared.add((weight, style))
@@ -518,6 +519,70 @@ def test_print_css_leads_the_sans_stack_with_the_static_family() -> None:
     # and never names the print-only family.
     tokens = get_static_asset("css/style-tokens.css").content.decode("utf-8")
     assert FAMILY not in tokens
+
+
+def test_the_quote_face_is_shipped_and_leads_the_prose_stack() -> None:
+    """The quotation marks come from a file KPress ships, not from the reader's Georgia.
+
+    ``LocalPunct`` was ``local("Georgia")`` over these same six code points, and it led
+    ``--kpress-font-prose``: a document's marks came from the reader's machine when they
+    had Georgia and from PT Serif when they did not, and a printed page could embed
+    neither. ``KPress Quotes`` takes that position with the same range and a real
+    ``url()``, so the answer is one face on every machine and in every medium. Nothing
+    may reintroduce a ``local()`` face here.
+    """
+    css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
+    collapsed = re.sub(r"\s+", " ", css)
+
+    # The lead of the prose stack, ahead of PT Serif and reachable through the hook.
+    prose = collapsed[collapsed.index("--kpress-font-prose: var(") :]
+    prose = prose[: prose.index("serif );") + len("serif );")]
+    assert 'var(--kpress-font-punctuation), "PT Serif"' in prose, prose
+    assert '--kpress-font-punctuation: var(--kpress-host-font-punctuation, "KPress Quotes")' in (
+        collapsed
+    )
+
+    # A shipped file over exactly the six code points the generator subsets.
+    face = collapsed[collapsed.index('font-family: "KPress Quotes";') :]
+    face = face[: face.index("}")]
+    assert 'src: url("../fonts/kpress-quotes.woff2") format("woff2");' in face, face
+    assert "unicode-range: " + ", ".join(f"U+{cp:04X}" for cp in CODE_POINTS) + ";" in face, face
+    assert "font-display: block;" in face, face
+
+    assert "LocalPunct" not in collapsed
+    assert "src: local(" not in collapsed
+
+
+def test_list_markers_are_drawn_not_set() -> None:
+    """No stylesheet asks a font for the list marker.
+
+    U+25AA is in none of the faces KPress ships, so the glyph fell down whichever stack
+    the rule inherited: Georgia on a Mac, 16 KB of it embedded in a printed PDF, and a
+    different mark elsewhere. A ``currentColor`` box is the same square everywhere.
+    """
+    sheets = {
+        name: get_static_asset(f"css/{name}").content.decode("utf-8")
+        for name in ("document.css", "components.css", "print.css")
+    }
+
+    # The CSS escape, not the bare codepoint: the rules' own comments name U+25AA.
+    glyph_escape = re.compile(r"\\0*25aa", re.IGNORECASE)
+    for name, css in sheets.items():
+        assert not glyph_escape.search(css), f"{name} still sets the marker as a glyph"
+
+    for name, selector in (
+        ("document.css", ".kpress-prose ul > li::before"),
+        ("components.css", ".kpress .claim::before"),
+        ("print.css", ".kpress ol ul > li::before"),
+    ):
+        css = sheets[name]
+        rule = css[css.index(selector) :]
+        rule = rule[: rule.index("}")]
+        assert 'content: "";' in rule, (name, selector)
+        assert "background: currentColor;" in rule, (name, selector)
+        # Sized from the rule's own marker font size, so one pair of numbers serves
+        # both the screen size and print's smaller one.
+        assert rule.count("0.226em") == 2, (name, selector)
 
 
 def test_browser_assets_are_native_esm() -> None:
