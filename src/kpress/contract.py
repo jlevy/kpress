@@ -534,6 +534,9 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# Classic KaTeX assets expose one host API after the metrics asset has loaded.
+PUBLIC_MATH_RUNTIME_METHODS = ("ready", "render", "installTablesFor", "restore", "complete")
+
 BUILD_MANIFEST_REQUIRED_KEYS = (
     "schema_version",
     "output_dir",
@@ -561,6 +564,7 @@ __all__ = [
     "PUBLIC_FRAGMENT_CSS_VARIABLES",
     "PUBLIC_HOST_CSS_VARIABLES",
     "PUBLIC_JS_EXPORTS",
+    "PUBLIC_MATH_RUNTIME_METHODS",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",
     "PUBLIC_PASS_THROUGH_ATTRIBUTES",

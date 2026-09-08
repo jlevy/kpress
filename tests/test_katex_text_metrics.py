@@ -70,7 +70,16 @@ def test_asset_declares_the_public_global(asset: dict[str, Any]) -> None:
 
     assert text.startswith(ASSET_HEADER)
     assert f"globalThis.{GLOBAL_NAME} = {{" in text
-    assert set(asset) == {*SCALE_FACTORS, SANS_KEY, SCALE_KEY}
+    assert set(asset) == {*SCALE_FACTORS, SANS_KEY, SCALE_KEY, "katex"}
+
+
+def test_original_tables_can_restore_an_opted_out_formula(
+    asset: dict[str, Any], bundle: str
+) -> None:
+    original = asset["katex"]
+    for face in SCALE_FACTORS:
+        expected = {str(code): list(row) for code, row in parse_katex_table(bundle, face).items()}
+        assert original[face] == expected
 
 
 def test_swapped_digit_carries_pt_serif_metrics(asset: dict[str, Any]) -> None:

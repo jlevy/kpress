@@ -1,0 +1,122 @@
+# Rendering Mathematics in a Host
+
+Use `globalThis.kpressMathText.render()` for mathematics rendered by an embedding
+application. It selects the serif or sans metric tables, waits for the fonts, and
+restores the default tables after rendering.
+The native KPress initializer uses the same runtime.
+
+## Assets and First Paint
+
+Load these classic scripts in order:
+
+1. `katex/katex.min.js`
+2. `katex/katex-text-metrics.js`
+3. `katex/katex-math-runtime.js`
+
+KPress includes the runtime in `KATEX_JS_ASSETS`, before `katex-init.js`. A host with
+its own render loop can omit `auto-render.min.js` and `katex-init.js`. Include both
+stylesheets in `KATEX_CSS_ASSETS`. When inlining their fonts, resolve each relative URL
+against its stylesheet directory.
+
+The existing `js/theme-bootstrap.js` runs in the head before content is parsed.
+It temporarily hides native MathML while JavaScript enhancement is pending, retaining
+its layout space. Call `complete()` when the initial render batch has settled.
+A three-second watchdog restores the native fallback if enhancement never starts.
+With JavaScript disabled, MathML remains visible.
+
+## Rendering a Formula
+
+```javascript
+const node = document.querySelector("#formula");
+await kpressMathText.render("x^2 + 1", node, { throwOnError: false });
+```
+
+The node must be attached to the document so its CSS context can be resolved.
+The promise resolves with a `status` of `ready`, `superseded`, or `unavailable` when the
+browser has no font loading API. A parse error, or a required font that fails or exceeds
+the three-second wait, rejects the promise.
+A native KPress formula then keeps its semantic MathML; a host should provide its own
+readable fallback:
+
+```javascript
+try {
+  await kpressMathText.render(source, node, { throwOnError: false });
+} catch {
+  node.textContent = source;
+}
+```
+
+Each call enforces readiness, including calls from early resize observers or user
+events.
+Calls for the same node follow the latest request: an older pending call resolves
+as `superseded` and cannot replace the newer formula.
+Metric installation, KaTeX rendering, and metric restoration run synchronously together
+after preparation.
+
+The runtime initially warms the selected composite slots and the KaTeX Main and Math
+families. It then renders with visibility suppressed, reads the font descriptions and
+characters of the resulting HTML, and loads the faces those glyphs need before revealing
+the formula. This also covers large operators, delimiters, AMS symbols and explicit math
+alphabets, without downloading those families on pages that never use them.
+A failed unused warmup face does not discard a formula whose required faces loaded
+successfully.
+
+## Sans Contexts and Opt-Outs
+
+The runtime recognizes KPress captions, tables, footnotes and other sans roles.
+A host can extend that decision with a callback:
+
+```javascript
+const context = {
+  isSansContext: node => Boolean(node.closest(".my-figure-readout")),
+};
+await kpressMathText.render(source, node, { displayMode: false }, context);
+```
+
+The callback adds sans contexts to KPress’s own roles.
+Both the metric table and the `data-kpress-math-face="sans"` attribute come from this
+decision. Re-rendering a node in prose removes a stale sans mark.
+
+The existing `data-kpress-math-text="katex"`, `data-kpress-fonts="system"` and
+`data-kpress-font-set="system"` opt-outs take precedence, including on the node itself.
+The generated metrics asset retains the original tables under `katex`, so an opted-out
+formula can use stock metrics after another formula used the custom face.
+The runtime marks that node `data-kpress-math-face="katex"` so its CSS families also
+revert inside a wrapper that otherwise uses the custom face.
+
+## Preparing a Batch
+
+`ready(nodes, context)` optionally warms fonts before rendering a batch.
+It initializes the tables independently of the native initializer and returns a promise
+with status `ready`, `empty`, `error`, `timeout` or `unavailable`. The diagnostic
+`globalThis.kpressMathFaceWait` lists the individual requests and outcomes.
+
+```javascript
+await kpressMathText.ready(nodes, context);
+await Promise.all(formulas.map(({ source, node }) =>
+  kpressMathText.render(source, node, { throwOnError: false }, context)
+));
+kpressMathText.complete();
+```
+
+A host that embeds a deliberately pruned set of fonts can pass
+`{ ...context, allEmbeddedFonts: true }` to prepare all of its declared font faces.
+This option is intended for self-contained documents.
+It would download unused faces if enabled on an ordinary site with the complete KPress
+font set.
+
+For synchronous measurements after preparation, `installTablesFor(node, context)`
+returns `prose`, `sans`, `katex` or `null`, and `restore()` reinstalls the default serif
+tables.
+These methods do not wait for fonts; application rendering should use `render()`.
+
+The composite fonts are CSS families over separate PT Serif, Source Sans and KaTeX font
+files. They are not merged font binaries.
+Their layout metrics are generated ahead of time, but each browser still has to decode
+the selected font faces.
+Inlining the bytes removes a network request; the readiness contract also covers
+decoding.
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

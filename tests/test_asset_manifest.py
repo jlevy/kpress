@@ -117,6 +117,8 @@ def test_math_render_manifest_includes_classic_scripts_and_font_closure() -> Non
     order = [asset.id for asset in rendered.assets.assets]
     assert order.index("katex/katex.min.css") < order.index("katex/katex-text-face.css")
     assert order.index("katex/katex-text-metrics.js") < order.index("katex/katex-init.js")
+    assert order.index("katex/katex-text-metrics.js") < order.index("katex/katex-math-runtime.js")
+    assert order.index("katex/katex-math-runtime.js") < order.index("katex/katex-init.js")
     # Everything under katex/ keeps a stable, unhashed name so the stylesheets'
     # relative font URLs resolve; hashed mode must not touch the new files either.
     assert assets["katex/katex-text-face.css"].output_path == "katex/katex-text-face.css"

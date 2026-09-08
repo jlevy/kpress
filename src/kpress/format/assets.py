@@ -213,18 +213,19 @@ DEFAULT_FONT_ASSETS = [
 # `katex.min.css` is the upstream stylesheet reduced to its woff2 @font-face
 # sources, with one deliberate modification: every `font-display` is `swap`
 # (upstream ships `block`) so a late math face is a clean repaint instead of an
-# invisible-text gap. KaTeX lays out from precomputed metrics, so layout never
-# waits on fonts and `swap` is safe. The woff2 faces are vendored alongside it.
+# invisible-text gap. The shared runtime waits for required faces before exposing
+# a formula laid out with those faces' metrics. The woff2 faces are vendored alongside it.
 # Paths stay stable in every asset mode so the stylesheet's relative `fonts/`
 # URLs keep resolving offline.
 #
-# Two files here are KPress-authored rather than vendored, and both belong to
-# this closure because they are useless without KaTeX and unwanted without math:
+# The KPress-authored files also belong to this closure, since they implement
+# the math text faces and their rendering boundary:
 # `katex-text-face.css` declares the `KPress Math Text` composite family (the
 # reading face for Latin letters and digits, the KaTeX faces for everything
 # else) and is linked AFTER `katex.min.css`; `katex-text-metrics.js` is the
-# generated table (`devtools/katex_text_metrics.py`) that `katex-init.js` hands
-# to `katex.__setFontMetrics`, so it must load before it.
+# generated table (`devtools/katex_text_metrics.py`) that `katex-math-runtime.js`
+# hands to `katex.__setFontMetrics`. The runtime supports hosts' own render loops;
+# `katex-init.js` runs the native document's progressive enhancement through it.
 KATEX_VERSION = "0.16.45"
 KATEX_CSS_ASSETS = [
     "katex/katex.min.css",
@@ -234,6 +235,7 @@ KATEX_JS_ASSETS = [
     "katex/katex.min.js",
     "katex/auto-render.min.js",
     "katex/katex-text-metrics.js",
+    "katex/katex-math-runtime.js",
     "katex/katex-init.js",
 ]
 KATEX_FONT_ASSETS = [

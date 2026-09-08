@@ -1289,6 +1289,12 @@
   width: 1px;
 }
 
+[data-kpress-math-pending="true"]
+  .kpress-math:not([data-kpress-math-rendered="true"])
+  .kpress-math-semantic {
+  visibility: hidden;
+}
+
 .kpress-math[data-kpress-math-error="true"] {
   background: color-mix(in srgb, var(--kpress-doc-danger) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--kpress-doc-danger) 45%, transparent);
