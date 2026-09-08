@@ -124,25 +124,46 @@
 
      THE MONO SCALE is set by x-height, not by eye. Inline code interrupts a line
      of PT Serif, so what has to agree is the height of a lowercase letter, and
-     the em box the two faces measure that against is not the same box. Measured
-     from the shipped faces (OS/2 sxHeight over unitsPerEm): PT Serif 500/1000,
-     Source Code Pro 486/1000, Source Sans 3 486/1000 -- the two Source faces are
-     siblings and share an x-height by design.
+     the em box the two faces measure that against is not the same box. Read from
+     the shipped woff2 files as OS/2.sxHeight over head.unitsPerEm, which
+     `python -c "from fontTools.ttLib import TTFont"` prints for any of them:
+
+       PT Serif 400              500/1000
+       Source Code Pro 400       486/1000   (700 is 496)
+       Source Sans 3 Variable    478/1000 at its default axis position
+
+     The sans number is the one that needs a word. Its variable file's default
+     wght is 200, not 400, so a bare read of the file says 478; instanced at 400
+     the MVAR deltas put it at 486, which is what a page actually draws and what
+     devtools/instance_sans.py writes into kpress-print-sans-latin-400-*.woff2.
+     Neither number is wrong and neither is a design decision: the two Source
+     faces are not siblings holding one x-height on purpose, they land 8 units
+     apart at the file default and together at 400.
 
      The rule: inline code's x-height sits at 90% of the prose x-height around
      it, one deliberate step below rather than level with it, because a
      monospaced face set to the serif's x-height reads wider and heavier than the
      line it interrupts (every advance is 600/1000, against PT Serif's 519 for
      the same `x`). 0.925 * 486/1000 = 0.4496 of the base against PT Serif's
-     0.500, so 89.9%.
+     0.500, so 89.9%. Only PT Serif 500 and Source Code Pro 486 enter that
+     derivation.
 
      This is a change of face, not of apparent size: the 0.82 it replaces was
      tuned for the system monos, and Menlo -- what a Mac actually drew -- carries
      a 0.5468 em x-height, so 0.82 landed at 7.175px against the prose's 8.000px,
-     89.7%. Source Code Pro at 0.925 draws 7.193px. Measured in Chromium at a
-     16px base; the cost is a 12% wider advance, so a code block fits about one
-     character in nine fewer per line. The small and tiny rungs keep their old
-     proportions to the mono size (0.9146 and 0.8537) to within half a percent. */
+     89.7%. Source Code Pro at 0.925 draws 7.193px.
+
+     THE COLUMN BUDGET is the cost, and it is 82 columns. A code block at the
+     default reading measure has 700px of text between its paddings at a 16px
+     base, and a column is 0.575em wide: Source Code Pro advances 600/1000 and
+     the `.kpress code, .kpress-code` rule in document.css takes 0.025em back as
+     letter-spacing. At 0.925 that is 8.510px, so 82 columns fit (697.8px) and 83
+     do not. The 0.82 it replaces held 92. Measured in Chromium in a built page
+     and pinned by tests/test_playwright_mono_face.py, because 80 is the standard
+     code-line budget and a later retune must not cross it unnoticed. A pane too
+     narrow for the full measure holds fewer; that is the measure clamping, not
+     this token. The small and tiny rungs keep their old proportions to the mono
+     size (0.9146 and 0.8537) to within half a percent. */
   --kpress-font-size-large: calc(var(--kpress-font-size-base) * 1.2);
   --kpress-font-size-normal: var(--kpress-font-size-base);
   --kpress-font-size-small: calc(var(--kpress-font-size-base) * 0.95);
