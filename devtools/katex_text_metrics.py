@@ -18,7 +18,7 @@ installs the appropriate set per rendered node with
 ``katex.__setFontMetrics``, which replaces a face's whole table and has no getter, so
 each table must be complete.
 
-Run ``python -m devtools.katex_text_metrics`` to regenerate the asset, ``--check`` to
+Run ``python -m devtools.katex_text_metrics`` to regenerate the tables and sans face CSS, ``--check`` to
 verify the shipped copy still matches its inputs, and ``--print-scale`` to print the
 Greek scale factors the composite's ``size-adjust`` descriptors must equal.
 """
@@ -30,13 +30,15 @@ import json
 import re
 import sys
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cache
 from pathlib import Path
 from typing import Any, Final, cast
 
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.ttLib import TTFont
+
+from devtools.instance_sans import REGULAR_WEIGHT, instance_name
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 STATIC: Final = ROOT / "src" / "kpress" / "format" / "static"
@@ -51,6 +53,7 @@ REGENERATE_COMMAND: Final = "uv run python -m devtools.katex_text_metrics"
 # Public JS contract, mirrored by katex-math-runtime.js and the tests.
 GLOBAL_NAME: Final = "kpressKatexTextMetrics"
 SCALE_KEY: Final = "scale"
+FONTS_KEY: Final = "fonts"
 #: The nested table set for the sans composite. The serif set is the object's own face
 #: keys, so the two never collide: a KaTeX face name is capitalized and hyphenated.
 SANS_KEY: Final = "sans"
@@ -277,153 +280,6 @@ FACE_PLANS: Final = (
 SCALE_FACTORS: Final = {plan.katex_face: plan.scale for plan in FACE_PLANS}
 
 
-# ---- The sans composite ----
-#
-# `KPress Math Text Sans` draws the same Latin ranges from Source Sans 3, for the sans
-# roles of a serif document (a caption, a footnote, a table) and for the reader's sans
-# reading face. It needs its own tables because a KaTeX metric table describes one face:
-# Source Sans sets `1` on 0.497em where PT Serif sets it on 0.533em, and its digits are
-# 0.638em tall where PT Serif's are 0.712em.
-#
-# A metric table also describes one WEIGHT, and Source Sans is a variable face whose
-# advances grow along the axis: across 370-700 the median Latin advance moves 7.1% and
-# the widest (`f`) moves 20.5%, while the tallest ink height moves 0.035em and the median
-# 0.005em. So the vertical entries -- the ones fractions, scripts and radicals are laid
-# out from -- travel, and the widths do not. Each slot of the composite therefore pins
-# its drawn weight with a single-valued `font-weight` descriptor, which CSS Fonts 4
-# clamps a variable face to, and its table is built at that same weight:
-#
-#   400  the regular slots. Upstream's `.katex { font: normal 1.21em ... }` resets
-#        font-weight, so mathematics in a sans context is already set at 400 whatever
-#        weight the words around it carry.
-#   650  the bold slots, `--kpress-font-weight-sans-bold`: what "bold" means in every
-#        other sans context kpress ships, rather than upstream's 700, which is a step
-#        heavier than any bold the document otherwise sets.
-#
-# The reading fonts below are the static print instances rather than the variable faces
-# the screen draws from. They are the same glyphs: instancing the variable face at 400
-# and at 650 reproduces every one of the 62 Latin advances of the shipped instance to
-# 0.000000em, so one table is true of both, which is what lets the print faces be layered
-# into the same composite. See
-# docs/project/research/research-2026-09-07-sans-math-face.md.
-#
-# The Greek factors are derived the same way as the serif set's, against Source Sans's
-# own measures. The upright numerators are the drawn `H`, not the declared sCapHeight:
-# Source Sans varies its x-height along the weight axis but not its cap height, so OS/2
-# reports 660 at every instance while the `H` this composite draws is 656 at 400 and 653
-# at 650. OS2_INK_TOLERANCE is what catches that, and the reason it is 0.003 and not the
-# 0.02 the serif set alone needed.
-#
-#   face             Source Sans (per 1000 em)      KaTeX face                factor
-#   Main-Regular     `H` 656 at 400               /  KaTeX_Main-Regular 683    0.960
-#   Main-Bold        `H` 653 at 650               /  KaTeX_Main-Bold 686       0.952
-#   Math-Italic      x 486 at 400 italic          /  KaTeX_Math-Italic 441     1.102
-#   Math-BoldItalic  x 494 at 650 italic          /  KaTeX_Math-BoldItalic 452 1.093
-#   Main-Italic      as Math-Italic, for the reason the serif set records     1.102
-#   Main-BoldItalic  as Math-BoldItalic                                       1.093
-#
-# The upright factors come out below 1, which the serif set's never did, because KaTeX's
-# LATIN `H` is taller than the one Source Sans draws: 683 against 656 at 400, so 4.1%.
-# That is what the factor equalizes, and it is a statement about Latin capitals rather
-# than about Greek. What it leaves the Greek at is not one number, because Computer
-# Modern's Greek capitals are not one height. Measured on the real outlines after the
-# 0.960 scale, against the 656 the 400 slot draws: the flat-topped capitals land where
-# the factor aims them -- Sigma, Phi and Psi at 99.95% -- while Gamma and Pi sit at
-# 99.51%, Xi at 99.07%, and the pointed and round ones overshoot: Omega 103.02%, Theta
-# and Upsilon 103.17%, Delta and Lambda 104.78%. That is a 5.7pp spread and no scalar
-# removes it, because Computer Modern gives its pointed capitals optical overshoot above
-# the cap line and Source Sans's `H` has none. The factor is aimed at the flat-topped
-# group, which is the group a reader can line up against a neighbouring Latin capital.
-# In fairness to the approach: KaTeX's own table already declares a single height for
-# every Greek capital, so this scales a divergence that was there before it.
-SANS_REGULAR_WEIGHT: Final = 400
-SANS_BOLD_WEIGHT: Final = 650
-
-SANS_MAIN_REGULAR_SCALE: Final = 0.960
-SANS_MAIN_BOLD_SCALE: Final = 0.952
-SANS_MATH_ITALIC_SCALE: Final = 1.102
-SANS_MATH_BOLD_ITALIC_SCALE: Final = 1.093
-
-
-def sans_font(weight: int, style: str) -> str:
-    """The static Source Sans instance a slot is measured from.
-
-    The name is `devtools.instance_sans.instance_name`, spelled out rather than imported
-    so this tool keeps reading fonts by file name as it does for PT Serif. The instances
-    carry a family of their own (`KPress Print Sans`) because the upstream licence
-    reserves the name "Source"; the outlines are the variable face instanced at the
-    weight, so measuring them measures the screen face too.
-    """
-    return f"kpress-print-sans-latin-{weight}-{style}.woff2"
-
-
-SOURCE_SANS_REGULAR: Final = sans_font(SANS_REGULAR_WEIGHT, "normal")
-SOURCE_SANS_BOLD: Final = sans_font(SANS_BOLD_WEIGHT, "normal")
-SOURCE_SANS_ITALIC: Final = sans_font(SANS_REGULAR_WEIGHT, "italic")
-SOURCE_SANS_BOLD_ITALIC: Final = sans_font(SANS_BOLD_WEIGHT, "italic")
-
-SANS_FACE_PLANS: Final = (
-    FacePlan(
-        katex_face="Main-Regular",
-        katex_font="KaTeX_Main-Regular.woff2",
-        reading_font=SOURCE_SANS_REGULAR,
-        swapped=LETTERS_AND_DIGITS,
-        greek=UPRIGHT_GREEK,
-        scale=SANS_MAIN_REGULAR_SCALE,
-        reference_glyph=CAP_HEIGHT_GLYPH,
-    ),
-    FacePlan(
-        katex_face="Main-Bold",
-        katex_font="KaTeX_Main-Bold.woff2",
-        reading_font=SOURCE_SANS_BOLD,
-        swapped=LETTERS_AND_DIGITS,
-        greek=UPRIGHT_GREEK,
-        scale=SANS_MAIN_BOLD_SCALE,
-        reference_glyph=CAP_HEIGHT_GLYPH,
-    ),
-    FacePlan(
-        katex_face="Main-Italic",
-        katex_font="KaTeX_Main-Italic.woff2",
-        reading_font=SOURCE_SANS_ITALIC,
-        swapped=LETTERS,
-        greek=ITALIC_GREEK,
-        scale=SANS_MATH_ITALIC_SCALE,
-        reference_glyph=X_HEIGHT_GLYPH,
-        drawn_font="KaTeX_Math-Italic.woff2",
-    ),
-    FacePlan(
-        katex_face="Main-BoldItalic",
-        katex_font="KaTeX_Main-BoldItalic.woff2",
-        reading_font=SOURCE_SANS_BOLD_ITALIC,
-        swapped=LETTERS,
-        greek=ITALIC_GREEK,
-        scale=SANS_MATH_BOLD_ITALIC_SCALE,
-        reference_glyph=X_HEIGHT_GLYPH,
-        drawn_font="KaTeX_Math-BoldItalic.woff2",
-    ),
-    FacePlan(
-        katex_face="Math-Italic",
-        katex_font="KaTeX_Math-Italic.woff2",
-        reading_font=SOURCE_SANS_ITALIC,
-        swapped=LETTERS,
-        greek=ITALIC_GREEK,
-        scale=SANS_MATH_ITALIC_SCALE,
-        reference_glyph=X_HEIGHT_GLYPH,
-    ),
-    FacePlan(
-        katex_face="Math-BoldItalic",
-        katex_font="KaTeX_Math-BoldItalic.woff2",
-        reading_font=SOURCE_SANS_BOLD_ITALIC,
-        swapped=LETTERS,
-        greek=ITALIC_GREEK,
-        scale=SANS_MATH_BOLD_ITALIC_SCALE,
-        reference_glyph=X_HEIGHT_GLYPH,
-    ),
-)
-
-SANS_SCALE_FACTORS: Final = {plan.katex_face: plan.scale for plan in SANS_FACE_PLANS}
-
-
 @dataclass(frozen=True)
 class Composite:
     """One CSS composite family and the metric tables that lay its glyphs out."""
@@ -441,12 +297,6 @@ class Composite:
     @property
     def scale_factors(self) -> dict[str, float]:
         return {plan.katex_face: plan.scale for plan in self.plans}
-
-
-COMPOSITES: Final = (
-    Composite(key=None, family="KPress Math Text", plans=FACE_PLANS),
-    Composite(key=SANS_KEY, family="KPress Math Text Sans", plans=SANS_FACE_PLANS),
-)
 
 
 class MetricsError(RuntimeError):
@@ -676,12 +526,246 @@ def derive_scale_factors(plans: Sequence[FacePlan] = FACE_PLANS) -> dict[str, fl
     return factors
 
 
+# ---- The sans composite ----
+#
+# `KPress Math Text Sans` draws the same Latin ranges from Source Sans 3, for the sans
+# roles of a serif document (a caption, a footnote, a table) and for the reader's sans
+# reading face. It needs its own tables because a KaTeX metric table describes one face:
+# Source Sans sets `1` on 0.498em where PT Serif sets it on 0.533em, and its digits are
+# 0.638em tall where PT Serif's are 0.712em.
+#
+# A metric table also describes one WEIGHT, and Source Sans is a variable face whose
+# advances grow along the axis: across 370-700 the median Latin advance moves 7.1% and
+# the widest (`f`) moves 20.5%, while the tallest ink height moves 0.035em and the median
+# 0.005em. So the vertical entries -- the ones fractions, scripts and radicals are laid
+# out from -- travel, and the widths do not. Each slot of the composite therefore pins
+# its drawn weight with a single-valued `font-weight` descriptor, which CSS Fonts 4
+# clamps a variable face to, and its table is built at that same weight:
+#
+#   regular  the numeric token in style-tokens.css (currently 410). The generated CSS
+#            overrides KaTeX's weight reset with this same fixed weight.
+#   650  the bold slots, `--kpress-font-weight-sans-bold`: what "bold" means in every
+#        other sans context kpress ships, rather than upstream's 700, which is a step
+#        heavier than any bold the document otherwise sets.
+#
+# The reading fonts below are the static print instances rather than the variable faces
+# the screen draws from. They are the same glyphs: instancing the variable face at the regular weight
+# and at 650 reproduces every one of the 62 Latin advances of the shipped instance to
+# 0.000000em, so one table is true of both, which is what lets the print faces be layered
+# into the same composite. See
+# docs/project/research/research-2026-09-07-sans-math-face.md.
+#
+# The Greek factors are derived the same way as the serif set's, against Source Sans's
+# own measures. The upright numerators are the drawn `H`, not the declared sCapHeight:
+# Source Sans varies its x-height along the weight axis but not its cap height, so OS/2
+# reports 660 at every instance while the `H` this composite draws is 656 at the regular weight and 653
+# at 650. OS2_INK_TOLERANCE is what catches that, and the reason it is 0.003 and not the
+# 0.02 the serif set alone needed.
+#
+#   face             Source Sans (per 1000 em)      KaTeX face                factor
+#   Main-Regular     `H` 656 at 410               /  KaTeX_Main-Regular 683    0.960
+#   Main-Bold        `H` 653 at 650               /  KaTeX_Main-Bold 686       0.952
+#   Math-Italic      x 486 at 410 italic          /  KaTeX_Math-Italic 441     1.102
+#   Math-BoldItalic  x 494 at 650 italic          /  KaTeX_Math-BoldItalic 452 1.093
+#   Main-Italic      as Math-Italic, for the reason the serif set records     1.102
+#   Main-BoldItalic  as Math-BoldItalic                                       1.093
+#
+# The upright factors come out below 1, which the serif set's never did, because KaTeX's
+# LATIN `H` is taller than the one Source Sans draws: 683 against 656 at 410, so 4.1%.
+# That is what the factor equalizes, and it is a statement about Latin capitals rather
+# than about Greek. What it leaves the Greek at is not one number, because Computer
+# Modern's Greek capitals are not one height. Measured on the real outlines after the
+# 0.960 scale, against the 656 the regular slot draws: the flat-topped capitals land where
+# the factor aims them -- Sigma, Phi and Psi at 99.95% -- while Gamma and Pi sit at
+# 99.51%, Xi at 99.07%, and the pointed and round ones overshoot: Omega 103.02%, Theta
+# and Upsilon 103.17%, Delta and Lambda 104.78%. That is a 5.7pp spread and no scalar
+# removes it, because Computer Modern gives its pointed capitals optical overshoot above
+# the cap line and Source Sans's `H` has none. The factor is aimed at the flat-topped
+# group, which is the group a reader can line up against a neighbouring Latin capital.
+# In fairness to the approach: KaTeX's own table already declares a single height for
+# every Greek capital, so this scales a divergence that was there before it.
+SANS_REGULAR_WEIGHT: Final = REGULAR_WEIGHT
+SANS_BOLD_WEIGHT: Final = 650
+
+
+def sans_font(weight: int, style: str) -> str:
+    """The static Source Sans instance a slot is measured from.
+
+    The name and regular weight come from `devtools.instance_sans`. The instances
+    carry a family of their own (`KPress Print Sans`) because the upstream licence
+    reserves the name "Source"; the outlines are the variable face instanced at the
+    weight, so measuring them measures the screen face too.
+    """
+    return instance_name(weight, style)
+
+
+SOURCE_SANS_REGULAR: Final = sans_font(SANS_REGULAR_WEIGHT, "normal")
+SOURCE_SANS_BOLD: Final = sans_font(SANS_BOLD_WEIGHT, "normal")
+SOURCE_SANS_ITALIC: Final = sans_font(SANS_REGULAR_WEIGHT, "italic")
+SOURCE_SANS_BOLD_ITALIC: Final = sans_font(SANS_BOLD_WEIGHT, "italic")
+
+_SANS_UNSCALED_PLANS: Final = (
+    FacePlan(
+        katex_face="Main-Regular",
+        katex_font="KaTeX_Main-Regular.woff2",
+        reading_font=SOURCE_SANS_REGULAR,
+        swapped=LETTERS_AND_DIGITS,
+        greek=UPRIGHT_GREEK,
+        scale=1,
+        reference_glyph=CAP_HEIGHT_GLYPH,
+    ),
+    FacePlan(
+        katex_face="Main-Bold",
+        katex_font="KaTeX_Main-Bold.woff2",
+        reading_font=SOURCE_SANS_BOLD,
+        swapped=LETTERS_AND_DIGITS,
+        greek=UPRIGHT_GREEK,
+        scale=1,
+        reference_glyph=CAP_HEIGHT_GLYPH,
+    ),
+    FacePlan(
+        katex_face="Main-Italic",
+        katex_font="KaTeX_Main-Italic.woff2",
+        reading_font=SOURCE_SANS_ITALIC,
+        swapped=LETTERS,
+        greek=ITALIC_GREEK,
+        scale=1,
+        reference_glyph=X_HEIGHT_GLYPH,
+        drawn_font="KaTeX_Math-Italic.woff2",
+    ),
+    FacePlan(
+        katex_face="Main-BoldItalic",
+        katex_font="KaTeX_Main-BoldItalic.woff2",
+        reading_font=SOURCE_SANS_BOLD_ITALIC,
+        swapped=LETTERS,
+        greek=ITALIC_GREEK,
+        scale=1,
+        reference_glyph=X_HEIGHT_GLYPH,
+        drawn_font="KaTeX_Math-BoldItalic.woff2",
+    ),
+    FacePlan(
+        katex_face="Math-Italic",
+        katex_font="KaTeX_Math-Italic.woff2",
+        reading_font=SOURCE_SANS_ITALIC,
+        swapped=LETTERS,
+        greek=ITALIC_GREEK,
+        scale=1,
+        reference_glyph=X_HEIGHT_GLYPH,
+    ),
+    FacePlan(
+        katex_face="Math-BoldItalic",
+        katex_font="KaTeX_Math-BoldItalic.woff2",
+        reading_font=SOURCE_SANS_BOLD_ITALIC,
+        swapped=LETTERS,
+        greek=ITALIC_GREEK,
+        scale=1,
+        reference_glyph=X_HEIGHT_GLYPH,
+    ),
+)
+
+# The regular weight is adjustable in style-tokens.css. Derive both CSS scales and
+# metric rows from that same instance, so changing it needs no second numeric edit.
+SANS_SCALE_FACTORS: Final = derive_scale_factors(_SANS_UNSCALED_PLANS)
+SANS_FACE_PLANS: Final = tuple(
+    replace(plan, scale=SANS_SCALE_FACTORS[plan.katex_face]) for plan in _SANS_UNSCALED_PLANS
+)
+SANS_MAIN_REGULAR_SCALE: Final = SANS_SCALE_FACTORS["Main-Regular"]
+SANS_MAIN_BOLD_SCALE: Final = SANS_SCALE_FACTORS["Main-Bold"]
+SANS_MATH_ITALIC_SCALE: Final = SANS_SCALE_FACTORS["Math-Italic"]
+SANS_MATH_BOLD_ITALIC_SCALE: Final = SANS_SCALE_FACTORS["Math-BoldItalic"]
+
+
+COMPOSITES: Final = (
+    Composite(key=None, family="KPress Math Text", plans=FACE_PLANS),
+    Composite(key=SANS_KEY, family="KPress Math Text Sans", plans=SANS_FACE_PLANS),
+)
+
+
 def scale_percentages(composite: Composite = COMPOSITES[0]) -> dict[str, float]:
     """The factors as the percentages the composite's `size-adjust` descriptors carry."""
     return {face: round(factor * 100, 1) for face, factor in composite.scale_factors.items()}
 
 
 # ---- Rendering the asset ----
+
+SANS_CSS_BEGIN: Final = "/* BEGIN GENERATED SANS FACES: devtools.katex_text_metrics */"
+SANS_CSS_END: Final = "/* END GENERATED SANS FACES */"
+
+
+def render_sans_face_css() -> str:
+    """Generate the fixed-weight screen and print declarations from the metric plans.
+
+    The private weight sets KaTeX's regular run independently of its shorthand reset
+    and of host token overrides. It describes the generated metrics, not a second
+    adjustable setting. The prose token remains the only input.
+    """
+    plans = {plan.katex_face: plan for plan in SANS_FACE_PLANS}
+    slots = (
+        ("Main-Regular", "normal", SANS_REGULAR_WEIGHT),
+        ("Math-Italic", "italic", SANS_REGULAR_WEIGHT),
+        ("Main-Bold", "normal", SANS_BOLD_WEIGHT),
+        ("Math-BoldItalic", "italic", SANS_BOLD_WEIGHT),
+    )
+    screen: list[str] = []
+    printed: list[str] = []
+    for face, style, weight in slots:
+        plan = plans[face]
+        latin = "U+0041-005A, U+0061-007A"
+        if style == "normal":
+            latin = f"U+0030-0039, {latin}"
+        greek = "U+0391-03A9" if style == "normal" else "U+0370-03FF"
+        screen.append(
+            _sans_face_rule(
+                style, weight, f"../fonts/source-sans-3-latin-wght-{style}.woff2", latin
+            )
+        )
+        screen.append(
+            _sans_face_rule(
+                style, weight, f"../katex/fonts/{plan.scaled_against}", greek, scale=plan.scale
+            )
+        )
+        printed.append(
+            _sans_face_rule(style, weight, f"../fonts/{plan.reading_font}", latin, printed=True)
+        )
+    return (
+        f"{SANS_CSS_BEGIN}\n"
+        ":root {\n"
+        f"  --_kpress-math-sans-regular-weight: {SANS_REGULAR_WEIGHT};\n"
+        "}\n\n"
+        + "\n\n".join(screen)
+        + "\n\n@media print {\n"
+        + "\n\n".join(printed)
+        + f"\n}}\n{SANS_CSS_END}"
+    )
+
+
+def _sans_face_rule(
+    style: str, weight: int, source: str, ranges: str, *, scale: float = 1, printed: bool = False
+) -> str:
+    indent = "  " if printed else ""
+    declarations = [
+        'font-family: "KPress Math Text Sans";',
+        f"font-style: {style};",
+        f"font-weight: {weight};",
+        f"font-display: {'swap' if printed else 'block'};",
+    ]
+    if scale != 1:
+        declarations.append(f"size-adjust: {round(scale * 100, 1):g}%;")
+    declarations.extend((f'src: url("{source}") format("woff2");', f"unicode-range: {ranges};"))
+    return (
+        f"{indent}@font-face {{\n"
+        + "\n".join(f"{indent}  {line}" for line in declarations)
+        + f"\n{indent}}}"
+    )
+
+
+def update_sans_face_css(css: str) -> str:
+    """Replace only the generated block; all selector and serif policy stays authored."""
+    if css.count(SANS_CSS_BEGIN) != 1 or css.count(SANS_CSS_END) != 1:
+        raise MetricsError(f"{FACE_CSS_PATH.name}: expected one generated sans face block")
+    before, rest = css.split(SANS_CSS_BEGIN)
+    _, after = rest.split(SANS_CSS_END)
+    return before + render_sans_face_css() + after
 
 
 def format_number(value: float) -> str:
@@ -705,7 +789,11 @@ def render_asset(tables: Mapping[str, MetricTable], sans_tables: Mapping[str, Me
     """
     body = _face_lines(tables, "  ")
     nested = ",\n".join(
-        [*_face_lines(sans_tables, "    "), _scale_line(SANS_SCALE_FACTORS, "    ")]
+        [
+            *_face_lines(sans_tables, "    "),
+            _scale_line(SANS_SCALE_FACTORS, "    "),
+            f'    "{FONTS_KEY}": {json.dumps(sans_font_requests())}',
+        ]
     )
     body.append(f'  "{SANS_KEY}": {{\n{nested}\n  }}')
     bundle = KATEX_BUNDLE.read_text(encoding="utf-8")
@@ -716,6 +804,15 @@ def render_asset(tables: Mapping[str, MetricTable], sans_tables: Mapping[str, Me
     return (
         "\n".join([ASSET_HEADER, f"globalThis.{GLOBAL_NAME} = {{", ",\n".join(body), "};"]) + "\n"
     )
+
+
+def sans_font_requests() -> list[str]:
+    """Descriptions for explicit runtime warmup, from the generated slot weights."""
+    return [
+        f"{style}{weight} 1em 'KPress Math Text Sans'"
+        for weight in (SANS_REGULAR_WEIGHT, SANS_BOLD_WEIGHT)
+        for style in ("", "italic ")
+    ]
 
 
 def _face_lines(tables: Mapping[str, MetricTable], indent: str) -> list[str]:
@@ -792,8 +889,8 @@ def _check_asset() -> list[str]:
 def _check_face_css() -> list[str]:
     """Verify each scaled face in a composite carries the factor of the font it draws.
 
-    The stylesheet is written separately from this tool, so the two can drift apart
-    silently; the glyphs would then be drawn at one size and laid out at another. So
+    The serif declarations are authored and the sans declarations are generated. A
+    changed block could still draw glyphs at one size and lay them out at another. So
     the check is per face, not per value: every `@font-face` with a `size-adjust` is
     matched by its family and its `src` file to the plans that draw with that font, and
     the declared percentage must equal theirs. A stylesheet that is missing is a problem
@@ -812,8 +909,13 @@ def _check_face_css() -> list[str]:
             percentage = round(plan.scale * 100, 1)
             if expected.setdefault(key, percentage) != percentage:
                 raise MetricsError(f"{key[1]} is drawn at two factors in {composite.family}")
-    css = _CSS_COMMENT.sub("", FACE_CSS_PATH.read_text(encoding="utf-8"))
+    source_css = FACE_CSS_PATH.read_text(encoding="utf-8")
+    css = _CSS_COMMENT.sub("", source_css)
     problems: list[str] = []
+    if source_css != update_sans_face_css(source_css):
+        problems.append(
+            f"{_relative(FACE_CSS_PATH)} has stale sans faces; run `{REGENERATE_COMMAND}`"
+        )
     scaled: list[tuple[str, str]] = []
     for block in _FONT_FACE_BLOCK.finditer(css):
         body = block.group("body")
@@ -908,6 +1010,9 @@ def _run(print_scale: bool, do_check: bool) -> int:
 
     asset = render_asset(build_tables(FACE_PLANS), build_tables(SANS_FACE_PLANS))
     ASSET_PATH.write_text(asset, encoding="utf-8")
+    FACE_CSS_PATH.write_text(
+        update_sans_face_css(FACE_CSS_PATH.read_text(encoding="utf-8")), encoding="utf-8"
+    )
     print(f"Wrote {_relative(ASSET_PATH)} ({len(asset.encode('utf-8')):,} bytes)")
     return 0
 

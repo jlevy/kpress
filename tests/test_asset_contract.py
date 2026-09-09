@@ -448,11 +448,13 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "css/print-fonts.css",
         "fonts/kpress-print-sans-latin-370-normal.woff2",
         "fonts/kpress-print-sans-latin-400-normal.woff2",
+        "fonts/kpress-print-sans-latin-410-normal.woff2",
         "fonts/kpress-print-sans-latin-550-normal.woff2",
         "fonts/kpress-print-sans-latin-600-normal.woff2",
         "fonts/kpress-print-sans-latin-650-normal.woff2",
         "fonts/kpress-print-sans-latin-370-italic.woff2",
         "fonts/kpress-print-sans-latin-400-italic.woff2",
+        "fonts/kpress-print-sans-latin-410-italic.woff2",
         "fonts/kpress-print-sans-latin-550-italic.woff2",
         "fonts/kpress-print-sans-latin-600-italic.woff2",
         "fonts/kpress-print-sans-latin-650-italic.woff2",
@@ -464,7 +466,7 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
         "fonts/planetaire-mono-text-latin-700-normal.woff2",
     } <= asset_ids
     assert all("latest" not in asset.path for asset in manifest.assets)
-    # The shipped set and the generator cannot drift apart: the ten names above are
+    # The shipped set and the generator cannot drift apart: the names above are
     # exactly the generator's weights crossed with its styles.
     assert {
         f"fonts/{instance_name(weight, style)}" for weight in WEIGHTS for style in STYLES
@@ -474,9 +476,9 @@ def test_package_asset_manifest_includes_reader_font_assets() -> None:
 def test_print_font_faces_declare_the_static_instances_under_print_only() -> None:
     """print-fonts.css is the generated declaration of the static print sans set.
 
-    Ten faces, one per weight and style, every one inside the single ``@media print``
+    One face per weight and style, every one inside the single ``@media print``
     block so no screen reader downloads them, every ``src`` naming a file that ships.
-    ``font-display: swap`` on all ten: print layout has one chance to draw, and a
+    ``font-display: swap`` on every face: print layout has one chance to draw, and a
     caller that cannot wait for the faces must get the fallback rather than nothing.
     """
     css = get_static_asset("css/print-fonts.css").content.decode("utf-8")
@@ -484,7 +486,7 @@ def test_print_font_faces_declare_the_static_instances_under_print_only() -> Non
     assert css.count("@media") == 1
     media_start = css.index("@media print {")
     faces = list(re.finditer(r"@font-face\s*\{(?P<body>[^}]*)\}", css))
-    assert len(faces) == len(WEIGHTS) * len(STYLES) == 10
+    assert len(faces) == len(WEIGHTS) * len(STYLES)
     assert all(face.start() > media_start for face in faces)
 
     fonts_dir = _KPRESS_ROOT / "src/kpress/format/static/fonts"

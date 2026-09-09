@@ -1064,6 +1064,100 @@ once and set the measure from it.
 
 ## Theme and Fonts
 
+### Typography System
+
+KPress assigns a face to each reading role, then tunes that face through named size and
+weight tokens. `src/kpress/format/static/css/style-tokens.css` owns those defaults;
+`document.css` and `components.css` apply them.
+The
+[font and math loading architecture](project/architecture/arch-2026-09-08-font-and-math-loading.md)
+owns readiness, prepared geometry, screen and print loading, and failure behavior.
+This section owns the perceptual choices and the map for replacing a face.
+
+| Role | Shipped face and tuning | Replacement boundary |
+| --- | --- | --- |
+| Serif reading | PT Serif at 400 and 700, with italic partners | Replace all four files and declarations together. Rebuild the `KPress Math Text` composite because its Latin metrics and Greek scales are measured against these faces. |
+| Sans reading and UI | Source Sans 3 Variable; regular 410, medium 550, bold 650 | `--kpress-font-weight-sans-regular` is the one regular-weight source. It accepts 200–500 and `devtools.instance_sans.REGULAR_WEIGHT` reads it; `--kpress-font-weight-sans-light` aliases it. Medium and bold remain independent design steps. |
+| Mathematics | PT Serif or Source Sans 3 Latin letters and digits composited with KaTeX operators, relations, delimiters, specialty alphabets, and scaled Greek | Keep the composite CSS, full KaTeX metric tables, scales, and warmup list consistent with the reading face. Sans also requires matching print instances. The replacement steps below distinguish authored serif CSS from generated sans CSS. |
+| Monospace | Planetaire Mono Text at 0.82 of the corresponding prose rung | Its 0.560em x-height becomes 0.459em, 91.8% of PT Serif’s 0.500em. This is a chosen proportion below x-height parity; the same 0.82 ratio holds at normal, small, and tiny sizes. |
+| Prose punctuation | `KPress Quotes` for curly single and double quotes ahead of PT Serif | Keep punctuation as a separate role. A serif replacement does not silently inherit quote widths or sidebearings that were tuned for another face. |
+| List markers | CSS square geometry derived from `--kpress-bullet-size` | Markers are geometry, not a font glyph. Preserve their size and offsets as part of the base-size ramp when changing a face. |
+
+**Weights have one owner.** The default sans steps are 410 regular, 550 medium, and 650
+bold. Changing the numeric regular token changes both prose and sans mathematics.
+The supported build range is 200–500; above 500 KaTeX can select its bold fallback, and
+650 also collides with the intentional bold composite slot.
+Run `uv run --frozen python -m devtools.instance_sans` first, then
+`uv run --frozen python -m devtools.katex_text_metrics`. The first command writes static
+print instances, `print-fonts.css`, and their asset records.
+The second writes metric tables and font warmup requests for both composite families,
+but updates CSS only inside the bounded generated sans block in `katex-text-face.css`.
+The serif CSS remains authored, with scale constants checked against the source fonts.
+Generated outputs are not edited by hand.
+
+**Baseline geometry and optical decoration are separate.** Prepared inline mathematics
+reserves the measured glyph box on the surrounding text baseline; its glyph baseline
+offset relative to adjacent text must be `0`. A font replacement must preserve that
+baseline contract before adjusting line height or decoration.
+Inline code uses balanced `0.175em` block padding as an optical treatment around
+Planetaire; that padding does not move the text baseline and should not be used to
+compensate for a mismatched face.
+The architecture record defines how prepared geometry is measured, hydrated, and
+verified.
+
+**Screen and print have the same metrics but different font material.** Screen sans uses
+the Source Sans 3 variable faces.
+Print uses generated static `KPress Print Sans` instances at every requested weight so
+Chromium embeds fonts instead of Type3 outline paths.
+Serif, mono, quote, and KaTeX faces are vendored static subsets on both media.
+`src/kpress/format/static/fonts/README.md` records provenance and licenses;
+`print-fonts.css` and generated font files record the print mapping.
+Matching family names is insufficient: the screen composite, print instance, and metric
+table must have the same glyph advances at each slot.
+
+#### Replacing a Typeface
+
+1. Choose the role and preserve its public hook in `style-tokens.css`:
+   `--kpress-font-prose`, `--kpress-font-sans`, `--kpress-font-mono`, or
+   `--kpress-font-punctuation`. A host-only substitution can use the corresponding
+   `--kpress-host-font-*` hook.
+   A shipped default replacement changes the assets and generated data below.
+2. Update the font bytes and provenance in `src/kpress/format/static/fonts/`, its
+   `README.md`, the matching license file, and `src/kpress/format/assets.py`. Source
+   declarations live in `css/style-tokens.css`, the generated `css/print-fonts.css`, the
+   `css/mono-planetaire-*.css` files, and the `katex/` CSS under the same static
+   directory. Use `devtools/subset_mono.py` for Planetaire-style subset changes and
+   `devtools/subset_quotes.py` for punctuation; do not hand-edit their output.
+3. For serif, update `PT_SERIF_*` and `FACE_PLANS` in `devtools/katex_text_metrics.py`,
+   then derive the `MAIN_*_SCALE` and `MATH_*_SCALE` constants from the new faces with
+   its `derive_scale_factors` helper.
+   `--print-scale` prints the percentages to put in the authored serif `size-adjust`
+   declarations in `katex/katex-text-face.css`; `--check` re-derives them from the
+   fonts. For sans, run `devtools/instance_sans.py` first so its `REGULAR_WEIGHT` and
+   print files are the metric generator’s inputs.
+   Then run `devtools/katex_text_metrics.py` to regenerate `katex/katex-text-metrics.js`
+   for both families and the bounded sans face block in `katex/katex-text-face.css`.
+4. Recheck size and ink relationships in `style-tokens.css`. For mono, preserve or
+   deliberately replace the 0.82 ratio and update the measured x-height and column
+   evidence. For punctuation, compare quote widths, sidebearings, and opening and closing
+   ink. Keep list markers in CSS geometry.
+5. Run each generator with `--check`, then `tests/test_katex_text_metrics.py`,
+   `tests/test_print_sans_faces.py`, `tests/test_mono_face.py`,
+   `tests/test_playwright_sans_math_face.py`, `tests/test_playwright_mono_face.py`, and
+   `tests/test_playwright_print_pdf_fonts.py`. Run `make test-browser` for the strict
+   browser gate. Inspect a serif page, a sans page, inline and display math, code,
+   quotations, lists, and print output.
+   The architecture record’s readiness and prepared-geometry checks remain required when
+   metrics change.
+
+KPress policy ends at these reusable role and metric contracts.
+A host may choose its own proportions above them.
+Squares, for example, uses an 18px prose base and a 19px sans base, 0.95 figure labels,
+0.92 captions and endnotes with a 1.4rem inset, and a 680 bold step.
+Its prepared-geometry integration and macOS text-rendering policy also belong to that
+host. Those values live in `packing/devtools/templates/paper-design.md` in Squares; they
+are examples of host composition, not KPress defaults.
+
 Theme mode values:
 
 - `system`
@@ -1287,21 +1381,30 @@ That exclusion is a statement about the renderer, not about the cascade, and it 
 however the scope is spelled.
 
 Same four slots, but each declares a **single** `font-weight` rather than the variable
-face’s whole axis, and its metric table is built at that same weight — 400 for the
+face’s whole axis, and its metric table is built at that same weight — 410 for the
 regular slots, `--kpress-font-weight-sans-bold` (650) for the bold ones, which is what
 `.mathbf` and `.boldsymbol` ask for instead of upstream’s 700. A KaTeX metric table
 describes one face *and one weight*, and Source Sans’s Latin advances move a median 7.1%
 across the 370–700 axis while its ink heights move 0.035 em at most; CSS Fonts 4 clamps
 a variable face to the range its `@font-face` declares, so a single value draws the
 weight the table was built at whatever the context asks for.
-Upstream’s `.katex { font: normal 1.21em … }` already resets `font-weight`, so
-mathematics in a sans context is set at 400 either way.
+The numeric `--kpress-font-weight-sans-regular` in `style-tokens.css` is the one
+adjustable input for regular sans prose and mathematics.
+It accepts 200–500; heavier regular requests would select bold KaTeX fallback glyphs.
+After changing it, run `python -m devtools.instance_sans` and then
+`python -m devtools.katex_text_metrics`. They generate the print instances and asset
+manifest, composite descriptors, Greek scales, metric tables, private CSS weight, and
+explicit font warmup requests.
+The CSS overrides KaTeX’s shorthand reset with the generated weight.
+`--kpress-font-weight-sans-light` aliases the regular token; medium and bold retain
+their own intentional weights.
+A host override of a prose token alone cannot change the fixed composite metrics.
 
 Under `@media print`, and declared last, the static `KPress Print Sans` instances at the
 same two weights are layered over the same ranges, so a printed page embeds a font
 rather than the Type3 outline paths Chromium writes for a variable face away from its
 default position (the reason [Print Sans Faces](#print-sans-faces) exists).
-The two agree exactly: instancing the variable face at 400 and 650 reproduces every
+The two agree exactly: instancing the variable face at 410 and 650 reproduces every
 Latin advance of the shipped instance, so one metric table is true of both — which is
 also why the generator measures the sans slots from those instance files.
 
@@ -1640,9 +1743,11 @@ and leaves the paths alone, so the sans reads a step lighter than the serif and 
 mathematics beside it.
 Measured with Quartz, the engine behind Preview, on one 12pt line, glyph `h`, as the
 fraction of the glyph box covered in ink, with font smoothing off then on.
-Weight 410 is what the measurement happened to be taken at, a weight a host asks for
-rather than one KPress does; the effect is Type3 against embedded, not that weight, and
-a 410 request lands on the 400 instance:
+This measurement predates KPress’s 410 regular instance.
+At that checkpoint, 410 was a host request and landed on the 400 instance; the effect
+measured here is Type3 against embedded output, rather than a property of that weight.
+Current builds use 410 as the shared regular sans weight and ship a matching print
+instance.
 
 | How the glyph reaches the PDF | 3 px/pt | 2 px/pt |
 | --- | --- | --- |
@@ -1670,16 +1775,16 @@ request, since a weight the set does not carry is matched to the nearest instanc
 The variable face stays behind it for the case where the family cannot answer at all, a
 build that ships without the instances, which is the behavior before this feature.
 
-**The set.** Five weights (370, 400, 550, 600, 650) in normal and italic, ten files of
-about 15KB, generated from the vendored variable faces by `devtools/instance_sans.py`
-into `static/fonts/` together with the stylesheet `static/css/print-fonts.css` that
-declares them. Both are generated files; `python -m devtools.instance_sans --check`
-verifies the shipped bytes and runs in both `make lint` and `make lint-check`, the
-second of which is what CI runs.
-The weights are the ones KPress’s own sans contexts request: the three weight tokens
-(370, 550, 650), the footnote controls’ 600, and 400 for the resets.
-The two sans-mode headings ask for 380 and 440, which CSS weight matching lands on 370
-and 400; `.kpress-prose h4`’s 540 lands on 550.
+**The set.** Six weights (370, 400, 410, 550, 600, 650) in normal and italic, twelve
+files of about 15KB, generated from the vendored variable faces by
+`devtools/instance_sans.py` into `static/fonts/` together with the stylesheet
+`static/css/print-fonts.css` that declares them.
+Both are generated files; `python -m devtools.instance_sans --check` verifies the
+shipped bytes and runs in both `make lint` and `make lint-check`, the second of which is
+what CI runs. The set includes the regular, medium and bold tokens (410, 550, 650), the
+footnote controls’ 600, and the existing 370/400 instances for deliberately lighter
+typography. The two sans-mode headings ask for 380 and 440, which CSS weight matching
+lands on 370 and 410; `.kpress-prose h4`’s 540 lands on 550.
 
 A 700 pair shipped until 2026-09-07, on the belief that bold asked for it.
 It does not: `.kpress b, .kpress strong` sets the bold token, so a UA-default `bold`

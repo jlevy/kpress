@@ -11,6 +11,7 @@ const SANS_SET = "sans";
 const KATEX_SET = "katex";
 const SANS_FACE_ATTR = "kpressMathFace";
 const SCALE_KEY = "scale";
+const FONTS_KEY = "fonts";
 const FACE_WAIT_MS = 3000;
 const FACE_SAMPLE = "a1αΩ";
 const KATEX_FAMILIES = ["KaTeX_Main", "KaTeX_Math"];
@@ -25,12 +26,7 @@ const COMPOSITE_FONTS = {
     "700 1em 'KPress Math Text'",
     "italic 700 1em 'KPress Math Text'",
   ],
-  [SANS_SET]: [
-    "400 1em 'KPress Math Text Sans'",
-    "italic 400 1em 'KPress Math Text Sans'",
-    "650 1em 'KPress Math Text Sans'",
-    "italic 650 1em 'KPress Math Text Sans'",
-  ],
+  [SANS_SET]: globalThis.kpressKatexTextMetrics?.[SANS_SET]?.[FONTS_KEY] ?? [],
 };
 let metricsApplied = false;
 let installedSet = null;
@@ -57,7 +53,7 @@ function installTables(set) {
     return false;
   }
   for (const [face, table] of Object.entries(tables)) {
-    if (face === SANS_SET || face === KATEX_SET || face === SCALE_KEY) {
+    if (face === SANS_SET || face === KATEX_SET || face === SCALE_KEY || face === FONTS_KEY) {
       continue;
     }
     katex.__setFontMetrics(face, table);

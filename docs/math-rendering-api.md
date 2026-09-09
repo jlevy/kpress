@@ -92,6 +92,14 @@ Keeping reservations per unbreakable KaTeX `.base` preserves the formula’s lin
 opportunities. This optional publication step does not add a browser dependency to
 ordinary KPress HTML generation.
 
+For absolutely positioned bases, the visible glyphs must share the reservation’s
+baseline. The
+[preparation contract](project/architecture/arch-2026-09-08-font-and-math-loading.md#publication-preparation-and-hydration)
+describes copying the ordinary measured height and depth onto each existing KaTeX strut
+and using zero line height on prepared bases and their inline carriers.
+Validate actual baseline alignment at screen and print sizes; `hydrate()` preserves host
+markup but does not verify or repair its geometry.
+
 `render()` stamps the following metadata on its target:
 
 | Attribute | Value |

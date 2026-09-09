@@ -60,6 +60,14 @@ The synchronous section prevents two pending renders from mixing metric profiles
 Changing only CSS while leaving the wrong table installed would change the glyphs
 without correcting fractions, scripts, spacing, or line dimensions.
 
+The regular sans weight has one build-time input: `--kpress-font-weight-sans-regular` in
+`style-tokens.css`, currently 410. The existing instancer and metric generator read it
+to produce matching screen descriptors, static print faces, Greek scales and KaTeX
+tables. Regular prose uses the token; mathematics uses the generated fixed weight,
+including normal and italic slots.
+Changing only a live prose override does not regenerate those mathematical metrics.
+Medium and bold keep their separate weights.
+
 A missing composite declaration selects stock KaTeX families with stock metrics.
 A declared font that fails to load is a different case: the runtime reports failure and
 lets the caller expose its readable fallback.
@@ -116,6 +124,28 @@ selectable math HTML inside.
 Separate boxes preserve KaTeX’s breaks between bases.
 Reserving a whole formula as one inline block would remove those breaks.
 
+The reservation and its visible glyphs must share a baseline.
+Empty inline wrappers still contribute font-dependent line boxes, as specified by
+[CSS line-height calculations](https://www.w3.org/TR/CSS22/visudet.html#line-height).
+An unchanged outer rectangle therefore does not prove that glyphs inside it remain
+aligned when print changes the font size.
+For a host that positions each `.base` absolutely inside its reservation:
+
+- Measure the ordinary, fully loaded base’s width, total height, and depth below its
+  baseline before changing its line height.
+- Copy that same measured height and negative depth, in em units, onto the prepared
+  clone’s existing direct `.strut` as `height` and `vertical-align`.
+- Set `line-height: 0` on the prepared `.base` and its enclosing `.katex` and
+  `.katex-html` carriers.
+  The measured strut supplies the baseline geometry; empty carriers must not add a
+  second font-dependent line height.
+
+Keep these changes scoped to prepared content.
+Ordinary rendering and readable fallbacks retain KaTeX’s normal layout.
+Setting zero line height alone is insufficient: a punctuation-only base can have a
+smaller original KaTeX strut than the ordinary font line box it occupied.
+Copying the measured extent preserves that space too.
+
 The geometry must cover every saved font setting the host supports.
 A reader’s choice of custom or system fonts and serif or sans prose can change the
 resolved math profile and its dimensions.
@@ -164,8 +194,10 @@ MathML clipped.
 Print changes the font cascade.
 Export tools must wait for math requests and print faces after switching media.
 Reservations in em units scale with the formula’s computed font size.
-Reusing them for print also requires equivalent glyph advances: KPress’s static sans
-math instances preserve those of the screen face.
+Reusing them for print also requires equivalent glyph advances and the explicit baseline
+geometry described above.
+KPress’s static sans math instances preserve the screen face’s advances; matching font
+files alone does not establish baseline agreement inside host reservations.
 A host whose print styling changes the math profile or relative dimensions must prepare
 matching print geometry; waiting for fonts alone does not correct an incompatible
 reservation. Host canvas work also needs an explicit completion path: deferring a heat
@@ -202,9 +234,16 @@ Correctness checks should establish:
   entire prepared wrapper disappeared during profile fallback.
 - Prepared boxes retain position, dimensions, and line breaks through genuinely delayed
   font loads, and final reserved widths agree with final intrinsic widths.
+- After painting, measure the actual inline math baseline against adjacent text with
+  baseline-aligned, zero-size markers.
+  Check screen and print sizes and compare the same TeX rendered with and without
+  preparation; unchanged outer box coordinates are not enough.
+  Include punctuation-only bases, scripts, fractions, radicals, limits, and zero-height
+  constructs such as `\smash{x}` and `\quad`.
 - Negative controls are rejected: an unavailable glyph shown early, a missing box width,
   a missing entire reservation, a consistently wrong reserved width, and stale print or
-  fallback state.
+  fallback state. Baseline checks must also reject restoring the original font line strut
+  or shifting the visible glyphs while leaving their reservation unchanged.
 
 Normal startup measurements must leave font loads and input untouched.
 Record the first correct visible parameter set, adjacent-text movement, viewport, cache

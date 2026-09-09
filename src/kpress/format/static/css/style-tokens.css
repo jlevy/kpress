@@ -121,10 +121,13 @@
   --kpress-font-punctuation: var(--kpress-host-font-punctuation, "KPress Quotes");
   --kpress-font-features-sans: normal;
 
-  /* Weights (Source Sans variable axis): light 370, medium 550, bold 650. */
-  --kpress-font-weight-sans-light: 370;
+  /* Regular is the build-time input to instance_sans + katex_text_metrics.
+     Regenerate both tools after changing it so math outlines and metrics agree. */
+  --kpress-font-weight-sans-regular: 410;
+  --kpress-font-weight-sans-light: var(--kpress-font-weight-sans-regular);
   --kpress-font-weight-sans-medium: 550;
   --kpress-font-weight-sans-bold: 650;
+  --_kpress-font-weight-prose: 400;
 
   /* Sizes. One ramp for prose + UI; the mono sizes are a touch smaller so code
      aligns visually with surrounding text. `normal` is the base itself --
@@ -465,6 +468,7 @@
 [data-kpress-prose-font="sans"] .kpress-page-main,
 [data-kpress-prose-font="sans"] .kpress-tooltip,
 .kpress[data-kpress-prose-font="sans"] {
+  --_kpress-font-weight-prose: var(--kpress-font-weight-sans-regular);
   --kpress-font-prose: var(--kpress-host-font-prose-sans, var(--kpress-font-sans));
 }
 

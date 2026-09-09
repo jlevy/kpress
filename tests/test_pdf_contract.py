@@ -132,7 +132,10 @@ def test_browser_pdf_backend_uses_playwright_print_pipeline(
     readiness = next(event for event in events if event[0] == "evaluate")
     assert readiness[1] is True, readiness
     tokens, sample, timeout_ms = cast(tuple[list[str], str, int], readiness[2])
-    assert tokens == ["--kpress-font-sans", "--kpress-font-prose"], readiness
+    assert tokens == [
+        ("--kpress-font-sans", "--kpress-font-weight-sans-regular"),
+        ("--kpress-font-prose", "--_kpress-font-weight-prose"),
+    ], readiness
     assert sample.strip(), readiness
     # Bounded: a face that never answers prints as it did before the wait existed.
     assert timeout_ms > 0, readiness

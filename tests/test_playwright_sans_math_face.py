@@ -281,6 +281,20 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
                     name: _platform_font(page, f"#kpress-probe-{name}")
                     for name in ("prose", "table", "footnote")
                 }
+                regular_weights = page.evaluate("""() => {
+                  const selectors = [
+                    '.kpress-table td', '.kpress-footnotes p',
+                    '.kpress-table .katex', '.kpress-table .mathnormal',
+                    '.kpress-footnotes .katex', '.kpress-footnotes .mathnormal',
+                  ];
+                  return Object.fromEntries(selectors.map(selector => [
+                    selector, getComputedStyle(document.querySelector(selector)).fontWeight,
+                  ]));
+                }""")
+                other_weights = page.evaluate("""() => [
+                  '.kpress-prose > p', '.kpress-table th'
+                ].map(selector => getComputedStyle(document.querySelector(selector)).fontWeight)
+                """)
                 page.focus('.kpress-footnote-ref a[href^="#fn-"]')
                 page.wait_for_selector(".kpress-tooltip-footnote", timeout=10_000)
                 page.evaluate("document.fonts.ready")
@@ -295,6 +309,8 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
         thread.join(timeout=5)
 
     assert probe["rendered"] == 3
+    assert set(regular_weights.values()) == {"410"}, regular_weights
+    assert other_weights == ["400", "650"]
 
     # Drawn: the sans roles resolve the composite to Source Sans, prose to PT Serif.
     for name in ("table", "footnote"):
@@ -447,10 +463,15 @@ def test_the_reading_face_chooser_carries_typeset_mathematics_with_it(tmp_path: 
         after = cast(Probe, page.evaluate(_PROBE))
         sans_prose = _platform_font(page, "#kpress-probe-prose")
         persisted = cast(str, page.evaluate("localStorage.getItem('kpress.proseFont')"))
+        regular_weights = page.evaluate("""() => [
+          '.kpress-prose > p', '.kpress-prose > p .katex', '.kpress-prose > p .mathnormal'
+        ].map(selector => getComputedStyle(document.querySelector(selector)).fontWeight)
+        """)
 
     assert before["rendered"] == 3
     assert after["rendered"] == 3
     assert persisted == "sans"
+    assert regular_weights == ["410", "410", "410"]
 
     # Drawn: prose was PT Serif and is Source Sans now. The stamp alone would have got
     # this far, which is why it is the layout below that carries the finding.
