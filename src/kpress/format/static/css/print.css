@@ -5,6 +5,7 @@
     color: oklch(44.95% 0 0);
     content: var(--kpress-print-footer);
     font-family: var(--kpress-font-sans);
+    font-weight: var(--kpress-font-weight-sans-regular);
     font-size: var(--kpress-font-size-small);
   }
 
@@ -12,6 +13,7 @@
     color: oklch(17.76% 0 0);
     content: counter(page);
     font-family: var(--kpress-font-prose);
+    font-weight: var(--_kpress-font-weight-prose);
     font-size: var(--kpress-font-size-small);
   }
 }
@@ -391,7 +393,7 @@
     font-family: var(--kpress-font-prose);
     font-feature-settings: normal;
     font-variant-caps: all-small-caps;
-    font-weight: 400;
+    font-weight: var(--_kpress-font-weight-prose);
     padding: 0 0.05rem;
   }
 

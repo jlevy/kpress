@@ -55,9 +55,8 @@ from .test_playwright_math_text_face import (
     TEXT_FACE_FAMILY,
     PaintProbe,
     WaitEntry,
-    _covered,  # pyright: ignore[reportPrivateUsage]
+    _all_painted_fonts_ready,  # pyright: ignore[reportPrivateUsage]
     _faces,  # pyright: ignore[reportPrivateUsage]
-    _loaded_first,  # pyright: ignore[reportPrivateUsage]
     _report,  # pyright: ignore[reportPrivateUsage]
     _served_page,  # pyright: ignore[reportPrivateUsage]
     _settled_before_the_deadline,  # pyright: ignore[reportPrivateUsage]
@@ -282,6 +281,20 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
                         name: _platform_font(session, f"#kpress-probe-{name}")
                         for name in ("prose", "table", "footnote")
                     }
+                    regular_weights = page.evaluate("""() => {
+                      const selectors = [
+                        '.kpress-table td', '.kpress-footnotes p',
+                        '.kpress-table .katex', '.kpress-table .mathnormal',
+                        '.kpress-footnotes .katex', '.kpress-footnotes .mathnormal',
+                      ];
+                      return Object.fromEntries(selectors.map(selector => [
+                        selector, getComputedStyle(document.querySelector(selector)).fontWeight,
+                      ]));
+                    }""")
+                    other_weights = page.evaluate("""() => [
+                      '.kpress-prose > p', '.kpress-table th'
+                    ].map(selector => getComputedStyle(document.querySelector(selector)).fontWeight)
+                    """)
                     page.focus('.kpress-footnote-ref a[href^="#fn-"]')
                     page.wait_for_selector(".kpress-tooltip-footnote", timeout=10_000)
                     page.evaluate("document.fonts.ready")
@@ -299,6 +312,8 @@ def test_sans_roles_draw_and_lay_out_mathematics_from_source_sans(tmp_path: Path
         thread.join(timeout=5)
 
     assert probe["rendered"] == 3
+    assert set(regular_weights.values()) == {"410"}, regular_weights
+    assert other_weights == ["400", "650"]
 
     # Drawn: the sans roles resolve the composite to Source Sans, prose to PT Serif.
     for name in ("table", "footnote"):
@@ -368,6 +383,9 @@ def _sans_paint_probe(tmp_path: Path) -> PaintProbe:
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
                 page.wait_for_selector('[data-kpress-math-rendered="true"]', timeout=30_000)
                 page.evaluate("document.fonts.ready")
+                page.wait_for_function(
+                    "__kpressPaintProbe.painted.length === document.querySelectorAll('.kpress-math-render .katex').length"
+                )
                 probe = cast(PaintProbe, page.evaluate("globalThis.__kpressPaintProbe"))
                 probe["wait"] = cast(
                     "list[WaitEntry]", page.evaluate("globalThis.kpressMathFaceWait ?? []")
@@ -386,43 +404,16 @@ def _sans_paint_probe(tmp_path: Path) -> PaintProbe:
 # across runs on the same warm machine, so it takes the same allowance.
 @pytest.mark.timeout(180)
 def test_sans_role_mathematics_paints_once_in_its_final_faces(tmp_path: Path) -> None:
-    """A table cell's and a footnote's mathematics waits for the sans composite.
-
-    The serif half of this is tested next door; what is new here is that a page with
-    mathematics in a sans role draws from a SECOND composite, whose eight faces the
-    original wait knew nothing about. Left out, a caption, a footnote and a table cell
-    would each paint their digits in KaTeX_Main and repaint them in Source Sans while
-    prose beside them stayed still -- the flash confined to exactly the roles the sans
-    composite exists to set, which is the hardest kind to notice.
-
-    Both composites, because the fixture has mathematics in prose and in two sans
-    roles, so both are wanted and both are asked for. The four assertions are the
-    ones the serif test makes, and for the same reasons: every face of each composite
-    loaded before the first `.katex` node existed, every face the wait's own record
-    says it covered did too, and the wait settled rather than being released by its
-    three-second deadline -- without which the orderings are satisfied by a page that
-    simply rendered very late.
-    """
+    """Each prose, table, and footnote formula awaits its own glyphs before paint."""
     probe = _sans_paint_probe(tmp_path)
-    assert probe["firstKatex"] is not None, f"no .katex node was ever inserted\n{_report(probe)}"
-
     _settled_before_the_deadline(probe)
+    _all_painted_fonts_ready(probe, 3)
     for family in (TEXT_FACE_FAMILY, SANS_FACE_FAMILY):
-        composite = _faces(probe, family)
-        # Four slots, each two faces: the reading face and the KaTeX face for Greek.
-        assert len(composite) == 8, f"{family}\n{_report(probe)}"
-        _loaded_first(probe, composite, f"the composite {family} draws from")
-    _loaded_first(probe, _covered(probe), "a face the wait covered")
-
-    # The record says the sans slots were asked for at the sans weights, and that
-    # each request in fact matched a face: an `empty` here would mean the wait
-    # bought nothing for that slot, which is how a weight typo would look.
-    sans = [entry for entry in probe["wait"] if SANS_FACE_FAMILY in entry["request"]]
-    assert [entry["request"] for entry in sans] == [
-        f"{weight} 1em '{SANS_FACE_FAMILY}'"
-        for weight in ("400", "italic 400", "650", "italic 650")
-    ], _report(probe)
-    assert {entry["outcome"] for entry in sans} == {"loaded"}, _report(probe)
+        assert len(_faces(probe, family)) == 8, _report(probe)
+        assert any(
+            family in glyph["spec"] for paint in probe["painted"] for glyph in paint["glyphs"]
+        ), _report(probe)
+    assert all("|" not in entry["request"] for entry in probe["wait"]), _report(probe)
 
 
 # ---- The reading-face chooser moves prose between the two table sets ----
@@ -479,12 +470,18 @@ def test_the_reading_face_chooser_carries_typeset_mathematics_with_it(tmp_path: 
             after = cast(Probe, page.evaluate(_PROBE))
             sans_prose = _platform_font(session, "#kpress-probe-prose")
             persisted = cast(str, page.evaluate("localStorage.getItem('kpress.proseFont')"))
+            regular_weights = page.evaluate("""() => [
+              '.kpress-prose > p', '.kpress-prose > p .katex',
+              '.kpress-prose > p .mathnormal'
+            ].map(selector => getComputedStyle(document.querySelector(selector)).fontWeight)
+            """)
         finally:
             session.detach()
 
     assert before["rendered"] == 3
     assert after["rendered"] == 3
     assert persisted == "sans"
+    assert regular_weights == ["410", "410", "410"]
 
     # Drawn: prose was PT Serif and is Source Sans now. The stamp alone would have got
     # this far, which is why it is the layout below that carries the finding.

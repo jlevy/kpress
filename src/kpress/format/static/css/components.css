@@ -419,6 +419,7 @@
   border-radius: var(--kpress-radius-sm);
   color: var(--kpress-doc-text);
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-size: var(--kpress-font-size-tiny);
   padding: 4px 6px;
   width: 100%;
@@ -473,6 +474,7 @@
   border: 1px solid var(--kpress-doc-border);
   color: var(--kpress-doc-muted);
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-font-size-smaller);
   font-variant-numeric: tabular-nums;
@@ -741,6 +743,7 @@
   border-top: 1px solid var(--kpress-doc-border);
   color: var(--kpress-doc-muted);
   font-family: var(--kpress-font-footnote);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-size: var(--kpress-font-size-small);
   margin-top: 2rem;
   padding-top: 1rem;
@@ -801,7 +804,7 @@
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-font-size-small);
-  font-weight: 400;
+  font-weight: var(--kpress-font-weight-sans-regular);
   hyphens: auto;
   line-height: 1.4;
   max-width: min(20rem, calc(100vw - 2rem));
@@ -1006,6 +1009,7 @@
   border: 1px solid var(--color-border-hint);
   border-collapse: collapse;
   font-family: var(--kpress-font-table);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-font-size-small);
   line-height: 1.3;
@@ -1015,16 +1019,20 @@
 }
 
 /* Code inside a table steps down a mono tier, at EVERY width.
-   The two ramps in style-tokens.css pair by index — mono/normal 0.82,
-   mono-small/smaller 0.833, mono-tiny/tiny 0.824 — so code keeps one optical
-   weight against whatever text surrounds it. A table is the one surface whose
-   text is reduced (`small`) while its code was not, leaving code at 0.863 of
-   its own cell: heavier inside a table than the identical span in prose, which
-   mono's larger x-height exaggerates further.
+   The two ramps in style-tokens.css pair by index — mono/normal, mono-small/smaller,
+   mono-tiny/tiny, all three at 0.82 — so code keeps one optical weight against
+   whatever text surrounds it. A table is the one surface whose text is reduced
+   (`small`) while its code was not, leaving code at 0.863 of its own cell: heavier
+   inside a table than the identical span in prose, which mono's larger x-height
+   exaggerates further.
 
-   `small` has no mono partner (the text ramp has four tiers, mono has three),
-   so neither choice is exact; mono-small at 0.789 lands closer to the ramp's
-   0.82 than mono's 0.863, and reads as subordinate rather than competing.
+   `small` has no mono partner (the text ramp has four tiers, mono has three), so
+   neither choice is exact, and neither is even closer: mono-small sits at 0.777 of
+   the cell and mono at 0.863, equidistant either side of the ramp's 0.82 — 0.043
+   out on each side, and equidistant whatever the ramp ratio, since the cell's 0.95
+   is the midpoint of the 1.0 and 0.9 steps the two rungs carry. The tie breaks on
+   direction — code that reads as subordinate to the cell rather than competing
+   with it.
 
    This rule was previously scoped inside the narrow band, where it looked
    correct only because that band ALSO drops table text to `smaller` — the
@@ -1397,6 +1405,7 @@
   color: var(--color-secondary);
   display: inline-block;
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
   height: 1.3rem;
   padding: 0 0.4rem;
@@ -1423,7 +1432,7 @@
   font-family: var(--kpress-font-sans);
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-font-size-tiny);
-  font-weight: 400;
+  font-weight: var(--kpress-font-weight-sans-regular);
 }
 
 .kpress .hero h1 {
@@ -1467,6 +1476,7 @@
    switch from the serif reading face to the sans stack. */
 .kpress .sans-text {
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
 }
 
@@ -1504,6 +1514,7 @@
 .kpress .description {
   color: var(--color-secondary);
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-font-size-small);
   margin: 2rem 0;
@@ -1513,6 +1524,7 @@
 .kpress .summary,
 .kpress .concepts {
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-font-size-small);
   margin: 1rem 0;
@@ -1649,6 +1661,7 @@
 .kpress :is(.sans-text, .description, .key-claims, .summary, .concepts, .claim)
   :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--kpress-font-sans);
+  --_kpress-font-weight-prose: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
 }
 
@@ -1668,6 +1681,7 @@
   border-right: 2px solid var(--color-hint);
   color: var(--color-secondary);
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
   font-size: var(--kpress-font-size-smaller);
   margin: 0.5rem 1rem 0.5rem 0;
@@ -1733,6 +1747,7 @@
   display: flex;
   flex-direction: column;
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-feature-settings: var(--kpress-font-features-sans);
   gap: 0.75rem;
   justify-content: center;
@@ -2395,6 +2410,7 @@
   box-sizing: border-box;
   color: var(--kpress-doc-text);
   font-family: var(--kpress-font-sans);
+  font-weight: var(--kpress-font-weight-sans-regular);
   font-size: var(--kpress-font-size-small);
   margin: 0 auto;
   max-width: var(--kpress-measure);

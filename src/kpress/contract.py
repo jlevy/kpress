@@ -49,6 +49,8 @@ PUBLIC_FORMAT_API = (
     "Heading",
     "MathMode",
     "MathTextFont",
+    "MonoFont",
+    "MonoWeight",
     "RenderedDocument",
     "RenderedPage",
     "RenderOptions",
@@ -115,6 +117,8 @@ PUBLIC_RENDER_REQUEST_FIELDS = (
     "widgets",
     "extra_tags",
     "extra_attributes",
+    "mono_font",
+    "mono_weights",
 )
 
 PUBLIC_CSS_CLASSES = (
@@ -254,6 +258,7 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-font-table",
     "--kpress-font-weight-sans-bold",
     "--kpress-font-weight-sans-medium",
+    "--kpress-font-weight-sans-regular",
     "--kpress-bullet-size",
     "--kpress-caps-heading-size-multiplier",
     "--kpress-caps-label-size",
@@ -365,7 +370,8 @@ PUBLIC_FRAGMENT_CSS_VARIABLES = (
 # (see style-tokens.css "Palette options"): an embedding host now re-themes by setting
 # the resolved --kpress-doc-* / --color-* tokens directly, not through a --kpress-host-*
 # color fallback. The font, sizing (--kpress-host-font-size-base, the one knob the
-# whole type ramp derives from), and settings-inset seams remain.
+# whole type ramp derives from, plus --kpress-host-font-size-mono for the mono rung
+# the ramp does not reach), and settings-inset seams remain.
 PUBLIC_HOST_CSS_VARIABLES = (
     "--kpress-host-font-body",
     "--kpress-host-font-footnote",
@@ -385,6 +391,12 @@ PUBLIC_HOST_CSS_VARIABLES = (
     # that overrides the sans weight tokens sets this to its own instanced family.
     "--kpress-host-font-sans-print",
     "--kpress-host-font-size-base",
+    # The second sizing hook, and the only rung with one: code is the one role whose
+    # size is a ratio between two faces' x-heights rather than a step of the prose
+    # ramp, so a host that swaps --kpress-host-font-mono for a face of its own has to
+    # be able to re-derive it. The small and tiny mono rungs derive from this one, so
+    # setting it retunes all three.
+    "--kpress-host-font-size-mono",
     "--kpress-host-font-table",
     "--kpress-host-settings-inset-block",
     "--kpress-host-settings-inset-inline",
@@ -435,6 +447,7 @@ PUBLIC_TEMPLATE_VARIABLES: dict[str, tuple[str, ...]] = {
         "head_extra_html",
         "header_html",
         "math_text_font",
+        "mono_font",
         "palette",
         "prose_font",
         "resolved_theme",
@@ -535,7 +548,20 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
 }
 
 # Classic KaTeX assets expose one host API after the metrics asset has loaded.
-PUBLIC_MATH_RUNTIME_METHODS = ("ready", "render", "installTablesFor", "restore", "complete")
+PUBLIC_MATH_RUNTIME_METHODS = (
+    "ready",
+    "render",
+    "hydrate",
+    "installTablesFor",
+    "restore",
+    "complete",
+)
+PUBLIC_MATH_PREPARED_ATTRIBUTES = (
+    "data-kpress-math-source",
+    "data-kpress-math-display",
+    "data-kpress-math-profile",
+    "data-kpress-math-prepared",
+)
 
 BUILD_MANIFEST_REQUIRED_KEYS = (
     "schema_version",
@@ -565,6 +591,7 @@ __all__ = [
     "PUBLIC_HOST_CSS_VARIABLES",
     "PUBLIC_JS_EXPORTS",
     "PUBLIC_MATH_RUNTIME_METHODS",
+    "PUBLIC_MATH_PREPARED_ATTRIBUTES",
     "PUBLIC_PACKAGE_API",
     "PUBLIC_PAGE_MODEL_KEYS",
     "PUBLIC_PASS_THROUGH_ATTRIBUTES",

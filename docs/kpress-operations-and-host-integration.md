@@ -242,6 +242,31 @@ sizing too).
 See [Sizing Policy](kpress-design.md#sizing-policy) for the contract and the
 deliberately root-relative layout lengths.
 
+Code is the one role with an asset-pruning setting rather than only a display switch.
+By default a document declares four Planetaire Mono Text faces — regular, bold, italic
+and bold-italic, 57,260 bytes of woff2, about 56KB — plus their four
+`mono-planetaire-*.css` stylesheets.
+That is what a **static build copies**, not what a reader downloads: a browser fetches a
+declared face only when a glyph resolves to it, so a prose page with no code fetches
+none of the four, and a page of Python fetches three.
+No asset mode base64s a font — inline mode leaves woff2 external and `single-file`
+export is refused — so a declared face costs a page nothing until its style appears on
+it. A host that sets `mono_font: "system"` gets none of it: the faces and their
+stylesheets never enter the manifest, so there is nothing to link, copy, or inline, and
+`--kpress-font-mono` resolves to the platform stack.
+That prunes all seven subsets, about 104KB, from the built tree.
+A host that wants the three heavier upright weights names them in `mono_weights`
+(`medium`, `semibold`, `extrabold`) and pays about 16 KB each in the built tree.
+Narrowing below the four is refused rather than accepted: KPress’s own stylesheets ask
+for all four, and a style they ask for and a document withholds is drawn by synthesis —
+which on the weight axis puts `/Type3` outlines in an exported PDF. See
+[Mono Face](kpress-design.md#mono-face) for the table of what is refused and why.
+The reader-facing `font_mode: "system"` is a different lever: it also puts code in the
+platform mono, but it changes only the cascade, so the faces stay in the manifest.
+Sizing the mono against a family of its own goes through `--kpress-host-font-size-mono`,
+which carries the small and tiny rungs with it; see
+[Mono Face](kpress-design.md#mono-face) for how the default ratio is derived.
+
 Theming is equally declarative: rendered fragments carry no baked theme or palette
 attributes, so a host stamps `data-kpress-resolved-theme` (and optionally
 `data-kpress-palette`) on one scope — `:root` or a wrapper — and updates it on toggle;
@@ -423,6 +448,12 @@ document scrolls in the `[data-kpress-viewport]` pane (which browsers exclude fr
 native Back/Forward scroll restoration), it stamps the pane offset into session-history
 entry state and restores it on `popstate`, falling back to the fragment target (document
 top for a fragmentless entry).
+Reader panes also flush that existing state before departure and restore it after
+`pageshow`, so reloading preserves a saved offset.
+The pane’s `beforeunload` listener never prompts or cancels navigation, but can reduce
+Firefox’s back/forward-cache eligibility.
+A host that marks the document as its viewport keeps the browser’s native reload
+restoration; these pane lifecycle hooks are not installed there.
 The stamp is written only when the entry’s state is `null` or a plain record without a
 conflicting non-numeric `kpressScroll` key; any other host state shape (a `Date`, `Map`,
 array, class instance, or a host-owned `kpressScroll`) is left exactly as the host
@@ -623,7 +654,7 @@ The full argument and the measurements are in
 [Print Sans Faces](kpress-design.md#print-sans-faces).
 Four consequences for a host:
 
-- **A host that keeps KPress’s weights has nothing to do.** The ten instances ship as
+- **A host that keeps KPress’s weights has nothing to do.** The instances ship as
   package assets and `print-fonts.css` is part of the default stylesheet set, so linked
   and hashed builds carry them and print correctly.
 - **A host that sets `--kpress-host-font-sans` must also set
@@ -634,13 +665,20 @@ Four consequences for a host:
   outline paths and all if it is a variable webfont, with no warning anywhere.
   Set the print hook to the host’s own instances, or to
   `"KPress Print Sans", <its own stack>` to keep KPress’s set in front of it.
-- **A host that overrides the sans weight tokens** (`--kpress-font-weight-sans-light` /
-  `-medium` / `-bold`, or any `font-weight` of its own on a sans context) has two
-  options. Instance its own set and declare it: copy `devtools/instance_sans.py` from the
-  repository — it is a development tool and is not in the wheel — and install fontTools,
-  which is its only dependency; `instance_face(variable, weight, family)` returns the
-  woff2 bytes and `face_rule(weight, style, url, family)` the matching `@font-face`
-  rule, for the five weights in `WEIGHTS` crossed with the two styles in `STYLES`.
+- **A host that overrides the sans weight tokens** (`--kpress-font-weight-sans-regular`
+  / `-medium` / `-bold`, or any `font-weight` of its own on a sans context) has two
+  options. Instance its own set and declare it: load `devtools/instance_sans.py` by file
+  path from a KPress checkout — it is a development tool and is not in the wheel — and
+  install fontTools, which is its only dependency;
+  `instance_face(variable, weight, family)` returns the woff2 bytes and
+  `face_rule(weight, style, url, family)` the matching `@font-face` rule, for the
+  weights in `WEIGHTS` crossed with the two styles in `STYLES`. `REGULAR_WEIGHT` reads
+  the authoritative token from the checkout’s `style-tokens.css`; a host loading the
+  tool by file path can use it for its own regular instances.
+  Regular math is fixed to the generated weight.
+  To change it together with prose, change that source token and regenerate both the
+  instancer and metric tool as described in
+  [Math Text Face](kpress-design.md#math-text-face).
   Declare those faces inside `@media print` after KPress’s stylesheets, under a family
   name of the host’s own (the same OFL obligation applies to the host’s derived files),
   and point `--kpress-host-font-sans-print` at it.
@@ -651,11 +689,11 @@ Four consequences for a host:
   `--kpress-font-weight-sans-bold` to 700 prints at 650 until it instances its own; the
   700 pair was dropped on 2026-09-07 because nothing in KPress requested it.
 - **A host that inlines assets into one self-contained file** pays for faces that only a
-  printed copy uses: the ten instances are 154,452 bytes of woff2, about 151KB, which
-  base64 grows by a third to 205,948 bytes, about 201KB. Supplying them at PDF time
-  (linked assets for the print or export path, inlined assets for the page) is a
-  supported choice: without them the printed sans falls back to the variable face and
-  its outline paths, which is exactly the behavior before this feature.
+  printed copy uses: twelve instances at about 15KB each, which base64 grows by a third.
+  Supplying them at PDF time (linked assets for the print or export path, inlined assets
+  for the page) is a supported choice: without them the printed sans falls back to the
+  variable face and its outline paths, which is exactly the behavior before this
+  feature.
 - **A host that drives its own browser print** should let the print faces load before it
   prints. A face declared inside `@media print` starts loading only when print layout
   asks for it, and a face used by an `@page` margin box never enters

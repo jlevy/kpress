@@ -37,6 +37,12 @@ const METRICS = {
     "Main-Bold": { 48: [0, 0.636, 0, 0, 0.52] },
     "Math-Italic": { 97: [0, 0.498, 0, 0, 0.525] },
     scale: { "Main-Regular": 0.96, "Math-Italic": 1.102 },
+    fonts: [
+      "410 1em 'KPress Math Text Sans'",
+      "italic 410 1em 'KPress Math Text Sans'",
+      "650 1em 'KPress Math Text Sans'",
+      "italic 650 1em 'KPress Math Text Sans'",
+    ],
   },
   scale: { "Main-Regular": 1.025, "Math-Italic": 1.15 },
 };
@@ -407,30 +413,26 @@ const KATEX_REQUESTS = [
   "KaTeX_Math|italic|400|U+0-10FFFF",
 ];
 
-describe("katex-init.js paints the mathematics once", () => {
-  it("renders only once the composite and the KaTeX faces have loaded", async () => {
+describe("explicit mathematics font warmup", () => {
+  function warmMath() {
+    runInitScript();
+    return globalThis.kpressMathText.ready(mathNodes());
+  }
+
+  it("warms the selected composite and the KaTeX fallback faces", async () => {
     const loads = stubFontFaceSet();
     mountMath();
+    const warming = warmMath();
 
-    runInitScript();
-
-    // KaTeX renders into the live DOM, so a formula typeset before its faces
-    // decode is painted in the next family of the stack and repainted when the
-    // reading face arrives. Nothing is typeset while the loads are pending.
-    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
-
+    // Native rendering is independent of this optional batch preparation. Its
+    // mock emits no glyphs, so there are no actual render-time font requests.
+    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
     const requests = loads.map((load) => load.request);
-    // The two KaTeX families, face by face off `document.fonts`, so no matching
-    // stands between the wait and a face the page already holds. Nothing else in
-    // the set is touched: not the construct-specific families, not the prose
-    // face, and not the composite, which is asked for by description below.
     expect(requests.slice(0, KATEX_REQUESTS.length)).toEqual(KATEX_REQUESTS);
     expect(requests.join(" ")).not.toContain("KaTeX_Size1");
     expect(requests.join(" ")).not.toContain("PT Serif");
     expect(requests.join(" ")).not.toContain("KPress Math Text|");
 
-    // The composite's four slots, as descriptions, so a host that declared its
-    // own faces over these gets the ones it declared.
     const specs = loads.filter((load) => load.text !== undefined);
     expect(specs.map((load) => load.request)).toEqual([
       "400 1em 'KPress Math Text'",
@@ -438,180 +440,134 @@ describe("katex-init.js paints the mathematics once", () => {
       "700 1em 'KPress Math Text'",
       "italic 700 1em 'KPress Math Text'",
     ]);
-    // `document.fonts.load` loads a face only for a code point its
-    // `unicode-range` covers, so the sample reaches both faces of every slot:
-    // Latin and digits for the reading face, and Greek in both cases for the
-    // KaTeX halves, whose upright slots carry the capitals alone.
+    // Reach both unicode-range halves of each composite slot.
     for (const load of specs) {
       expect(load.text).toMatch(/[a-z]/);
       expect(load.text).toMatch(/[0-9]/);
       expect(load.text).toContain("α");
       expect(load.text).toContain("Ω");
-    }
-
-    for (const load of loads) {
       load.settle(true);
     }
-
-    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
-    expect(globalThis.katex.__setFontMetrics).toHaveBeenCalledTimes(FACES.length);
-    // The record a page's mathematics is debugged from says every request was
-    // covered by a face that loaded.
+    for (const load of loads.filter((load) => load.text === undefined)) {
+      load.settle(true);
+    }
+    expect(await warming).toEqual({ status: "ready" });
     expect(Object.values(waitRecord())).toEqual(Array(loads.length).fill("loaded"));
   });
 
-  it("adds the sans composite's slots where the page has sans-role mathematics", async () => {
-    // The sans slots are 400 and 650, not 400 and 700: a shorthand at the serif
-    // weights would match the wrong face and leave the one the caption is drawn
-    // from to arrive late, which is the flash the wait exists to prevent.
+  it("includes the sans slots when the batch has sans-role mathematics", async () => {
     const loads = stubFontFaceSet();
     mountProseAndCaption();
-
-    runInitScript();
-
-    const specs = loads.filter((load) => load.text !== undefined);
-    expect(specs.map((load) => load.request)).toEqual([
+    const warming = warmMath();
+    expect(loads.filter((load) => load.text !== undefined).map((load) => load.request)).toEqual([
       "400 1em 'KPress Math Text'",
       "italic 400 1em 'KPress Math Text'",
       "700 1em 'KPress Math Text'",
       "italic 700 1em 'KPress Math Text'",
-      "400 1em 'KPress Math Text Sans'",
-      "italic 400 1em 'KPress Math Text Sans'",
+      "410 1em 'KPress Math Text Sans'",
+      "italic 410 1em 'KPress Math Text Sans'",
       "650 1em 'KPress Math Text Sans'",
       "italic 650 1em 'KPress Math Text Sans'",
     ]);
     for (const load of loads) {
       load.settle(true);
     }
-    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(2));
+    expect(await warming).toEqual({ status: "ready" });
   });
 
-  it("asks for the sans slots alone under the reader's sans reading face", async () => {
-    // Every node is a sans node there, so the serif composite is never drawn and
-    // its four slots -- two of them KaTeX Greek files nothing else fetches --
-    // are not worth a request.
+  it("warms only the sans composite under the reader's sans reading face", async () => {
     const loads = stubFontFaceSet();
     mountProseAndCaption({ wrapper: 'data-kpress-prose-font="sans"' });
-
-    runInitScript();
-
-    const specs = loads.filter((load) => load.text !== undefined);
-    expect(specs.map((load) => load.request)).toEqual([
-      "400 1em 'KPress Math Text Sans'",
-      "italic 400 1em 'KPress Math Text Sans'",
+    const warming = warmMath();
+    expect(loads.filter((load) => load.text !== undefined).map((load) => load.request)).toEqual([
+      "410 1em 'KPress Math Text Sans'",
+      "italic 410 1em 'KPress Math Text Sans'",
       "650 1em 'KPress Math Text Sans'",
       "italic 650 1em 'KPress Math Text Sans'",
     ]);
+    for (const load of loads) {
+      load.settle(true);
+    }
+    await warming;
   });
 
-  it("asks for no sans slot on a page whose mathematics is all prose", () => {
-    // The wait is decided by `textMetricsSet`, the same function the render loop
-    // selects tables with, so "this page has sans mathematics" has one meaning.
+  it("warms no sans slot when all mathematics is prose", async () => {
     const loads = stubFontFaceSet();
     mountMath();
-
-    runInitScript();
-
+    const warming = warmMath();
     expect(loads.map((load) => load.request).join(" ")).not.toContain("Text Sans");
+    for (const load of loads) {
+      load.settle(true);
+    }
+    await warming;
   });
 
-  it("waits for no composite face when the document opts out", async () => {
+  it("warms no composite face when the document opts out", async () => {
     document.documentElement.dataset.kpressMathText = "katex";
     const loads = stubFontFaceSet();
     mountMath();
-
-    runInitScript();
-
+    const warming = warmMath();
     expect(loads.map((load) => load.request)).toEqual(KATEX_REQUESTS);
-
     for (const load of loads) {
       load.settle(true);
     }
-
-    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+    await warming;
   });
 
-  it("renders anyway when a face fails to load, and records which", async () => {
+  it("reports a failed optional face without undoing rendered mathematics", async () => {
     const loads = stubFontFaceSet();
     mountMath();
-
-    runInitScript();
-
+    const warming = warmMath();
     loads[0].settle(false);
     for (const load of loads.slice(1)) {
       load.settle(true);
     }
-
-    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
-    // A face that cannot be fetched must not take the mathematics with it, and
-    // must be legible afterwards as a face the wait did not in fact cover.
+    expect(await warming).toEqual({ status: "error" });
     expect(waitRecord()[loads[0].request]).toBe("error");
     expect(globalThis.kpressMathFaceWait[0].detail).toContain("the face did not load");
+    expect(document.querySelector("[data-kpress-math]").dataset.kpressMathRendered).toBe("true");
   });
 
-  it("renders at the three-second ceiling when the faces never settle", async () => {
-    // The deadline is what stops a font that hangs from meaning no mathematics at
-    // all, and it is the one branch the cases above cannot reach: they settle every
-    // load. Here nothing settles, so the render can only come from the race.
+  it("reports a timeout at the three-second ceiling", async () => {
     vi.useFakeTimers();
     const loads = stubFontFaceSet();
     mountMath();
-
-    runInitScript();
-
-    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
+    const warming = warmMath();
+    const settled = vi.fn();
+    void warming.then(settled);
     await vi.advanceTimersByTimeAsync(2999);
-    expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
-
+    expect(settled).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
-
-    expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
-    // Late mathematics in the fallback faces, not no mathematics: the tables are
-    // installed and the nodes are stamped exactly as on the settled path.
-    expect(globalThis.katex.__setFontMetrics).toHaveBeenCalledTimes(FACES.length);
-    expect(document.querySelector("[data-kpress-math]").dataset.kpressMathRendered).toBe("true");
-    // Every request is still outstanding, and the record says so: `pending` is how a
-    // page that repainted is told apart from one whose faces the wait did cover.
+    expect(await warming).toEqual({ status: "timeout" });
     expect(Object.values(waitRecord())).toEqual(Array(loads.length).fill("pending"));
   });
 
-  it("records a request that matched no face as empty", async () => {
-    // A description that matches nothing resolves with no faces, so the wait
-    // bought nothing for that slot. It is not an error and must not block the
-    // render, but it is the difference between a face the fix covers and one it
-    // does not, so the record has to say so.
+  it("reports a description that matched no face as empty", async () => {
     const loads = stubFontFaceSet();
     mountMath();
-
-    runInitScript();
-
+    const warming = warmMath();
     const empty = loads.find((load) => load.request === "700 1em 'KPress Math Text'");
     empty.settle(true, []);
     for (const load of loads.filter((load) => load !== empty)) {
       load.settle(true);
     }
-
-    await vi.waitFor(() => expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1));
+    expect(await warming).toEqual({ status: "empty" });
     expect(waitRecord()["700 1em 'KPress Math Text'"]).toBe("empty");
     expect(waitRecord()["400 1em 'KPress Math Text'"]).toBe("loaded");
   });
+});
 
+describe("native mathematics enhancement", () => {
   it("renders straight away where there is no font loading API", () => {
-    // No stub: a browser without `document.fonts` has no `font-display` either,
-    // and behaves exactly as it did before the wait existed.
     mountMath();
-
     runInitScript();
-
     expect(globalThis.renderMathInElement).toHaveBeenCalledTimes(1);
     expect(globalThis.kpressMathFaceWait).toBeUndefined();
   });
 
   it("loads no face on a page with no mathematics", () => {
     const loads = stubFontFaceSet();
-
     runInitScript();
-
     expect(loads).toHaveLength(0);
     expect(globalThis.renderMathInElement).not.toHaveBeenCalled();
     expect(globalThis.kpressMathFaceWait).toBeUndefined();

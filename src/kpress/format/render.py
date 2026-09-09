@@ -445,6 +445,8 @@ def _render_asset_manifest(
         return package_asset_manifest(
             mode=options.asset_mode,
             prefix=options.asset_url_prefix,
+            mono_font=options.mono_font,
+            mono_weights=options.mono_weights,
         ).merged(
             katex_asset_manifest(
                 mode=options.asset_mode,
@@ -492,6 +494,8 @@ def _render_asset_manifest(
         entry_points,
         mode=options.asset_mode,
         prefix=options.asset_url_prefix,
+        mono_font=options.mono_font,
+        mono_weights=options.mono_weights,
     )
     if has_math:
         assets = assets.merged(
@@ -740,6 +744,7 @@ def render_page(document: DocumentInput, options: RenderOptions | None = None) -
         palette=options.palette,
         prose_font=options.prose_font,
         math_text_font=options.math_text_font,
+        mono_font=options.mono_font,
         title=title,
         page_reset=_standalone_page_reset(),
         social_meta=social_meta,

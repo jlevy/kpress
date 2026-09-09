@@ -203,8 +203,8 @@ feature guarantees); the sections named in the table carry the architecture deta
   Native MathML is the fallback when scripting is unavailable or enhancement fails; it
   is temporarily suppressed while enhancement prepares the fonts.
   Once KaTeX has rendered, that MathML remains as the semantic and accessibility output.
-  Main/Math and composite faces are warmed before rendering; construct families are
-  fetched only when an expression needs them.
+  The runtime creates hidden math immediately, then waits for the rendered glyphs’
+  matching fonts before revealing each formula.
   By default the Latin letters and digits inside mathematics are drawn from the reading
   face and KaTeX lays them out from matching metrics; see
   [Math Text Face](#math-text-face).
@@ -239,8 +239,9 @@ feature guarantees); the sections named in the table carry the architecture deta
   popover with a `system`/`light`/`dark` icon chooser; embedded hosts own the control
   instead.
 - **Font model.** A global `font_mode` selects vendored reader faces (`custom`) or the
-  platform stack (`system`); reader fonts are vendored package assets rather than CDN
-  dependencies.
+  platform stack (`system`); `mono_font` and `mono_weights` decide separately which mono
+  faces a document declares at all.
+  Reader fonts are vendored package assets rather than CDN dependencies.
 
 ### Interactions
 
@@ -1063,6 +1064,100 @@ once and set the measure from it.
 
 ## Theme and Fonts
 
+### Typography System
+
+KPress assigns a face to each reading role, then tunes that face through named size and
+weight tokens. `src/kpress/format/static/css/style-tokens.css` owns those defaults;
+`document.css` and `components.css` apply them.
+The
+[font and math loading architecture](project/architecture/arch-2026-09-08-font-and-math-loading.md)
+owns readiness, prepared geometry, screen and print loading, and failure behavior.
+This section owns the perceptual choices and the map for replacing a face.
+
+| Role | Shipped face and tuning | Replacement boundary |
+| --- | --- | --- |
+| Serif reading | PT Serif at 400 and 700, with italic partners | Replace all four files and declarations together. Rebuild the `KPress Math Text` composite because its Latin metrics and Greek scales are measured against these faces. |
+| Sans reading and UI | Source Sans 3 Variable; regular 410, medium 550, bold 650 | `--kpress-font-weight-sans-regular` is the one regular-weight source. It accepts 200–500 and `devtools.instance_sans.REGULAR_WEIGHT` reads it; `--kpress-font-weight-sans-light` aliases it. Medium and bold remain independent design steps. |
+| Mathematics | PT Serif or Source Sans 3 Latin letters and digits composited with KaTeX operators, relations, delimiters, specialty alphabets, and scaled Greek | Keep the composite CSS, full KaTeX metric tables, scales, and warmup list consistent with the reading face. Sans also requires matching print instances. The replacement steps below distinguish authored serif CSS from generated sans CSS. |
+| Monospace | Planetaire Mono Text at 0.82 of the corresponding prose rung | Its 0.560em x-height becomes 0.459em, 91.8% of PT Serif’s 0.500em. This is a chosen proportion below x-height parity; the same 0.82 ratio holds at normal, small, and tiny sizes. |
+| Prose punctuation | `KPress Quotes` for curly single and double quotes ahead of PT Serif | Keep punctuation as a separate role. A serif replacement does not silently inherit quote widths or sidebearings that were tuned for another face. |
+| List markers | CSS square geometry derived from `--kpress-bullet-size` | Markers are geometry, not a font glyph. Preserve their size and offsets as part of the base-size ramp when changing a face. |
+
+**Weights have one owner.** The default sans steps are 410 regular, 550 medium, and 650
+bold. Changing the numeric regular token changes both prose and sans mathematics.
+The supported build range is 200–500; above 500 KaTeX can select its bold fallback, and
+650 also collides with the intentional bold composite slot.
+Run `uv run --frozen python -m devtools.instance_sans` first, then
+`uv run --frozen python -m devtools.katex_text_metrics`. The first command writes static
+print instances, `print-fonts.css`, and their asset records.
+The second writes metric tables and font warmup requests for both composite families,
+but updates CSS only inside the bounded generated sans block in `katex-text-face.css`.
+The serif CSS remains authored, with scale constants checked against the source fonts.
+Generated outputs are not edited by hand.
+
+**Baseline geometry and optical decoration are separate.** Prepared inline mathematics
+reserves the measured glyph box on the surrounding text baseline; its glyph baseline
+offset relative to adjacent text must be `0`. A font replacement must preserve that
+baseline contract before adjusting line height or decoration.
+Inline code uses balanced `0.175em` block padding as an optical treatment around
+Planetaire; that padding does not move the text baseline and should not be used to
+compensate for a mismatched face.
+The architecture record defines how prepared geometry is measured, hydrated, and
+verified.
+
+**Screen and print have the same metrics but different font material.** Screen sans uses
+the Source Sans 3 variable faces.
+Print uses generated static `KPress Print Sans` instances at every requested weight so
+Chromium embeds fonts instead of Type3 outline paths.
+Serif, mono, quote, and KaTeX faces are vendored static subsets on both media.
+`src/kpress/format/static/fonts/README.md` records provenance and licenses;
+`print-fonts.css` and generated font files record the print mapping.
+Matching family names is insufficient: the screen composite, print instance, and metric
+table must have the same glyph advances at each slot.
+
+#### Replacing a Typeface
+
+1. Choose the role and preserve its public hook in `style-tokens.css`:
+   `--kpress-font-prose`, `--kpress-font-sans`, `--kpress-font-mono`, or
+   `--kpress-font-punctuation`. A host-only substitution can use the corresponding
+   `--kpress-host-font-*` hook.
+   A shipped default replacement changes the assets and generated data below.
+2. Update the font bytes and provenance in `src/kpress/format/static/fonts/`, its
+   `README.md`, the matching license file, and `src/kpress/format/assets.py`. Source
+   declarations live in `css/style-tokens.css`, the generated `css/print-fonts.css`, the
+   `css/mono-planetaire-*.css` files, and the `katex/` CSS under the same static
+   directory. Use `devtools/subset_mono.py` for Planetaire-style subset changes and
+   `devtools/subset_quotes.py` for punctuation; do not hand-edit their output.
+3. For serif, update `PT_SERIF_*` and `FACE_PLANS` in `devtools/katex_text_metrics.py`,
+   then derive the `MAIN_*_SCALE` and `MATH_*_SCALE` constants from the new faces with
+   its `derive_scale_factors` helper.
+   `--print-scale` prints the percentages to put in the authored serif `size-adjust`
+   declarations in `katex/katex-text-face.css`; `--check` re-derives them from the
+   fonts. For sans, run `devtools/instance_sans.py` first so its `REGULAR_WEIGHT` and
+   print files are the metric generator’s inputs.
+   Then run `devtools/katex_text_metrics.py` to regenerate `katex/katex-text-metrics.js`
+   for both families and the bounded sans face block in `katex/katex-text-face.css`.
+4. Recheck size and ink relationships in `style-tokens.css`. For mono, preserve or
+   deliberately replace the 0.82 ratio and update the measured x-height and column
+   evidence. For punctuation, compare quote widths, sidebearings, and opening and closing
+   ink. Keep list markers in CSS geometry.
+5. Run each generator with `--check`, then `tests/test_katex_text_metrics.py`,
+   `tests/test_print_sans_faces.py`, `tests/test_mono_face.py`,
+   `tests/test_playwright_sans_math_face.py`, `tests/test_playwright_mono_face.py`, and
+   `tests/test_playwright_print_pdf_fonts.py`. Run `make test-browser` for the strict
+   browser gate. Inspect a serif page, a sans page, inline and display math, code,
+   quotations, lists, and print output.
+   The architecture record’s readiness and prepared-geometry checks remain required when
+   metrics change.
+
+KPress policy ends at these reusable role and metric contracts.
+A host may choose its own proportions above them.
+Squares, for example, uses an 18px prose base and a 19px sans base, 0.95 figure labels,
+0.92 captions and endnotes with a 1.4rem inset, and a 680 bold step.
+Its prepared-geometry integration and macOS text-rendering policy also belong to that
+host. Those values live in `packing/devtools/templates/paper-design.md` in Squares; they
+are examples of host composition, not KPress defaults.
+
 Theme mode values:
 
 - `system`
@@ -1200,6 +1295,11 @@ the host announces applied state through `theme:change`. See
 
 ### Math Text Face
 
+The canonical
+[font and math loading architecture](project/architecture/arch-2026-09-08-font-and-math-loading.md)
+describes publication preparation, runtime readiness, hydration, failure, and print.
+This section retains the face construction and metric details.
+
 Prose is set in PT Serif and mathematics in KaTeX, whose faces derive from Computer
 Modern; the two disagree in x-height and stroke weight, and no size token reconciles
 both. The math text face draws the Latin letters and digits inside mathematics from the
@@ -1281,21 +1381,30 @@ That exclusion is a statement about the renderer, not about the cascade, and it 
 however the scope is spelled.
 
 Same four slots, but each declares a **single** `font-weight` rather than the variable
-face’s whole axis, and its metric table is built at that same weight — 400 for the
+face’s whole axis, and its metric table is built at that same weight — 410 for the
 regular slots, `--kpress-font-weight-sans-bold` (650) for the bold ones, which is what
 `.mathbf` and `.boldsymbol` ask for instead of upstream’s 700. A KaTeX metric table
 describes one face *and one weight*, and Source Sans’s Latin advances move a median 7.1%
 across the 370–700 axis while its ink heights move 0.035 em at most; CSS Fonts 4 clamps
 a variable face to the range its `@font-face` declares, so a single value draws the
 weight the table was built at whatever the context asks for.
-Upstream’s `.katex { font: normal 1.21em … }` already resets `font-weight`, so
-mathematics in a sans context is set at 400 either way.
+The numeric `--kpress-font-weight-sans-regular` in `style-tokens.css` is the one
+adjustable input for regular sans prose and mathematics.
+It accepts 200–500; heavier regular requests would select bold KaTeX fallback glyphs.
+After changing it, run `python -m devtools.instance_sans` and then
+`python -m devtools.katex_text_metrics`. They generate the print instances and asset
+manifest, composite descriptors, Greek scales, metric tables, private CSS weight, and
+explicit font warmup requests.
+The CSS overrides KaTeX’s shorthand reset with the generated weight.
+`--kpress-font-weight-sans-light` aliases the regular token; medium and bold retain
+their own intentional weights.
+A host override of a prose token alone cannot change the fixed composite metrics.
 
 Under `@media print`, and declared last, the static `KPress Print Sans` instances at the
 same two weights are layered over the same ranges, so a printed page embeds a font
 rather than the Type3 outline paths Chromium writes for a variable face away from its
 default position (the reason [Print Sans Faces](#print-sans-faces) exists).
-The two agree exactly: instancing the variable face at 400 and 650 reproduces every
+The two agree exactly: instancing the variable face at 410 and 650 reproduces every
 Latin advance of the shipped instance, so one metric table is true of both — which is
 also why the generator measures the sans slots from those instance files.
 
@@ -1420,8 +1529,8 @@ Splitting the asset means giving all three a `has_sans_math` to follow.
 
 **First visible mathematics.** The composite families use separate font files, and an
 inlined font still decodes lazily.
-The shared `katex-math-runtime.js` prepares both the selected composite slots and KaTeX
-Main/Math before rendering.
+The shared `katex-math-runtime.js` lays out each formula immediately with the selected
+metric tables, then waits for the glyph fonts its HTML actually uses.
 Every render uses the same boundary, including a host’s early resize or input callbacks.
 
 The runtime renders each formula with visibility suppressed, reads the font combinations
@@ -1430,6 +1539,16 @@ revealing it. Large operators, delimiters and AMS symbols are therefore covered 
 eagerly downloading every KaTeX family.
 Source Sans and PT Serif metrics are selected immediately before rendering and restored
 afterwards; an older pending request cannot overwrite a newer formula on the same node.
+`ready()` remains an explicit batch warmup API; neither native enhancement nor an
+ordinary render waits for unused families, styles or weights.
+
+A host that needs exact space before its initial scripts execute can prepare measured
+KaTeX markup during publication and explicitly `hydrate()` it.
+Matching source, display mode and resolved font profile preserve the prepared DOM; a
+changed request or unavailable composite declaration causes normal rendering.
+The host owns the geometry reservations and other rendering options.
+This keeps browser measurement optional for hosts that need it, without adding a browser
+dependency to ordinary KPress generation.
 
 The head bootstrap also suppresses the native MathML fallback during enhancement.
 Otherwise a reader would first see the browser’s own math fonts, even if the first KaTeX
@@ -1458,15 +1577,16 @@ a little over double — and 4 requests and 76,692 B more in `math_text_font: ka
 of it is shared with the prose faces or the composite, but `KaTeX_Main-Italic` (17,288
 B) and `KaTeX_Main-BoldItalic` (17,080 B) are drawn by nothing else and are fresh on
 every math page in either mode.
-Over loopback the render costs about 12ms more; on a real connection the transfer is the
-whole of the cost, and it now sits in front of the first formula.
-It buys the case the earlier CI failure was chasing: `\mathbf`, `\mathit` and
-`\boldsymbol` repaint nothing at all, which waiting only on the two regular faces would
-give back. `kpr-hhdc` (composite subsets) shrinks the same bytes from the other end.
+That earlier warmup added about 12ms over loopback and put the transfer before the first
+formula.
+The current render path requests the actual glyphs instead, including `\mathbf`,
+`\mathit` and `\boldsymbol` when they occur.
+These figures describe the earlier implementation, not a current performance result.
+`kpr-hhdc` (composite subsets) addresses the font bytes separately.
 
-The two are asked for differently, and the difference is the host contract.
+The optional `ready()` warmup asks for the two kinds of faces differently.
 The KaTeX faces come from the pinned bundle, which is the only thing that declares them,
-so the init takes every face of those two families off `document.fonts` and calls
+so `ready()` takes every face of those two families off `document.fonts` and calls
 `FontFace.load()` on it: the bundle’s four and two rules are the complete list, all of
 them are wanted, and naming each face leaves no font matching between the script and
 faces the page already holds — which also makes the set the wait covers exact rather
@@ -1484,9 +1604,9 @@ What the wait asked for and what came back is left on `globalThis.kpressMathFace
 one entry per request, in order, each `{ request, outcome, faces, detail }`, where
 `outcome` is `loaded`, `empty` (matched no face, so it waited on nothing), `error` (with
 the reason in `detail`) or `pending` (the deadline won).
-Nothing in the page reads it; it is where mathematics that still repaints is diagnosed,
-and what `tests/test_playwright_math_text_face.py` asserts the ordering against, so that
-a face a browser declined to load is told apart from one the wait was supposed to cover.
+Nothing in the page reads it; it is where mathematics that still repaints is diagnosed.
+The browser tests inspect glyph readiness at each formula’s first visible frame,
+including formulas inserted into the DOM while hidden.
 The wait record is a diagnostic hook; the rendering methods themselves are pinned in
 `kpress.contract.PUBLIC_MATH_RUNTIME_METHODS`. The composite carries
 `font-display: block`, like the prose faces and unlike the KaTeX bundle’s `swap`, for
@@ -1623,9 +1743,11 @@ and leaves the paths alone, so the sans reads a step lighter than the serif and 
 mathematics beside it.
 Measured with Quartz, the engine behind Preview, on one 12pt line, glyph `h`, as the
 fraction of the glyph box covered in ink, with font smoothing off then on.
-Weight 410 is what the measurement happened to be taken at, a weight a host asks for
-rather than one KPress does; the effect is Type3 against embedded, not that weight, and
-a 410 request lands on the 400 instance:
+This measurement predates KPress’s 410 regular instance.
+At that checkpoint, 410 was a host request and landed on the 400 instance; the effect
+measured here is Type3 against embedded output, rather than a property of that weight.
+Current builds use 410 as the shared regular sans weight and ship a matching print
+instance.
 
 | How the glyph reaches the PDF | 3 px/pt | 2 px/pt |
 | --- | --- | --- |
@@ -1653,16 +1775,16 @@ request, since a weight the set does not carry is matched to the nearest instanc
 The variable face stays behind it for the case where the family cannot answer at all, a
 build that ships without the instances, which is the behavior before this feature.
 
-**The set.** Five weights (370, 400, 550, 600, 650) in normal and italic, ten files of
-about 15KB, generated from the vendored variable faces by `devtools/instance_sans.py`
-into `static/fonts/` together with the stylesheet `static/css/print-fonts.css` that
-declares them. Both are generated files; `python -m devtools.instance_sans --check`
-verifies the shipped bytes and runs in both `make lint` and `make lint-check`, the
-second of which is what CI runs.
-The weights are the ones KPress’s own sans contexts request: the three weight tokens
-(370, 550, 650), the footnote controls’ 600, and 400 for the resets.
-The two sans-mode headings ask for 380 and 440, which CSS weight matching lands on 370
-and 400; `.kpress-prose h4`’s 540 lands on 550.
+**The set.** Six weights (370, 400, 410, 550, 600, 650) in normal and italic, twelve
+files of about 15KB, generated from the vendored variable faces by
+`devtools/instance_sans.py` into `static/fonts/` together with the stylesheet
+`static/css/print-fonts.css` that declares them.
+Both are generated files; `python -m devtools.instance_sans --check` verifies the
+shipped bytes and runs in both `make lint` and `make lint-check`, the second of which is
+what CI runs. The set includes the regular, medium and bold tokens (410, 550, 650), the
+footnote controls’ 600, and the existing 370/400 instances for deliberately lighter
+typography. The two sans-mode headings ask for 380 and 440, which CSS weight matching
+lands on 370 and 410; `.kpress-prose h4`’s 540 lands on 550.
 
 A 700 pair shipped until 2026-09-07, on the belief that bold asked for it.
 It does not: `.kpress b, .kpress strong` sets the bold token, so a UA-default `bold`
@@ -1853,12 +1975,102 @@ paints.
 
 ### Mono Face
 
-Code is set in the platform’s own monospace stack -- `ui-monospace`, `SFMono-Regular`,
-Menlo, Consolas -- so it is the one role a KPress document does not draw from a face
-KPress ships, and `--kpress-font-size-mono` stays at `0.82` of the base, a ratio tuned
-for those faces.
-Planetaire Mono Text is the face chosen to replace it, sized by x-height
-at `0.87`, and lands with on/off and weight settings under `kpr-v731` and `kpr-hqrr`.
+Code is set in **Planetaire Mono Text**: B612 Mono’s letterforms with Hack’s punctuation
+and symbols, under the SIL Open Font License, vendored as latin subsets from
+[jlevy/planetaire](https://github.com/jlevy/planetaire).
+It was chosen from a four-way comparison beside PT Serif (Menlo, Source Code Pro, Hack
+and Planetaire), each sized from its own ink rather than from its nominal point size.
+Before it, code was the one role a document did not draw from a face KPress ships, so a
+printed page carried whatever mono the exporting machine had: the explainer PDF that
+started this work embedded 56 KB of the build machine’s Menlo.
+
+**The size, a judgement measured against the ink.** `--kpress-font-size-mono` is `0.82`
+of the prose size.
+The ratio is a decision about how code should read beside prose, not a
+value the two faces force; what the ink supplies is the scale that decision is made on.
+Planetaire draws an x-height of 1120/2000 = 0.560 em against PT Serif’s 500/1000 =
+0.500, so x-height parity — code and prose showing the same lowercase height — would
+want 0.500/0.560 = `0.893`. At `0.82` code’s x-height is 0.459 em, **91.8%** of the
+prose x-height beside it: deliberately below parity, so a code span reads as an inset
+rather than competing with the line it sits in.
+`0.87` put it at 97.4%, near enough to parity that code read too large beside the prose;
+`0.82` is the owner’s decision of 2026-09-08.
+
+The width follows from the same number: a mono column is 1204/2000 = 0.602 em wide, so
+45 / (0.82 × 0.602) ≈ **91 columns** fit the `--kpress-measure` reading column (91.16,
+and a column is not divisible) — six more than `0.87` allowed.
+`tests/test_mono_face.py` re-derives both figures from the shipped faces, so the ratio’s
+consequences cannot drift from the ink even though the ratio itself is a choice.
+The `-small` and `-tiny` rungs derive from the mono rung rather than from the base, so
+`--kpress-host-font-size-mono` retunes all three at once.
+Their multipliers are `0.9` and `0.85` — the prose ramp’s own steps, since the two ramps
+pair by index — which is what holds all three rungs at the same 91.8%. They were `0.915`
+and `0.855`, the pre-Planetaire absolutes rescaled and tuned for the system monos this
+face replaced, which left the small and tiny rungs above the rung they sit under rather
+than level with it.
+
+**What ships, and what a document declares.** `devtools/subset_mono.py` subsets seven
+upstream styles to the same latin `unicode-range` every other vendored face covers and
+writes each one beside a stylesheet of its own: `mono-planetaire-<weight>-<style>.css`,
+one `@font-face` each.
+One stylesheet per style is the mechanism behind `mono_weights`, and selecting
+stylesheets is how a render says so without rewriting CSS. What it buys is the built
+tree: a style nobody declared is never linked or copied, so the default set leaves three
+of the seven subsets (48 KB of woff2) out of a static build, and `mono_font: system`
+leaves all seven out (104 KB). It does not buy fewer fetched bytes on top of that, and
+the earlier claim that it did — that a single-file page inlines every face it declares —
+described behaviour KPress does not have: `single-file` export is refused, inline mode
+leaves woff2 external, and no asset mode base64s a font.
+
+**The default is every style the packaged stylesheets ask for**: regular, bold, italic
+and bold-italic. `code` resolves to 400 and the highlighter’s keywords to 700;
+`syntax.css` sets comment tokens italic and preprocessor and docstring tokens italic
+*and* 700. A style a rule asks for and a document does not declare is not absent from
+the page — the browser invents it, which is the one thing this face was vendored to
+stop.
+
+Two facts settle the default, and they pull the same way:
+
+- **Declaring is not loading.** A browser fetches a declared face only when a glyph
+  resolves to it, so the cost of a declaration falls on the page that uses the style and
+  on no other. Measured with all four declared: a prose page with no code fetches nothing
+  and leaves all four faces `unloaded`; a page of Python fetches `400-italic` for its
+  comments and leaves `700-italic` `unloaded`, because Pygments’ Python lexer emits no
+  italic-and-700 token — a page of C, whose `#include` does, fetches that one too.
+  KPress already declares four PT Serif faces on this reasoning; mono declaring two of
+  four was the outlier.
+- **Synthesis is what breaks the rule that every glyph comes from a shipped face.** The
+  two axes fail differently.
+  A missing slant is drawn by shearing the upright face: still `/Type0` in a PDF, but
+  leaning about 3° steeper than the drawn italic (Chromium’s shear is a flat 0.25, i.e.
+  14.04°, against the 11° the face is drawn with).
+  A missing weight is drawn by emboldening a lighter face, which Chromium cannot express
+  as an embedded font and emits as **`/Type3` glyph procedures** — a page of paths that
+  only looks like text, unsearchable and unselectable, and the precise failure this
+  feature exists to remove.
+
+Because of the second, a set that leaves either axis synthesized is refused rather than
+accepted and quietly degraded, at both surfaces that take it (`format.mono_weights` and
+`RenderOptions.mono_weights`) and in one shared message — see the table below.
+The three heavier italics upstream offers are not vendored at all, since no rule reaches
+an italic above 700.
+
+`mono_font: system` declares none of them, hands `--kpress-font-mono` back to
+`ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`, and drops the faces from the
+manifest, so a hosted page fetches nothing and an inlining host carries nothing.
+That asset consequence is why it is a render option and not only a CSS switch; the
+reader-facing `font_mode="system"` also puts code in the platform mono, but leaves the
+asset set alone, exactly as it does for PT Serif.
+The two are not equivalent in print, though: `mono_font: system` prints code from the
+platform mono as an embedded `/Type0` font, while `font_mode: system` prints the *sans*
+roles as `/Type3` outlines on macOS, because Chromium cannot embed the system UI face at
+any weight. Measured in
+[System Fonts and Printed Outlines](#system-fonts-and-printed-outlines).
+
+Provenance, sha256 and licences are in
+[`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md); what a host
+that inlines assets prunes is in
+[Operations and Host Integration](kpress-operations-and-host-integration.md#host-integration).
 
 ### Document Actions Widget
 
@@ -1932,7 +2144,78 @@ override any single role on its own, and otherwise the vendored reader faces app
 | `--kpress-font-footnote` | sans (via `--kpress-font-sans`) | footnote previews and the bottom footnotes section | `--kpress-host-font-footnote` |
 | `--kpress-font-table` | sans (via `--kpress-font-sans`) | data tables | `--kpress-host-font-table` |
 | `--kpress-font-body` | sans: Source Sans 3 | `.kpress` wrapper base (a fallback; `.kpress-prose` overrides it for content) | `--kpress-host-font-body` |
-| `--kpress-font-mono` | mono: system mono stack | code fences, inline code | `--kpress-host-font-mono` |
+| `--kpress-font-mono` | mono: Planetaire Mono Text | code fences, inline code | `--kpress-host-font-mono` |
+
+**Every font setting, on one surface.** Four settings and two sizing hooks decide which
+faces a document uses; each is a `RenderOptions` field, most are also a `kpress.yml`
+key, and each is readable from the rendered markup.
+Two of the rows carry a consequence the row itself cannot hold: none of the five is a
+`kpress render` flag ([The CLI Is Not a Font Surface](#the-cli-is-not-a-font-surface)),
+and `font_mode: system` changes what an exported PDF is made of
+([System Fonts and Printed Outlines](#system-fonts-and-printed-outlines)).
+
+| Setting | Options | Config key | Data attribute | Host hook |
+| --- | --- | --- | --- | --- |
+| `font_mode` | `custom` (default), `system` | none (render option only) | `data-kpress-fonts` on the `.kpress` article; the reader’s own choice is `data-kpress-font-set` on `<html>` | `--kpress-host-font-mono` still leads under `system`; every other role token is overridden outright |
+| `prose_font` | `serif` (default), `sans` | `format.prose_font` | `data-kpress-prose-font` on `<html>` | `--kpress-host-font-prose-sans` for the sans reading stack |
+| `math_text_font` | `prose` (default), `katex` | `format.math_text_font` | `data-kpress-math-text` on `<html>` | none: the composite hard-names `KPress Math Text` and reads no host hook; a host substitutes a math face through the two seams below |
+| `mono_font` | `planetaire` (default), `system` | `format.mono_font` | `data-kpress-mono-font` on `<html>` | `--kpress-host-font-mono` |
+| `mono_weights` | `regular`, `bold`, `italic`, `bold-italic` (all four the default), plus any of `medium`, `semibold`, `extrabold` | `format.mono_weights` | none: it selects stylesheets, not a switch | none |
+| the type ramp | — | — | — | `--kpress-host-font-size-base`, the one knob everything derives from |
+| the mono rung | — | — | — | `--kpress-host-font-size-mono`, which carries small and tiny with it |
+
+**Two cells above read “none”, and each reads that way for its own reason.**
+`math_text_font` reads no host hook because the composite is more than a family name.
+`katex/katex-text-face.css` names `KPress Math Text` in all 44 of its `font-family`
+declarations and reads none of the `--kpress-host-font-*` variables, so a host that sets
+`--kpress-host-font-prose: Palatino` moves the prose and the headings and leaves the
+mathematics in PT Serif.
+Measured: `.kpress-prose p` computes `Palatino, serif` while `.katex .mord.mathnormal`
+computes `"KPress Math Text", KaTeX_Math, serif` on the same page.
+That is the design and not a gap in it.
+KaTeX lays out from the per-face metric tables in `globalThis.kpressKatexTextMetrics`,
+and the Greek slots carry `size-adjust` values computed against PT Serif’s x-height and
+cap height, so a family swapped by CSS variable alone would leave Computer Modern boxes
+around the new face’s glyphs.
+A host substitutes a math face by redeclaring the `KPress Math Text` faces after
+`katex/katex-text-face.css` and regenerating the tables with
+`devtools/katex_text_metrics.py`; both seams, the sans twin, and the two KaTeX families
+a host must *not* redeclare are in
+[Operations and Host Integration](kpress-operations-and-host-integration.md#host-integration).
+`mono_weights` reads no host hook for an unrelated reason: it selects stylesheets rather
+than setting a token, and `--kpress-host-font-mono` is the hook for the face those
+stylesheets declare.
+
+`mono_weights` is checked rather than merely parsed, because the interesting values fail
+quietly. Both surfaces that accept it refuse the same sets: `format.mono_weights` at
+config load, and `RenderOptions.mono_weights` in `__post_init__`, so an export or an
+embedding host’s own call cannot slip a set past the gate a `kpress.yml` could not.
+One message serves both (`format.assets.mono_weights_rejection`), differing only in
+whether it names the YAML key or the dataclass field.
+Under `mono_font: planetaire` the set must cover all four styles the packaged
+stylesheets ask for; anything less is refused, naming the missing styles and what the
+browser would have drawn instead:
+
+| set | what it leaves to the browser | verdict |
+| --- | --- | --- |
+| the four defaults, with or without `medium`/`semibold`/`extrabold` | nothing | accepted |
+| `[regular, bold]` | comment and docstring tokens sheared from the upright faces | refused (slant synthesis) |
+| `[regular, bold, italic]` | docstring tokens emboldened from `400-italic` | refused — measured `/Type3` |
+| `[regular, italic]`, `[regular]` | keyword tokens emboldened too | refused — measured `/Type3`, up to 2.8× the PDF size |
+| `[medium, bold]` | nothing, but no 400 face exists, so ordinary code is set in Medium | refused (no `regular`) |
+| `[]` | everything: the page names a family nothing declares, keeps Planetaire’s 0.82 size ratio, and draws in the platform mono | refused — use `mono_font: system` |
+
+Under `mono_font: system` no Planetaire face is declared at all, so `mono_weights` is
+ignored and any value is accepted, `[]` included.
+That is the supported way to ship no mono face; an empty weight list is not.
+
+Two of those change what ships rather than only how it renders.
+`mono_font: system` drops every Planetaire face and its stylesheets from the manifest,
+and `mono_weights` narrows that set to the styles named; the rest are display switches
+over an unchanged asset set.
+A reader’s persisted `font_mode` and `prose_font` choices override the site default at
+display time, which is why those two are stamped where a bootstrap can re-stamp them;
+`mono_font` and `mono_weights` are publishing decisions and are not reader-switchable.
 
 The reading body is therefore serif by default and is settable serif↔sans per role: a
 host flips it by setting `--kpress-host-font-prose` (a host app’s serif/sans
@@ -1946,14 +2229,58 @@ footnote preview tooltips, so the two always agree.
 Every text stack leads with a face KPress ships, so a document draws the same glyphs on
 any machine and a printed page embeds them rather than borrowing from the renderer; the
 system stacks trailing each family are the fallback for a face that failed to load, not
-part of the design. Mono is the standing exception, and `font_mode="system"` is the one
-place the platform is asked for a font on purpose.
+part of the design. `font_mode="system"` and `mono_font="system"` are the two places the
+platform is asked for a font on purpose.
 
 Vendored font files ship as package assets and static builds copy them into the output
 tree; per-file provenance, sha256 and licence are recorded in
 [`static/fonts/README.md`](../src/kpress/format/static/fonts/README.md).
 The sans role resolves to a different stack under print, through its own hook
 `--kpress-host-font-sans-print`: see [Print Sans Faces](#print-sans-faces).
+
+#### System Fonts and Printed Outlines
+
+`font_mode: system` prints outlines on macOS, and a reader can reach it.
+The setting changes no assets, but an exported PDF carries `/Type3` glyph procedures for
+every sans role: unsearchable, unselectable paths that only look like text.
+That is the same failure the `mono_weights` gate exists to prevent, reached through the
+settings widget’s own **System fonts** toggle rather than through a config file.
+Measured on one page (prose, a sans heading, a footnote, a table and a code block) taken
+through `render_pdf`:
+
+| `font_mode` | PDF size | what the PDF embeds | `/Type3` |
+| --- | --- | --- | --- |
+| `custom` | 31,846 bytes | PT Serif, the three print-sans instances, three Planetaire styles | none |
+| `system` | 91,339 bytes (2.9×) | Georgia and Menlo from the exporting machine, plus PT Serif and one print-sans instance for the print-only roles | 7 objects over 3 descriptors, every one `.SFNS` |
+
+The cause is the face, not the weight.
+Chromium writes the macOS system UI font’s descriptors (`EAAAAA+.SFNS-Regular`,
+`JAAAAA+.SFNS-Regular`, `LAAAAA+.SFNS-Bold`) with **no `FontFile` at all**, so every
+glyph drawn in that face becomes a path.
+Rounding KPress’s own sans weight tokens (550 and 650, which no platform face has) to
+400 and 700 inside the `system` block was measured and does not remove them: the same
+three descriptors appear, still with no `FontFile`, and the PDF only shrinks to 83,363
+bytes because the synthetic embolden strokes go away.
+So this is written down rather than rounded away.
+`mono_font: system` is not affected: code goes to Menlo, which Chromium does embed, as
+`/Type0`. A reader who wants the platform faces on screen and a printable PDF should
+export from the default `custom` setting.
+
+#### The CLI Is Not a Font Surface
+
+`kpress render`, `kpress format` and `kpress export` take no font flags, so a document
+that wants a non-default face is produced through `kpress build --config`, through
+`KPressExportRequest`, or through `RenderOptions` directly.
+That is the CLI’s shape rather than a gap in this feature: no per-document command
+exposes *any* `RenderOptions` field beyond `--output` and `--asset-mode`, so there is no
+`--theme`, `--palette`, `--content-card` or `--no-toc` either.
+Adding five font flags to `render` alone would leave `format` and `export` behind, which
+moves the asymmetry instead of removing it, and would pin a new public command surface
+in `kpress.contract` on the strength of one feature.
+What matters is that the surfaces which *do* carry the settings agree:
+`format.mono_weights` and `RenderOptions.mono_weights` refuse the same sets in the same
+words, and `KPressExportRequest` carries `mono_font` and `mono_weights` through to both
+the render and the emitted asset tree.
 
 ## Document Components
 
@@ -2006,19 +2333,18 @@ Required document components:
   a vendored, self-hosted KaTeX bundle (pinned `katex.min.js` + `auto-render` + a small
   init shim, loaded as deferred classic scripts) replaces the TeX node in place on
   `DOMContentLoaded`, after the rest of the document has painted.
-  This is deliberate progressive enhancement: prose is never blocked on math, and math
-  is filled in once document layout is stable.
-  Build-time prerendering is explicitly **not** adopted: it would require a Node/JS or
-  python-katex toolchain at publish time, which conflicts with KPress’s toolchain-free,
-  self-contained sealing story.
+  This is progressive enhancement: prose does not wait for math.
+  Ordinary KPress generation remains browser-free.
+  Hosts can optionally prepare measured math geometry during publication and hydrate it
+  through the shared runtime; see the
+  [font and math loading architecture](project/architecture/arch-2026-09-08-font-and-math-loading.md).
   The cost is accepted: ~290K of KaTeX CSS+JS for documents that contain math (zero for
   documents that do not).
   The KaTeX font faces are not subsetted or bundled eagerly.
   KaTeX lays out using precomputed metrics, including the custom reading-face tables
-  where enabled. The shared runtime loads all six `KaTeX_Main` and `KaTeX_Math` faces up
-  front, with the selected composite’s four slots.
-  It then inspects each hidden rendered formula and waits for its required faces before
-  revealing it; see [Math Text Face](#math-text-face).
+  where enabled. The shared runtime inspects each hidden rendered formula and waits for
+  the faces matching its rendered glyph requests before revealing it; see
+  [Math Text Face](#math-text-face).
   Fraktur/Script/Caligraphic/SansSerif/Typewriter, AMS and Size1–4 are fetched only when
   used. An embedding host with a pruned, inlined set may explicitly request all its
   declared faces. All twenty faces are vendored (package size, not client transfer);

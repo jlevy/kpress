@@ -12,9 +12,11 @@ import zipfile
 from pathlib import Path
 
 from devtools.public_hygiene import find_documentation_findings, find_text_findings
+from kpress.format.assets import MONO_FONT_ASSETS
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
+LICENSES = ROOT / "src" / "kpress" / "licenses"
 REPOSITORY_ONLY_PARTS = {
     ".agents",
     ".claude",
@@ -26,6 +28,34 @@ REPOSITORY_ONLY_PARTS = {
     "node_modules",
 }
 REPOSITORY_ONLY_NAMES = {".copier-answers.yml", "AGENTS.md", "CLAUDE.md"}
+
+
+def _mono_asset_suffixes() -> set[str]:
+    """Both files of every mono style the package declares.
+
+    ``MONO_FONT_ASSETS`` is what a document renders from: a style it names pulls a
+    stylesheet and the face that stylesheet declares, and a page that gets one without
+    the other draws code in a synthesized face. Checking a single pair would let a
+    packaging change drop the other six and surface at render instead of at build.
+    """
+
+    return {f"kpress/format/static/{asset}" for pair in MONO_FONT_ASSETS.values() for asset in pair}
+
+
+def _license_suffixes() -> set[str]:
+    """Every license text in the source tree.
+
+    Each one is an obligation of something the package ships, and the vendored font
+    name records go further and say the full texts travel with the distribution. A
+    wheel that drops one is a licensing defect rather than a missing convenience file,
+    so the set is read from the directory instead of listed here: a license added
+    beside a new component is required the moment it lands.
+    """
+
+    names = sorted(path.name for path in LICENSES.glob("*.txt"))
+    if not names:
+        raise RuntimeError(f"no license texts under {LICENSES}")
+    return {f"kpress/licenses/{name}" for name in names}
 
 
 def _single_artifact(pattern: str, label: str) -> Path:
@@ -61,14 +91,14 @@ def _inspect_wheel(wheel: Path) -> None:
             # static Source Sans 3 instances it declares (devtools/instance_sans.py).
             "kpress/format/static/css/print-fonts.css",
             "kpress/format/static/fonts/kpress-print-sans-latin-550-normal.woff2",
-            # The quote face (devtools/subset_quotes.py) and the licence of the face it
-            # is six glyphs of.
+            # The quote face (devtools/subset_quotes.py).
             "kpress/format/static/fonts/kpress-quotes.woff2",
-            "kpress/licenses/source-serif-4.txt",
             "kpress/format/templates/page.html.jinja",
-            "kpress/licenses/github-slugger.txt",
-            "kpress/licenses/katex.txt",
         }
+        # Every mono stylesheet and face (devtools/subset_mono.py), and every license
+        # text the package carries.
+        required_suffixes |= _mono_asset_suffixes()
+        required_suffixes |= _license_suffixes()
         for suffix in required_suffixes:
             if not any(name.endswith(suffix) for name in names):
                 raise RuntimeError(f"wheel is missing {suffix}")

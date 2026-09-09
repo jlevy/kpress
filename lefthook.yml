@@ -37,7 +37,7 @@ pre-commit:
     # be repeated here — keep the two in sync.
     codespell:
       glob: "*.{py,md}"
-      run: uv --config-file uv.toml run --frozen codespell --write-changes --skip='tests/fixtures/*,tests/golden/accepted/*,tests/e2e/docs/*,*/static/katex/*,*/static/icons/*' {staged_files}
+      run: uv --config-file uv.toml run --frozen codespell --write-changes --skip='tests/fixtures/*,tests/golden/accepted/*,tests/e2e/docs/*,*/static/katex/*,*/static/icons/*,*/kpress/licenses/*' {staged_files}
       stage_fixed: true
 
     # Markdown formatting with flowmark-rs. Whole-repo, not {staged_files}:

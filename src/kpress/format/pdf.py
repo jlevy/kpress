@@ -92,7 +92,10 @@ def _sync_playwright() -> _PdfPlaywrightContext:
 #: the page it belongs to is drawn, and the footer would print empty. Reading the
 #: resolved value covers a host that redirects the tokens, since the print stack is
 #: what the root computes to under print media.
-_MARGIN_BOX_FONT_TOKENS: Final = ("--kpress-font-sans", "--kpress-font-prose")
+_MARGIN_BOX_FONT_TOKENS: Final = (
+    ("--kpress-font-sans", "--kpress-font-weight-sans-regular"),
+    ("--kpress-font-prose", "--_kpress-font-weight-prose"),
+)
 
 #: Latin letters and digits, which every KPress face covers with its ``unicode-range``:
 #: ``document.fonts.load`` fetches only the faces whose range answers the sample.
@@ -115,13 +118,15 @@ async ([tokens, sample, timeoutMs]) => {
     document.documentElement.getBoundingClientRect();
     await document.fonts.ready;
     const root = getComputedStyle(document.documentElement);
-    const weight = root.fontWeight || "400";
     const stacks = tokens
-      .map((token) => root.getPropertyValue(token).trim())
-      .filter((stack) => stack.length > 0);
+      .map(([familyToken, weightToken]) => ({
+        family: root.getPropertyValue(familyToken).trim(),
+        weight: root.getPropertyValue(weightToken).trim() || root.fontWeight || "400",
+      }))
+      .filter((stack) => stack.family.length > 0);
     await Promise.all(
       stacks.map((stack) =>
-        document.fonts.load(`${weight} 1rem ${stack}`, sample).catch(() => undefined),
+        document.fonts.load(`${stack.weight} 1rem ${stack.family}`, sample).catch(() => undefined),
       ),
     );
     await document.fonts.ready;

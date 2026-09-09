@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -14,7 +14,15 @@ from urllib.parse import urlparse
 from kpress.errors import KPressPublishError
 from kpress.format import AssetManifest, DocumentInput, RenderedPage, RenderOptions, render_page
 from kpress.format.assets import content_hash, package_asset_output_path
-from kpress.format.model import AssetMode, DiagramMode, OptimizerMode, ThemeMode
+from kpress.format.model import (
+    DEFAULT_MONO_WEIGHTS,
+    AssetMode,
+    DiagramMode,
+    MonoFont,
+    MonoWeight,
+    OptimizerMode,
+    ThemeMode,
+)
 from kpress.models import KPressExportRequest
 from kpress.output import write_bytes_atomic, write_text_atomic
 from kpress.publish.assets import copy_katex_assets, copy_package_assets
@@ -542,6 +550,8 @@ def build_site(
                 palette=config.format.palette,
                 prose_font=config.format.prose_font,
                 math_text_font=config.format.math_text_font,
+                mono_font=config.format.mono_font,
+                mono_weights=config.format.mono_weights,
                 content_card=config.format.content_card,
                 show_doc_header=config.format.show_doc_header,
                 include_toc=config.format.toc,
@@ -713,6 +723,8 @@ def emit_standalone_assets(
     asset_mode: AssetMode,
     page: RenderedPage | None = None,
     source: Path | None = None,
+    mono_font: MonoFont = "planetaire",
+    mono_weights: Iterable[MonoWeight] = DEFAULT_MONO_WEIGHTS,
 ) -> list[Path]:
     """Emit the asset tree beside a standalone HTML artifact.
 
@@ -743,6 +755,8 @@ def emit_standalone_assets(
         dest_html.parent,
         asset_mode=asset_mode,
         manifest=package_manifest,
+        mono_font=mono_font,
+        mono_weights=mono_weights,
     )
     emitted = [dest_html.parent / file.path for file in files]
     if katex_manifest is not None and katex_manifest.assets:
@@ -805,6 +819,8 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
             asset_url_prefix=STANDALONE_ASSET_PREFIX,
             extra_tags=request.extra_tags,
             extra_attributes=request.extra_attributes,
+            mono_font=request.mono_font,
+            mono_weights=request.mono_weights,
         ),
     )
     report = build_html(
@@ -812,5 +828,12 @@ def export_document(request: KPressExportRequest) -> dict[str, object]:
         destination,
         BuildOptions(optimizer="full" if request.optimize else "none"),
     )
-    emit_standalone_assets(destination, asset_mode=asset_mode, page=page, source=source)
+    emit_standalone_assets(
+        destination,
+        asset_mode=asset_mode,
+        page=page,
+        source=source,
+        mono_font=request.mono_font,
+        mono_weights=request.mono_weights,
+    )
     return report.as_dict()

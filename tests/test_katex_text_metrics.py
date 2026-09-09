@@ -10,6 +10,7 @@ from fontTools.ttLib import TTFont
 from devtools.katex_text_metrics import (
     ASSET_HEADER,
     ASSET_PATH,
+    FONTS_KEY,
     GLOBAL_NAME,
     KATEX_BUNDLE,
     KATEX_FONTS,
@@ -39,11 +40,11 @@ PT_SERIF_DIGIT_ONE = [0, 0.712, 0, 0, 0.533]
 PT_SERIF_ITALIC_N = [0.006, 0.512, 0, 0, 0.552]
 
 # The same, from Source Sans 3 at the two weights the sans slots pin. The pair is the
-# point: a KaTeX table describes one weight, and `1` is 4.6% wider at 650 than at 400,
+# point: a KaTeX table describes one weight, and `1` is wider at 650 than at the regular weight,
 # so a single table built at one of them would misdescribe the other.
-SOURCE_SANS_DIGIT_ONE = [0, 0.638, 0, 0, 0.497]
+SOURCE_SANS_DIGIT_ONE = [0, 0.638, 0, 0, 0.498]
 SOURCE_SANS_BOLD_DIGIT_ONE = [0, 0.636, 0, 0, 0.52]
-SOURCE_SANS_ITALIC_N = [0, 0.498, 0, 0, 0.525]
+SOURCE_SANS_ITALIC_N = [0, 0.498, 0, 0, 0.526]
 
 
 @pytest.fixture(scope="module")
@@ -197,18 +198,18 @@ def sans(asset: dict[str, Any]) -> dict[str, Any]:
 
 
 def test_sans_set_carries_the_same_faces_and_its_own_factors(sans: dict[str, Any]) -> None:
-    assert set(sans) == {*SANS_SCALE_FACTORS, SCALE_KEY}
+    assert set(sans) == {*SANS_SCALE_FACTORS, SCALE_KEY, FONTS_KEY}
     assert sans[SCALE_KEY] == SANS_SCALE_FACTORS
     # Below 1 for the upright slots, which the serif factors never are, because the factor
     # equalizes LATIN cap heights: KaTeX's `H` is 683 against the 656 Source Sans draws at
-    # 400 and the 700 PT Serif draws. What it leaves the Greek at is not one number, since
+    # 410 and the 700 PT Serif draws. What it leaves the Greek at is not one number, since
     # Computer Modern's Greek capitals are not one height; the generator records the
     # measured spread beside the factors.
     assert SANS_SCALE_FACTORS["Main-Regular"] < 1 < SCALE_FACTORS["Main-Regular"]
 
 
 def test_sans_digits_come_from_the_weight_its_slot_pins(sans: dict[str, Any]) -> None:
-    """The regular table is built at 400 and the bold one at 650, which is what lets the
+    """The regular table is built at 410 and the bold one at 650, which is what lets the
     composite pin each slot's `font-weight` and still describe what it draws."""
     assert _table(sans, "Main-Regular")["49"] == SOURCE_SANS_DIGIT_ONE
     assert _table(sans, "Main-Bold")["49"] == SOURCE_SANS_BOLD_DIGIT_ONE
@@ -296,7 +297,7 @@ def test_the_upright_sans_factor_is_the_drawn_cap_not_the_declared_one(
     """Source Sans declares one cap height for its whole weight axis and draws another.
 
     It varies sxHeight along the axis and the drawn x-height tracks it to the unit, but
-    sCapHeight stays 0.660 at every instance while the `H` shortens: 0.656 at the 400 slot
+    sCapHeight stays 0.660 at every instance while the `H` shortens: 0.656 at the regular slot
     and 0.653 at the 650 one. Scaling KaTeX's Greek to the declaration puts the bold slot
     further out than the regular one, which is the opposite of what deriving a factor per
     weight is for, so the numerator has to be the ink.
