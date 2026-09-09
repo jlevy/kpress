@@ -35,10 +35,13 @@ Dynamic input can legitimately produce a differently sized formula.
 | --- | --- | --- |
 | Python renderer | Emit TeX, semantic MathML, and the required asset set | [`format/render.py`](../../../src/kpress/format/render.py), [`format/markdown.py`](../../../src/kpress/format/markdown.py) |
 | Reading typography | Select prose, sans, and print faces | [`style-tokens.css`](../../../src/kpress/format/static/css/style-tokens.css) |
+| Static sans generator | Read the regular-weight token, instance print faces, and emit their declarations | [`instance_sans.py`](../../../devtools/instance_sans.py), [`print-fonts.css`](../../../src/kpress/format/static/css/print-fonts.css) |
 | Math font CSS | Compose reading-face glyphs with KaTeX glyphs | [`katex-text-face.css`](../../../src/kpress/format/static/katex/katex-text-face.css) |
 | Metric generator | Derive KaTeX metric tables from shipped font assets | [`katex_text_metrics.py`](../../../devtools/katex_text_metrics.py) |
 | Shared runtime | Select matching metrics, render or hydrate, await font readiness | [`katex-math-runtime.js`](../../../src/kpress/format/static/katex/katex-math-runtime.js) |
 | Native initializer | Enhance the document’s own math nodes and finish the page barrier | [`katex-init.js`](../../../src/kpress/format/static/katex/katex-init.js) |
+| PDF exporter | Switch to print, await document and margin-box family/weight requests, and emit Chromium PDF | [`format/pdf.py`](../../../src/kpress/format/pdf.py) |
+| Regression gates | Check generated metrics and faces, delayed loads, media state, and PDF embedding | [`test_katex_text_metrics.py`](../../../tests/test_katex_text_metrics.py), [`test_playwright_math_loading.py`](../../../tests/test_playwright_math_loading.py), [`test_playwright_sans_math_face.py`](../../../tests/test_playwright_sans_math_face.py), [`test_playwright_print_pdf_fonts.py`](../../../tests/test_playwright_print_pdf_fonts.py) |
 | Embedding host | Prepare geometry, manage dynamic content, and coordinate exports | [Host API reference](../../math-rendering-api.md) |
 
 ## Design
@@ -265,6 +268,8 @@ before deployment.
 - [Vendored Fonts](../../../src/kpress/format/static/fonts/README.md)
 - [Math Text Face Research](../research/research-2026-09-07-math-text-face.md)
 - [Sans Math Face Research](../research/research-2026-09-07-sans-math-face.md)
+- [Print Sans Faces Research](../research/research-2026-09-07-print-sans-faces.md)
+- [Publication-Quality PDF Output Research](../research/research-2026-09-05-print-ready-pdf-output.md)
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

@@ -6,7 +6,7 @@ description: Package contract for KPress document rendering, document components
 
 **Status:** Current architecture and public-contract reference
 
-**Last Verified:** 2026-07-13
+**Last Verified:** 2026-09-08
 
 ## Purpose
 
@@ -311,8 +311,12 @@ feature guarantees); the sections named in the table carry the architecture deta
   suppression, page-margin alignment for standalone and fragment shells, heading/table
   break control, repeated table headers, footnote simplification, code wrapping, and
   orphans/widows.
-- **Browser-backed PDF.** An optional browser backend renders the print profile to PDF;
+- **Browser-backed PDF.** The shipped optional backend renders the print profile in
+  Chromium, waits for document and page-margin font requests, and then emits the PDF;
   absence of the optional dependency produces a clear error, never a silent downgrade.
+  Dedicated paged-media engines remain unmeasured candidates rather than supported
+  backends; see
+  [Publication-Quality PDF Output](project/research/research-2026-09-05-print-ready-pdf-output.md).
 - **Document-actions widget (opt-in).** Text badge buttons — PDF (the browser print
   dialog over the print CSS) and MD (the page’s `.md` twin) — client-rendered like the
   settings gear but off by default: `format.widgets: {doc-actions: on}`. See
@@ -1818,7 +1822,7 @@ box sits outside the document tree, so its face never enters `document.fonts.rea
 its own and the footer would otherwise not print at all.
 `tests/test_playwright_print_pdf_fonts.py` pins both cases through the public
 `render_pdf`, one with the instances held back on the wire and one on a page where the
-footer is the only 400-weight sans, and asserts the exported PDF holds no Type3 font.
+footer is the only 410-weight sans, and asserts the exported PDF holds no Type3 font.
 
 The faces carry `font-display: swap` for the print paths that cannot wait: a browser’s
 own Print dialog, or a host that goes straight to `page.pdf()`. Print layout gets one
