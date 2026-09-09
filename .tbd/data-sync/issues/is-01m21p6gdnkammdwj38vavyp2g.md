@@ -3,16 +3,20 @@ type: is
 id: is-01m21p6gdnkammdwj38vavyp2g
 title: Retune the mono size ratio from 0.87 to 0.82
 kind: task
-status: in_progress
+status: closed
 priority: 2
-version: 3
+version: 4
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
 dependencies: []
 parent_id: is-01m1yxrn6e5m1ddfvc6nrcammj
 created_at: 2026-09-08T23:38:35.316Z
-updated_at: 2026-09-08T23:52:10.919Z
+updated_at: 2026-09-09T00:08:29.410Z
+closed_at: 2026-09-09T00:08:29.409Z
+close_reason: "Shipped: the mono ratio is 0.82 on kpress main (PR #66) and the explainer took it (squares#138)"
+resolution: null
+duplicate_of: null
 ---
 `--kpress-font-size-mono` moves from 0.87 to 0.82 of `--kpress-font-size-base`, by the
 owner's decision of 2026-09-08: at 0.87 the code read too large beside the prose.

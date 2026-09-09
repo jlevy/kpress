@@ -3,16 +3,20 @@ type: is
 id: is-01m21c16e957w23cqa6ry8fgja
 title: "font_mode: system prints /Type3 outlines on macOS, undocumented"
 kind: bug
-status: open
+status: closed
 priority: 2
-version: 1
+version: 2
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
 dependencies: []
 parent_id: is-01m1yxrn6e5m1ddfvc6nrcammj
 created_at: 2026-09-08T20:40:55.496Z
-updated_at: 2026-09-08T20:40:55.496Z
+updated_at: 2026-09-09T00:08:30.328Z
+closed_at: 2026-09-09T00:08:30.327Z
+close_reason: "Shipped: documented in kpress#65; main carries the System Fonts and Printed Outlines section with the measurement"
+resolution: null
+duplicate_of: null
 ---
 font_mode: system puts /Type3 glyph procedures in an exported PDF for every sans role. This is the same failure the mono_weights gate exists to prevent, and a reader reaches it through the settings widget's own System fonts toggle.
 

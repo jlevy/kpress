@@ -3,16 +3,20 @@ type: is
 id: is-01m21c0p6f47x3xf36prteh50x
 title: Settings table named a host hook mathematics does not read
 kind: bug
-status: open
+status: closed
 priority: 2
-version: 1
+version: 2
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
 dependencies: []
 parent_id: is-01m1yxrn6e5m1ddfvc6nrcammj
 created_at: 2026-09-08T20:40:38.862Z
-updated_at: 2026-09-08T20:40:38.862Z
+updated_at: 2026-09-09T00:08:30.012Z
+closed_at: 2026-09-09T00:08:30.011Z
+close_reason: "Shipped: the settings table's math row was corrected in kpress#65; the row now says none and points at the math seams"
+resolution: null
+duplicate_of: null
 ---
 docs/kpress-design.md gave the math_text_font row the host hook `--kpress-host-font-prose` with the gloss 'the composite follows the reading face'. It does not follow it.
 
