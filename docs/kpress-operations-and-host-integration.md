@@ -700,10 +700,17 @@ Four consequences for a host:
   `document.fonts.ready` at all, so a print issued right after the media switch draws
   before the instances arrive.
   After switching to print media, force layout, await `document.fonts.ready`, then
-  `document.fonts.load` the families the margin boxes name (`--kpress-font-sans` and
-  `--kpress-font-prose`, read from the root under print media) and await it again.
-  `kpress.format.pdf.render_pdf` does exactly this, so a host that exports through
-  KPress has nothing to do.
+  `document.fonts.load` each family and weight pair the margin boxes name
+  (`--kpress-font-sans` with `--kpress-font-weight-sans-regular`, and
+  `--kpress-font-prose` with `--_kpress-font-weight-prose`, read from the root under
+  print media) and await it again.
+  `kpress.format.pdf.render_pdf` performs that KPress-owned font wait, with a 15-second
+  recovery ceiling; an unavailable face falls back rather than certifying that the
+  intended face loaded.
+  A host using `render_pdf` must materialize required data, canvas, and prepared-math
+  state into the input artifact before the call.
+  Work triggered only after print media activates requires a host-driven browser export
+  because `render_pdf` exposes no host-readiness callback.
   Skipping the wait is not a broken page: the faces carry `font-display: swap`, so what
   has not arrived falls back to the variable face and its outline paths.
   The same is true of a reader who prints from the browser’s own dialog, where nothing
