@@ -111,6 +111,14 @@ def test_footnote_keyboard_activation_navigates_in_real_browser(tmp_path: Path) 
                 assert page.locator(".kpress-tooltip-close").evaluate(
                     "button => document.activeElement === button"
                 )
+                page.keyboard.press("Escape")
+                tooltip.wait_for(state="hidden", timeout=1_000)
+                assert ref.evaluate("anchor => document.activeElement === anchor")
+
+                page.keyboard.press("Shift+Tab")
+                page.keyboard.press("Tab")
+                tooltip.wait_for(state="visible", timeout=3_000)
+                page.keyboard.press("Tab")
                 page.keyboard.press("Enter")
                 tooltip.wait_for(state="hidden", timeout=1_000)
                 assert ref.evaluate("anchor => document.activeElement === anchor")

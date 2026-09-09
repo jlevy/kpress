@@ -558,10 +558,9 @@ A--&gt;B</code></pre>
     footnoteLink?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
     expect(document.querySelector(".kpress-tooltip")).toBeTruthy();
 
-    // Enter on a focused link fires a click with detail 0. The preview is an
-    // unfocusable pointer/touch affordance, so keyboard activation must keep
-    // native navigation to the in-document footnote (where inner links are
-    // focusable) and dismiss the preview rather than being swallowed.
+    // Enter on a focused link fires a click with detail 0. It keeps native
+    // navigation to the in-document footnote and dismisses the preview rather
+    // than being swallowed.
     const keyboardClick = new MouseEvent("click", {
       bubbles: true,
       cancelable: true,
@@ -774,6 +773,27 @@ A--&gt;B</code></pre>
     // (or a 700ms safety timeout) before removing the DOM node.
     vi.advanceTimersByTime(700);
     expect(document.querySelector(".kpress-tooltip")).toBeNull();
+  });
+
+  it("does not auto-hide while the tooltip close control has focus", async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `
+      <p><a href="#target">Target</a></p>
+      <h2 id="target">Target Heading</h2>
+      <p>Nearby preview text.</p>
+    `;
+
+    await importFresh("tooltips.js");
+
+    const trigger = document.querySelector('a[href="#target"]');
+    trigger?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    const tooltip = document.querySelector(".kpress-tooltip");
+    const closeButton = tooltip?.querySelector(".kpress-tooltip-close");
+    closeButton?.focus();
+
+    tooltip?.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
+    vi.advanceTimersByTime(3200);
+    expect(document.querySelector(".kpress-tooltip")).toBe(tooltip);
   });
 
   it("uses Kash-compatible tooltip hide delays for pointer direction and wide placement", async () => {

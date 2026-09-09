@@ -127,6 +127,18 @@ function removeKpressTooltips() {
   activeTooltip = null;
 }
 
+function dismissKpressTooltipFromKeyboard() {
+  const tooltipState = activeTooltip;
+  const restoreFocus =
+    tooltipState &&
+    document.activeElement instanceof Node &&
+    tooltipState.tooltip.contains(document.activeElement);
+  removeKpressTooltips();
+  if (restoreFocus) {
+    focusTooltipAnchorWithoutPreview(tooltipState.anchor);
+  }
+}
+
 /**
  * @param {string} text
  * @returns {string}
@@ -679,8 +691,7 @@ function showKpressTooltip(anchor) {
     const restoreKeyboardFocus = event.detail === 0;
     removeKpressTooltips();
     if (restoreKeyboardFocus) {
-      tooltipFocusSuppression.add(anchor);
-      anchor.focus({ preventScroll: true });
+      focusTooltipAnchorWithoutPreview(anchor);
     }
   });
   tooltip.addEventListener("focusin", clearTooltipHideTimer);
@@ -742,7 +753,10 @@ function showKpressTooltip(anchor) {
   };
   tooltip.addEventListener("mouseenter", clearTooltipHideTimer);
   tooltip.addEventListener("mouseleave", () => {
-    if (activeTooltip?.tooltip === tooltip) {
+    if (
+      activeTooltip?.tooltip === tooltip &&
+      !(document.activeElement instanceof Node && tooltip.contains(document.activeElement))
+    ) {
       scheduleTooltipHide(activeTooltip);
     }
   });
@@ -772,6 +786,12 @@ const TOOLTIP_SUPPRESS_SELECTOR =
 // Restoring focus after keyboard dismissal must not immediately reopen the
 // tooltip through the trigger's focus listener.
 const tooltipFocusSuppression = new WeakSet();
+
+/** @param {HTMLAnchorElement} anchor */
+function focusTooltipAnchorWithoutPreview(anchor) {
+  tooltipFocusSuppression.add(anchor);
+  anchor.focus({ preventScroll: true });
+}
 
 /**
  * @param {Element} anchor
@@ -986,7 +1006,7 @@ export function initKpressTooltips(
 ) {
   if (!tooltipGlobalsBound) {
     tooltipGlobalsBound = true;
-    dismissOnEscape(removeKpressTooltips);
+    dismissOnEscape(dismissKpressTooltipFromKeyboard);
     dismissOnResize(removeKpressTooltips);
     document.addEventListener("pointerdown", (event) => {
       if (!activeTooltip || !(event.target instanceof Node)) {
