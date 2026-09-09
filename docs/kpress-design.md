@@ -1743,9 +1743,11 @@ and leaves the paths alone, so the sans reads a step lighter than the serif and 
 mathematics beside it.
 Measured with Quartz, the engine behind Preview, on one 12pt line, glyph `h`, as the
 fraction of the glyph box covered in ink, with font smoothing off then on.
-Weight 410 is what the measurement happened to be taken at, a weight a host asks for
-rather than one KPress does; the effect is Type3 against embedded, not that weight, and
-a 410 request lands on the 400 instance:
+This measurement predates KPress’s 410 regular instance.
+At that checkpoint, 410 was a host request and landed on the 400 instance; the effect
+measured here is Type3 against embedded output, rather than a property of that weight.
+Current builds use 410 as the shared regular sans weight and ship a matching print
+instance.
 
 | How the glyph reaches the PDF | 3 px/pt | 2 px/pt |
 | --- | --- | --- |

@@ -86,7 +86,7 @@ test:
 # The separate CI browser job installs the locked Playwright browser explicitly.
 # Required mode fails rather than skipping if the package or browser is absent.
 test-browser:
-	KPRESS_REQUIRE_BROWSER=1 $(UV_RUN) --extra pdf pytest tests/test_playwright_math_loading.py tests/test_playwright_math_text_face.py tests/test_playwright_sans_math_face.py tests/test_playwright_mono_face.py tests/test_playwright_print_pdf_fonts.py tests/test_playwright_history.py
+	KPRESS_REQUIRE_BROWSER=1 $(UV_RUN) --extra optimize --extra pdf pytest tests/test_playwright_math_loading.py tests/test_playwright_math_text_face.py tests/test_playwright_sans_math_face.py tests/test_playwright_mono_face.py tests/test_playwright_print_pdf_fonts.py tests/test_playwright_history.py
 
 audit:
 	npm audit --audit-level=moderate

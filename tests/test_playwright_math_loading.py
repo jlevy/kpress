@@ -346,7 +346,7 @@ def test_host_first_render_waits_keeps_latest_and_supports_mixed_faces(tmp_path:
           const glyph = document.querySelector('#host-' + kind + ' .katex-html .mord');
           return __kpressFontAdvance(glyph);
         })""")
-        assert advances == pytest.approx([0.497, 0.533, 0.500, 0.500, 0.500], abs=0.001)
+        assert advances == pytest.approx([0.498, 0.533, 0.500, 0.500, 0.500], abs=0.001)
         assert page.locator('[data-kpress-math-face="katex"] .katex').evaluate_all(
             "nodes => nodes.every(node => !getComputedStyle(node).fontFamily.includes('KPress Math Text'))"
         )
