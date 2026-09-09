@@ -3,14 +3,18 @@ type: is
 id: is-01m21n9bpfxgm9asmcr8wh85z3
 title: Document prepared-math glyph baseline and carrier contract
 kind: task
-status: in_progress
+status: closed
 priority: 2
-version: 5
+version: 6
 spec_path: docs/project/architecture/arch-2026-09-08-font-and-math-loading.md
 labels: []
 dependencies: []
 created_at: 2026-09-08T23:22:40.206Z
-updated_at: 2026-09-09T00:17:39.541Z
+updated_at: 2026-09-09T02:34:57.034Z
+closed_at: 2026-09-09T02:34:57.034Z
+close_reason: "Implemented and validated in KPress PR #68 at 515f4a08aaf529f922b4380db7f7b7913b01abf5. Final CI run 34302772413 passes lint, Python 3.12-3.14, browser, and distribution; Squares PR #135 pins this exact filed-PR head."
+resolution: null
+duplicate_of: null
 ---
 Upstream the reusable baseline lesson from Squares a10569d1: a fixed outer reservation must share its measured height and depth with the existing top-level KaTeX strut; prepared bases and empty inline carriers use zero line height. Add actual glyph-baseline acceptance in screen and print, including punctuation, zero-height constructs, and original-strut/raised-glyph negative controls. Update only the existing architecture and host API docs; generic KPress rendering stays browser-free and publication geometry stays host-owned. Coordinate with the standalone reload repair in the shared codex/reader-reload-baseline-contract branch.
 

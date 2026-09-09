@@ -3,13 +3,17 @@ type: is
 id: is-01m21r4217beg2zeg4n9s9ssqn
 title: Document the typography design system and tuning map
 kind: task
-status: in_progress
+status: closed
 priority: 2
-version: 3
+version: 4
 labels: []
 dependencies: []
 created_at: 2026-09-09T00:12:12.197Z
-updated_at: 2026-09-09T00:17:39.973Z
+updated_at: 2026-09-09T02:34:57.040Z
+closed_at: 2026-09-09T02:34:57.040Z
+close_reason: "Implemented and validated in KPress PR #68 at 515f4a08aaf529f922b4380db7f7b7913b01abf5. Final CI run 34302772413 passes lint, Python 3.12-3.14, browser, and distribution; Squares PR #135 pins this exact filed-PR head."
+resolution: null
+duplicate_of: null
 ---
 Consolidate the existing KPress typography roles, authoritative weight and size tokens, font replacement/generator boundaries, and actual-baseline acceptance in docs/kpress-design.md, linking the canonical font architecture. Linked Squares bead: think-vunf. Apply the independently reviewed draft with precise serif-versus-sans generation ownership, supported regular-weight range, and exact retained test names. Publish as a docs-only follow-up on KPress PR68; no new framework or product behavior.
 

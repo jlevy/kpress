@@ -3,13 +3,17 @@ type: is
 id: is-01m21qczew6x03azs3eaa4n1vy
 title: Balance the inline code background around the baseline
 kind: bug
-status: in_progress
+status: closed
 priority: 2
-version: 4
+version: 5
 labels: []
 dependencies: []
 created_at: 2026-09-08T23:59:35.888Z
-updated_at: 2026-09-09T00:17:39.095Z
+updated_at: 2026-09-09T02:34:57.027Z
+closed_at: 2026-09-09T02:34:57.027Z
+close_reason: "Implemented and validated in KPress PR #68 at 515f4a08aaf529f922b4380db7f7b7913b01abf5. Final CI run 34302772413 passes lint, Python 3.12-3.14, browser, and distribution; Squares PR #135 pins this exact filed-PR head."
+resolution: null
+duplicate_of: null
 ---
 Squares think-y54j: user reported raised-looking Planetaire inline code. Actual glyph baselines are aligned (all eleven measured code cases are zero in screen and print); independent optical review identifies the asymmetric .25em top/.1em bottom padding around the code pill. Balance to .175em top and bottom, preserving total vertical padding, font metrics, glyph baseline and wrapping. Host keeps the retained baseline negative-control measurement.
 
