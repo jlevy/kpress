@@ -1,17 +1,17 @@
 ---
 type: is
-id: is-01m21qczew6x03azs3eaa4n1vy
-title: Balance the inline code background around the baseline
-kind: bug
+id: is-01m21r4217beg2zeg4n9s9ssqn
+title: Document the typography design system and tuning map
+kind: task
 status: in_progress
 priority: 2
-version: 4
+version: 3
 labels: []
 dependencies: []
-created_at: 2026-09-08T23:59:35.888Z
-updated_at: 2026-09-09T00:17:39.095Z
+created_at: 2026-09-09T00:12:12.197Z
+updated_at: 2026-09-09T00:17:39.973Z
 ---
-Squares think-y54j: user reported raised-looking Planetaire inline code. Actual glyph baselines are aligned (all eleven measured code cases are zero in screen and print); independent optical review identifies the asymmetric .25em top/.1em bottom padding around the code pill. Balance to .175em top and bottom, preserving total vertical padding, font metrics, glyph baseline and wrapping. Host keeps the retained baseline negative-control measurement.
+Consolidate the existing KPress typography roles, authoritative weight and size tokens, font replacement/generator boundaries, and actual-baseline acceptance in docs/kpress-design.md, linking the canonical font architecture. Linked Squares bead: think-vunf. Apply the independently reviewed draft with precise serif-versus-sans generation ownership, supported regular-weight range, and exact retained test names. Publish as a docs-only follow-up on KPress PR68; no new framework or product behavior.
 
 ## Notes
 
