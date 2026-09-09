@@ -664,7 +664,26 @@ function showKpressTooltip(anchor) {
   if (content.footnoteId) {
     tooltip.classList.add("kpress-tooltip-footnote");
   }
-  tooltip.innerHTML = content.html;
+  const tooltipContent = document.createElement("div");
+  tooltipContent.className = "kpress-tooltip-content";
+  tooltipContent.innerHTML = content.html;
+  const closeButton = document.createElement("button");
+  closeButton.className = "kpress-tooltip-close";
+  closeButton.type = "button";
+  closeButton.setAttribute("aria-label", "Close tooltip");
+  closeButton.textContent = "×";
+  tooltip.append(tooltipContent, closeButton);
+
+  closeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    removeKpressTooltips();
+  });
+  tooltip.addEventListener("focusout", (event) => {
+    if (event.relatedTarget instanceof Node && tooltip.contains(event.relatedTarget)) {
+      return;
+    }
+    removeKpressTooltips();
+  });
 
   tooltip.querySelector("[data-kpress-footnote-nav]")?.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -683,6 +702,13 @@ function showKpressTooltip(anchor) {
   tooltip.addEventListener("click", (event) => {
     const link = event.target instanceof Element ? event.target.closest("a") : null;
     if (link) {
+      removeKpressTooltips();
+      return;
+    }
+    if (
+      content.footnoteId &&
+      tooltip.getAttribute("data-kpress-tooltip-position") === "mobile-bottom"
+    ) {
       removeKpressTooltips();
       return;
     }
@@ -812,6 +838,10 @@ function wireTooltipAnchor(anchor) {
     "touchstart",
     (event) => {
       event.preventDefault();
+      if (activeTooltip?.anchor === anchor) {
+        removeKpressTooltips();
+        return;
+      }
       showKpressTooltip(anchor);
     },
     { passive: false },
@@ -822,7 +852,15 @@ function wireTooltipAnchor(anchor) {
       scheduleTooltipHide(activeTooltip, event);
     }
   });
-  anchor.addEventListener("blur", removeKpressTooltips);
+  anchor.addEventListener("blur", (event) => {
+    if (
+      event.relatedTarget instanceof Node &&
+      activeTooltip?.tooltip.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    removeKpressTooltips();
+  });
 }
 
 /**
@@ -925,6 +963,18 @@ export function initKpressTooltips(
     tooltipGlobalsBound = true;
     dismissOnEscape(removeKpressTooltips);
     dismissOnResize(removeKpressTooltips);
+    document.addEventListener("pointerdown", (event) => {
+      if (!activeTooltip || !(event.target instanceof Node)) {
+        return;
+      }
+      if (
+        activeTooltip.tooltip.contains(event.target) ||
+        activeTooltip.anchor.contains(event.target)
+      ) {
+        return;
+      }
+      removeKpressTooltips();
+    });
   }
   const only = typeof config.only === "string" ? config.only : null;
   const kinds = only ? [only] : ["link", "footnote"];
