@@ -1879,22 +1879,30 @@ Before it, code was the one role a document did not draw from a face KPress ship
 printed page carried whatever mono the exporting machine had: the explainer PDF that
 started this work embedded 56 KB of the build machine’s Menlo.
 
-**The size, derived rather than picked.** `--kpress-font-size-mono` is `0.87` of the
-prose size. Planetaire draws an x-height of 1120/2000 = 0.560 em against PT Serif’s
-500/1000 = 0.500, so at 0.87 code’s x-height is 0.487 em, about **97%** of the prose
-x-height beside it — under parity, so a code span reads as an inset rather than bulging
-out of its line. The width follows from the same number: a mono column is 1204/2000 =
-0.602 em wide, so 45 / (0.87 × 0.602) ≈ **85 columns** fit the `--kpress-measure`
-reading column (85.9, and a column is not divisible).
-`tests/test_mono_face.py` re-derives both figures from the shipped faces, so the token
-and the ink cannot drift apart.
+**The size, a judgement measured against the ink.** `--kpress-font-size-mono` is `0.82`
+of the prose size.
+The ratio is a decision about how code should read beside prose, not a
+value the two faces force; what the ink supplies is the scale that decision is made on.
+Planetaire draws an x-height of 1120/2000 = 0.560 em against PT Serif’s 500/1000 =
+0.500, so x-height parity — code and prose showing the same lowercase height — would
+want 0.500/0.560 = `0.893`. At `0.82` code’s x-height is 0.459 em, **91.8%** of the
+prose x-height beside it: deliberately below parity, so a code span reads as an inset
+rather than competing with the line it sits in.
+`0.87` put it at 97.4%, near enough to parity that code read too large beside the prose;
+`0.82` is the owner’s decision of 2026-09-08.
+
+The width follows from the same number: a mono column is 1204/2000 = 0.602 em wide, so
+45 / (0.82 × 0.602) ≈ **91 columns** fit the `--kpress-measure` reading column (91.16,
+and a column is not divisible) — six more than `0.87` allowed.
+`tests/test_mono_face.py` re-derives both figures from the shipped faces, so the ratio’s
+consequences cannot drift from the ink even though the ratio itself is a choice.
 The `-small` and `-tiny` rungs derive from the mono rung rather than from the base, so
 `--kpress-host-font-size-mono` retunes all three at once.
 Their multipliers are `0.9` and `0.85` — the prose ramp’s own steps, since the two ramps
-pair by index — which is what holds all three rungs at the same 97%. They were `0.915`
+pair by index — which is what holds all three rungs at the same 91.8%. They were `0.915`
 and `0.855`, the pre-Planetaire absolutes rescaled and tuned for the system monos this
-face replaced, which left the small and tiny rungs at 99% and 98%, drifting toward the
-parity the rung above them is chosen to stay under.
+face replaced, which left the small and tiny rungs above the rung they sit under rather
+than level with it.
 
 **What ships, and what a document declares.** `devtools/subset_mono.py` subsets seven
 upstream styles to the same latin `unicode-range` every other vendored face covers and
@@ -2090,7 +2098,7 @@ browser would have drawn instead:
 | `[regular, bold, italic]` | docstring tokens emboldened from `400-italic` | refused — measured `/Type3` |
 | `[regular, italic]`, `[regular]` | keyword tokens emboldened too | refused — measured `/Type3`, up to 2.8× the PDF size |
 | `[medium, bold]` | nothing, but no 400 face exists, so ordinary code is set in Medium | refused (no `regular`) |
-| `[]` | everything: the page names a family nothing declares, keeps Planetaire’s 0.87 size ratio, and draws in the platform mono | refused — use `mono_font: system` |
+| `[]` | everything: the page names a family nothing declares, keeps Planetaire’s 0.82 size ratio, and draws in the platform mono | refused — use `mono_font: system` |
 
 Under `mono_font: system` no Planetaire face is declared at all, so `mono_weights` is
 ignored and any value is accepted, `[]` included.
