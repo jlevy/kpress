@@ -704,9 +704,13 @@ Four consequences for a host:
   (`--kpress-font-sans` with `--kpress-font-weight-sans-regular`, and
   `--kpress-font-prose` with `--_kpress-font-weight-prose`, read from the root under
   print media) and await it again.
-  `kpress.format.pdf.render_pdf` performs that KPress-owned font wait.
-  A host still completes its own asynchronous data, canvas, or prepared-math work before
-  invoking the exporter; the font wait cannot infer host application readiness.
+  `kpress.format.pdf.render_pdf` performs that KPress-owned font wait, with a 15-second
+  recovery ceiling; an unavailable face falls back rather than certifying that the
+  intended face loaded.
+  A host using `render_pdf` must materialize required data, canvas, and prepared-math
+  state into the input artifact before the call.
+  Work triggered only after print media activates requires a host-driven browser export
+  because `render_pdf` exposes no host-readiness callback.
   Skipping the wait is not a broken page: the faces carry `font-display: swap`, so what
   has not arrived falls back to the variable face and its outline paths.
   The same is true of a reader who prints from the browser’s own dialog, where nothing
