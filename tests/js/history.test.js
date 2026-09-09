@@ -65,11 +65,17 @@ beforeEach(() => {
 });
 
 describe("history behavior", () => {
-  it("restores a pane on pageshow and releases lifecycle listeners on disposal", async () => {
+  it("restores a pane after a missed pageshow and releases lifecycle listeners", async () => {
     const viewport = documentMarkup();
     history.replaceState({ kpressScroll: 1234, hostValue: "retained" }, "");
     const { initKpressHistory } = await freshHistoryModule();
+    vi.spyOn(document, "readyState", "get").mockReturnValue("complete");
     const dispose = initKpressHistory();
+
+    // A deferred module can initialize after the browser's pageshow event.
+    viewport.scrollTop = 400;
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(1234);
 
     window.dispatchEvent(new Event("pageshow"));
     // A browser can apply its fragment after pageshow. The saved reading

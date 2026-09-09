@@ -319,6 +319,12 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
     window.addEventListener("beforeunload", flushScroll);
     window.addEventListener("pagehide", flushScroll);
     window.addEventListener("pageshow", onPageShow);
+    // A deferred module can finish after WebKit has already dispatched
+    // pageshow. Cover that late-initialization order without moving panes
+    // during the normal pre-pageshow bind.
+    if (document.readyState === "complete") {
+      onPageShow();
+    }
   }
 
   return () => {
