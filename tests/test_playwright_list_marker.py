@@ -21,11 +21,13 @@ line, so a physical ``left`` put it on the far side of a right-to-left item; the
 
 from __future__ import annotations
 
+import os
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from importlib import import_module
 from pathlib import Path
 from typing import Any, cast
 
@@ -43,6 +45,7 @@ _ITEMS = (".kpress-prose ul > li", ".kpress-prose ol ul > li", ".kpress .claim")
 #: same way: it is a mask filled with `background-color`.
 _PAINTED_MARKS = (
     ".kpress-prose ul > li",
+    ".kpress-prose ol ul > li",
     ".kpress .concepts ul > li",
     ".kpress .claim",
     ".kpress summary",
@@ -90,7 +93,9 @@ def _build_fixture_site(tmp_path: Path) -> Path:
 
 
 def _launch_chromium(playwright: Any, sync_api: Any) -> Any:
-    """The bundled browser, else the system one, else a skip rather than a failure."""
+    """Require the bundled browser in CI; locally try Chrome before skipping."""
+    if os.environ.get("KPRESS_REQUIRE_BROWSER") == "1":
+        return playwright.chromium.launch(headless=True)
     try:
         return playwright.chromium.launch(headless=True)
     except sync_api.Error:
@@ -101,13 +106,18 @@ def _launch_chromium(playwright: Any, sync_api: Any) -> Any:
 
 
 @contextmanager
-def _marker_page(tmp_path: Path, sync_api: Any) -> Generator[Any]:
+def _marker_page(tmp_path: Path) -> Generator[Any]:
     """The fixture site, served locally and open in Chromium with its fonts settled.
 
     The server and the browser each have to come down whatever the body does, and every
     test in this file needs the same sequence to bring them up. Yielding the page keeps
     the two teardowns in one place instead of three.
     """
+    sync_api = (
+        import_module("playwright.sync_api")
+        if os.environ.get("KPRESS_REQUIRE_BROWSER") == "1"
+        else pytest.importorskip("playwright.sync_api")
+    )
     public = _build_fixture_site(tmp_path)
     handler = partial(_QuietHandler, directory=str(public))
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -131,27 +141,19 @@ def _marker_page(tmp_path: Path, sync_api: Any) -> Generator[Any]:
         thread.join(timeout=5)
 
 
-def _platform_fonts(page: Any, selector: str) -> list[dict[str, Any]]:
+def _platform_fonts(session: Any, selector: str) -> list[dict[str, Any]]:
     """Every face Chromium drew a glyph of this node with, as it reports them."""
-    session = page.context.new_cdp_session(page)
-    try:
-        session.send("DOM.enable")
-        session.send("CSS.enable")
-        root = cast(dict[str, Any], session.send("DOM.getDocument", {"depth": -1}))
-        found = cast(
-            dict[str, Any],
-            session.send(
-                "DOM.querySelector", {"nodeId": root["root"]["nodeId"], "selector": selector}
-            ),
-        )
-        assert found["nodeId"], f"no node for {selector}"
-        result = cast(
-            dict[str, Any],
-            session.send("CSS.getPlatformFontsForNode", {"nodeId": found["nodeId"]}),
-        )
-        return cast(list[dict[str, Any]], result["fonts"])
-    finally:
-        session.detach()
+    root = cast(dict[str, Any], session.send("DOM.getDocument", {"depth": -1}))
+    found = cast(
+        dict[str, Any],
+        session.send("DOM.querySelector", {"nodeId": root["root"]["nodeId"], "selector": selector}),
+    )
+    assert found["nodeId"], f"no node for {selector}"
+    result = cast(
+        dict[str, Any],
+        session.send("CSS.getPlatformFontsForNode", {"nodeId": found["nodeId"]}),
+    )
+    return cast(list[dict[str, Any]], result["fonts"])
 
 
 def _marker_box(page: Any, selector: str) -> dict[str, Any]:
@@ -162,6 +164,8 @@ def _marker_box(page: Any, selector: str) -> dict[str, Any]:
             "  const before = getComputedStyle(document.querySelector(sel), '::before');"
             "  return {content: before.content, width: parseFloat(before.width),"
             "          height: parseFloat(before.height),"
+            "          display: before.display, visibility: before.visibility,"
+            "          opacity: parseFloat(before.opacity),"
             "          background: before.backgroundColor};"
             "}",
             selector,
@@ -224,31 +228,46 @@ def _marker_insets(page: Any, selector: str) -> dict[str, float]:
 
 
 def test_list_markers_draw_no_text(tmp_path: Path) -> None:
-    sync_api = pytest.importorskip("playwright.sync_api")
-    with _marker_page(tmp_path, sync_api) as page:
+    with _marker_page(tmp_path) as page:
         fonts: dict[tuple[str, str], list[dict[str, Any]]] = {}
-        for media in ("screen", "print"):
-            page.emulate_media(media=media)
-            page.evaluate("document.fonts.ready")
-            for item in _ITEMS:
-                fonts[item, media] = _platform_fonts(page, item)
-        page.emulate_media(media="screen")
-        boxes = {item: _marker_box(page, item) for item in _ITEMS}
+        boxes: dict[tuple[str, str], dict[str, Any]] = {}
+        # Detaching CDP resets Chromium's emulated media. Keep one session through
+        # every sample, including the printed boxes, so each report names its media.
+        session = page.context.new_cdp_session(page)
+        try:
+            session.send("DOM.enable")
+            session.send("CSS.enable")
+            for media in ("screen", "print"):
+                page.emulate_media(media=media)
+                page.evaluate("document.fonts.ready")
+                for item in _ITEMS:
+                    fonts[item, media] = _platform_fonts(session, item)
+                    assert page.evaluate(f"matchMedia('{media}').matches"), (item, media)
+                    boxes[item, media] = _marker_box(page, item)
+        finally:
+            session.detach()
 
     for where, faces in fonts.items():
         assert faces, where
         borrowed = [face for face in faces if not face["isCustomFont"]]
         assert not borrowed, (where, borrowed)
 
-    # The marker is a box, not a glyph: no content, and a painted background.
-    for item, box in boxes.items():
-        assert box["content"] in ('""', "none"), (item, box)
-        assert box["background"] not in ("rgba(0, 0, 0, 0)", "transparent"), (item, box)
-        assert box["width"] == pytest.approx(box["height"], abs=0.01), (item, box)
+    # Both stylesheets must paint a visible square: content:none or a zero-area
+    # box draws no marker, and a line-height override stretches the box into a bar.
+    for where, box in boxes.items():
+        assert box["content"] == '""', (where, box)
+        assert box["display"] != "none", (where, box)
+        assert box["visibility"] == "visible", (where, box)
+        assert box["opacity"] > 0, (where, box)
+        assert box["background"] not in ("rgba(0, 0, 0, 0)", "transparent"), (where, box)
+        assert box["width"] > 0, (where, box)
+        assert box["height"] > 0, (where, box)
+        assert box["width"] == pytest.approx(box["height"], abs=0.01), (where, box)
 
     # And one square for every bulleted list, which the glyph never managed: the sans
     # claim marker used to resolve a different fallback and come out 60% larger.
-    widths = {round(box["width"], 3) for box in boxes.values()}
+    # Print deliberately gives nested bullets a smaller marker size.
+    widths = {round(box["width"], 3) for (_, media), box in boxes.items() if media == "screen"}
     assert len(widths) == 1, boxes
 
 
@@ -260,22 +279,26 @@ def test_list_markers_stay_visible_in_forced_colors(tmp_path: Path) -> None:
     so a `currentColor` box paints the page background onto the page background: measured
     in Chromium, zero ink pixels where the glyph painted 196.
     """
-    sync_api = pytest.importorskip("playwright.sync_api")
-    with _marker_page(tmp_path, sync_api) as page:
-        page.emulate_media(forced_colors="active")
-        page.evaluate("document.fonts.ready")
-        canvas = _forced_canvas_color(page)
-        marks = {mark: _painted_mark(page, mark) for mark in _PAINTED_MARKS}
+    with _marker_page(tmp_path) as page:
+        canvases: dict[str, str] = {}
+        marks: dict[tuple[str, str], dict[str, Any]] = {}
+        for media in ("screen", "print"):
+            page.emulate_media(media=media, forced_colors="active")
+            page.evaluate("document.fonts.ready")
+            canvases[media] = _forced_canvas_color(page)
+            for mark in _PAINTED_MARKS:
+                marks[mark, media] = _painted_mark(page, mark)
 
-    for mark, drawn in marks.items():
+    for where, drawn in marks.items():
+        canvas = canvases[where[1]]
         # The opt-out is what lets any color of ours through at all.
-        assert drawn["forcedColorAdjust"] == "none", (mark, drawn)
+        assert drawn["forcedColorAdjust"] == "none", (where, drawn)
         # And having opted out, the mark has to be some color other than the surface it
         # sits on. Without the rule this is the failure: both read as the Canvas color.
-        assert drawn["background"] != canvas, (mark, drawn, canvas)
+        assert drawn["background"] != canvas, (where, drawn, canvas)
         # A mark with no area is invisible whatever color it is.
-        assert drawn["width"] > 0, (mark, drawn)
-        assert drawn["height"] > 0, (mark, drawn)
+        assert drawn["width"] > 0, (where, drawn)
+        assert drawn["height"] > 0, (where, drawn)
 
 
 def test_list_markers_follow_the_text_direction(tmp_path: Path) -> None:
@@ -286,8 +309,7 @@ def test_list_markers_follow_the_text_direction(tmp_path: Path) -> None:
     pointing away from the text. `inset-inline-start` resolves to `right` under
     `dir="rtl"`, and this is that resolution, read back through the computed style.
     """
-    sync_api = pytest.importorskip("playwright.sync_api")
-    with _marker_page(tmp_path, sync_api) as page:
+    with _marker_page(tmp_path) as page:
         ltr = {marker: _marker_insets(page, marker) for marker in _INSET_MARKERS}
         page.evaluate("document.documentElement.setAttribute('dir', 'rtl')")
         page.evaluate("document.fonts.ready")
