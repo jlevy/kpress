@@ -632,10 +632,22 @@ function tooltipHideDelay(tooltipState, event) {
  */
 function scheduleTooltipHide(tooltipState, event = null) {
   clearTooltipHideTimer();
+  if (
+    document.activeElement instanceof Node &&
+    tooltipState.tooltip.contains(document.activeElement)
+  ) {
+    return;
+  }
   tooltipHideTimer = window.setTimeout(
     () => {
       tooltipHideTimer = 0;
-      if (activeTooltip?.tooltip === tooltipState.tooltip) {
+      if (
+        activeTooltip?.tooltip === tooltipState.tooltip &&
+        !(
+          document.activeElement instanceof Node &&
+          tooltipState.tooltip.contains(document.activeElement)
+        )
+      ) {
         fadeOutAndRemove(tooltipState.tooltip);
         activeTooltip = null;
       }
@@ -753,10 +765,7 @@ function showKpressTooltip(anchor) {
   };
   tooltip.addEventListener("mouseenter", clearTooltipHideTimer);
   tooltip.addEventListener("mouseleave", () => {
-    if (
-      activeTooltip?.tooltip === tooltip &&
-      !(document.activeElement instanceof Node && tooltip.contains(document.activeElement))
-    ) {
+    if (activeTooltip?.tooltip === tooltip) {
       scheduleTooltipHide(activeTooltip);
     }
   });

@@ -775,7 +775,7 @@ A--&gt;B</code></pre>
     expect(document.querySelector(".kpress-tooltip")).toBeNull();
   });
 
-  it("does not auto-hide while the tooltip close control has focus", async () => {
+  it("does not auto-hide from trigger or tooltip exit while the close control has focus", async () => {
     vi.useFakeTimers();
     document.body.innerHTML = `
       <p><a href="#target">Target</a></p>
@@ -790,6 +790,10 @@ A--&gt;B</code></pre>
     const tooltip = document.querySelector(".kpress-tooltip");
     const closeButton = tooltip?.querySelector(".kpress-tooltip-close");
     closeButton?.focus();
+
+    trigger?.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
+    vi.advanceTimersByTime(3200);
+    expect(document.querySelector(".kpress-tooltip")).toBe(tooltip);
 
     tooltip?.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
     vi.advanceTimersByTime(3200);
