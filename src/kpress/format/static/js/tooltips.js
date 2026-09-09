@@ -127,6 +127,18 @@ function removeKpressTooltips() {
   activeTooltip = null;
 }
 
+function dismissKpressTooltipFromKeyboard() {
+  const tooltipState = activeTooltip;
+  const restoreFocus =
+    tooltipState &&
+    document.activeElement instanceof Node &&
+    tooltipState.tooltip.contains(document.activeElement);
+  removeKpressTooltips();
+  if (restoreFocus) {
+    focusTooltipAnchorWithoutPreview(tooltipState.anchor);
+  }
+}
+
 /**
  * @param {string} text
  * @returns {string}
@@ -664,7 +676,31 @@ function showKpressTooltip(anchor) {
   if (content.footnoteId) {
     tooltip.classList.add("kpress-tooltip-footnote");
   }
-  tooltip.innerHTML = content.html;
+  const tooltipContent = document.createElement("div");
+  tooltipContent.className = "kpress-tooltip-content";
+  tooltipContent.innerHTML = content.html;
+  const closeButton = document.createElement("button");
+  closeButton.className = "kpress-tooltip-close";
+  closeButton.type = "button";
+  closeButton.setAttribute("aria-label", "Close tooltip");
+  closeButton.textContent = "×";
+  tooltip.append(tooltipContent, closeButton);
+
+  closeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const restoreKeyboardFocus = event.detail === 0;
+    removeKpressTooltips();
+    if (restoreKeyboardFocus) {
+      focusTooltipAnchorWithoutPreview(anchor);
+    }
+  });
+  tooltip.addEventListener("focusin", clearTooltipHideTimer);
+  tooltip.addEventListener("focusout", (event) => {
+    if (event.relatedTarget instanceof Node && tooltip.contains(event.relatedTarget)) {
+      return;
+    }
+    removeKpressTooltips();
+  });
 
   tooltip.querySelector("[data-kpress-footnote-nav]")?.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -677,12 +713,19 @@ function showKpressTooltip(anchor) {
   // over the destination. Tapping anywhere else on a section-preview tooltip
   // navigates to the previewed target itself — on touch the anchor's own tap
   // only opens the preview, so the preview must complete the journey. These
-  // surfaces are pointer/touch-only by design: the tooltip is unfocusable, and
-  // the keyboard path to the same content is the trigger anchor itself, whose
-  // Enter activation runs native navigation (see wireTooltipAnchor).
+  // Enter on the trigger still follows the native link. Forward Tab reaches
+  // the close control first, so keyboard users can also dismiss the preview
+  // without moving to its destination (see wireTooltipAnchor).
   tooltip.addEventListener("click", (event) => {
     const link = event.target instanceof Element ? event.target.closest("a") : null;
     if (link) {
+      removeKpressTooltips();
+      return;
+    }
+    if (
+      content.footnoteId &&
+      tooltip.getAttribute("data-kpress-tooltip-position") === "mobile-bottom"
+    ) {
       removeKpressTooltips();
       return;
     }
@@ -710,7 +753,10 @@ function showKpressTooltip(anchor) {
   };
   tooltip.addEventListener("mouseenter", clearTooltipHideTimer);
   tooltip.addEventListener("mouseleave", () => {
-    if (activeTooltip?.tooltip === tooltip) {
+    if (
+      activeTooltip?.tooltip === tooltip &&
+      !(document.activeElement instanceof Node && tooltip.contains(document.activeElement))
+    ) {
       scheduleTooltipHide(activeTooltip);
     }
   });
@@ -736,6 +782,16 @@ function showKpressTooltip(anchor) {
 // content the reader can't already see.
 const TOOLTIP_SUPPRESS_SELECTOR =
   ".kpress-toc, .kpress-doc-header, .kpress-site-header, .kpress-site-footer, .kpress-tooltip, [data-kpress-no-tooltip]";
+
+// Restoring focus after keyboard dismissal must not immediately reopen the
+// tooltip through the trigger's focus listener.
+const tooltipFocusSuppression = new WeakSet();
+
+/** @param {HTMLAnchorElement} anchor */
+function focusTooltipAnchorWithoutPreview(anchor) {
+  tooltipFocusSuppression.add(anchor);
+  anchor.focus({ preventScroll: true });
+}
 
 /**
  * @param {Element} anchor
@@ -782,10 +838,8 @@ function wireTooltipAnchor(anchor) {
     anchor.addEventListener("click", (event) => {
       // Pointer clicks open the preview instead of jumping — but only
       // pointer clicks. A keyboard activation (Enter fires a click with
-      // detail 0) keeps native navigation: the tooltip is an unfocusable
-      // pointer/touch affordance (role="tooltip", removed on blur), so the
-      // in-document footnote — where every link is a real, focusable
-      // element — is the keyboard path to this content.
+      // detail 0) keeps native navigation to the in-document footnote. Tab
+      // reaches the preview's close control when dismissal is preferred.
       if (event.detail === 0) {
         removeKpressTooltips();
         return;
@@ -807,11 +861,32 @@ function wireTooltipAnchor(anchor) {
       typeof showDelay === "number" ? showDelay : TOOLTIP_SHOW_DELAY_MS,
     );
   });
-  anchor.addEventListener("focus", () => showKpressTooltip(anchor));
+  anchor.addEventListener("focus", () => {
+    if (tooltipFocusSuppression.delete(anchor)) {
+      return;
+    }
+    showKpressTooltip(anchor);
+  });
+  anchor.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab" || event.shiftKey || activeTooltip?.anchor !== anchor) {
+      return;
+    }
+    const closeButton = activeTooltip.tooltip.querySelector(".kpress-tooltip-close");
+    if (!(closeButton instanceof HTMLElement)) {
+      return;
+    }
+    event.preventDefault();
+    clearTooltipHideTimer();
+    closeButton.focus();
+  });
   anchor.addEventListener(
     "touchstart",
     (event) => {
       event.preventDefault();
+      if (activeTooltip?.anchor === anchor) {
+        removeKpressTooltips();
+        return;
+      }
       showKpressTooltip(anchor);
     },
     { passive: false },
@@ -822,7 +897,15 @@ function wireTooltipAnchor(anchor) {
       scheduleTooltipHide(activeTooltip, event);
     }
   });
-  anchor.addEventListener("blur", removeKpressTooltips);
+  anchor.addEventListener("blur", (event) => {
+    if (
+      event.relatedTarget instanceof Node &&
+      activeTooltip?.tooltip.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    removeKpressTooltips();
+  });
 }
 
 /**
@@ -923,8 +1006,20 @@ export function initKpressTooltips(
 ) {
   if (!tooltipGlobalsBound) {
     tooltipGlobalsBound = true;
-    dismissOnEscape(removeKpressTooltips);
+    dismissOnEscape(dismissKpressTooltipFromKeyboard);
     dismissOnResize(removeKpressTooltips);
+    document.addEventListener("pointerdown", (event) => {
+      if (!activeTooltip || !(event.target instanceof Node)) {
+        return;
+      }
+      if (
+        activeTooltip.tooltip.contains(event.target) ||
+        activeTooltip.anchor.contains(event.target)
+      ) {
+        return;
+      }
+      removeKpressTooltips();
+    });
   }
   const only = typeof config.only === "string" ? config.only : null;
   const kinds = only ? [only] : ["link", "footnote"];
