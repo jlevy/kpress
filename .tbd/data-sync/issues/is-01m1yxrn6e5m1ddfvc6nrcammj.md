@@ -5,7 +5,7 @@ title: "[epic] Every glyph from a shipped face, on screen and in print"
 kind: epic
 status: open
 priority: 1
-version: 30
+version: 40
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
@@ -39,8 +39,18 @@ child_order_hints:
   - is-01m215grmbc38xm0abqe23pkp9
   - is-01m215h3jrb38j3yedkt15rtys
   - is-01m215haewzqpqrx8jkczdq7e8
+  - is-01m21c0p6f47x3xf36prteh50x
+  - is-01m21c0vdtfn2pay9j82tmnmjr
+  - is-01m21c16e957w23cqa6ry8fgja
+  - is-01m21c1f4n2vssddn9z5j2fnhe
+  - is-01m21c1qr59taehjhfg8j0540e
   - is-01m2187qkv1svspaezmvhkaen8
+  - is-01m21eps97rv4hgc5ywk29degh
+  - is-01m21f932vafn097smmhj765h6
+  - is-01m21f943t3ff9my0st2bjsg7e
+  - is-01m21mh5q1jkq1xtmtn1na0pcn
+  - is-01m21p6gdnkammdwj38vavyp2g
 created_at: 2026-09-07T21:53:06.765Z
-updated_at: 2026-09-08T19:34:35.379Z
+updated_at: 2026-09-08T23:38:35.316Z
 ---
 Rule: a kpress document resolves every text run to a face kpress ships (PT Serif, Source Sans 3 variable on screen and static in print, the KaTeX faces and KPress Math Text composite, and a shipped mono), never to whatever the reader's or the renderer's machine has. Measured on the squares explainer PDF (946 KB): the sans was 345 KB of Type3 paths (kpr-w0s9), inline code was Menlo from the system (56 KB embedded), the list bullet U+25AA fell through PT Serif to Georgia (16 KB), and quotation marks come from Georgia on screen via LocalPunct. Children: kpr-w0s9 (print sans), the mono face, the list marker, LocalPunct, and the composite subsets (kpr-hhdc).
