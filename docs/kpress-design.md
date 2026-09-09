@@ -1287,21 +1287,30 @@ That exclusion is a statement about the renderer, not about the cascade, and it 
 however the scope is spelled.
 
 Same four slots, but each declares a **single** `font-weight` rather than the variable
-face’s whole axis, and its metric table is built at that same weight — 400 for the
+face’s whole axis, and its metric table is built at that same weight — 410 for the
 regular slots, `--kpress-font-weight-sans-bold` (650) for the bold ones, which is what
 `.mathbf` and `.boldsymbol` ask for instead of upstream’s 700. A KaTeX metric table
 describes one face *and one weight*, and Source Sans’s Latin advances move a median 7.1%
 across the 370–700 axis while its ink heights move 0.035 em at most; CSS Fonts 4 clamps
 a variable face to the range its `@font-face` declares, so a single value draws the
 weight the table was built at whatever the context asks for.
-Upstream’s `.katex { font: normal 1.21em … }` already resets `font-weight`, so
-mathematics in a sans context is set at 400 either way.
+The numeric `--kpress-font-weight-sans-regular` in `style-tokens.css` is the one
+adjustable input for regular sans prose and mathematics.
+It accepts 200–500; heavier regular requests would select bold KaTeX fallback glyphs.
+After changing it, run `python -m devtools.instance_sans` and then
+`python -m devtools.katex_text_metrics`. They generate the print instances and asset
+manifest, composite descriptors, Greek scales, metric tables, private CSS weight, and
+explicit font warmup requests.
+The CSS overrides KaTeX’s shorthand reset with the generated weight.
+`--kpress-font-weight-sans-light` aliases the regular token; medium and bold retain
+their own intentional weights.
+A host override of a prose token alone cannot change the fixed composite metrics.
 
 Under `@media print`, and declared last, the static `KPress Print Sans` instances at the
 same two weights are layered over the same ranges, so a printed page embeds a font
 rather than the Type3 outline paths Chromium writes for a variable face away from its
 default position (the reason [Print Sans Faces](#print-sans-faces) exists).
-The two agree exactly: instancing the variable face at 400 and 650 reproduces every
+The two agree exactly: instancing the variable face at 410 and 650 reproduces every
 Latin advance of the shipped instance, so one metric table is true of both — which is
 also why the generator measures the sans slots from those instance files.
 
@@ -1670,16 +1679,16 @@ request, since a weight the set does not carry is matched to the nearest instanc
 The variable face stays behind it for the case where the family cannot answer at all, a
 build that ships without the instances, which is the behavior before this feature.
 
-**The set.** Five weights (370, 400, 550, 600, 650) in normal and italic, ten files of
-about 15KB, generated from the vendored variable faces by `devtools/instance_sans.py`
-into `static/fonts/` together with the stylesheet `static/css/print-fonts.css` that
-declares them. Both are generated files; `python -m devtools.instance_sans --check`
-verifies the shipped bytes and runs in both `make lint` and `make lint-check`, the
-second of which is what CI runs.
-The weights are the ones KPress’s own sans contexts request: the three weight tokens
-(370, 550, 650), the footnote controls’ 600, and 400 for the resets.
-The two sans-mode headings ask for 380 and 440, which CSS weight matching lands on 370
-and 400; `.kpress-prose h4`’s 540 lands on 550.
+**The set.** Six weights (370, 400, 410, 550, 600, 650) in normal and italic, twelve
+files of about 15KB, generated from the vendored variable faces by
+`devtools/instance_sans.py` into `static/fonts/` together with the stylesheet
+`static/css/print-fonts.css` that declares them.
+Both are generated files; `python -m devtools.instance_sans --check` verifies the
+shipped bytes and runs in both `make lint` and `make lint-check`, the second of which is
+what CI runs. The set includes the regular, medium and bold tokens (410, 550, 650), the
+footnote controls’ 600, and the existing 370/400 instances for deliberately lighter
+typography. The two sans-mode headings ask for 380 and 440, which CSS weight matching
+lands on 370 and 410; `.kpress-prose h4`’s 540 lands on 550.
 
 A 700 pair shipped until 2026-09-07, on the belief that bold asked for it.
 It does not: `.kpress b, .kpress strong` sets the bold token, so a UA-default `bold`

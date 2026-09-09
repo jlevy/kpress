@@ -10,7 +10,8 @@ A static instance embeds like any other font and is smoothed like one.
 This tool instances the vendored variable faces at the weights kpress's own sans
 contexts request and writes them to ``static/fonts/``, together with the stylesheet
 ``static/css/print-fonts.css`` that declares them as the ``KPress Print Sans`` family
-under print media. Both are generated files: hand edits are overwritten.
+under print media. The tool also updates their asset manifest entries. Those outputs
+are generated: hand edits are overwritten.
 
 The output is a modified version of an OFL font whose copyright holder reserves the
 name "Source", so the generated family carries a name of its own (:data:`FAMILY`) and
@@ -27,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import re
 import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
@@ -39,6 +41,28 @@ ROOT: Final = Path(__file__).resolve().parents[1]
 STATIC: Final = ROOT / "src" / "kpress" / "format" / "static"
 FONTS: Final = STATIC / "fonts"
 CSS_PATH: Final = STATIC / "css" / "print-fonts.css"
+TOKENS_PATH: Final = STATIC / "css" / "style-tokens.css"
+ASSETS_PATH: Final = STATIC.parent / "assets.py"
+ASSETS_BEGIN: Final = "    # BEGIN GENERATED PRINT SANS ASSETS: devtools.instance_sans"
+ASSETS_END: Final = "    # END GENERATED PRINT SANS ASSETS"
+
+
+def regular_weight(tokens: Path = TOKENS_PATH) -> int:
+    """Read the single build-time weight shared by sans prose and math.
+
+    CSS custom properties cannot supply an ``@font-face`` descriptor. The existing
+    font generators therefore read the numeric token and bake it into their output;
+    keeping this reader here also lets file-loading hosts use the same setting.
+    """
+    values = re.findall(r"--kpress-font-weight-sans-regular:\s*(\d+)\s*;", tokens.read_text())
+    # Above 500 KaTeX's fallback families select their bold face, and 650 also
+    # collides with the composite's intentional bold slot.
+    if len(values) != 1 or not 200 <= int(values[0]) <= 500:
+        raise ValueError(f"{tokens}: expected one numeric regular sans weight in 200..500")
+    return int(values[0])
+
+
+REGULAR_WEIGHT: Final = regular_weight()
 
 #: The family the static faces declare. The faces are modified versions of Source Sans
 #: 3, whose OFL reserves the name "Source" for the original: condition 3 of that license
@@ -48,10 +72,10 @@ CSS_PATH: Final = STATIC / "css" / "print-fonts.css"
 #: has to break a tie between two families over one weight.
 FAMILY: Final = "KPress Print Sans"
 
-#: The weights kpress's own sans contexts request: the three weight tokens (370, 550
-#: and 650), the footnote controls' literal 600, and 400 for the resets. The two
+#: The regular token, medium 550, bold 650, the footnote controls' literal 600, and the
+#: existing 370/400 instances used by deliberately lighter headings. The two
 #: sans-mode headings ask for 380 and 440, which get no instance of their own and land
-#: on 370 and 400, ten and forty units away; ``tests/test_print_sans_faces.py`` pins
+#: on 370 and the regular instance; ``tests/test_print_sans_faces.py`` pins
 #: every request's landing place.
 #:
 #: A 700 pair shipped here until 2026-09-07 and was dropped because no sans context asks
@@ -60,7 +84,7 @@ FAMILY: Final = "KPress Print Sans"
 #: the prose ``h5`` and the mono syntax rules -- neither family can resolve to this one.
 #: A host that raises a weight token above 650 lands on 650, which is the fallback
 #: ``docs/kpress-operations-and-host-integration.md`` documents.
-WEIGHTS: Final[tuple[int, ...]] = (370, 400, 550, 600, 650)
+WEIGHTS: Final[tuple[int, ...]] = tuple(sorted({370, 400, REGULAR_WEIGHT, 550, 600, 650}))
 STYLES: Final[tuple[str, ...]] = ("normal", "italic")
 
 #: The subset the variable faces cover, repeated verbatim so a static face is never
@@ -209,7 +233,20 @@ def expected_files(fonts: Path = FONTS) -> dict[Path, bytes]:
         for weight in WEIGHTS:
             files[fonts / instance_name(weight, style)] = instance_face(source, weight)
     files[CSS_PATH] = stylesheet().encode()
+    files[ASSETS_PATH] = asset_manifest(ASSETS_PATH.read_text()).encode()
     return files
+
+
+def asset_manifest(source: str) -> str:
+    """Keep linked/hashed publications in step with the generated print faces."""
+    if source.count(ASSETS_BEGIN) != 1 or source.count(ASSETS_END) != 1:
+        raise ValueError(f"{ASSETS_PATH}: expected one generated print sans asset block")
+    before, rest = source.split(ASSETS_BEGIN)
+    _, after = rest.split(ASSETS_END)
+    entries = "\n".join(
+        f'    "fonts/{instance_name(weight, style)}",' for style in STYLES for weight in WEIGHTS
+    )
+    return f"{before}{ASSETS_BEGIN}\n{entries}\n{ASSETS_END}{after}"
 
 
 def _shown(path: Path) -> str:

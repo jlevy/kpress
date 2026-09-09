@@ -1,7 +1,7 @@
 """Where every sans weight kpress asks for lands on the static print instances.
 
 Under print the sans stack leads with the static ``KPress Print Sans`` family (see
-print.css and devtools/instance_sans.py), which covers five weights rather than the
+print.css and devtools/instance_sans.py), which covers discrete weights rather than the
 variable face's whole 200-900 axis. A request that has no instance is not an error: CSS
 font matching picks the nearest available weight by a rule with a documented asymmetry
 around 400-500, so the sans-mode headings at 380 and 440 land a step apart in direction.
@@ -12,6 +12,9 @@ the stylesheets either gets an instance or is a deliberate, visible choice.
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
@@ -22,21 +25,22 @@ from fontTools.ttLib import TTFont
 from devtools.instance_sans import (
     FAMILY,
     FONTS,
+    REGULAR_WEIGHT,
     STYLES,
     WEIGHTS,
     MissingSourceFaceError,
     check,
     expected_files,
     instance_name,
+    regular_weight,
     variable_face,
 )
 
 _CSS = Path(__file__).resolve().parents[1] / "src" / "kpress" / "format" / "static" / "css"
 
 #: Every numeric sans weight kpress's own stylesheets request, and the instance CSS
-#: Fonts 4 matching draws it from. The three weight tokens, the footnote controls' 600
-#: and the resets' 400 are exact; the sans-mode headings are not, and the pair 380/440
-#: is where the rule's asymmetry shows: 380 falls to 370 while 440 falls to 400 rather
+#: Fonts 4 matching draws it from. The regular, medium and bold tokens and the footnote controls' 600 are exact; the sans-mode headings are not, and the pair 380/440
+#: is where the rule's asymmetry shows: 380 falls to 370 while 440 falls to 410 rather
 #: than rising to 550, because a request inside 400-500 looks up only as far as 500
 #: before looking down. 540, just outside, rises to 550.
 #:
@@ -46,10 +50,10 @@ _CSS = Path(__file__).resolve().parents[1] / "src" / "kpress" / "format" / "stat
 #: resolve to the print sans. Sans bold is the 650 token, so 650 is the heaviest weight
 #: a sans element reaches, and a stray 700 request lands there.
 EXPECTED_LANDING = {
-    370: 370,
     380: 370,
     400: 400,
-    440: 400,
+    410: 410,
+    440: 410,
     540: 550,
     550: 550,
     600: 600,
@@ -58,7 +62,7 @@ EXPECTED_LANDING = {
 }
 
 #: The weight tokens, with the values style-tokens.css must give them.
-WEIGHT_TOKENS = {"light": 370, "medium": 550, "bold": 650}
+WEIGHT_TOKENS = {"regular": 410, "medium": 550, "bold": 650}
 
 _FONT_FACE_BLOCK = re.compile(r"@font-face\s*\{[^}]*\}")
 #: Every ``font-weight`` declaration, however it is spelled and wherever it sits in its
@@ -116,6 +120,8 @@ def _requested_weights() -> set[int]:
         for name, value in re.findall(r"--kpress-font-weight-sans-(\w+):\s*(\d+);", tokens)
     }
     assert declared == WEIGHT_TOKENS
+    assert "--kpress-font-weight-sans-light: var(--kpress-font-weight-sans-regular);" in tokens
+    declared["light"] = declared["regular"]
 
     weights: set[int] = set()
     for path in sorted(_CSS.rglob("*.css")):
@@ -127,6 +133,11 @@ def _requested_weights() -> set[int]:
             value = str(raw).strip()
             if value.isdigit():
                 weights.add(int(value))
+                continue
+            if value == "var(--_kpress-font-weight-prose)":
+                # The reading choice switches the prose family and its regular weight
+                # together; the serif path stays 400.
+                weights.update((400, REGULAR_WEIGHT))
                 continue
             token = _WEIGHT_TOKEN.fullmatch(value)
             assert token is not None, f"{path.name}: unrecognized font-weight {value!r}"
@@ -147,6 +158,65 @@ def test_each_request_lands_on_its_instance() -> None:
     assert {desired: match_weight(desired, WEIGHTS) for desired in EXPECTED_LANDING} == (
         EXPECTED_LANDING
     )
+
+
+def test_regular_weight_reader_rejects_ambiguous_or_invalid_settings(tmp_path: Path) -> None:
+    tokens = tmp_path / "tokens.css"
+    for text in (
+        ":root {}",
+        ":root {--kpress-font-weight-sans-regular: var(--another);}",
+        ":root {--kpress-font-weight-sans-regular: 901;}",
+        ":root {--kpress-font-weight-sans-regular: 600;}",
+        ":root {--kpress-font-weight-sans-regular: 650;}",
+        ":root {--kpress-font-weight-sans-regular: 410; --kpress-font-weight-sans-regular: 420;}",
+    ):
+        tokens.write_text(text)
+        with pytest.raises(ValueError, match="expected one numeric regular sans weight"):
+            regular_weight(tokens)
+
+
+def test_one_token_regenerates_print_faces_composite_metrics_and_warmup(tmp_path: Path) -> None:
+    """A different source weight must not require editing any generated weight literal."""
+    from devtools.katex_text_metrics import ASSET_PATH, parse_asset
+
+    project = Path(__file__).resolve().parents[1]
+    copied_static = tmp_path / "src" / "kpress" / "format" / "static"
+    shutil.copytree(_CSS.parent, copied_static)
+    shutil.copy(project / "src/kpress/format/assets.py", copied_static.parent / "assets.py")
+    (tmp_path / "devtools").mkdir()
+    for name in ("__init__.py", "instance_sans.py", "katex_text_metrics.py"):
+        shutil.copy(project / "devtools" / name, tmp_path / "devtools" / name)
+    tokens = copied_static / "css/style-tokens.css"
+    tokens.write_text(
+        tokens.read_text().replace(
+            f"--kpress-font-weight-sans-regular: {REGULAR_WEIGHT};",
+            "--kpress-font-weight-sans-regular: 500;",
+        )
+    )
+    for module in ("devtools.instance_sans", "devtools.katex_text_metrics"):
+        subprocess.run(
+            [sys.executable, "-m", module], cwd=tmp_path, check=True, capture_output=True, text=True
+        )
+
+    baseline = parse_asset(ASSET_PATH.read_text())["sans"]
+    changed = parse_asset((copied_static / "katex/katex-text-metrics.js").read_text())["sans"]
+    assert changed["Main-Regular"] != baseline["Main-Regular"]
+    assert changed["Math-Italic"] != baseline["Math-Italic"]
+    assert changed["Main-Bold"] == baseline["Main-Bold"]
+    assert changed["Math-BoldItalic"] == baseline["Math-BoldItalic"]
+    assert changed["fonts"][:2] == [
+        "500 1em 'KPress Math Text Sans'",
+        "italic 500 1em 'KPress Math Text Sans'",
+    ]
+    composite = (copied_static / "katex/katex-text-face.css").read_text()
+    assert "--_kpress-math-sans-regular-weight: 500;" in composite
+    for style in STYLES:
+        filename = instance_name(500, style)
+        font = cast(Any, TTFont(copied_static / "fonts" / filename))
+        assert font["OS/2"].usWeightClass == 500
+        assert filename in composite
+        assert filename in (copied_static / "css/print-fonts.css").read_text()
+        assert filename in (copied_static.parent / "assets.py").read_text()
 
 
 def test_shipped_instances_and_stylesheet_are_current() -> None:

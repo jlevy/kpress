@@ -258,6 +258,7 @@ PUBLIC_CSS_VARIABLES = (
     "--kpress-font-table",
     "--kpress-font-weight-sans-bold",
     "--kpress-font-weight-sans-medium",
+    "--kpress-font-weight-sans-regular",
     "--kpress-bullet-size",
     "--kpress-caps-heading-size-multiplier",
     "--kpress-caps-label-size",

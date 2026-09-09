@@ -1,16 +1,18 @@
 import { behaviors } from "./runtime.js";
-import { resolveKpressViewport, viewportScrollContext } from "./viewport.js";
+import { isDocumentViewport, resolveKpressViewport, viewportScrollContext } from "./viewport.js";
 
 /**
- * History behavior: viewport-aware scroll restoration for in-document hash
- * navigation.
+ * History behavior: viewport-aware scroll restoration for section navigation
+ * and reader-pane reloads.
  *
  * A KPress document scrolls inside the `[data-kpress-viewport]` pane, and
  * browsers persist/restore only the *document* scroller's position across
  * same-document history traversal — the pane is invisible to native scroll
  * restoration, so Back after a section-link jump would revert the URL but
  * leave the reader where they were. This behavior records the pane offset
- * in the session-history entry state and replays it on traversal.
+ * in the session-history entry state and replays it on traversal. Pane pages
+ * also flush before departure and restore on pageshow, including reload.
+ * Document-scrolling hosts keep native reload restoration.
  *
  * It also owns plain in-document section navigation: Chromium performs
  * fragment navigation with an instant scroll when the scroller is a
@@ -158,14 +160,21 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
     stampScroll(ctx);
   };
 
+  /** @param {unknown} state */
+  const restoreStampedScroll = (state) => {
+    const top = isPlainRecord(state) ? state[HISTORY_SCROLL_STATE_KEY] : undefined;
+    if (typeof top === "number" && Number.isFinite(top)) {
+      restorePaneScroll(viewport, top);
+      return true;
+    }
+    return false;
+  };
+
   /**
    * @param {PopStateEvent} event
    */
   const onPopState = (event) => {
-    const state = event.state;
-    const top = isPlainRecord(state) ? state[HISTORY_SCROLL_STATE_KEY] : undefined;
-    if (typeof top === "number" && Number.isFinite(top)) {
-      restorePaneScroll(viewport, top);
+    if (restoreStampedScroll(event.state)) {
       return;
     }
     // No stamped offset (first forward visit into a hash entry, or an entry
@@ -279,22 +288,49 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
   };
 
   let stampTimer = 0;
+  let restoreFrame = 0;
   const onScroll = () => {
     clearTimeout(stampTimer);
     stampTimer = window.setTimeout(() => stampScroll(ctx), HISTORY_STAMP_DEBOUNCE_MS);
+  };
+  const flushScroll = () => {
+    // Chromium snapshots reload state before pagehide. beforeunload flushes the
+    // pending stamp in time, without canceling navigation or requesting a prompt;
+    // pagehide also covers cached cross-document departures.
+    // A beforeunload listener can reduce Firefox's back/forward-cache eligibility.
+    // This pane-only tradeoff preserves rapid reloads; document hosts stay native.
+    clearTimeout(stampTimer);
+    stampScroll(ctx);
+  };
+  const onPageShow = () => {
+    // A fresh fragment visit has no stamp: leave its native anchor landing alone.
+    // Firefox may apply the fragment after pageshow; restore at the next frame,
+    // once that native navigation has finished, before drawing the pane.
+    const state = history.state;
+    cancelAnimationFrame(restoreFrame);
+    restoreFrame = requestAnimationFrame(() => restoreStampedScroll(state));
   };
 
   document.addEventListener("click", onClick, true);
   window.addEventListener("click", onNavClick);
   window.addEventListener("popstate", onPopState);
   ctx.onScroll(onScroll);
+  if (!isDocumentViewport(viewport)) {
+    window.addEventListener("beforeunload", flushScroll);
+    window.addEventListener("pagehide", flushScroll);
+    window.addEventListener("pageshow", onPageShow);
+  }
 
   return () => {
     document.removeEventListener("click", onClick, true);
     window.removeEventListener("click", onNavClick);
     window.removeEventListener("popstate", onPopState);
+    window.removeEventListener("pagehide", flushScroll);
+    window.removeEventListener("beforeunload", flushScroll);
+    window.removeEventListener("pageshow", onPageShow);
     ctx.offScroll(onScroll);
     clearTimeout(stampTimer);
+    cancelAnimationFrame(restoreFrame);
   };
 }
 

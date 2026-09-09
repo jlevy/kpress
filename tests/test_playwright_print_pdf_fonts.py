@@ -33,7 +33,7 @@ from typing import cast
 
 import pytest
 
-from devtools.instance_sans import FAMILY
+from devtools.instance_sans import FAMILY, REGULAR_WEIGHT
 from devtools.subset_mono import SOURCES as MONO_STYLES
 from devtools.subset_mono import MonoStyle
 from devtools.subset_quotes import POSTSCRIPT_NAME as QUOTE_FACE
@@ -48,8 +48,8 @@ def _mono_style(name: str) -> MonoStyle:
 
 
 #: The static instance every default KPress page needs in print: the footer margin box
-#: names the sans stack at the root's own weight, which font matching lands on 400.
-FOOTER_FACE = f"{FAMILY.replace(' ', '')}-400"
+#: names the sans stack at the shared regular weight.
+FOOTER_FACE = f"{FAMILY.replace(' ', '')}-{REGULAR_WEIGHT}"
 
 #: The mono face code resolves to, by the PostScript name the subset keeps from
 #: upstream (devtools/subset_mono.py renames nothing). Selected by name rather than by

@@ -37,6 +37,12 @@ const METRICS = {
     "Main-Bold": { 48: [0, 0.636, 0, 0, 0.52] },
     "Math-Italic": { 97: [0, 0.498, 0, 0, 0.525] },
     scale: { "Main-Regular": 0.96, "Math-Italic": 1.102 },
+    fonts: [
+      "410 1em 'KPress Math Text Sans'",
+      "italic 410 1em 'KPress Math Text Sans'",
+      "650 1em 'KPress Math Text Sans'",
+      "italic 650 1em 'KPress Math Text Sans'",
+    ],
   },
   scale: { "Main-Regular": 1.025, "Math-Italic": 1.15 },
 };
@@ -458,8 +464,8 @@ describe("explicit mathematics font warmup", () => {
       "italic 400 1em 'KPress Math Text'",
       "700 1em 'KPress Math Text'",
       "italic 700 1em 'KPress Math Text'",
-      "400 1em 'KPress Math Text Sans'",
-      "italic 400 1em 'KPress Math Text Sans'",
+      "410 1em 'KPress Math Text Sans'",
+      "italic 410 1em 'KPress Math Text Sans'",
       "650 1em 'KPress Math Text Sans'",
       "italic 650 1em 'KPress Math Text Sans'",
     ]);
@@ -474,8 +480,8 @@ describe("explicit mathematics font warmup", () => {
     mountProseAndCaption({ wrapper: 'data-kpress-prose-font="sans"' });
     const warming = warmMath();
     expect(loads.filter((load) => load.text !== undefined).map((load) => load.request)).toEqual([
-      "400 1em 'KPress Math Text Sans'",
-      "italic 400 1em 'KPress Math Text Sans'",
+      "410 1em 'KPress Math Text Sans'",
+      "italic 410 1em 'KPress Math Text Sans'",
       "650 1em 'KPress Math Text Sans'",
       "italic 650 1em 'KPress Math Text Sans'",
     ]);

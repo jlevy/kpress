@@ -65,6 +65,90 @@ beforeEach(() => {
 });
 
 describe("history behavior", () => {
+  it("restores a pane on pageshow and releases lifecycle listeners on disposal", async () => {
+    const viewport = documentMarkup();
+    history.replaceState({ kpressScroll: 1234, hostValue: "retained" }, "");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    window.dispatchEvent(new Event("pageshow"));
+    // A browser can apply its fragment after pageshow. The saved reading
+    // position must win when the next frame is drawn.
+    viewport.scrollTop = 400;
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(1234);
+    expect(history.state).toEqual({ kpressScroll: 1234, hostValue: "retained" });
+
+    window.dispatchEvent(new Event("pageshow"));
+    dispose();
+    viewport.scrollTop = 5678;
+    window.dispatchEvent(new Event("pageshow"));
+    window.dispatchEvent(new Event("pagehide"));
+    window.dispatchEvent(new Event("beforeunload"));
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(5678);
+    expect(history.state.kpressScroll).toBe(1234);
+  });
+
+  it.each([
+    "beforeunload",
+    "pagehide",
+  ])("flushes a pane's latest scroll on %s without blocking navigation", async (type) => {
+    vi.useFakeTimers();
+    const viewport = documentMarkup();
+    history.replaceState({ hostValue: "retained" }, "");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    try {
+      viewport.scrollTop = 2800;
+      viewport.dispatchEvent(new Event("scroll"));
+      const event = new Event(type, { cancelable: true });
+      window.dispatchEvent(event);
+      expect(history.state).toEqual({ hostValue: "retained", kpressScroll: 2800 });
+      expect(event.defaultPrevented).toBe(false);
+      viewport.scrollTop = 0;
+      vi.advanceTimersByTime(1000);
+      expect(history.state.kpressScroll).toBe(2800);
+    } finally {
+      dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("leaves an unstamped initial fragment landing untouched on pageshow", async () => {
+    const viewport = documentMarkup();
+    history.replaceState({ hostValue: "retained" }, "", "#sec");
+    viewport.scrollTop = 765;
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    window.dispatchEvent(new Event("pageshow"));
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(765);
+    expect(history.state).toEqual({ hostValue: "retained" });
+    dispose();
+  });
+
+  it("leaves document-scrolling host reloads to native restoration", async () => {
+    const viewport = document.documentElement;
+    viewport.setAttribute("data-kpress-viewport", "");
+    const scrollTo = vi.spyOn(viewport, "scrollTo");
+    history.replaceState({ kpressScroll: 4321, hostValue: "retained" }, "");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+    try {
+      window.dispatchEvent(new Event("pageshow"));
+      window.dispatchEvent(new Event("pagehide"));
+      window.dispatchEvent(new Event("beforeunload"));
+      await new Promise(requestAnimationFrame);
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(history.state).toEqual({ kpressScroll: 4321, hostValue: "retained" });
+    } finally {
+      dispose();
+      scrollTo.mockRestore();
+      viewport.removeAttribute("data-kpress-viewport");
+    }
+  });
+
   it("stamps the pane scroll offset into the current entry before hash navigation", async () => {
     const viewport = documentMarkup();
     const { initKpressHistory } = await freshHistoryModule();

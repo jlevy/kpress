@@ -374,21 +374,17 @@
  * its `@font-face` declares, so a single value draws the weight the table was built at
  * whatever the context asks for, and KaTeX never lays out glyphs it has no numbers for.
  *
- * The two weights:
+ * The regular weight comes from `--kpress-font-weight-sans-regular` in
+ * style-tokens.css. instance_sans.py and katex_text_metrics.py generate its static
+ * instances, fixed face descriptors, private CSS weight and matching tables together.
+ * The regular CSS rule below overrides KaTeX's shorthand weight reset with that fixed
+ * value. A host changing the source token must regenerate both tools; overriding only
+ * the live prose token does not change the baked mathematics.
  *
- *   400  the regular slots. Upstream's `.katex { font: normal 1.21em ... }` resets
- *        font-weight, so mathematics in a sans context is set at 400 today and stays
- *        there; a host's 410-weight caption gets a 400-weight mathematics, 0.15% off
- *        in advance and exactly described by the table.
- *   650  the bold slots. 650 is the value of `--kpress-font-weight-sans-bold`, which is
- *        what bold means in every other sans context kpress ships, so `\mathbf{D}` in a
- *        caption reaches the same bold as a bold word in the caption beside it rather
- *        than upstream's 700. The `.mathbf` and `.boldsymbol` rules below name 650
- *        LITERALLY and do not read the token: the token is public and a host may set it,
- *        the composite declares 400 and 650 only, and CSS Fonts 4 searches downward for a
- *        desired weight in [400, 500] -- so a host that set it to 500 got the 400 face
- *        under the 650 table, drawn 0.6153 em against 0.6300 em laid out. What a host
- *        means by bold is a question about words; which face the table describes is not.
+ * Bold stays at 650. Its rules use a literal because a host may override the public
+ * sans-bold prose token, whereas the bold metric tables describe only the 650 face.
+ * CSS Fonts 4's weight matching can otherwise choose a regular face for a host's
+ * lower bold request, drawing regular outlines over bold metrics.
  *
  * PRINT. The screen draws the Latin ranges from the variable faces; a printed page
  * cannot, because Chromium's PDF writer turns a variable face away from its default
@@ -396,7 +392,7 @@
  * the plain sans role). The `@media print` block at the end of this section layers the
  * static instances at the same two weights over the same ranges, LAST, so CSS Fonts 4's
  * last-defined-face rule gives them to print and leaves the screen alone. The two agree
- * to the unit: instancing the variable face at 400 and 650 reproduces every Latin
+ * to the unit: instancing the variable face at the generated weights reproduces every Latin
  * advance of the shipped instance exactly, so one metric table is true of both.
  *
  * The rules are separate from the ones above rather than folded into them, and each
@@ -404,12 +400,15 @@
  * consuming host's stylesheet check applies.
  */
 
-/* ================== SANS SLOT 1: normal 400 (KaTeX_Main-Regular) =================== */
+/* BEGIN GENERATED SANS FACES: devtools.katex_text_metrics */
+:root {
+  --_kpress-math-sans-regular-weight: 410;
+}
 
 @font-face {
   font-family: "KPress Math Text Sans";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 410;
   font-display: block;
   src: url("../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2");
   unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
@@ -418,28 +417,17 @@
 @font-face {
   font-family: "KPress Math Text Sans";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 410;
   font-display: block;
-  /* Greek to the cap height Source Sans DRAWS; `katex_text_metrics --print-scale`
-     (Main-Regular). Source Sans declares `sCapHeight` 660 at every instance but draws its
-     `H` at 656 here and 653 at 650, so the generator measures the ink; the declaration is
-     true only at the variable face's own default position, which the composite never uses.
-     Below 100% because Computer Modern's LATIN cap is taller than Source Sans's, 683
-     against 656, which is what the factor equalizes. It does not equalize the Greek, and
-     no scalar could: after it, flat-topped capitals land within half a percent while the
-     pointed and round ones carry Computer Modern's optical overshoot, 5.7pp of spread
-     across the range. KaTeX's own table already declares one height for all of them. */
   size-adjust: 96%;
   src: url("../katex/fonts/KaTeX_Main-Regular.woff2") format("woff2");
   unicode-range: U+0391-03A9;
 }
 
-/* =================== SANS SLOT 2: italic 400 (KaTeX_Math-Italic) =================== */
-
 @font-face {
   font-family: "KPress Math Text Sans";
   font-style: italic;
-  font-weight: 400;
+  font-weight: 410;
   font-display: block;
   src: url("../fonts/source-sans-3-latin-wght-italic.woff2") format("woff2");
   unicode-range: U+0041-005A, U+0061-007A;
@@ -448,15 +436,12 @@
 @font-face {
   font-family: "KPress Math Text Sans";
   font-style: italic;
-  font-weight: 400;
+  font-weight: 410;
   font-display: block;
-  /* Greek to Source Sans's x-height; `katex_text_metrics --print-scale` (Math-Italic). */
   size-adjust: 110.2%;
   src: url("../katex/fonts/KaTeX_Math-Italic.woff2") format("woff2");
   unicode-range: U+0370-03FF;
 }
-
-/* ==================== SANS SLOT 3: normal 650 (KaTeX_Main-Bold) ==================== */
 
 @font-face {
   font-family: "KPress Math Text Sans";
@@ -472,17 +457,10 @@
   font-style: normal;
   font-weight: 650;
   font-display: block;
-  /* Greek to the cap height Source Sans draws at 650, which is 653 rather than the 660 it
-     declares; `katex_text_metrics --print-scale` (Main-Bold). Lower than the regular
-     slot's factor because the ink shortens as the weight rises while the declaration does
-     not move -- which is why deriving from the declaration left this, the bold slot,
-     calibrated worse than the regular one. */
   size-adjust: 95.2%;
   src: url("../katex/fonts/KaTeX_Main-Bold.woff2") format("woff2");
   unicode-range: U+0391-03A9;
 }
-
-/* ================= SANS SLOT 4: italic 650 (KaTeX_Math-BoldItalic) ================= */
 
 @font-face {
   font-family: "KPress Math Text Sans";
@@ -498,30 +476,27 @@
   font-style: italic;
   font-weight: 650;
   font-display: block;
-  /* Greek to Source Sans's x-height; `--print-scale` (Math-BoldItalic). */
   size-adjust: 109.3%;
   src: url("../katex/fonts/KaTeX_Math-BoldItalic.woff2") format("woff2");
   unicode-range: U+0370-03FF;
 }
 
-/* The static instances, over the same ranges, declared last so print gets them and the
-   screen keeps the variable faces. Same reason and same files as css/print-fonts.css. */
 @media print {
   @font-face {
     font-family: "KPress Math Text Sans";
     font-style: normal;
-    font-weight: 400;
+    font-weight: 410;
     font-display: swap;
-    src: url("../fonts/kpress-print-sans-latin-400-normal.woff2") format("woff2");
+    src: url("../fonts/kpress-print-sans-latin-410-normal.woff2") format("woff2");
     unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
   }
 
   @font-face {
     font-family: "KPress Math Text Sans";
     font-style: italic;
-    font-weight: 400;
+    font-weight: 410;
     font-display: swap;
-    src: url("../fonts/kpress-print-sans-latin-400-italic.woff2") format("woff2");
+    src: url("../fonts/kpress-print-sans-latin-410-italic.woff2") format("woff2");
     unicode-range: U+0041-005A, U+0061-007A;
   }
 
@@ -543,6 +518,7 @@
     unicode-range: U+0041-005A, U+0061-007A;
   }
 }
+/* END GENERATED SANS FACES */
 
 /* ---------------------------- THE SANS FEATURE RULES ------------------------------ */
 
@@ -582,7 +558,7 @@
    Headings and the TOC are sans roles and are deliberately NOT marked, which
    `katex-init.js` decides by leaving them out of `SANS_CONTEXT`, for two different
    reasons. A heading sits a weight step away from the words around it -- `h3` at 550,
-   `h4` at 540, `h2` in the serif italic -- and a table built at 400 describes none of
+   `h4` at 540, `h2` in the serif italic -- and a table built at the regular weight describes none of
    those, so its mathematics would be a step off its own text whichever composite drew it.
    The TOC carries no mathematics at all: `render.py` escapes entry titles when it builds
    the TOC, so no `.katex` ever reaches it.
@@ -604,6 +580,7 @@
   ) [data-kpress-math-face="sans"]
   .katex {
   font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
+  font-weight: var(--_kpress-math-sans-regular-weight);
 }
 
 .kpress:not(
@@ -636,13 +613,8 @@
   font-style: italic;
 }
 
-/* 650 as a literal, not `var(--kpress-font-weight-sans-bold, 650)`. The token is a pinned
-   public variable a host may override, the composite declares 400 and 650 only, and the
-   `\mathbf` table is built at 650. CSS Fonts 4 searches DOWNWARD for a desired weight in
-   [400, 500], so a host that set the token to 500 or less got the 400 face under the 650
-   table -- measured at 0.6153 em drawn against 0.6300 em laid out, 2.3% wrong, and
-   silently. What a host means by bold is a question about words; which face the table
-   describes is not. */
+/* Pin the generated bold slot, independently of a host's prose weight override.
+   A request inside [400, 500] can otherwise choose the regular face under bold metrics. */
 .kpress:not(
     [data-kpress-fonts="system"],
     [data-kpress-font-set="system"],
@@ -737,6 +709,7 @@
 
 .kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex {
   font-family: "KPress Math Text Sans", KaTeX_Main, "Times New Roman", serif;
+  font-weight: var(--_kpress-math-sans-regular-weight);
 }
 
 .kpress-tooltip[data-kpress-math-text="prose"].kpress-tooltip-footnote .katex .mathnormal {
@@ -781,6 +754,7 @@
 
 :is(.kpress, .kpress-tooltip) [data-kpress-math-face="katex"] .katex.katex {
   font-family: KaTeX_Main, "Times New Roman", serif;
+  font-weight: 400;
 }
 
 :is(.kpress, .kpress-tooltip) [data-kpress-math-face="katex"] .katex.katex .mathnormal,
