@@ -76,10 +76,7 @@ def test_tooltip_hover_position_and_escape_in_real_browser(tmp_path: Path) -> No
 
 
 def test_footnote_keyboard_activation_navigates_in_real_browser(tmp_path: Path) -> None:
-    """Keyboard path for footnote content: the preview is a pointer/touch
-    affordance, so Enter on the focused ref must run native navigation to the
-    in-document footnote, dismiss the preview, and leave the footnote's inner
-    link reachable with Tab."""
+    """Keyboard users can dismiss the preview or follow its native link."""
     sync_api = pytest.importorskip("playwright.sync_api")
     (tmp_path / "content").mkdir()
     (tmp_path / "content" / "index.md").write_text(
@@ -110,6 +107,18 @@ def test_footnote_keyboard_activation_navigates_in_real_browser(tmp_path: Path) 
                 tooltip = page.locator(".kpress-tooltip")
                 tooltip.wait_for(state="visible", timeout=3_000)
 
+                page.keyboard.press("Tab")
+                assert page.locator(".kpress-tooltip-close").evaluate(
+                    "button => document.activeElement === button"
+                )
+                page.keyboard.press("Enter")
+                tooltip.wait_for(state="hidden", timeout=1_000)
+                assert ref.evaluate("anchor => document.activeElement === anchor")
+
+                # The restored trigger stays closed until it is focused again.
+                page.keyboard.press("Shift+Tab")
+                page.keyboard.press("Tab")
+                tooltip.wait_for(state="visible", timeout=3_000)
                 page.keyboard.press("Enter")
                 tooltip.wait_for(state="hidden", timeout=1_000)
                 assert "#fn-" in page.url

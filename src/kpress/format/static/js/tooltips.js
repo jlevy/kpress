@@ -676,8 +676,14 @@ function showKpressTooltip(anchor) {
 
   closeButton.addEventListener("click", (event) => {
     event.stopPropagation();
+    const restoreKeyboardFocus = event.detail === 0;
     removeKpressTooltips();
+    if (restoreKeyboardFocus) {
+      tooltipFocusSuppression.add(anchor);
+      anchor.focus({ preventScroll: true });
+    }
   });
+  tooltip.addEventListener("focusin", clearTooltipHideTimer);
   tooltip.addEventListener("focusout", (event) => {
     if (event.relatedTarget instanceof Node && tooltip.contains(event.relatedTarget)) {
       return;
@@ -696,9 +702,9 @@ function showKpressTooltip(anchor) {
   // over the destination. Tapping anywhere else on a section-preview tooltip
   // navigates to the previewed target itself — on touch the anchor's own tap
   // only opens the preview, so the preview must complete the journey. These
-  // surfaces are pointer/touch-only by design: the tooltip is unfocusable, and
-  // the keyboard path to the same content is the trigger anchor itself, whose
-  // Enter activation runs native navigation (see wireTooltipAnchor).
+  // Enter on the trigger still follows the native link. Forward Tab reaches
+  // the close control first, so keyboard users can also dismiss the preview
+  // without moving to its destination (see wireTooltipAnchor).
   tooltip.addEventListener("click", (event) => {
     const link = event.target instanceof Element ? event.target.closest("a") : null;
     if (link) {
@@ -763,6 +769,10 @@ function showKpressTooltip(anchor) {
 const TOOLTIP_SUPPRESS_SELECTOR =
   ".kpress-toc, .kpress-doc-header, .kpress-site-header, .kpress-site-footer, .kpress-tooltip, [data-kpress-no-tooltip]";
 
+// Restoring focus after keyboard dismissal must not immediately reopen the
+// tooltip through the trigger's focus listener.
+const tooltipFocusSuppression = new WeakSet();
+
 /**
  * @param {Element} anchor
  * @returns {boolean}
@@ -808,10 +818,8 @@ function wireTooltipAnchor(anchor) {
     anchor.addEventListener("click", (event) => {
       // Pointer clicks open the preview instead of jumping — but only
       // pointer clicks. A keyboard activation (Enter fires a click with
-      // detail 0) keeps native navigation: the tooltip is an unfocusable
-      // pointer/touch affordance (role="tooltip", removed on blur), so the
-      // in-document footnote — where every link is a real, focusable
-      // element — is the keyboard path to this content.
+      // detail 0) keeps native navigation to the in-document footnote. Tab
+      // reaches the preview's close control when dismissal is preferred.
       if (event.detail === 0) {
         removeKpressTooltips();
         return;
@@ -833,7 +841,24 @@ function wireTooltipAnchor(anchor) {
       typeof showDelay === "number" ? showDelay : TOOLTIP_SHOW_DELAY_MS,
     );
   });
-  anchor.addEventListener("focus", () => showKpressTooltip(anchor));
+  anchor.addEventListener("focus", () => {
+    if (tooltipFocusSuppression.delete(anchor)) {
+      return;
+    }
+    showKpressTooltip(anchor);
+  });
+  anchor.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab" || event.shiftKey || activeTooltip?.anchor !== anchor) {
+      return;
+    }
+    const closeButton = activeTooltip.tooltip.querySelector(".kpress-tooltip-close");
+    if (!(closeButton instanceof HTMLElement)) {
+      return;
+    }
+    event.preventDefault();
+    clearTooltipHideTimer();
+    closeButton.focus();
+  });
   anchor.addEventListener(
     "touchstart",
     (event) => {
