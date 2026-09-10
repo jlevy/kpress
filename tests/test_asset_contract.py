@@ -704,6 +704,26 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
         assert required in css, f"visual-parity rule missing from shipped CSS: {required!r}"
 
 
+def test_reader_detail_styles_keep_dense_prose_legible() -> None:
+    """Pin small reader rules whose regressions only appear in dense documents."""
+    document_css = get_static_asset("css/document.css").content.decode("utf-8")
+    components_css = get_static_asset("css/components.css").content.decode("utf-8")
+
+    inline_code = document_css.split(".kpress code:not(pre code)", 1)[1].split("}", 1)[0]
+    assert "padding: 0.1em 0.25em;" in inline_code
+
+    blockquote = document_css.split(".kpress blockquote", 1)[1].split("}", 1)[0]
+    assert "border-inline-start: 3px solid var(--kpress-doc-border);" in blockquote
+    assert "color: var(--kpress-doc-muted);" in blockquote
+
+    toc_links = components_css.split(".kpress-toc a", 1)[1].split("}", 1)[0]
+    toc_hierarchy = components_css.split(".kpress-toc {", 1)[1].split(".kpress-toc-toggle {", 1)[0]
+    assert "border-inline-start: 2px solid transparent;" in toc_links
+    assert "border-left:" not in toc_links
+    assert "text-indent:" not in toc_hierarchy
+    assert "padding-inline-start: 0.75rem;" in toc_hierarchy
+
+
 def test_footnote_backref_uses_literal_glyph_for_seal_equivalence() -> None:
     """The footnote backref must use literal NBSP+arrow chars, not &nbsp;/&uarr;
     entities — the seal/publish pipeline decodes entities, so entities would make
