@@ -706,10 +706,25 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
 
 def test_reader_detail_styles_keep_dense_prose_legible() -> None:
     """Pin small reader rules whose regressions only appear in dense documents."""
+    tokens_css = get_static_asset("css/style-tokens.css").content.decode("utf-8")
     document_css = get_static_asset("css/document.css").content.decode("utf-8")
     components_css = get_static_asset("css/components.css").content.decode("utf-8")
 
     inline_code = document_css.split(".kpress code:not(pre code)", 1)[1].split("}", 1)[0]
+    block_code = (
+        document_css.split(".kpress code:not(pre code)", 1)[1]
+        .split(".kpress-code {", 1)[1]
+        .split("}", 1)[0]
+    )
+    assert (
+        "--kpress-code-border: color-mix(in srgb, var(--kpress-doc-border) 55%, transparent);"
+        in tokens_css
+    )
+    assert "--kpress-code-radius: var(--kpress-radius-none);" in tokens_css
+    for code_surface in (inline_code, block_code):
+        assert "border: 1px solid var(--kpress-code-border);" in code_surface
+        assert "border-radius: var(--kpress-code-radius);" in code_surface
+        assert "dotted" not in code_surface
     assert "padding: 0.1em 0.25em;" in inline_code
 
     blockquote = document_css.split(".kpress blockquote", 1)[1].split("}", 1)[0]
@@ -722,6 +737,31 @@ def test_reader_detail_styles_keep_dense_prose_legible() -> None:
     assert "border-left:" not in toc_links
     assert "text-indent:" not in toc_hierarchy
     assert "padding-inline-start: 0.75rem;" in toc_hierarchy
+
+
+def test_monospace_css_never_uses_a_dotted_border() -> None:
+    """Code can vary its color and radius, but its edge is always solid."""
+    css_root = _KPRESS_ROOT / "src/kpress/format/static/css"
+    code_selector = re.compile(r"\b(?:code|pre|mono|monospace)\b", re.IGNORECASE)
+    dotted_border = re.compile(
+        r"(?:border(?:-[a-z-]+)?\s*:[^;{}]*\bdotted\b|border-style\s*:\s*dotted)",
+        re.IGNORECASE,
+    )
+    scanned: list[str] = []
+    offenders: list[str] = []
+    for path in sorted(css_root.rglob("*.css")):
+        css = re.sub(r"/\*.*?\*/", "", path.read_text(encoding="utf-8"), flags=re.DOTALL)
+        for selector, declarations in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            if not code_selector.search(selector):
+                continue
+            scanned.append(selector.strip())
+            if dotted_border.search(declarations):
+                offenders.append(f"{path.relative_to(_KPRESS_ROOT)}: {selector.strip()}")
+
+    assert scanned, "no monospace/code CSS selectors were inspected"
+    assert any(".kpress-code" in selector for selector in scanned)
+    assert any("code:not(pre code)" in selector for selector in scanned)
+    assert not offenders, f"dotted code borders: {offenders}"
 
 
 def test_footnote_backref_uses_literal_glyph_for_seal_equivalence() -> None:

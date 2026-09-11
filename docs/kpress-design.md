@@ -914,8 +914,11 @@ enforce “always use CSS vars”).
 
 - **Corner radius:** `--kpress-radius-none | -sm | -md | -lg | -pill`. One scale;
   rounded-vs-square is a deliberate per-surface choice.
-  Code blocks and tables both use `--kpress-radius-none` so the two read as one family;
-  the gear menu / popovers use `-sm`, footnote markers use `-pill`.
+  Tables use `--kpress-radius-none`; inline and block code share `--kpress-code-radius`,
+  which defaults to `--kpress-radius-none` but lets a host adjust code without changing
+  unrelated controls. The gear menu and popovers use `-sm`; footnote markers use `-pill`.
+- **Code edge:** `--kpress-code-border` gives inline and block monospace the same quiet,
+  solid border, derived at 55% of `--kpress-doc-border`. Code never uses a dotted edge.
 - **Motion:** `--kpress-ease` plus `--kpress-transition-fast | -med | -slow | -fade`.
   `-fast` is the default for hovers and size/shape changes; `-fade` is for overlay
   opacity/visibility. The `prefers-reduced-motion` block suppresses them.

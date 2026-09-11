@@ -322,16 +322,16 @@
 }
 
 .kpress code:not(pre code) {
-  border: 1px solid var(--color-hint-gentle);
-  border-radius: var(--kpress-radius-sm);
+  border: 1px solid var(--kpress-code-border);
+  border-radius: var(--kpress-code-radius);
   /* A compact tint rather than a chip: dense technical prose can carry many
      identifiers without turning into a row of padded controls. */
   padding: 0.1em 0.25em;
 }
 
 .kpress-code {
-  border: 1px solid var(--color-hint-gentle);
-  border-radius: var(--kpress-radius-none);
+  border: 1px solid var(--kpress-code-border);
+  border-radius: var(--kpress-code-radius);
   line-height: 1.5;
   margin: 0;
   overflow-x: auto;
