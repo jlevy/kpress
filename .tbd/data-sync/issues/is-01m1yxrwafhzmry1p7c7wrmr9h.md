@@ -1,19 +1,33 @@
 ---
 type: is
 id: is-01m1yxrwafhzmry1p7c7wrmr9h
-title: Vendor a mono face and lead the mono stack with it (Source Code Pro static 400 and 700)
+title: Vendor Planetaire Mono Text as the mono face at 0.87 of the prose size, replacing the interim Source Code Pro
 kind: feature
-status: in_progress
+status: closed
 priority: 1
-version: 3
+version: 10
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
 dependencies:
   - type: blocks
     target: is-01m1yxry1tpettdccn905znand
+  - type: blocks
+    target: is-01m1z831f7394cx7ayh9qkkp5s
 parent_id: is-01m1yxrn6e5m1ddfvc6nrcammj
 created_at: 2026-09-07T21:53:14.059Z
-updated_at: 2026-09-07T22:15:28.015Z
+updated_at: 2026-09-08T19:34:52.452Z
+closed_at: 2026-09-08T19:01:21.967Z
+close_reason: "Shipped: kpress#62 merged to main on 2026-09-08 after a senior review (request changes) with all twelve findings addressed; the default is all four Planetaire styles, since declaring a face is not loading it and synthesis put Type 3 outlines in the PDF"
+resolution: null
+duplicate_of: null
 ---
-kpress ships no mono face; --kpress-font-mono is ui-monospace, SFMono-Regular, Menlo, Consolas, monospace, so code is a different font on every machine and Menlo in a Mac-made PDF. Vendor Source Code Pro (the companion of Source Sans 3, OFL) as static latin woff2 at 400 and 700 from a pinned fontsource release (@fontsource/source-code-pro, exact version, 14-day cool-off, sha256 recorded), named source-code-pro-latin-{400,700}-normal.woff2 beside the other faces; declare them in style-tokens.css; lead the stack with "Source Code Pro" ahead of the system monos. Static faces embed in print, so no print-fonts instance is needed. Re-tune --kpress-font-size-mono (now 0.82 of base, set by eye for system monos) by measurement: Source Code Pro x-height 480/1000 against PT Serif 500 and Source Sans 3 486, so code's x-height sits with the prose it is inlined in, and record the numbers beside the token. Add a fonts README (static/fonts/README.md) recording provenance and license for every vendored face, PT Serif and Source Sans 3 included, which is missing today. Asset contract, goldens, docs. The final choice of mono face is tracked separately; keep this one until that closes.
+Decision (owner, 2026-09-08): no Source Code Pro. The interim Source Code Pro vendored on squares/font-consistency (PR #56, commit d80dbaf and the mono parts of the review fixes) is backed out so #56 lands with the system mono stack unchanged (ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --kpress-font-size-mono stays 0.82), keeping the rest of that branch (box list marker, KPress Quotes, the weight tokens, the fonts README and licences for the faces that stay, the system-mode override covering mono). Planetaire Mono Text then lands as its own pull request: vendored from a pinned planetaire commit or release that includes the OS/2 vertical-metrics fix (the shipped build reports Hack's sxHeight 0.547 and sCapHeight 0.729 while the outlines draw 0.560 and 0.760; a fix PR is in progress on that repo), as latin subsets of regular and bold only by default (the other styles opt in through kpr-hqrr's weights setting), the source sha256, the subsetting command and the B612 OFL, Hack and Planetaire licences recorded in static/fonts/README.md and NOTICE.md; the mono size token 0.87 of the prose size (ink x-height 0.560 em puts code's x-height at 97% of PT Serif's 0.500, about 85 columns at the 45em measure), with the rationale beside it; together with the on/off and weights settings of kpr-hqrr in the same PR or the one after. Chosen by the owner from a four-way comparison (Menlo, Source Code Pro, Hack v3.003, Planetaire) beside PT Serif at 18px, sized from the outlines' ink x-heights with a slider per face.
+
+## Notes
+
+Backed out of #56 (commit ae60438, 2026-09-08). The interim Source Code Pro vendoring from d80dbaf and the mono halves of the review-fix commits are reversed: the two woff2 files, their @font-face rules and the "Source Code Pro" lead in style-tokens.css, the OFL text and NOTICE entry, the asset registrations in assets.py / check_distribution.py / the asset contract test, tests/test_playwright_mono_face.py, and the mono half of the PDF embedding test. --kpress-font-size-mono and its small and tiny rungs are back at 0.82 / 0.75 / 0.7 and the components.css table-code comment with them. The font_mode="system" override does NOT keep a mono line: with the token back to the platform stack the values match, but the override assigns --kpress-font-mono directly and would discard --kpress-host-font-mono, which main does not do for a role it leaves alone. #56 landed with the mono stack exactly as on main and kept everything else (box marker, KPress Quotes, weight tokens, fonts README, licences for the remaining faces). The fonts README, kpress-design.md's Mono Face section and the style tokens now name mono as the one role not drawn from a shipped face and point here and at kpr-hqrr. Remaining work is unchanged: vendor Planetaire Mono Text from a pinned commit or release carrying the OS/2 vertical-metrics fix, latin regular and bold by default, size token 0.87, provenance and licences recorded, with kpr-hqrr's settings.
+
+PR #62 (branch squares/planetaire-mono, commits 3d92acf and 4f6aa4b) implements this and kpr-hqrr; CI green on lint, test 3.12/3.13/3.14, browser and distribution. Vendored from the pinned v0.2.0 tag as seven latin subsets of 13-17 KB (regular subset sha256 0ecd530d8bdc55cc58ace248b570949c17043a16638b93c19a8c1a16591a23ed from source f412b36c96e0b92dcb0d9d476e572375706d449616d341c7429af02eac7b408f), generated by devtools/subset_mono.py whose two-mode --check is wired into make lint and make lint-check. No rename: Planetaire reserves no font name of its own, so the subsets keep upstream's family, PostScript, copyright and OFL records. Size token 0.87, verified in a browser at the default: ratio 0.870, x-height ratio 0.974 (0.87 x 0.560 / 0.500) and 85.7 columns at the 45em measure (advance 0.602 em, 83.8 inside a fenced pre after its padding); tests/test_mono_face.py re-derives both from the shipped bytes. Provenance, per-file sha256 and the three licences (Planetaire, B612 Mono, Hack) are recorded in static/fonts/README.md and NOTICE.md following the Source Serif 4 subset. The components.css table-code comment was re-derived for the new ramp (0.87 / 0.884 / 0.875; table code at 0.916 of its cell, mono-small at 0.838).
+
+Post-merge CI follow-up (2026-09-08): kpr-3r5q tracks the one failure at https://github.com/jlevy/kpress/actions/runs/34266495329, merged revision 9ea0877e. The new mono screen/print test at tests/test_playwright_mono_face.py:184 observed a fourth Planetaire request (700 italic) where its fixture expected three; face identity assertions passed. All 35 math loading/serif/sans face tests and all 6 PDF font tests passed; the total was 42 passed and 1 failed. Python matrix, lint and distribution passed. This is a separate post-merge mono request-closure investigation; no math runtime or Squares pin change was made. The shipped feature remains closed, with the unresolved CI diagnosis tracked explicitly in kpr-3r5q.

@@ -5,7 +5,7 @@ title: "[epic] Every glyph from a shipped face, on screen and in print"
 kind: epic
 status: open
 priority: 1
-version: 8
+version: 40
 spec_path: docs/math-text-face.plan.md
 labels:
   - typography
@@ -18,7 +18,39 @@ child_order_hints:
   - is-01m1yxs24czqc8y3zz1n6q9709
   - is-01m1ymqzc9eyan1n7yg2gzewad
   - is-01m1yffqyysqevrgj22mvy6keg
+  - is-01m1z1st1e16fv3dac88902wgm
+  - is-01m1z2gzgnz8nk8tc7vd2y6xen
+  - is-01m1z3xvakyjevkv745b4nmym0
+  - is-01m1z3xvq6zxwbdnah51vakc4p
+  - is-01m1z4h0mzyhdhepp43n8z8kjn
+  - is-01m1z4h8rj102y46mjzan6pxcv
+  - is-01m1z5brtdfe25898yb3mafb03
+  - is-01m1z743jtmn911ekdsga2pevj
+  - is-01m1z831f7394cx7ayh9qkkp5s
+  - is-01m1z83ap9gn1y7s3xtj43gbw8
+  - is-01m1z83xj86jfm721scrcm718x
+  - is-01m1z8drasjh3hct7hke23s0kj
+  - is-01m1z8edra0hm7txfrmzpa9ahr
+  - is-01m1z8feedrzwyhq44z84qenh3
+  - is-01m1zs2c304hzab8vvw9zj8a5e
+  - is-01m1zs31any75ehnn70qb2rvh7
+  - is-01m1zsamjqhrkmtdsp9h2s16va
+  - is-01m1zsckx8fma5tbwjf3ksyedj
+  - is-01m215grmbc38xm0abqe23pkp9
+  - is-01m215h3jrb38j3yedkt15rtys
+  - is-01m215haewzqpqrx8jkczdq7e8
+  - is-01m21c0p6f47x3xf36prteh50x
+  - is-01m21c0vdtfn2pay9j82tmnmjr
+  - is-01m21c16e957w23cqa6ry8fgja
+  - is-01m21c1f4n2vssddn9z5j2fnhe
+  - is-01m21c1qr59taehjhfg8j0540e
+  - is-01m2187qkv1svspaezmvhkaen8
+  - is-01m21eps97rv4hgc5ywk29degh
+  - is-01m21f932vafn097smmhj765h6
+  - is-01m21f943t3ff9my0st2bjsg7e
+  - is-01m21mh5q1jkq1xtmtn1na0pcn
+  - is-01m21p6gdnkammdwj38vavyp2g
 created_at: 2026-09-07T21:53:06.765Z
-updated_at: 2026-09-07T22:30:19.553Z
+updated_at: 2026-09-08T23:38:35.316Z
 ---
 Rule: a kpress document resolves every text run to a face kpress ships (PT Serif, Source Sans 3 variable on screen and static in print, the KaTeX faces and KPress Math Text composite, and a shipped mono), never to whatever the reader's or the renderer's machine has. Measured on the squares explainer PDF (946 KB): the sans was 345 KB of Type3 paths (kpr-w0s9), inline code was Menlo from the system (56 KB embedded), the list bullet U+25AA fell through PT Serif to Georgia (16 KB), and quotation marks come from Georgia on screen via LocalPunct. Children: kpr-w0s9 (print sans), the mono face, the list marker, LocalPunct, and the composite subsets (kpr-hhdc).
