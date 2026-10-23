@@ -105,6 +105,7 @@ per-install sign-off.
 | Package | Advisory | Published | Adopted | Reviewed-by |
 | --- | --- | --- | --- | --- |
 | `nanoid@3.3.18` | [GHSA-2v37-7h3g-55p8](https://github.com/advisories/GHSA-2v37-7h3g-55p8) | 2026-08-07 | 2026-08-15 (8 days old) | Joshua Levy <joshua@cal.berkeley.edu> |
+| `brotli==1.2.1` | [PYSEC-2026-4322](https://osv.dev/vulnerability/PYSEC-2026-4322) (CVE-2026-111497) | 2026-10-22 | 2026-10-23 (1 day old) | <samanthadrakova@gmail.com> |
 
 `nanoid@3.3.18` is the only version that fixes GHSA-2v37-7h3g-55p8, which covers every
 release below it, so `npm audit` failed the `lint` job on every pull request until it
@@ -120,6 +121,27 @@ Checked against the registry before adoption: `npm view nanoid@3.3.18` returns a
 `dist.tarball` with no `deprecated` field and the version still listed, and its
 published integrity hash matches the `package-lock.json` entry, so the release was not
 yanked.
+
+`brotli==1.2.1` is the only release that fixes CVE-2026-111497, an out-of-bounds write
+in Google’s Brotli decoder that upstream rates CVSS 4.0 9.2 (potential remote code
+execution). Every `brotli` release through 1.2.0 ships the vulnerable decoder, so
+`uv audit` failed `make audit`, which blocks the `lint` job and the publish workflow’s
+`make verify`. KPress itself only calls `brotli.compress` in the `optimize` extra and
+never reaches the decoder, but with `brotli` installed, HTTP clients decode Brotli
+responses automatically.
+
+The exception is package-scoped in `uv.toml` (`exclude-newer-package`), so the rest of
+the lock keeps the 14-day cool-off, and the cutoff admits no `brotli` release after
+1.2.1. The published `brotli>=1.2.0` floor is unchanged, so a downstream install that
+enforces its own cool-off can still resolve.
+The override has no effect once 1.2.1 clears the window on 2026-11-05, and can be
+removed then.
+
+Checked before adoption: PyPI lists 1.2.1 as published by The Brotli Authors and not
+yanked. The locked sdist hash (`sha256:02b2f7b5…60e13de`) matches the downloaded file,
+and diffing its contents against the 1.2.0 sdist shows changes only in `c/dec/decode.c`
+(the unchecked `DecodeBlockTypeAndLength` return), `decode.h`, `version.h`, and package
+metadata.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
