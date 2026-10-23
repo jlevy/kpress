@@ -175,6 +175,8 @@ def test_public_fragment_contract_is_a_stable_subset_of_the_reader_surface() -> 
         "kpress-print-only",
     } <= set(PUBLIC_FRAGMENT_CSS_CLASSES)
     assert {
+        "--kpress-code-border",
+        "--kpress-code-radius",
         "--kpress-doc-bg",
         "--kpress-doc-text",
         "--kpress-doc-link",

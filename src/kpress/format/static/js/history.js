@@ -304,11 +304,25 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
   };
   const onPageShow = () => {
     // A fresh fragment visit has no stamp: leave its native anchor landing alone.
-    // Firefox may apply the fragment after pageshow; restore at the next frame,
-    // once that native navigation has finished, before drawing the pane.
+    // Firefox may apply the fragment after pageshow, and WebKit can finish its
+    // fragment landing after the first pageshow frame. Restore on that frame,
+    // then confirm once on the following frame. The bounded second write lets
+    // the saved pane position win without fighting later reader scrolling.
     const state = history.state;
     cancelAnimationFrame(restoreFrame);
-    restoreFrame = requestAnimationFrame(() => restoreStampedScroll(state));
+    restoreFrame = requestAnimationFrame(() => {
+      restoreFrame = 0;
+      if (history.state !== state || !restoreStampedScroll(state)) {
+        return;
+      }
+      restoreFrame = requestAnimationFrame(() => {
+        restoreFrame = 0;
+        if (history.state !== state) {
+          return;
+        }
+        restoreStampedScroll(state);
+      });
+    });
   };
 
   document.addEventListener("click", onClick, true);

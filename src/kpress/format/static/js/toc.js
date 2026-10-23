@@ -1,6 +1,11 @@
 import { toggleBackdrop } from "./overlay.js";
 import { behaviors } from "./runtime.js";
-import { resolveKpressViewport, viewportScrollContext } from "./viewport.js";
+import {
+  addViewportResizeListener,
+  resolveKpressViewport,
+  viewportBounds,
+  viewportScrollContext,
+} from "./viewport.js";
 
 /**
  * Scroll distance after which the narrow-mode floating toggle appears.
@@ -15,6 +20,9 @@ export const TOC_TOGGLE_SCROLL_THRESHOLD_PX = 100;
  * scroll-spy band can't see a first heading that sits above it.
  */
 export const TOC_AT_TOP_EPSILON_PX = 8;
+
+/** Fractional viewport position matching the native observer's reading band. */
+const TOC_READING_LINE_RATIO = 0.25;
 
 /**
  * How long the active entry must stay inside one top-level group before the
@@ -45,10 +53,37 @@ export function defaultTocToggleVisible(ctx) {
  */
 function tocLinkId(link) {
   const href = link.getAttribute("href");
-  if (!href?.startsWith("#") || href.length <= 1) {
+  if (!href?.includes("#")) {
     return null;
   }
-  return decodeURIComponent(href.slice(1));
+  try {
+    if (href.startsWith("#")) {
+      return href.length > 1 ? decodeURIComponent(href.slice(1)) : null;
+    }
+
+    // KPress renders fragment-only TOC links, but an embedding host may rewrite
+    // them through its navigation URL builder. Retain scrollspy behavior when
+    // that URL still names this document; a cross-document fragment is not a
+    // heading in the current TOC and must not be observed.
+    const target = new URL(href, document.baseURI);
+    const current = new URL(document.location.href);
+    if (
+      target.origin !== current.origin ||
+      target.pathname !== current.pathname ||
+      target.search !== current.search ||
+      target.hash.length <= 1
+    ) {
+      return null;
+    }
+    return decodeURIComponent(target.hash.slice(1));
+  } catch (error) {
+    // URL parsing and percent-decoding are the only throwing operations here.
+    // A malformed host-rewritten href is not a usable TOC target.
+    if (!(error instanceof TypeError || error instanceof URIError)) {
+      throw error;
+    }
+    return null;
+  }
 }
 
 /**
@@ -56,7 +91,36 @@ function tocLinkId(link) {
  * @returns {Element[]}
  */
 function tocContentLinks(toc) {
-  return Array.from(toc.querySelectorAll('ol a[href^="#"]'));
+  return Array.from(toc.querySelectorAll("ol a[href]")).filter((link) => tocLinkId(link));
+}
+
+/**
+ * Find the last heading at or above the viewport's reading line.
+ *
+ * TOC targets follow document order, which is also their vertical order in a
+ * KPress prose column. Binary search keeps the fallback's layout reads
+ * logarithmic on documents with unusually large tables of contents.
+ *
+ * @param {Element[]} targets
+ * @param {number} readingLine
+ * @returns {Element | undefined}
+ */
+function targetAtReadingLine(targets, readingLine) {
+  /** @type {Element | undefined} */
+  let selected;
+  let low = 0;
+  let high = targets.length - 1;
+  while (low <= high) {
+    const index = low + Math.floor((high - low) / 2);
+    const target = targets[index];
+    if (target.getBoundingClientRect().top <= readingLine) {
+      selected = target;
+      low = index + 1;
+    } else {
+      high = index - 1;
+    }
+  }
+  return selected;
 }
 
 /**
@@ -439,15 +503,20 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
     });
   }
 
-  if ("IntersectionObserver" in globalThis) {
-    const linksById = new Map();
-    for (const link of links) {
-      const id = tocLinkId(link);
-      if (id) {
-        linksById.set(id, link);
-      }
+  const linksById = new Map();
+  for (const link of links) {
+    const id = tocLinkId(link);
+    if (id) {
+      linksById.set(id, link);
     }
-    const observer = new IntersectionObserver(
+  }
+  const headingTargets = Array.from(linksById.keys())
+    .map((id) => document.getElementById(id))
+    .filter((heading) => heading !== null);
+
+  const Observer = globalThis.IntersectionObserver;
+  if (typeof Observer === "function") {
+    const observer = new Observer(
       (entries) => {
         // At the top of the document the first heading may sit above the band
         // (or share it with several small sections); the first entry is the
@@ -487,6 +556,45 @@ function wireToc(toc, config = /** @type {Record<string, unknown>} */ ({})) {
     ctx.onScroll(highlightFirstAtTop);
     cleanups.push(() => ctx.offScroll(highlightFirstAtTop));
     highlightFirstAtTop();
+  } else {
+    // Some webviews and DOM-compatible embedding runtimes omit
+    // IntersectionObserver. Keep the same reading-line semantics with a
+    // passive, animation-frame-coalesced fallback rather than leaving a bound
+    // TOC with no active section at all.
+    /** @type {number | null} */
+    let scheduledFrame = null;
+    const updateFallbackScrollSpy = () => {
+      scheduledFrame = null;
+      if (ctx.scrollTop() <= TOC_AT_TOP_EPSILON_PX) {
+        setActiveLink(links[0]);
+      } else {
+        const bounds = viewportBounds(ctx.el);
+        const target = targetAtReadingLine(
+          headingTargets,
+          bounds.top + bounds.height * TOC_READING_LINE_RATIO,
+        );
+        if (target) {
+          setActiveLink(linksById.get(target.id));
+        }
+      }
+    };
+    const scheduleFallbackScrollSpy = () => {
+      if (scheduledFrame !== null) {
+        return;
+      }
+      scheduledFrame = requestAnimationFrame(updateFallbackScrollSpy);
+    };
+    ctx.onScroll(scheduleFallbackScrollSpy);
+    const removeResizeListener = addViewportResizeListener(ctx.el, scheduleFallbackScrollSpy);
+    cleanups.push(() => {
+      ctx.offScroll(scheduleFallbackScrollSpy);
+      removeResizeListener();
+      if (scheduledFrame !== null) {
+        cancelAnimationFrame(scheduledFrame);
+        scheduledFrame = null;
+      }
+    });
+    updateFallbackScrollSpy();
   }
 
   ctx.onScroll(updateToggleVisibility);

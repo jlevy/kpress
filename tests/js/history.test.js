@@ -96,6 +96,48 @@ describe("history behavior", () => {
     expect(history.state.kpressScroll).toBe(1234);
   });
 
+  it("reasserts a stamped pane after WebKit's delayed fragment landing", async () => {
+    const viewport = documentMarkup();
+    history.replaceState({ kpressScroll: 2500, hostValue: "retained" }, "", "#sec");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    window.dispatchEvent(new Event("pageshow"));
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(2500);
+
+    // WebKit can complete the fragment landing after the first pageshow
+    // frame. The bounded confirmation frame must make the stamped reading
+    // position authoritative without installing a lasting scroll trap.
+    viewport.scrollTop = 400;
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(2500);
+
+    viewport.scrollTop = 765;
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(765);
+    dispose();
+  });
+
+  it("does not confirm a stale pageshow state after another owner replaces it", async () => {
+    const viewport = documentMarkup();
+    history.replaceState({ kpressScroll: 2500, hostValue: "first" }, "", "#sec");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    window.dispatchEvent(new Event("pageshow"));
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(2500);
+
+    history.replaceState({ kpressScroll: 3200, hostValue: "replacement" }, "");
+    viewport.scrollTop = 765;
+    await new Promise(requestAnimationFrame);
+
+    expect(viewport.scrollTop).toBe(765);
+    expect(history.state).toEqual({ kpressScroll: 3200, hostValue: "replacement" });
+    dispose();
+  });
+
   it.each([
     "beforeunload",
     "pagehide",

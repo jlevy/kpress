@@ -490,7 +490,7 @@
 }
 
 .kpress-toc a {
-  border-left: 2px solid transparent;
+  border-inline-start: 2px solid transparent;
   color: inherit;
   display: block;
   padding-block: 0.2rem;
@@ -505,7 +505,7 @@
 }
 
 /* Hover and active both shift the text to the secondary tone; the colored
-   left indicator (plus the selected background) is what marks the active
+   inline-start indicator (plus the selected background) marks the active
    section. The 2px transparent border above keeps text from shifting when
    active. */
 .kpress-toc a:hover {
@@ -517,24 +517,16 @@
 .kpress-toc a[data-active="true"],
 .kpress-toc a.active {
   background-color: var(--color-bg-selected);
-  border-left-color: var(--kpress-doc-link);
+  border-inline-start-color: var(--kpress-doc-link);
   color: var(--color-secondary);
   text-decoration: none;
 }
 
 /* Each entry indents by heading level. The padding sits on the link (the
-   element carrying the active border-left bar) so the bar pins to the
-   container edge while the text indents away from it; the -1em hanging
-   indent keeps wrapped lines aligned under the first. Deeper levels indent
-   further and lighten in weight, echoing the document's heading hierarchy. */
-.kpress-toc-level-1 > a,
-.kpress-toc-level-2 > a,
-.kpress-toc-level-3 > a,
-.kpress-toc-level-4 > a,
-.kpress-toc-level-5 > a,
-.kpress-toc-level-6 > a {
-  text-indent: -1em;
-}
+   element carrying the active inline-start bar) so the bar pins to the
+   container edge while every wrapped line shares one text edge. Deeper
+   levels indent further and lighten in weight, echoing the document's
+   heading hierarchy. Logical properties preserve the same hierarchy in RTL. */
 
 /* Two-level weight hierarchy, matching textpress (toc-h2=550 medium, toc-h3=370
    light). kpress normalizes TOC levels to structural tree depths, so the top
@@ -555,27 +547,27 @@
 }
 
 .kpress-toc-level-1 > a {
-  padding-left: 1.3rem;
+  padding-inline-start: 0.75rem;
 }
 
 .kpress-toc-level-2 > a {
-  padding-left: 2rem;
+  padding-inline-start: 1.45rem;
 }
 
 .kpress-toc-level-3 > a {
-  padding-left: 2.7rem;
+  padding-inline-start: 2.15rem;
 }
 
 .kpress-toc-level-4 > a {
-  padding-left: 3.4rem;
+  padding-inline-start: 2.85rem;
 }
 
 .kpress-toc-level-5 > a {
-  padding-left: 4.1rem;
+  padding-inline-start: 3.55rem;
 }
 
 .kpress-toc-level-6 > a {
-  padding-left: 4.8rem;
+  padding-inline-start: 4.25rem;
 }
 
 /* Floating TOC control (32px button, 20px icon — a step larger than the
@@ -616,13 +608,13 @@
 
 .kpress-toc-title {
   border-bottom: 1px solid var(--kpress-doc-border);
-  border-left: none;
+  border-inline-start: none;
   font-size: var(--kpress-caps-label-size);
   font-variant-caps: var(--kpress-caps-variant);
   font-weight: var(--kpress-font-weight-sans-medium);
   letter-spacing: var(--kpress-caps-spacing);
   line-height: var(--kpress-caps-heading-line-height);
-  padding-left: 0.3rem;
+  padding-inline-start: 0.75rem;
   text-transform: var(--kpress-caps-transform);
 }
 

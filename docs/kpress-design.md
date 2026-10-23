@@ -217,8 +217,8 @@ feature guarantees); the sections named in the table carry the architecture deta
 
 ### CSS and Layout
 
-- **Prose typography.** A full reading type scale: headings, spacing, lists, links, and
-  long-form measure.
+- **Prose typography.** A full reading type scale: headings, spacing, lists, links,
+  compact inline-code tints, defined blockquotes, and long-form measure.
 - **Lists.** Screen markers plus a print ordered-list grid and nested-list print resets,
   including long-list handling.
   The bulleted marker is a drawn `currentColor` box, not a glyph: see
@@ -246,8 +246,10 @@ feature guarantees); the sections named in the table carry the architecture deta
 ### Interactions
 
 - **Table of contents.** Desktop sticky rail with active-heading tracking and smooth
-  scroll; mobile drawer with backdrop, body-scroll lock and restore, scrollbar-width
-  compensation, outside-click and Escape close, and iOS overscroll handling.
+  scroll; a passive, frame-coalesced scroll fallback when `IntersectionObserver` is
+  unavailable; mobile drawer with backdrop, body-scroll lock and restore,
+  scrollbar-width compensation, outside-click and Escape close, and iOS overscroll
+  handling.
 - **Footnote controls.** The reference in the text, the backref after its footnote, and
   the navigation link in its preview are one control family: alike at rest, and
   answering a hover the way the document’s other small controls do (link colour,
@@ -912,8 +914,11 @@ enforce “always use CSS vars”).
 
 - **Corner radius:** `--kpress-radius-none | -sm | -md | -lg | -pill`. One scale;
   rounded-vs-square is a deliberate per-surface choice.
-  Code blocks and tables both use `--kpress-radius-none` so the two read as one family;
-  the gear menu / popovers use `-sm`, footnote markers use `-pill`.
+  Tables use `--kpress-radius-none`; inline and block code share `--kpress-code-radius`,
+  which defaults to `--kpress-radius-none` but lets a host adjust code without changing
+  unrelated controls. The gear menu and popovers use `-sm`; footnote markers use `-pill`.
+- **Code edge:** `--kpress-code-border` gives inline and block monospace the same quiet,
+  solid border, derived at 55% of `--kpress-doc-border`. Code never uses a dotted edge.
 - **Motion:** `--kpress-ease` plus `--kpress-transition-fast | -med | -slow | -fade`.
   `-fast` is the default for hovers and size/shape changes; `-fade` is for overlay
   opacity/visibility. The `prefers-reduced-motion` block suppresses them.
@@ -2441,6 +2446,14 @@ The scroll-follow handoff waits for the reading position to **settle** in one gr
 (`TOC_SCROLL_FOLLOW_SETTLE_MS` in `toc.js`): rapid scrolling and the smooth glide after
 a TOC click sweep the scroll-spy across intermediate sections, and only the group the
 position rests in expands — the highlight itself still moves instantly.
+The scroll-spy uses `IntersectionObserver` when available.
+A runtime without it follows the same top-quarter reading line through a passive scroll
+listener, coalesces work to one animation frame, and finds the current heading with
+logarithmic layout reads.
+TOC links normally remain fragment-only; if an embedding host rewrites one to a URL, the
+behavior accepts it only when origin, path, and query still name the current document.
+Wrapped link labels share one text edge, and logical inline-start insets keep the
+hierarchy and active marker on the correct side in right-to-left documents.
 JS-channel config `collapseDepth` / `expandOnScroll` via
 `kpress.behaviors.configure("toc", ...)` overrides the data attributes (a config
 `collapseDepth` of `0` disables collapse).
