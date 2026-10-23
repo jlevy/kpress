@@ -1,2 +1,5 @@
 required-version = ">=0.11.26"
 exclude-newer = "14 days"
+# Granted cool-off exception, recorded in SUPPLY-CHAIN-SECURITY.md: the cutoff is
+# package-scoped and admits only brotli 1.2.1, the fix for CVE-2026-111497.
+exclude-newer-package = { brotli = "2026-10-23T00:00:00Z" }
