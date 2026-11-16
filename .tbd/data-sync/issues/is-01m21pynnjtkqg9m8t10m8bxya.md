@@ -3,14 +3,18 @@ type: is
 id: is-01m21pynnjtkqg9m8t10m8bxya
 title: "npm audit fails the lint job: GHSA-82fw-gwwq-j7x9 in @vitest/mocker"
 kind: bug
-status: open
+status: closed
 priority: 1
-version: 1
+version: 2
 labels:
   - supply-chain
 dependencies: []
 created_at: 2026-09-08T23:51:47.120Z
-updated_at: 2026-09-08T23:51:47.120Z
+updated_at: 2026-11-16T23:17:51.023Z
+closed_at: 2026-11-16T23:17:51.022Z
+close_reason: "Fixed on main: vitest is pinned at 5.0.3, past the advisory's range, and npm audit passes in CI at af8f3f1."
+resolution: null
+duplicate_of: null
 ---
 `npm audit --audit-level=moderate` reports GHSA-82fw-gwwq-j7x9, a path traversal /
 arbitrary file read in `@vitest/mocker` covering vitest 2.1.0 through 4.1.10, so
