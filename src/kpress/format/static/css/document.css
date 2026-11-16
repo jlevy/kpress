@@ -321,6 +321,14 @@
   transition: color var(--kpress-transition-slow);
 }
 
+/* Keyboard input and sample output are code-ish runs too: without this they fall
+   through to the user agent's monospace, beside code set in the shipped face. */
+.kpress kbd,
+.kpress samp {
+  font-family: var(--kpress-font-mono, ui-monospace, monospace);
+  font-size: var(--kpress-font-size-mono);
+}
+
 .kpress code:not(pre code) {
   border: 1px solid var(--kpress-code-border);
   border-radius: var(--kpress-code-radius);
