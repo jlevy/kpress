@@ -142,6 +142,13 @@ _ALLOWED_ATTRIBUTES = {
     tag: set(attrs) | _GLOBAL_ATTRIBUTES for tag, attrs in nh3.ALLOWED_ATTRIBUTES.items()
 }
 _ALLOWED_ATTRIBUTES["*"] = _GLOBAL_ATTRIBUTES
+# Presentational `align` on block containers and headings, as in a README's centered
+# icon block. Its value is an enumerated keyword with no URL, script, or CSS channel;
+# nh3 already admits it on `img`, `hr`, and table elements, and GitHub admits it here.
+for _align_tag in ("div", "p", "h1", "h2", "h3", "h4", "h5", "h6"):
+    _ALLOWED_ATTRIBUTES[_align_tag] = (
+        _ALLOWED_ATTRIBUTES.get(_align_tag, set()) | _GLOBAL_ATTRIBUTES | {"align"}
+    )
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto", "tel"}
 _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
 
@@ -429,15 +436,68 @@ def sanitize_raw_html(
         link_rel=None,
     )
     diagnostics = audit.diagnostics
-    if sanitized != html and not diagnostics:
+    # Safety net for drift between the audit and the nh3 policy: report a change the
+    # audit did not explain. Compare content, not strings, because nh3 also strips
+    # comments and reserializes (a non-breaking space becomes `&nbsp;`), and neither
+    # removes anything a reader would see.
+    if (
+        sanitized != html
+        and not diagnostics
+        and _content_events(sanitized) != _content_events(html)
+    ):
         diagnostics.append(
             Diagnostic(
                 type="html_sanitized",
-                message="Unsafe raw HTML was removed for this trust mode.",
+                message="Raw HTML was removed or rewritten for this trust mode.",
                 severity="warning",
             )
         )
     return sanitized, diagnostics
+
+
+_ContentEvent = tuple[str, str, tuple[tuple[str, str], ...]]
+
+
+class _ContentEvents(HTMLParser):
+    """Reduce HTML to what a reader receives: start tags, their attributes, and text.
+
+    Comments, declarations, end tags, attribute order and quoting, entity spelling, and
+    whitespace runs carry no content, so HTML that differs only there reduces to the
+    same events. Removing an element always removes its start tag, so dropping end
+    tags cannot hide a removal.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.events: list[_ContentEvent] = []
+        self._text: list[str] = []
+
+    def _flush_text(self) -> None:
+        text = " ".join("".join(self._text).split())
+        if text:
+            self.events.append(("text", text, ()))
+        self._text.clear()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._flush_text()
+        self.events.append(("tag", tag, tuple(sorted((n, v or "") for n, v in attrs))))
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.handle_starttag(tag, attrs)
+
+    def handle_data(self, data: str) -> None:
+        self._text.append(data)
+
+    def close(self) -> None:
+        super().close()
+        self._flush_text()
+
+
+def _content_events(html: str) -> list[_ContentEvent]:
+    parser = _ContentEvents()
+    parser.feed(html)
+    parser.close()
+    return parser.events
 
 
 _SVG_CAMELCASE = {

@@ -169,3 +169,53 @@ def test_sanitizer_audit_explains_every_representative_rewrite() -> None:
         assert sanitized != html
         assert diagnostics
         assert all(item.type != "html_sanitized" for item in diagnostics)
+
+
+def test_removed_comments_are_not_reported_as_sanitization() -> None:
+    html = "<p>Text.</p>\n<!-- This document follows common-doc-guidelines.md -->\n"
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert "<!--" not in sanitized
+    assert "<p>Text.</p>" in sanitized
+    assert diagnostics == []
+
+
+def test_reserialization_is_not_reported_as_sanitization() -> None:
+    # nh3 writes U+00A0 as `&nbsp;`; the reader sees the same text.
+    html = "<p>a b</p>\n<p><span> x</span></p>"
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert "&nbsp;" in sanitized
+    assert diagnostics == []
+
+
+def test_presentational_align_survives_on_blocks_and_headings() -> None:
+    html = (
+        '<p align="center"><img src="icon.png" width="96" align="middle"></p>\n'
+        '<h1 align="center">Title</h1>\n<h6 align="right">x</h6>\n'
+        '<div align="left">y</div>'
+    )
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert '<p align="center">' in sanitized
+    assert 'align="middle"' in sanitized
+    assert '<h1 align="center">' in sanitized
+    assert '<h6 align="right">' in sanitized
+    assert '<div align="left">' in sanitized
+    assert diagnostics == []
+
+
+def test_unexplained_removal_still_reports_the_catch_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Simulate drift: the audit approves an attribute that the nh3 policy removes.
+    def approve_everything(*_args: object) -> bool:
+        return True
+
+    monkeypatch.setattr(
+        "kpress.format.sanitize._SanitizerAudit._attribute_allowed", approve_everything
+    )
+    sanitized, diagnostics = sanitize_raw_html('<p style="color:red">x</p>', "sanitized")
+
+    assert "style" not in sanitized
+    assert [item.type for item in diagnostics] == ["html_sanitized"]
