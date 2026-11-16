@@ -704,6 +704,21 @@ def test_visual_parity_css_contract_pins_kash_reconciliation() -> None:
         assert required in css, f"visual-parity rule missing from shipped CSS: {required!r}"
 
 
+def test_every_code_run_draws_in_the_shipped_mono_face() -> None:
+    """kbd and samp, and code in a tooltip preview, use the mono token, not the UA's."""
+    document_css = get_static_asset("css/document.css").content.decode("utf-8")
+    components_css = get_static_asset("css/components.css").content.decode("utf-8")
+
+    runs = document_css.split(".kpress kbd,\n.kpress samp {", 1)[1].split("}", 1)[0]
+    assert "font-family: var(--kpress-font-mono, ui-monospace, monospace);" in runs
+    assert "font-size: var(--kpress-font-size-mono);" in runs
+
+    preview = components_css.split(".kpress-tooltip code,", 1)[1].split("}", 1)[0]
+    for selector in (".kpress-tooltip kbd,", ".kpress-tooltip pre,", ".kpress-tooltip samp {"):
+        assert selector in preview
+    assert "font-family: var(--kpress-font-mono);" in preview
+
+
 def test_reader_detail_styles_keep_dense_prose_legible() -> None:
     """Pin small reader rules whose regressions only appear in dense documents."""
     tokens_css = get_static_asset("css/style-tokens.css").content.decode("utf-8")

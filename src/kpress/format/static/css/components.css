@@ -889,8 +889,13 @@
   text-decoration: underline;
 }
 
+/* The preview mounts outside every .kpress wrapper, so the document's code rule
+   never reaches it: name the shipped mono face here. */
 .kpress-tooltip code,
-.kpress-tooltip pre {
+.kpress-tooltip kbd,
+.kpress-tooltip pre,
+.kpress-tooltip samp {
+  font-family: var(--kpress-font-mono);
   font-size: 0.9em;
   overflow-wrap: break-word;
   white-space: normal;
