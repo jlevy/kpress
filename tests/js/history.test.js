@@ -119,6 +119,27 @@ describe("history behavior", () => {
     dispose();
   });
 
+  it("restores the offset pageshow saw when the entry is re-stamped before the first frame", async () => {
+    const viewport = documentMarkup();
+    history.replaceState({ kpressScroll: 2500, hostValue: "retained" }, "", "#sec");
+    const { initKpressHistory } = await freshHistoryModule();
+    const dispose = initKpressHistory();
+
+    window.dispatchEvent(new Event("pageshow"));
+    // A host that merges its own keys into the entry replaces the state
+    // object without moving the reader. The saved offset is still restored.
+    history.replaceState({ ...history.state, hostValue: "merged" }, "");
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(2500);
+
+    // The entry is no longer the one pageshow saw, so nothing is confirmed.
+    viewport.scrollTop = 765;
+    await new Promise(requestAnimationFrame);
+    expect(viewport.scrollTop).toBe(765);
+    expect(history.state).toEqual({ kpressScroll: 2500, hostValue: "merged" });
+    dispose();
+  });
+
   it("does not confirm a stale pageshow state after another owner replaces it", async () => {
     const viewport = documentMarkup();
     history.replaceState({ kpressScroll: 2500, hostValue: "first" }, "", "#sec");

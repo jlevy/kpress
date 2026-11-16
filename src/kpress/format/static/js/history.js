@@ -308,11 +308,17 @@ export function initKpressHistory(root = document, _config = /** @type {unknown}
     // fragment landing after the first pageshow frame. Restore on that frame,
     // then confirm once on the following frame. The bounded second write lets
     // the saved pane position win without fighting later reader scrolling.
+    //
+    // The first restore uses the state pageshow saw, whatever the entry holds by
+    // then: a host that merges its own keys into the entry, or the debounced
+    // stamp of the browser's own landing scroll, replaces the state object
+    // without moving the reader. Only the confirmation requires the entry to be
+    // untouched, so it never writes on behalf of a state someone has replaced.
     const state = history.state;
     cancelAnimationFrame(restoreFrame);
     restoreFrame = requestAnimationFrame(() => {
       restoreFrame = 0;
-      if (history.state !== state || !restoreStampedScroll(state)) {
+      if (!restoreStampedScroll(state)) {
         return;
       }
       restoreFrame = requestAnimationFrame(() => {
