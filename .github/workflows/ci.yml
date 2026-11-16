@@ -120,7 +120,10 @@ jobs:
         run: make test
 
   browser:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04, which the locked Playwright cannot install
+    # browsers on ("Playwright does not support chromium on ubuntu26.04-x64"). Move to
+    # ubuntu-latest when a Playwright release that supports it clears the cool-off.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
