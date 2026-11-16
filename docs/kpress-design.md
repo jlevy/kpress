@@ -487,12 +487,15 @@ question: **do we trust the person who wrote this Markdown?**
 - **`sanitized`** — *the author may be anyone.* One nh3 profile applies: a broad,
   XSS-inert allow-set (standard formatting tags, tables, images, safe SVG/MathML) plus
   the pass-through whitelist.
-  Everything else is stripped — the tag is removed, its text content is kept — and a
-  `html_sanitized` diagnostic is emitted.
-  This is what the dynamic render API (`kpress.runtime.render_view`, the entry point
-  hosts call to render a document fragment into their own page at request time), static
-  site builds (`build_site`, the `kpress.yml`-driven publisher), and single-document
-  exports (`export_document`) all use.
+  Everything else is stripped — the tag is removed, its text content is kept — and an
+  `html_sanitized_tag` or `html_sanitized_attribute` diagnostic names what went.
+  Comments are stripped silently, since they carry no content, and so is nh3’s
+  reserialization (entity spelling, quoting); a change the audit cannot explain gets the
+  catch-all `html_sanitized`. This is what the dynamic render API
+  (`kpress.runtime.render_view`, the entry point hosts call to render a document
+  fragment into their own page at request time), static site builds (`build_site`, the
+  `kpress.yml`-driven publisher), and single-document exports (`export_document`) all
+  use.
 
 **Why sanitization works on the whole document.** Rendering is a two-stage pipe:
 markdown-it renders the Markdown source into one HTML string, then nh3 sanitizes that
