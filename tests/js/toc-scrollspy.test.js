@@ -135,6 +135,34 @@ describe("TOC scrollspy", () => {
     dispose();
   });
 
+  it("skips a heading with no layout box, as inside a closed details, in the fallback", async () => {
+    const { initKpressToc } = await importFresh("toc.js");
+    const { viewport } = scrollspyMarkup();
+    // A heading inside a closed <details> has no box: every edge of its rectangle is 0.
+    document.getElementById("design").getBoundingClientRect = () => ({
+      bottom: 0,
+      height: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      width: 0,
+      x: 0,
+      y: 0,
+    });
+    const dispose = initKpressToc(document);
+
+    viewport.scrollTop = 100;
+    viewport.dispatchEvent(new Event("scroll"));
+    await nextFrame();
+    expect(activeHref()).toBe("#intro");
+
+    viewport.scrollTop = 1_300;
+    viewport.dispatchEvent(new Event("scroll"));
+    await nextFrame();
+    expect(activeHref()).toBe("#implementation");
+    dispose();
+  });
+
   it("observes host-rewritten current-document links through the native scrollspy", async () => {
     /** @type {string[]} */
     const observedIds = [];

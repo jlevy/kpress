@@ -101,6 +101,10 @@ function tocContentLinks(toc) {
  * KPress prose column. Binary search keeps the fallback's layout reads
  * logarithmic on documents with unusually large tables of contents.
  *
+ * A heading with no layout box, such as one inside a closed `<details>`, reports
+ * an all-zero rectangle whose `top` says nothing about where the reader is, so
+ * the search steps past it to the next laid-out heading rather than selecting it.
+ *
  * @param {Element[]} targets
  * @param {number} readingLine
  * @returns {Element | undefined}
@@ -112,10 +116,17 @@ function targetAtReadingLine(targets, readingLine) {
   let high = targets.length - 1;
   while (low <= high) {
     const index = low + Math.floor((high - low) / 2);
-    const target = targets[index];
-    if (target.getBoundingClientRect().top <= readingLine) {
-      selected = target;
-      low = index + 1;
+    let probe = index;
+    let rect = targets[probe].getBoundingClientRect();
+    while (rect.width === 0 && rect.height === 0 && probe < high) {
+      probe += 1;
+      rect = targets[probe].getBoundingClientRect();
+    }
+    if (rect.width === 0 && rect.height === 0) {
+      high = index - 1;
+    } else if (rect.top <= readingLine) {
+      selected = targets[probe];
+      low = probe + 1;
     } else {
       high = index - 1;
     }
