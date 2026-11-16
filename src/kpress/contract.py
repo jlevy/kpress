@@ -220,6 +220,8 @@ PUBLIC_CSS_CLASSES = (
 )
 
 PUBLIC_CSS_VARIABLES = (
+    "--kpress-code-border",
+    "--kpress-code-radius",
     "--kpress-doc-accent",
     "--kpress-doc-bg",
     "--kpress-doc-border",
@@ -315,6 +317,8 @@ PUBLIC_FRAGMENT_CSS_CLASSES = (
 )
 
 PUBLIC_FRAGMENT_CSS_VARIABLES = (
+    "--kpress-code-border",
+    "--kpress-code-radius",
     "--kpress-doc-accent",
     "--kpress-doc-bg",
     "--kpress-doc-border",

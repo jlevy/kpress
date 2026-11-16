@@ -317,8 +317,11 @@
 
   /* ============================== 3. SHAPE ============================== */
   /* Corner radii -- one scale used everywhere. Rounded-vs-square is a deliberate
-     per-surface choice (use --kpress-radius-none for square). */
+     per-surface choice (use --kpress-radius-none for square). Inline and block
+     code share a semantic radius so hosts can adjust both without changing the
+     rest of the shape scale. */
   --kpress-radius-none: 0;
+  --kpress-code-radius: var(--kpress-radius-none);
   --kpress-radius-sm: 3px;
   --kpress-radius-md: 6px;
   --kpress-radius-lg: 0.5rem;
@@ -354,14 +357,16 @@
      the "Color -- palette x theme" section below, on :root (standalone) and
      .kpress (embedded), so they cascade to the whole shell (gear, tooltips, TOC)
      with no host-var / literal-fallback indirection that could silently theme-swap
-     on a typo. The two roles below do NOT vary by theme, so they live here:
+     on a typo. The three roles below derive from those theme values, so they live here:
        accent     -- a fixed teal used for small accents
        surface-bg -- the subtle fill shared by code blocks, table headers, and the
                      metadata block (an alias of the code bg) so they read as one
                      family; the hover/selected interaction steps that DO vary are
-                     set per palette below. */
+                     set per palette below
+       code-border -- the shared quiet solid edge for inline and block code. */
   --kpress-doc-accent: oklch(51.09% 0.0861 186.4);
   --kpress-doc-surface-bg: var(--kpress-doc-code-bg);
+  --kpress-code-border: color-mix(in srgb, var(--kpress-doc-border) 55%, transparent);
 
   /* ===================== 8. COMPATIBILITY ALIASES ===================== */
   /* textpress/kash vocabulary mapped onto the --kpress-* tokens above, so styles
@@ -400,8 +405,8 @@
   --color-secondary: var(--kpress-doc-muted);
   --color-hint: var(--kpress-doc-muted);
   --color-hint-strong: var(--kpress-doc-muted);
-  /* Faint, neutral-reading hairline for inline code, code blocks, tooltips and
-     the key-claims/concepts boxes -- modeled on textpress's `hint_gentle`
+  /* Faint, neutral-reading hairline for tooltips and the key-claims/concepts
+     boxes -- modeled on textpress's `hint_gentle`
      (~rgba(155,172,175,0.2)). Derived from the muted gray (not the lighter
      blue-tinted doc-border) at low opacity so it reads gray, not blue. */
   --color-hint-gentle: color-mix(in srgb, var(--kpress-doc-muted) 18%, transparent);

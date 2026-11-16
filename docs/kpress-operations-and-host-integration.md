@@ -450,6 +450,9 @@ entry state and restores it on `popstate`, falling back to the fragment target (
 top for a fragmentless entry).
 Reader panes also flush that existing state before departure and restore it after
 `pageshow`, so reloading preserves a saved offset.
+The restore is confirmed once on the following animation frame because WebKit can finish
+a fragment landing after the first frame; the second write is bounded, so later reader
+scrolling remains untouched.
 The pane’s `beforeunload` listener never prompts or cancels navigation, but can reduce
 Firefox’s back/forward-cache eligibility.
 A host that marks the document as its viewport keeps the browser’s native reload
