@@ -1111,7 +1111,7 @@ Generated outputs are not edited by hand.
 reserves the measured glyph box on the surrounding text baseline; its glyph baseline
 offset relative to adjacent text must be `0`. A font replacement must preserve that
 baseline contract before adjusting line height or decoration.
-Inline code uses balanced `0.175em` block padding as an optical treatment around
+Inline code uses balanced `0.1em` block padding as an optical treatment around
 Planetaire; that padding does not move the text baseline and should not be used to
 compensate for a mismatched face.
 The architecture record defines how prepared geometry is measured, hydrated, and
