@@ -62,6 +62,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
+- [KPress 0.3.8](releases/0.3.8.md), unreleased: `<kbd>`, `<samp>`, and code in a link
+  preview set in the shipped mono face, and a TOC fix for hidden headings
 - [KPress 0.3.7](releases/0.3.7.md): TOC scroll-follow without `IntersectionObserver`, a
   steadier reader-pane reload in WebKit, and one border and radius for all code
 - [KPress 0.3.6](releases/0.3.6.md): code is set in a shipped mono face, with the
