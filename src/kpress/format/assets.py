@@ -152,6 +152,9 @@ DEFAULT_JS_ASSETS = [
 # `import "./overlay.js"` resolves), but not injected as top-level `<script>`
 # tags — the entry-point modules pull them in.
 TRANSITIVE_JS_ASSETS = [
+    # Opt-in diagram toolbar and dialog: a host imports it and passes
+    # `diagramControls()` to the diagrams behavior; it registers nothing at import.
+    "js/diagram-controls.js",
     "js/icons.js",
     "js/menu.js",
     "js/overlay.js",
@@ -160,7 +163,11 @@ TRANSITIVE_JS_ASSETS = [
 ]
 PACKAGE_JS_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "js/code-copy.js": ("js/icons.js", "js/runtime.js"),
-    "js/diagrams.js": ("js/runtime.js",),
+    "js/diagram-controls.js": ("js/icons.js",),
+    # diagrams.js never imports diagram-controls.js; declaring it ships the opt-in
+    # controls (copied and import-mapped, never script-tagged) beside every page with a
+    # diagram, so a host script there can import them.
+    "js/diagrams.js": ("js/diagram-controls.js", "js/runtime.js"),
     "js/doc-actions.js": ("js/runtime.js",),
     "js/history.js": ("js/runtime.js", "js/viewport.js"),
     "js/host.js": ("js/runtime.js",),
