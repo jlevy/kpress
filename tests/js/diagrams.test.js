@@ -353,27 +353,35 @@ describe("initKpressDiagrams", () => {
     expect(document.querySelector(".kpress-diagram-rendered svg")).toBeNull();
   });
 
-  it("draws image labels as SVG text, which neither the host nor a diagram can undo", async () => {
+  it("keeps image labels to formatting tags, which neither the host nor a diagram can undo", async () => {
     document.body.innerHTML = FIGURE("graph TD");
     const mermaid = fakeMermaid();
     await initKpressDiagrams(document, {
       mermaid,
       placement: "image",
-      config: { securityLevel: "loose", htmlLabels: true, secure: ["theme"] },
+      config: {
+        securityLevel: "loose",
+        dompurifyConfig: { ADD_TAGS: ["img"] },
+        secure: ["theme"],
+      },
       yieldBetween: noYield,
     }).ready;
 
     const config = mermaid.initialize.mock.calls[0][0];
     expect(config.securityLevel).toBe("strict");
-    expect(config.htmlLabels).toBe(false);
+    expect(config.dompurifyConfig).toEqual({
+      ALLOWED_TAGS: expect.arrayContaining(["b", "br", "span"]),
+      ALLOWED_ATTR: ["class"],
+    });
+    expect(config.dompurifyConfig.ALLOWED_TAGS).not.toContain("img");
     expect(config.secure).toEqual(
-      expect.arrayContaining(["secure", "securityLevel", "htmlLabels", "theme"]),
+      expect.arrayContaining(["secure", "securityLevel", "dompurifyConfig", "theme"]),
     );
   });
 
-  it("keeps HTML labels in document placement, as GitHub draws them", () => {
-    expect(kpressMermaidConfig("light")).not.toHaveProperty("htmlLabels");
-    expect(kpressMermaidConfig("light", "image")).toMatchObject({ htmlLabels: false });
+  it("sanitizes labels only as Mermaid does in document placement", () => {
+    expect(kpressMermaidConfig("light")).not.toHaveProperty("dompurifyConfig");
+    expect(kpressMermaidConfig("light", "image")).toHaveProperty("dompurifyConfig");
   });
 
   it("draws one figure at a time across bindings, each in its own configuration", async () => {

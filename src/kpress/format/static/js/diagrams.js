@@ -20,9 +20,11 @@
 // and selects with the prose. Placement `"image"` shows it as
 // `<img src="data:image/svg+xml…">`, where the finished drawing can run no script, load
 // nothing, and navigate nowhere: the choice for content the host does not trust. Mermaid
-// still lays the diagram out in the host page, so image placement also draws labels as SVG
-// text (`htmlLabels: false`, which a diagram cannot turn back on): an HTML label's markup,
-// such as an `<img src>`, would otherwise load in the page while Mermaid measures it.
+// still lays the diagram out in the host page, where a label's HTML is live while it is
+// measured, so image placement also keeps a label to formatting tags (`LABEL_SANITIZER`):
+// its `<b>` stays bold, and an `<img src>` is gone before it can load. Mermaid's image
+// shape (`@{ img: … }`) still loads its URL during layout; a host bounds that with its
+// `img-src` policy.
 
 import { behaviors, off, on } from "./runtime.js";
 
@@ -93,7 +95,7 @@ const MERMAID_DEFAULT_FONT_SIZE = "16px";
 /**
  * The configuration keys a diagram's `%%{init}%%` or front matter may not set: Mermaid
  * 12's own default `secure` list, restated so it holds whether a Mermaid extends or
- * replaces the list, and `htmlLabels`, which image placement turns off.
+ * replaces the list. Image placement adds `dompurifyConfig`.
  */
 const MERMAID_SECURE_KEYS = [
   "secure",
@@ -123,6 +125,35 @@ const drawnAs = new WeakMap();
  * @type {Promise<unknown>}
  */
 let mermaidTurn = Promise.resolve();
+
+/**
+ * How image placement sanitizes a label (Mermaid's `dompurifyConfig`): formatting tags
+ * only, and no attribute but `class`. GitHub draws HTML labels, so a README's
+ * `<b>Title</b><br/>detail` keeps its look; an `<img>`, a link, or a `style` with a
+ * `url()` is dropped before Mermaid measures the label in the page, where it would load.
+ * Mermaid's own wrappers (`div`, `span`, `p`) and its Markdown strings (`strong`, `em`)
+ * are among the tags. Real Mermaid is checked against it in
+ * `tests/test_playwright_diagrams.py`.
+ */
+const LABEL_SANITIZER = Object.freeze({
+  ALLOWED_TAGS: [
+    "b",
+    "strong",
+    "i",
+    "em",
+    "u",
+    "s",
+    "sub",
+    "sup",
+    "small",
+    "code",
+    "br",
+    "span",
+    "div",
+    "p",
+  ],
+  ALLOWED_ATTR: ["class"],
+});
 
 /**
  * Run *task* once every earlier queued Mermaid call has settled.
@@ -182,7 +213,7 @@ function mergeConfig(base, overrides) {
 /**
  * The configuration one figure is drawn with: `kpressMermaidConfig(theme, placement)` with
  * the host's *overrides* merged in. Image placement then pins what makes it safe for
- * untrusted content, whatever the host passed: strict security and SVG-text labels.
+ * untrusted content, whatever the host passed: strict security and formatting-only labels.
  *
  * @param {"light" | "dark"} theme
  * @param {"document" | "image"} placement
@@ -193,8 +224,11 @@ function figureConfig(theme, placement, overrides) {
   const config = mergeConfig(kpressMermaidConfig(theme, placement), overrides);
   if (placement === "image") {
     config.securityLevel = "strict";
-    config.htmlLabels = false;
-    config.secure = mergeConfig({ secure: config.secure }, { secure: ["htmlLabels"] }).secure;
+    config.dompurifyConfig = {
+      ALLOWED_TAGS: [...LABEL_SANITIZER.ALLOWED_TAGS],
+      ALLOWED_ATTR: [...LABEL_SANITIZER.ALLOWED_ATTR],
+    };
+    config.secure = mergeConfig({ secure: config.secure }, { secure: ["dompurifyConfig"] }).secure;
   }
   return config;
 }
@@ -204,12 +238,10 @@ function figureConfig(theme, placement, overrides) {
  * `securityLevel: "strict"`, which sanitizes labels as GitHub's `antiscript` does and also
  * disables `click` navigation. A diagram's own `%%{init}%%` or front-matter theme wins.
  *
- * For `placement: "image"`, labels are SVG text (`htmlLabels: false`) and `secure` keeps a
- * diagram from turning HTML labels back on. Mermaid lays the diagram out in the host page,
- * and an HTML label is live markup there while it is measured: its `<img src>` loads.
- * GitHub draws HTML labels, so an image-placed label's `<b>` or `<br/>` shows as text where
- * GitHub would format it; image placement is for content the host does not trust, and
- * there safety comes first.
+ * For `placement: "image"`, labels are sanitized to formatting tags (`LABEL_SANITIZER`),
+ * and `secure` keeps a diagram from loosening that. Mermaid lays the diagram out in the
+ * host page, and an HTML label is live markup there while it is measured: its `<img src>`
+ * would load.
  *
  * @param {"light" | "dark"} theme
  * @param {"document" | "image"} [placement]
@@ -224,7 +256,13 @@ export function kpressMermaidConfig(theme, placement = "document") {
     flowchart: { diagramPadding: 48 },
     sequence: { diagramMarginY: 40 },
     ...(placement === "image"
-      ? { htmlLabels: false, secure: [...MERMAID_SECURE_KEYS, "htmlLabels"] }
+      ? {
+          dompurifyConfig: {
+            ALLOWED_TAGS: [...LABEL_SANITIZER.ALLOWED_TAGS],
+            ALLOWED_ATTR: [...LABEL_SANITIZER.ALLOWED_ATTR],
+          },
+          secure: [...MERMAID_SECURE_KEYS, "dompurifyConfig"],
+        }
       : {}),
   };
 }

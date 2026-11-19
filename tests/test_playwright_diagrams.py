@@ -5,8 +5,9 @@ Mermaid itself does with a hostile label or directive. These tests load the pinn
 Mermaid development dependency (`package.json`) beside the shipped module, in a page
 whose content security policy admits no inline style, and check:
 
-- image placement loads nothing a label names, whatever the host config or the diagram's
-  own `%%{init}%%` or front matter asks for;
+- image placement loads nothing a label names, in every kind of diagram, whatever the
+  host config or the diagram's own `%%{init}%%` or front matter asks for, and keeps the
+  label's formatting; Mermaid's image shape is the known exception (strict xfail);
 - a host's or a diagram's `securityLevel: "loose"` is refused;
 - two bindings drawing at once each draw in their own configuration;
 - the measuring host's style survives a policy without `'unsafe-inline'`.
@@ -39,7 +40,7 @@ MERMAID_DIST = ROOT / "node_modules/mermaid/dist"
 POLICY = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
 
 # A label whose HTML, drawn as an HTML label, loads an image from the host's origin.
-PAYLOAD = "A[\"<img src='/pixel.svg?from=label' width='8'> start\"] --> B[end]"
+PAYLOAD = "A[\"<b>bold</b><br/><img src='/pixel.svg?from=label' width='8'> start\"] --> B[end]"
 
 PAGE = """<!doctype html>
 <html><head><meta charset="utf-8"><title>Diagrams</title></head>
@@ -182,7 +183,7 @@ def draw(page: Page, origin: str, body: str, bindings: list[dict[str, Any]]) -> 
 HOSTILE_HOST_CONFIG = {
     "securityLevel": "loose",
     "htmlLabels": True,
-    "flowchart": {"htmlLabels": True},
+    "dompurifyConfig": {"ADD_TAGS": ["img"], "ADD_ATTR": ["src", "style"]},
 }
 
 
@@ -190,7 +191,8 @@ def test_image_placement_loads_nothing_a_label_names(page: tuple[Page, str]) -> 
     tab, origin = page
     sources = [
         f"flowchart LR\n  {PAYLOAD}",
-        '%%{init: {"htmlLabels": true, "securityLevel": "loose"}}%%\n'
+        '%%{init: {"securityLevel": "loose", '
+        '"dompurifyConfig": {"ADD_TAGS": ["img"], "ADD_ATTR": ["src"]}}}%%\n'
         f"flowchart LR\n  {PAYLOAD}",
         "---\nconfig:\n  htmlLabels: true\n  flowchart:\n    htmlLabels: true\n---\n"
         f"flowchart LR\n  {PAYLOAD}",
@@ -206,9 +208,66 @@ def test_image_placement_loads_nothing_a_label_names(page: tuple[Page, str]) -> 
     assert [f["drawing"] for f in result["figures"]] == ["img"] * 3
     assert all(f["width"] > 0 for f in result["figures"])
     # The labels are SVG text: no HTML label, and the payload is inert text in the image.
-    assert all("foreignObject" not in f["svg"] for f in result["figures"])
     assert not [path for path in _Handler.requests if "pixel.svg" in path], _Handler.requests
+    # The label keeps its formatting, as GitHub draws it.
+    assert all("<b>bold</b>" in f["svg"] for f in result["figures"]), result["figures"]
     assert result["securityLevel"] == "strict"
+
+
+def pixel(name: str) -> str:
+    return f"<img src='/pixel.svg?from={name}' width='8'>"
+
+
+# Every place a diagram puts author text, and each way Mermaid itself loads a resource.
+EVERY_KIND = {
+    "edge": f'flowchart LR\n  A -->|"{pixel("edge")} go"| B',
+    "subgraph": f'flowchart LR\n  subgraph S["{pixel("subgraph")} group"]\n    A\n  end',
+    "shape": 'flowchart LR\n  A@{ img: "/pixel.svg?from=shape", label: "x", w: 60, h: 60 }\n  A --> B',
+    "css": "flowchart LR\n  A --> B\n  style A fill:url(/pixel.svg?from=css)",
+    "class-css": (
+        "flowchart LR\n  A:::bg --> B\n  classDef bg background-image:url(/pixel.svg?from=classdef)"
+    ),
+    "sequence": (
+        f"sequenceDiagram\n  Alice->>Bob: {pixel('message')} hi\n"
+        f"  Note over Alice: {pixel('note')} note"
+    ),
+    "state": f"stateDiagram-v2\n  s1 : {pixel('state')} state\n  [*] --> s1",
+    "class": f'classDiagram\n  class Animal["{pixel("class")} Animal"]',
+    "mindmap": f"mindmap\n  root(({pixel('mindmap')} root))\n    child",
+}
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        pytest.param(
+            kind,
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason="Mermaid loads an image shape's URL itself during layout; "
+                "a host bounds it with img-src",
+            ),
+        )
+        if kind == "shape"
+        else kind
+        for kind in sorted(EVERY_KIND)
+    ],
+)
+def test_image_placement_loads_nothing_in_any_diagram(page: tuple[Page, str], kind: str) -> None:
+    tab, origin = page
+    result = draw(
+        tab,
+        origin,
+        figure(EVERY_KIND[kind]),
+        [{"root": None, "options": {"placement": "image", "config": HOSTILE_HOST_CONFIG}}],
+    )
+    [drawn] = result["figures"]
+    assert drawn["status"] in {"rendered", "error"}, drawn
+    assert not [path for path in _Handler.requests if "pixel.svg" in path], (
+        _Handler.requests,
+        drawn["status"],
+        drawn["error"],
+    )
 
 
 def test_the_payload_is_live_in_document_placement(page: tuple[Page, str]) -> None:

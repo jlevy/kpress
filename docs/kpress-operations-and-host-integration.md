@@ -525,10 +525,14 @@ binding.dispose();
   nothing: the choice for content the host does not trust.
   Mermaid still lays the diagram out in the host page, where an HTML label is live
   markup while it is measured, so its `<img src>` would load.
-  Image placement therefore draws labels as SVG text: `htmlLabels: false` and
-  `securityLevel: "strict"` are forced after the host’s `config` merges, and
-  `htmlLabels` joins `secure`, so a diagram cannot turn HTML labels back on.
-  The trade is GitHub’s label formatting: a label’s `<b>` or `<br/>` shows as text.
+  Image placement therefore keeps a label to formatting tags, with no attribute but
+  `class`: Mermaid’s `dompurifyConfig` is forced after the host’s `config` merges,
+  together with `securityLevel: "strict"`, and joins `secure`, so a diagram cannot
+  loosen it. A label’s `<b>` and `<br/>` format as GitHub formats them; its `<img>`,
+  link, or `style` is dropped before it can load anything.
+  Mermaid’s image shape (`A@{ img: "…" }`) is the exception: Mermaid loads its URL
+  itself while it lays the shape out, so a host that shows untrusted diagrams bounds it
+  with its `img-src` policy.
   Mermaid measures labels in an off-screen host element whose inline style, set through
   the CSSOM, carries Mermaid’s font, so it works under a policy that admits neither a
   `<style>` element nor `style` attributes.
