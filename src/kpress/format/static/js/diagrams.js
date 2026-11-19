@@ -18,8 +18,11 @@
 //
 // Placement `"document"` puts Mermaid's SVG in the page, so it follows the theme, prints,
 // and selects with the prose. Placement `"image"` shows it as
-// `<img src="data:image/svg+xml…">`, where it can run no script, load nothing, and navigate
-// nowhere, whatever Mermaid let through: the choice for content the host does not trust.
+// `<img src="data:image/svg+xml…">`, where the finished drawing can run no script, load
+// nothing, and navigate nowhere: the choice for content the host does not trust. Mermaid
+// still lays the diagram out in the host page, so image placement also draws labels as SVG
+// text (`htmlLabels: false`, which a diagram cannot turn back on): an HTML label's markup,
+// such as an `<img src>`, would otherwise load in the page while Mermaid measures it.
 
 import { behaviors, off, on } from "./runtime.js";
 
@@ -36,7 +39,7 @@ export const MAX_DIAGRAM_TEXT = 50_000;
 /**
  * The face and size Mermaid's default themes draw labels in (Mermaid 12's
  * `themeVariables.fontFamily` and `fontSize`). Image placement measures labels in a host
- * element that carries these as a `style` attribute; see `measuringHost`.
+ * element that carries these as inline style; see `measuringHost`.
  */
 const MERMAID_DEFAULT_FONT_FAMILY = '"trebuchet ms", verdana, arial, sans-serif';
 const MERMAID_DEFAULT_FONT_SIZE = "16px";
@@ -87,16 +90,65 @@ const MERMAID_DEFAULT_FONT_SIZE = "16px";
  * }} DiagramBinding
  */
 
-let diagramSequence = 0;
+/**
+ * The configuration keys a diagram's `%%{init}%%` or front matter may not set: Mermaid
+ * 12's own default `secure` list, restated so it holds whether a Mermaid extends or
+ * replaces the list, and `htmlLabels`, which image placement turns off.
+ */
+const MERMAID_SECURE_KEYS = [
+  "secure",
+  "securityLevel",
+  "startOnLoad",
+  "maxTextSize",
+  "suppressErrorRendering",
+  "maxEdges",
+];
 
 /**
- * The theme and placement each drawn figure was drawn in. A new binding over the same
- * figures keeps a drawing that still matches and redraws one that does not: the runtime
- * rebinds every behavior on `theme:change`, so this is how a rebind follows the theme.
+ * The theme, placement, and host configuration each drawn figure was drawn with. A new
+ * binding over the same figures keeps a drawing that still matches and redraws one that
+ * does not: the runtime rebinds every behavior on `theme:change`, so this is how a rebind
+ * follows the theme.
  *
  * @type {WeakMap<HTMLElement, string>}
  */
 const drawnAs = new WeakMap();
+
+/**
+ * The end of the queue of Mermaid calls. Mermaid's `initialize` sets one configuration for
+ * the whole page and `render` reads it later, so two bindings that draw at once would draw
+ * in each other's configuration. Each figure's `initialize` and `render` run as one turn of
+ * this queue.
+ *
+ * @type {Promise<unknown>}
+ */
+let mermaidTurn = Promise.resolve();
+
+/**
+ * Run *task* once every earlier queued Mermaid call has settled.
+ *
+ * @template T
+ * @param {() => Promise<T>} task
+ * @returns {Promise<T>}
+ */
+function inMermaidTurn(task) {
+  const turn = mermaidTurn.then(task);
+  mermaidTurn = turn.then(
+    () => undefined,
+    () => undefined,
+  );
+  return turn;
+}
+
+/**
+ * A prefix for one binding's diagram IDs. Mermaid gives the SVG this ID and scopes its
+ * styles to it, so it must not match an author's heading or another binding's figure.
+ *
+ * @returns {string}
+ */
+function diagramIdPrefix() {
+  return `kpress-mermaid-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isPlainObject(value) {
@@ -105,7 +157,8 @@ function isPlainObject(value) {
 
 /**
  * *base* with *overrides* merged in, recursively for nested plain objects, so a host can
- * set one `flowchart` key without dropping KPress's others.
+ * set one `flowchart` key without dropping KPress's others. `secure` lists are joined, so
+ * a host can protect more keys but never unprotect one of KPress's.
  *
  * @param {Record<string, unknown>} base
  * @param {Record<string, unknown>} [overrides]
@@ -116,10 +169,34 @@ function mergeConfig(base, overrides) {
   const merged = { ...base };
   for (const [key, value] of Object.entries(overrides ?? {})) {
     const current = merged[key];
-    merged[key] =
-      isPlainObject(current) && isPlainObject(value) ? mergeConfig(current, value) : value;
+    if (key === "secure" && Array.isArray(current) && Array.isArray(value)) {
+      merged[key] = [...new Set([...current, ...value])];
+    } else {
+      merged[key] =
+        isPlainObject(current) && isPlainObject(value) ? mergeConfig(current, value) : value;
+    }
   }
   return merged;
+}
+
+/**
+ * The configuration one figure is drawn with: `kpressMermaidConfig(theme, placement)` with
+ * the host's *overrides* merged in. Image placement then pins what makes it safe for
+ * untrusted content, whatever the host passed: strict security and SVG-text labels.
+ *
+ * @param {"light" | "dark"} theme
+ * @param {"document" | "image"} placement
+ * @param {Record<string, unknown>} [overrides]
+ * @returns {Record<string, unknown>}
+ */
+function figureConfig(theme, placement, overrides) {
+  const config = mergeConfig(kpressMermaidConfig(theme, placement), overrides);
+  if (placement === "image") {
+    config.securityLevel = "strict";
+    config.htmlLabels = false;
+    config.secure = mergeConfig({ secure: config.secure }, { secure: ["htmlLabels"] }).secure;
+  }
+  return config;
 }
 
 /**
@@ -127,10 +204,18 @@ function mergeConfig(base, overrides) {
  * `securityLevel: "strict"`, which sanitizes labels as GitHub's `antiscript` does and also
  * disables `click` navigation. A diagram's own `%%{init}%%` or front-matter theme wins.
  *
+ * For `placement: "image"`, labels are SVG text (`htmlLabels: false`) and `secure` keeps a
+ * diagram from turning HTML labels back on. Mermaid lays the diagram out in the host page,
+ * and an HTML label is live markup there while it is measured: its `<img src>` loads.
+ * GitHub draws HTML labels, so an image-placed label's `<b>` or `<br/>` shows as text where
+ * GitHub would format it; image placement is for content the host does not trust, and
+ * there safety comes first.
+ *
  * @param {"light" | "dark"} theme
+ * @param {"document" | "image"} [placement]
  * @returns {Record<string, unknown>}
  */
-export function kpressMermaidConfig(theme) {
+export function kpressMermaidConfig(theme, placement = "document") {
   return {
     startOnLoad: false,
     securityLevel: "strict",
@@ -138,6 +223,9 @@ export function kpressMermaidConfig(theme) {
     theme: theme === "dark" ? "dark" : "default",
     flowchart: { diagramPadding: 48 },
     sequence: { diagramMarginY: 40 },
+    ...(placement === "image"
+      ? { htmlLabels: false, secure: [...MERMAID_SECURE_KEYS, "htmlLabels"] }
+      : {}),
   };
 }
 
@@ -277,41 +365,31 @@ function subscribeRuntimeTheme(listener) {
 /**
  * Where image placement measures a diagram. Mermaid lays a diagram out in the page,
  * reading each label's box, and sets the labels' face and size with a `<style>` inside its
- * SVG. A strict content security policy admits no `<style>` element, only `style`
- * attributes, so the labels would be measured in the page's face and drawn, inside the
- * image, in Mermaid's: wider text clipped. This host carries Mermaid's face and size as an
- * attribute, so both agree.
+ * SVG. A strict content security policy admits no `<style>` element, so the labels would
+ * be measured in the page's face and drawn, inside the image, in Mermaid's: wider text
+ * clipped. This host carries Mermaid's face and size as inline style, set through the
+ * CSSOM, which a policy without `style-src-attr 'unsafe-inline'` still admits, so both
+ * agree.
  *
  * @param {Record<string, unknown>} config
  * @returns {HTMLElement}
  */
 function measuringHost(config) {
   const variables = isPlainObject(config.themeVariables) ? config.themeVariables : {};
-  const family = String(variables.fontFamily ?? config.fontFamily ?? MERMAID_DEFAULT_FONT_FAMILY);
-  const size = String(variables.fontSize ?? MERMAID_DEFAULT_FONT_SIZE);
   const host = document.createElement("div");
-  host.setAttribute(
-    "style",
-    `position:fixed;left:-100000px;top:0;width:1200px;visibility:hidden;font-family:${family};font-size:${size};line-height:normal;`,
-  );
+  Object.assign(host.style, {
+    position: "fixed",
+    left: "-100000px",
+    top: "0",
+    width: "1200px",
+    visibility: "hidden",
+    fontFamily: String(variables.fontFamily ?? config.fontFamily ?? MERMAID_DEFAULT_FONT_FAMILY),
+    fontSize: String(variables.fontSize ?? MERMAID_DEFAULT_FONT_SIZE),
+    lineHeight: "normal",
+  });
   host.setAttribute("aria-hidden", "true");
   document.body.append(host);
   return host;
-}
-
-/**
- * Remove a figure's drawing and error note, and show its source.
- *
- * @param {HTMLElement} figure
- */
-function clearDrawing(figure) {
-  figure.querySelector(":scope > .kpress-diagram-rendered")?.remove();
-  figure.querySelector(":scope > .kpress-diagram-error")?.remove();
-  figure.dataset.kpressDiagramStatus = "source";
-  const { source } = diagramSource(figure);
-  if (source) {
-    source.hidden = false;
-  }
 }
 
 /**
@@ -366,8 +444,9 @@ function renderedElement(svg, placement) {
  *
  * Mermaid comes from `options.mermaid`, else `globalThis.mermaid`; with neither, the
  * figures keep their source and `ready` resolves at once. Mermaid is configured before each
- * figure with `kpressMermaidConfig(theme)` merged with `options.config`, so another
- * binding's configuration never leaks into this one's diagrams.
+ * figure with `kpressMermaidConfig(theme, placement)` merged with `options.config`, in a
+ * page-wide queue of Mermaid calls, so another binding's configuration never leaks into
+ * this one's diagrams.
  *
  * @param {ParentNode} [root]
  * @param {DiagramOptions} [options]
@@ -390,6 +469,17 @@ export function initKpressDiagrams(root = document, options = {}) {
     (() => resolvedThemeAround(figures[0] ?? (root instanceof Element ? root : null)));
   const mermaidSource =
     options.mermaid ?? /** @type {{ mermaid?: unknown }} */ (globalThis).mermaid ?? null;
+  const idPrefix = diagramIdPrefix();
+  let idSequence = 0;
+  /** The host configuration's part of a drawing's look, so a rebind with new config redraws. */
+  let configKey = "";
+  try {
+    configKey = JSON.stringify(options.config ?? null);
+  } catch {
+    configKey = String(Math.random());
+  }
+  /** @param {"light" | "dark"} currentTheme */
+  const lookFor = (currentTheme) => `${currentTheme} ${placement} ${configKey}`;
 
   let disposed = false;
   let generation = 0;
@@ -425,8 +515,8 @@ export function initKpressDiagrams(root = document, options = {}) {
       return;
     }
     const currentTheme = theme();
-    const look = `${currentTheme} ${placement}`;
-    const config = mergeConfig(kpressMermaidConfig(currentTheme), options.config);
+    const look = lookFor(currentTheme);
+    const config = figureConfig(currentTheme, placement, options.config);
     const limit = typeof config.maxTextSize === "number" ? config.maxTextSize : MAX_DIAGRAM_TEXT;
     if (text.length > limit) {
       showDiagramError(
@@ -436,13 +526,25 @@ export function initKpressDiagrams(root = document, options = {}) {
       updateControls(figure);
       return;
     }
-    figure.dataset.kpressDiagramStatus = "rendering";
-    diagramSequence += 1;
-    const id = `kpress-mermaid-${diagramSequence}`;
-    const host = placement === "image" ? measuringHost(config) : null;
+    // A figure being redrawn keeps its old drawing on screen until the new one replaces it.
+    if (figure.dataset.kpressDiagramStatus !== "rendered") {
+      figure.dataset.kpressDiagramStatus = "rendering";
+    }
+    idSequence += 1;
+    const id = `${idPrefix}-${idSequence}`;
     try {
-      mermaid.initialize?.(config);
-      const result = await mermaid.render(id, text, host ?? undefined);
+      const result = await inMermaidTurn(async () => {
+        if (disposed || pass !== generation) {
+          return null;
+        }
+        const host = placement === "image" ? measuringHost(config) : null;
+        try {
+          mermaid.initialize?.(config);
+          return await mermaid.render(id, text, host ?? undefined);
+        } finally {
+          host?.remove();
+        }
+      });
       if (disposed || pass !== generation) {
         if (figure.dataset.kpressDiagramStatus === "rendering") {
           figure.dataset.kpressDiagramStatus = "source";
@@ -454,6 +556,7 @@ export function initKpressDiagrams(root = document, options = {}) {
         throw new Error("Mermaid returned no SVG");
       }
       figure.querySelector(":scope > .kpress-diagram-error")?.remove();
+      figure.querySelector(":scope > .kpress-diagram-rendered")?.remove();
       figure.insertBefore(renderedElement(svg, placement), source);
       if (source) {
         source.hidden = true;
@@ -467,26 +570,25 @@ export function initKpressDiagrams(root = document, options = {}) {
         return;
       }
       showDiagramError(figure, diagramErrorMessage(error));
-    } finally {
-      host?.remove();
     }
     updateControls(figure);
   }
 
-  /** @param {number} pass */
-  async function drawAll(pass) {
-    const look = `${theme()} ${placement}`;
+  /**
+   * Draw every figure whose drawing is missing or no longer matches; with *all*, every
+   * figure. A drawn figure keeps its drawing until the new one replaces it.
+   *
+   * @param {number} pass
+   * @param {boolean} [all]
+   */
+  async function drawAll(pass, all = false) {
+    const look = lookFor(theme());
     const pending = figures.filter(
-      (figure) => figure.dataset.kpressDiagramStatus !== "rendered" || drawnAs.get(figure) !== look,
+      (figure) =>
+        all || figure.dataset.kpressDiagramStatus !== "rendered" || drawnAs.get(figure) !== look,
     );
     if (!pending.length || !mermaidSource) {
       return;
-    }
-    for (const figure of pending) {
-      if (figure.dataset.kpressDiagramStatus === "rendered") {
-        clearDrawing(figure);
-        updateControls(figure);
-      }
     }
     let mermaid;
     try {
@@ -524,11 +626,6 @@ export function initKpressDiagrams(root = document, options = {}) {
   generation += 1;
   let drawing = drawAll(generation);
 
-  if (figures.length && mermaidSource) {
-    const subscribe = options.subscribeTheme ?? subscribeRuntimeTheme;
-    cleanups.push(subscribe(() => binding.rerender()));
-  }
-
   /** @type {DiagramBinding} */
   const binding = {
     figures,
@@ -541,11 +638,7 @@ export function initKpressDiagrams(root = document, options = {}) {
       }
       generation += 1;
       const pass = generation;
-      for (const figure of figures) {
-        clearDrawing(figure);
-        updateControls(figure);
-      }
-      drawing = drawing.then(() => drawAll(pass));
+      drawing = drawing.then(() => drawAll(pass, true));
     },
     dispose() {
       if (disposed) {
@@ -561,6 +654,12 @@ export function initKpressDiagrams(root = document, options = {}) {
       }
     },
   };
+
+  // Subscribe once the binding exists: a subscriber may call its listener at once.
+  if (figures.length && mermaidSource) {
+    const subscribe = options.subscribeTheme ?? subscribeRuntimeTheme;
+    cleanups.push(subscribe(() => binding.rerender()));
+  }
   return binding;
 }
 

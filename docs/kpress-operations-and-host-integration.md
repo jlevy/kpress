@@ -511,21 +511,33 @@ binding.dispose();
 - `mermaid` is the Mermaid API, an ES module namespace whose `default` is the API, or a
   function returning either, called once and only when `root` holds a diagram.
   Without it the global is used.
-- `config` is merged, recursively, over `kpressMermaidConfig(theme)`, GitHub’s settings
-  with `securityLevel: "strict"`, and applied before each figure, so one binding’s
-  configuration never leaks into another’s. A diagram’s own `%%{init}%%` still wins.
+- `config` is merged, recursively, over `kpressMermaidConfig(theme, placement)`,
+  GitHub’s settings with `securityLevel: "strict"`, and applied before each figure.
+  Mermaid’s configuration is page-wide, so every binding’s `initialize` and `render`
+  take turns in one queue, and one binding’s configuration never leaks into another’s. A
+  diagram’s own `%%{init}%%` still wins, except for the keys in `secure`, which a host
+  can add to but not remove from.
 - `theme` returns `"light"` or `"dark"`; it defaults to the nearest
   `data-kpress-resolved-theme`. `subscribeTheme` defaults to the runtime’s
   `theme:change`, after which the binding redraws.
 - `placement: "image"` shows each drawing as `<img class="kpress-diagram-image">` from a
-  `data:image/svg+xml` URL, where it can run no script and load nothing: the choice for
-  content the host does not trust.
-  Mermaid measures labels in an off-screen host element whose `style` attribute sets
-  Mermaid’s font, so it works under a policy that admits no `<style>` element.
+  `data:image/svg+xml` URL, where the finished drawing can run no script and load
+  nothing: the choice for content the host does not trust.
+  Mermaid still lays the diagram out in the host page, where an HTML label is live
+  markup while it is measured, so its `<img src>` would load.
+  Image placement therefore draws labels as SVG text: `htmlLabels: false` and
+  `securityLevel: "strict"` are forced after the host’s `config` merges, and
+  `htmlLabels` joins `secure`, so a diagram cannot turn HTML labels back on.
+  The trade is GitHub’s label formatting: a label’s `<b>` or `<br/>` shows as text.
+  Mermaid measures labels in an off-screen host element whose inline style, set through
+  the CSSOM, carries Mermaid’s font, so it works under a policy that admits neither a
+  `<style>` element nor `style` attributes.
 - `ready` settles when every figure has drawn or failed; `rerender()` draws them all
   again; `dispose()` stops drawing, removes listeners and controls’ dialogs, and leaves
   the figures as they are.
-  A rebind keeps a drawing made in the current theme and placement and redraws the rest.
+  A rebind keeps a drawing made in the current theme, placement, and `config` and
+  redraws the rest; a redrawn figure keeps its old drawing until the new one replaces
+  it.
 - `mermaidFigureFor(pre)` wraps a host’s bare Mermaid `<pre>` in the figure markup, so a
   sanitized render that lost the figure can still be drawn.
 - `MAX_DIAGRAM_TEXT` (Mermaid’s own `maxTextSize`) bounds a source; a longer one gets an

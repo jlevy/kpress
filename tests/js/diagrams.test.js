@@ -135,7 +135,7 @@ describe("initKpressDiagrams", () => {
     const [figure] = figures();
     expect(globalThis.mermaid).toBeUndefined();
     expect(mermaid.render).toHaveBeenCalledWith(
-      expect.stringMatching(/^kpress-mermaid-\d+$/),
+      expect.stringMatching(/^kpress-mermaid-[a-z0-9]+-\d+$/),
       "graph TD\nA-->B",
       undefined,
     );
@@ -261,7 +261,9 @@ describe("initKpressDiagrams", () => {
 
     theme = "dark";
     listener?.();
-    expect(figures()[0].dataset.kpressDiagramStatus).toBe("source");
+    // The light drawing stays on screen until the dark one replaces it.
+    expect(figures()[0].dataset.kpressDiagramStatus).toBe("rendered");
+    expect(document.querySelectorAll(".kpress-diagram-rendered")).toHaveLength(1);
     await binding.ready;
 
     expect(mermaid.initialize).toHaveBeenLastCalledWith(expect.objectContaining({ theme: "dark" }));
@@ -337,9 +339,9 @@ describe("initKpressDiagrams", () => {
       yieldBetween: noYield,
     }).ready;
 
-    expect(measuredIn?.getAttribute("style")).toContain(
-      'font-family:"trebuchet ms", verdana, arial, sans-serif;font-size:16px;',
-    );
+    // Set through the CSSOM, which a policy without style-src-attr 'unsafe-inline' admits.
+    expect(measuredIn?.style.fontFamily).toBe('"trebuchet ms", verdana, arial, sans-serif');
+    expect(measuredIn?.style.fontSize).toBe("16px");
     expect(measuredIn?.isConnected).toBe(false);
     const image = document.querySelector(".kpress-diagram-rendered > img.kpress-diagram-image");
     expect(image?.getAttribute("alt")).toBe("Mermaid diagram");
@@ -349,6 +351,103 @@ describe("initKpressDiagrams", () => {
     expect(xml).toContain('width="120.5"');
     expect(xml).toContain('xmlns="http://www.w3.org/2000/svg"');
     expect(document.querySelector(".kpress-diagram-rendered svg")).toBeNull();
+  });
+
+  it("draws image labels as SVG text, which neither the host nor a diagram can undo", async () => {
+    document.body.innerHTML = FIGURE("graph TD");
+    const mermaid = fakeMermaid();
+    await initKpressDiagrams(document, {
+      mermaid,
+      placement: "image",
+      config: { securityLevel: "loose", htmlLabels: true, secure: ["theme"] },
+      yieldBetween: noYield,
+    }).ready;
+
+    const config = mermaid.initialize.mock.calls[0][0];
+    expect(config.securityLevel).toBe("strict");
+    expect(config.htmlLabels).toBe(false);
+    expect(config.secure).toEqual(
+      expect.arrayContaining(["secure", "securityLevel", "htmlLabels", "theme"]),
+    );
+  });
+
+  it("keeps HTML labels in document placement, as GitHub draws them", () => {
+    expect(kpressMermaidConfig("light")).not.toHaveProperty("htmlLabels");
+    expect(kpressMermaidConfig("light", "image")).toMatchObject({ htmlLabels: false });
+  });
+
+  it("draws one figure at a time across bindings, each in its own configuration", async () => {
+    document.body.innerHTML = `<section id="a">${FIGURE("graph TD")}${FIGURE("graph LR")}</section>
+      <section id="b">${FIGURE("graph TD")}${FIGURE("graph LR")}</section>`;
+    // Mermaid's configuration is page-wide: render reads whatever initialize set last.
+    /** @type {Record<string, unknown>} */
+    let current = {};
+    const mermaid = {
+      initialize: vi.fn((config) => {
+        current = config;
+      }),
+      render: vi.fn(async (id) => {
+        const theme = current.theme;
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        return { svg: `<svg id="${id}"><text>${theme}</text></svg>` };
+      }),
+    };
+    const a = initKpressDiagrams(document.getElementById("a"), {
+      mermaid,
+      theme: () => "light",
+      subscribeTheme: () => () => {},
+      yieldBetween: noYield,
+    });
+    const b = initKpressDiagrams(document.getElementById("b"), {
+      mermaid,
+      theme: () => "dark",
+      subscribeTheme: () => () => {},
+      yieldBetween: noYield,
+    });
+    await Promise.all([a.ready, b.ready]);
+
+    const drawn = (id) =>
+      [...document.querySelectorAll(`#${id} .kpress-diagram-rendered text`)].map(
+        (text) => text.textContent,
+      );
+    expect(drawn("a")).toEqual(["default", "default"]);
+    expect(drawn("b")).toEqual(["dark", "dark"]);
+  });
+
+  it("accepts a theme subscription that calls its listener at once", async () => {
+    document.body.innerHTML = FIGURE("graph TD");
+    const mermaid = fakeMermaid();
+    const binding = initKpressDiagrams(document, {
+      mermaid,
+      subscribeTheme: (listener) => {
+        listener();
+        return () => {};
+      },
+      yieldBetween: noYield,
+    });
+    await binding.ready;
+    expect(figures()[0].dataset.kpressDiagramStatus).toBe("rendered");
+  });
+
+  it("redraws on a rebind whose configuration changed", async () => {
+    document.body.innerHTML = FIGURE("graph TD");
+    const mermaid = fakeMermaid();
+    const options = { mermaid, theme: () => "light", yieldBetween: noYield };
+    await initKpressDiagrams(document, options).ready;
+    await initKpressDiagrams(document, options).ready;
+    expect(mermaid.render).toHaveBeenCalledTimes(1);
+
+    await initKpressDiagrams(document, { ...options, config: { look: "handDrawn" } }).ready;
+    expect(mermaid.render).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives each binding its own diagram IDs", async () => {
+    document.body.innerHTML = FIGURE("graph TD");
+    const mermaid = fakeMermaid();
+    await initKpressDiagrams(document, { mermaid, theme: () => "light" }).ready;
+    await initKpressDiagrams(document, { mermaid, theme: () => "dark" }).ready;
+    const [first, second] = mermaid.render.mock.calls.map(([id]) => id);
+    expect(first.replace(/-\d+$/, "")).not.toBe(second.replace(/-\d+$/, ""));
   });
 
   it("adopts a host's bare Mermaid block as a figure", async () => {
@@ -411,6 +510,26 @@ describe("diagram controls", () => {
     binding.dispose();
     toggle.click();
     expect(figure.dataset.kpressDiagramShowSource).toBe("false");
+    expect(figure.querySelector(".kpress-diagram-toolbar")).toBeNull();
+  });
+
+  it("keeps a rebind's toolbar working when the old binding is disposed after it", async () => {
+    document.body.innerHTML = FIGURE("graph TD");
+    const mermaid = fakeMermaid();
+    const options = { mermaid, controls: diagramControls({ icon }), yieldBetween: noYield };
+    const old = initKpressDiagrams(document, options);
+    await old.ready;
+    const rebound = initKpressDiagrams(document, options);
+    old.dispose();
+    await rebound.ready;
+
+    const [figure] = figures();
+    expect(figure.querySelectorAll(".kpress-diagram-toolbar")).toHaveLength(1);
+    figure.dataset.kpressDiagramShowSource = "true";
+    rebound.rerender();
+    await rebound.ready;
+    expect(figure.querySelector(".kpress-diagram-rendered").hidden).toBe(true);
+    rebound.dispose();
   });
 
   it("copies the source, or hands the button to the host", async () => {

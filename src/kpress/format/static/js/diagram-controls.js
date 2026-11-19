@@ -464,7 +464,11 @@ export function diagramControls(options = {}) {
         }
         closeDialog?.();
         closeDialog = null;
-        toggleUpdates.delete(figure);
+        toolbar.remove();
+        // A rebind may attach the new toolbar before this one is cleaned up.
+        if (toggleUpdates.get(figure) === applySourceToggle) {
+          toggleUpdates.delete(figure);
+        }
       };
     },
     update(figure) {
