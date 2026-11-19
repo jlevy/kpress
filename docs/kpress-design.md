@@ -212,6 +212,9 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Diagrams.** SVG fences render as sanitized inline SVG figures; Mermaid fences render
   as diagram figures with a readable source fallback and a progressive renderer when the
   host provides Mermaid.
+  The `diagrams` option (`DiagramMode` in `format/model.py`) selects which: `auto` draws
+  both, `mermaid` draws only Mermaid fences and leaves SVG fences as highlighted code,
+  as GitHub does, and `off` leaves both as code.
 - **External link policy.** Absolute HTTP(S) links open in a new tab with
   `rel="noopener noreferrer"`; anchors, relative links, and `mailto:` are unchanged.
 
