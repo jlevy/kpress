@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -458,7 +462,7 @@ describe("diagram controls", () => {
     const fetch = vi.fn(
       async () =>
         new Response(
-          '<svg xmlns="http://www.w3.org/2000/svg" style="display: none"><symbol id="kpress-icon-zoom-in"/></svg>',
+          '<svg xmlns="http://www.w3.org/2000/svg" style="display: none">\n  <!-- glyphs -- as served -->\n  <symbol id="kpress-icon-zoom-in"></symbol>\n</svg>\n',
         ),
     );
     vi.stubGlobal("fetch", fetch);
@@ -476,6 +480,32 @@ describe("diagram controls", () => {
     expect(added?.getAttribute("aria-hidden")).toBe("true");
   });
 
+  it("adds every symbol of the shipped sprites", async () => {
+    const doc = document.implementation.createHTMLDocument("");
+    const staticRoot = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../src/kpress/format/static",
+    );
+    const shipped = (path) => readFileSync(join(staticRoot, path), "utf8");
+    const fetch = vi.fn(
+      async (url) => new Response(shipped(String(url).replace(/^.*\/static\//, ""))),
+    );
+    vi.stubGlobal("fetch", fetch);
+    try {
+      await ensureDiagramSprites(doc);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(fetch).toHaveBeenCalledTimes(2);
+    for (const path of ["icons/icons.svg", "icons/diagram-icons.svg"]) {
+      const ids = [...shipped(path).matchAll(/id="(kpress-icon-[\w-]+)"/g)].map((m) => m[1]);
+      expect(ids.length).toBeGreaterThan(0);
+      for (const id of ids) {
+        expect(doc.getElementById(id)?.tagName.toLowerCase(), id).toBe("symbol");
+      }
+    }
+  });
+
   it("checks again for a sprite that a replaced render took with it", async () => {
     const doc = document.implementation.createHTMLDocument("");
     doc.body.innerHTML =
@@ -483,7 +513,7 @@ describe("diagram controls", () => {
     const fetch = vi.fn(
       async () =>
         new Response(
-          '<svg xmlns="http://www.w3.org/2000/svg"><symbol id="kpress-icon-copy"/></svg>',
+          '<svg xmlns="http://www.w3.org/2000/svg"><symbol id="kpress-icon-copy"></symbol></svg>',
         ),
     );
     vi.stubGlobal("fetch", fetch);

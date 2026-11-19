@@ -247,9 +247,14 @@ async function fetchSprite(doc, path, marker) {
   if (!response.ok) {
     throw new Error(`${path}: HTTP ${response.status}`);
   }
-  const parsed = new DOMParser().parseFromString(await response.text(), "image/svg+xml");
-  const sprite = parsed.documentElement;
-  if (sprite.localName !== "svg" || doc.getElementById(marker)) {
+  // As HTML, the way the server inlines it: the sprites' comments hold `--`, which an
+  // XML parse rejects.
+  const parsed = new DOMParser().parseFromString(await response.text(), "text/html");
+  const sprite = parsed.body.querySelector(":scope > svg");
+  if (!sprite?.querySelector(`#${marker}`)) {
+    throw new Error(`${path}: no #${marker}`);
+  }
+  if (doc.getElementById(marker)) {
     return;
   }
   sprite.removeAttribute("style");
