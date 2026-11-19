@@ -119,6 +119,7 @@ PUBLIC_RENDER_REQUEST_FIELDS = (
     "extra_attributes",
     "mono_font",
     "mono_weights",
+    "diagrams",
 )
 
 PUBLIC_CSS_CLASSES = (
@@ -154,8 +155,22 @@ PUBLIC_CSS_CLASSES = (
     "kpress-frontmatter-error",
     "kpress-frontmatter",
     "kpress-diagram",
+    "kpress-diagram-button",
+    "kpress-diagram-copy",
+    "kpress-diagram-dialog",
+    "kpress-diagram-dialog-close",
+    "kpress-diagram-dialog-controls",
+    "kpress-diagram-dragging",
+    "kpress-diagram-error",
+    "kpress-diagram-error-detail",
+    "kpress-diagram-expand",
+    "kpress-diagram-image",
     "kpress-diagram-rendered",
     "kpress-diagram-source",
+    "kpress-diagram-stage",
+    "kpress-diagram-toggle-source",
+    "kpress-diagram-toolbar",
+    "kpress-diagram-viewport",
     "kpress-header-actions",
     "kpress-header-grow",
     "kpress-header-row",
@@ -514,6 +529,19 @@ PUBLIC_PAGE_MODEL_KEYS = (
 # Stability-pinned ES-module exports (the wrap-one-aspect seam). Start narrow:
 # only what the documented demos exercise; an export is a contract, so names
 # are added deliberately, not by reflex.
+# What a page that draws Mermaid diagrams with controls loads from the package: the two
+# diagram modules and every module they import, then the sprites `ensureDiagramSprites`
+# fetches for a render that lost them. A host under a strict Content-Security-Policy
+# admits the modules as scripts by exact URL, and the sprites as fetches.
+# tests/test_public_contract.py derives both from the shipped files.
+PUBLIC_DIAGRAM_SCRIPT_MODULES = (
+    "js/diagrams.js",
+    "js/diagram-controls.js",
+    "js/runtime.js",
+    "js/icons.js",
+)
+PUBLIC_DIAGRAM_SPRITES = ("icons/icons.svg", "icons/diagram-icons.svg")
+
 PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     "js/runtime.js": ("getModel", "on", "off", "emit", "storage", "widgets", "behaviors"),
     "js/theme-controls.js": (
@@ -533,6 +561,15 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     "js/settings-widget.js": ("mountSettings",),
     "js/doc-actions.js": ("mountDocActions", "markdownTwinUrl"),
     "js/history.js": ("initKpressHistory",),
+    # A host's entry points only; the modules' other exports are for their own tests.
+    "js/diagrams.js": (
+        "MERMAID_FIGURE_SELECTOR",
+        "MAX_DIAGRAM_TEXT",
+        "initKpressDiagrams",
+        "kpressMermaidConfig",
+        "mermaidFigureFor",
+    ),
+    "js/diagram-controls.js": ("diagramControls", "ensureDiagramSprites"),
     "js/host.js": ("HOST_BEHAVIOR_ID", "initKpressHost"),
     "js/icons.js": ("icon",),
     "js/overlay.js": (
@@ -589,6 +626,8 @@ __all__ = [
     "PUBLIC_CSS_CLASSES",
     "PUBLIC_CSS_VARIABLES",
     "PUBLIC_DATA_ATTRIBUTES",
+    "PUBLIC_DIAGRAM_SCRIPT_MODULES",
+    "PUBLIC_DIAGRAM_SPRITES",
     "PUBLIC_FORMAT_API",
     "PUBLIC_FRAGMENT_CSS_CLASSES",
     "PUBLIC_FRAGMENT_CSS_VARIABLES",

@@ -179,13 +179,14 @@ A--&gt;B</code></pre>
     `;
 
     const { initKpressDiagrams } = await importFresh("diagrams.js");
-    await initKpressDiagrams();
+    await initKpressDiagrams().ready;
 
     const figure = document.querySelector(".kpress-mermaid");
     const source = document.querySelector(".kpress-diagram-source");
     expect(render).toHaveBeenCalledWith(
       expect.stringMatching(/^kpress-mermaid-/),
       "graph TD\nA-->B",
+      undefined,
     );
     expect(figure?.getAttribute("data-kpress-diagram-status")).toBe("rendered");
     expect(source?.hidden).toBe(true);

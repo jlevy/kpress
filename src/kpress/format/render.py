@@ -38,6 +38,9 @@ SOURCE_PREVIEW_MAX_BYTES = 512 * 1024
 # lands in class/id/data attributes (a config key is host data, not trusted markup).
 _WIDGET_ID_RE = re.compile(r"[a-z][a-z0-9-]*")
 _CLASS_ATTRIBUTE_RE = re.compile(r"class=(?P<quote>['\"])(?P<classes>.*?)(?P=quote)")
+# What format/markdown.py stamps on a Mermaid figure; its presence selects the diagram
+# runtime and the diagram-control glyphs.
+_MERMAID_FIGURE_MARKER = 'data-kpress-diagram="mermaid"'
 _SAME_DOCUMENT_LINK_RE = re.compile(
     r"<a\b[^>]*\bhref=(?P<quote>['\"])#[^'\"]+(?P=quote)",
     re.IGNORECASE,
@@ -50,6 +53,13 @@ def _icon_sprite() -> str:
     document so `<use href="#kpress-icon-*">` references resolve. The glyphs live in that
     file; this only includes it (no SVG is authored in Python)."""
     return read_package_text("icons/icons.svg")
+
+
+@lru_cache(maxsize=1)
+def _diagram_icon_sprite() -> str:
+    """The diagram-control glyphs (static/icons/diagram-icons.svg), inlined beside the main
+    sprite only in a document that holds a Mermaid figure, so other pages carry none."""
+    return read_package_text("icons/diagram-icons.svg")
 
 
 def _icon(name: str, *, css_class: str = "", attrs: str = "") -> str:
@@ -411,6 +421,8 @@ def _render_fragment(
     # Inline the icon sprite once so `<use href="#kpress-icon-*">` (server chrome + client
     # JS) resolve in every context: standalone page, static site, and host-injected embed.
     html = _icon_sprite() + html
+    if _MERMAID_FIGURE_MARKER in html:
+        html = _diagram_icon_sprite() + html
 
     has_math = bool(tree and tree.has_math)
     assets = _render_asset_manifest(
@@ -485,7 +497,7 @@ def _render_asset_manifest(
         entry_points.add("js/tables.js")
     if "data-kpress-tabs" in html:
         entry_points.add("js/tabs.js")
-    if 'data-kpress-diagram="mermaid"' in html:
+    if _MERMAID_FIGURE_MARKER in html:
         entry_points.add("js/diagrams.js")
     if "data-kpress-video-id" in html:
         entry_points.add("js/video-popover.js")

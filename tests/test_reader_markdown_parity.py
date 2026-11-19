@@ -889,6 +889,33 @@ def test_svg_diagram_fences_render_sanitized_inline_svg() -> None:
     assert "<script>" not in tree.html
 
 
+def test_mermaid_diagram_mode_draws_mermaid_and_leaves_svg_fences_as_code() -> None:
+    # GitHub draws ```mermaid fences and shows ```svg fences as highlighted code;
+    # diagrams="mermaid" is the mode that matches it.
+    tree = parse_markdown(
+        dedent(
+            """
+            ```mermaid
+            graph TD
+            ```
+
+            ```svg
+            <svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"></circle></svg>
+            ```
+            """
+        ).strip(),
+        title="GitHub diagrams",
+        diagrams="mermaid",
+    )
+
+    assert 'data-kpress-diagram="mermaid"' in tree.html
+    assert 'data-kpress-diagram="svg"' not in tree.html
+    assert "kpress-svg-diagram" not in tree.html
+    assert '<pre class="kpress-code"><code class="language-svg">' in tree.html
+    assert "<circle" not in tree.html
+    assert "&lt;circle" in tree.html
+
+
 def test_footnotes_and_math_inside_fenced_code_are_not_extracted() -> None:
     tree = parse_markdown(
         dedent(

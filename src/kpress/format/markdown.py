@@ -130,7 +130,7 @@ def _render_fence(token: Token, *, diagrams: DiagramMode) -> str:
     language = token.info.strip().split(maxsplit=1)[0].lower() if token.info.strip() else ""
     if language == "mermaid" and diagrams != "off":
         return _render_mermaid_diagram(token.content)
-    if language == "svg" and diagrams != "off":
+    if language == "svg" and diagrams == "auto":
         return _render_svg_diagram(token.content)
     class_attr = f' class="language-{escape(language)}"' if language else ""
     return f'<pre class="kpress-code"><code{class_attr}>{_highlight_code(token.content, language)}</code></pre>\n'

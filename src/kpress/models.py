@@ -14,6 +14,9 @@ ThemeMode = Literal["system", "light", "dark"]
 # values either way.
 TocRail = Literal["auto", "reserved"]
 TocMode = Literal["auto", "on", "off"]
+# Mirror format.model.DiagramMode, for the same reason;
+# tests/test_dynamic_diagrams.py asserts the mirror.
+DiagramMode = Literal["off", "auto", "mermaid"]
 # Mirror format.model.MonoFont / MonoWeight / DEFAULT_MONO_WEIGHTS, for the same
 # reason as the two above. tests/test_public_contract.py asserts the mirror against
 # the format package, so the two cannot drift apart silently.
@@ -93,6 +96,11 @@ class KPressRenderRequest:
     # without the vendored mono face has to be able to embed without it too.
     mono_font: MonoFont = "planetaire"
     mono_weights: tuple[MonoWeight, ...] = DEFAULT_MONO_WEIGHTS
+    # Which fences draw as diagrams — the dynamic-path counterpart of
+    # RenderOptions.diagrams. A host showing GitHub content passes "mermaid", which
+    # leaves ```svg fences as highlighted code, as GitHub does. Validated as a
+    # closed choice.
+    diagrams: DiagramMode = "auto"
 
 
 @dataclass(frozen=True)

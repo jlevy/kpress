@@ -465,6 +465,118 @@ A host that swaps documents per view must call the bind’s disposer on unmount 
 every behavior), and an SPA host that owns history/router state overrides the id before
 apply: `kpress.behaviors.override("history", () => {})`.
 
+### Mermaid Diagrams
+
+A `mermaid` fence renders as a figure that holds its source:
+
+```html
+<figure class="kpress-diagram kpress-mermaid" data-kpress-diagram="mermaid"
+  data-kpress-diagram-provider="mermaid" data-kpress-diagram-status="source">
+  <pre class="kpress-diagram-source"><code class="language-mermaid">…</code></pre>
+</figure>
+```
+
+KPress does not ship Mermaid.
+`static/js/diagrams.js` draws the figures with the Mermaid a page or host supplies, and
+moves `data-kpress-diagram-status` through `source`, `rendering`, and `rendered` or
+`error`. A drawing is a `.kpress-diagram-rendered` element inserted before the source,
+which is then hidden.
+A failure inserts a `.kpress-diagram-error` note (`role="note"`) holding Mermaid’s
+message in `.kpress-diagram-error-detail`, as text, and leaves the source shown.
+
+**Zero configuration.** The `diagrams` behavior draws with `globalThis.mermaid` when a
+page defines it, and does nothing otherwise.
+
+**A host-supplied Mermaid.** A host that loads Mermaid itself calls
+`initKpressDiagrams(root, options)` or passes the same options to
+`kpress.behaviors.configure("diagrams", options)`:
+
+```js
+import { initKpressDiagrams } from "./js/diagrams.js";
+import { diagramControls } from "./js/diagram-controls.js";
+
+const binding = initKpressDiagrams(root, {
+  mermaid: () => import("./vendor/mermaid.esm.min.mjs"),
+  config: { flowchart: { curve: "basis" } },
+  theme: () => hostTheme(),
+  subscribeTheme: (listener) => host.onThemeChange(listener),
+  placement: "document",
+  controls: diagramControls(),
+});
+await binding.ready;
+binding.rerender();
+binding.dispose();
+```
+
+- `mermaid` is the Mermaid API, an ES module namespace whose `default` is the API, or a
+  function returning either, called once and only when `root` holds a diagram.
+  Without it the global is used.
+- `config` is merged, recursively, over `kpressMermaidConfig(theme, placement)`,
+  GitHub’s settings with `securityLevel: "strict"`, and applied before each figure.
+  Mermaid’s configuration is page-wide, so every binding’s `initialize` and `render`
+  take turns in one queue, and one binding’s configuration never leaks into another’s. A
+  diagram’s own `%%{init}%%` still wins, except for the keys in `secure`, which a host
+  can add to but not remove from.
+- `theme` returns `"light"` or `"dark"`; it defaults to the nearest
+  `data-kpress-resolved-theme`. `subscribeTheme` defaults to the runtime’s
+  `theme:change`, after which the binding redraws.
+- `placement: "image"` shows each drawing as `<img class="kpress-diagram-image">` from a
+  `data:image/svg+xml` URL, where the finished drawing can run no script and load
+  nothing: the choice for content the host does not trust.
+  Mermaid still lays the diagram out in the host page, where an HTML label is live
+  markup while it is measured, so its `<img src>` would load.
+  Image placement therefore keeps a label to formatting tags, with no attribute but
+  `class`: Mermaid’s `dompurifyConfig` is forced after the host’s `config` merges,
+  together with `securityLevel: "strict"`, and joins `secure`, so a diagram cannot
+  loosen it. A label’s `<b>` and `<br/>` format as GitHub formats them; its `<img>`,
+  link, or `style` is dropped before it can load anything.
+  Mermaid’s image shape (`A@{ img: "…" }`) is the exception: Mermaid loads its URL
+  itself while it lays the shape out, so a host that shows untrusted diagrams bounds it
+  with its `img-src` policy.
+  Mermaid measures labels in an off-screen host element whose inline style, set through
+  the CSSOM, carries Mermaid’s font, so it works under a policy that admits neither a
+  `<style>` element nor `style` attributes.
+- `ready` settles when every figure has drawn or failed; `rerender()` draws them all
+  again; `dispose()` stops drawing, removes listeners and controls’ dialogs, and leaves
+  the figures as they are.
+  A rebind keeps a drawing made in the current theme, placement, and `config` and
+  redraws the rest; a redrawn figure keeps its old drawing until the new one replaces
+  it.
+- `mermaidFigureFor(pre)` wraps a host’s bare Mermaid `<pre>` in the figure markup, so a
+  sanitized render that lost the figure can still be drawn.
+- `MAX_DIAGRAM_TEXT` (Mermaid’s own `maxTextSize`) bounds a source; a longer one gets an
+  error note instead of a render.
+  `config.maxTextSize` replaces it.
+
+**Controls** (opt-in, `static/js/diagram-controls.js`, which registers nothing at
+import). `diagramControls(options)` gives each figure a `.kpress-diagram-toolbar`
+(`kpress-no-print`) with copy (`.kpress-diagram-copy`, carrying
+`data-kpress-copy-state`), a source toggle (`.kpress-diagram-toggle-source`, which sets
+`data-kpress-diagram-show-source` on the figure), and expand (`.kpress-diagram-expand`).
+Expand opens a modal `dialog.kpress-diagram-dialog` inside the figure with zoom, reset,
+and pan buttons (each `data-kpress-diagram-action`), wheel and pinch zoom, drag, and
+keys (`+`, `-`, `0`, arrows); the view arithmetic is exported as pure functions.
+Options:
+
+- `icon(name)` returns a button’s glyph markup; the default references the KPress
+  sprites. The server inlines them, and a render that lost them, as a host’s sanitizer
+  removes inline SVG, gets them from `ensureDiagramSprites(document)`, which the
+  controls call: it fetches each missing sprite from beside the module, once per
+  document. A host that passes its own `icon` loads neither.
+- `decorate(button, name)` runs when a button is made and whenever its label changes,
+  for a host’s own classes or tooltip attributes.
+- `copy(button, text)` takes the copy button over: KPress attaches no handler and the
+  host copies however it copies.
+  `copy: null` omits the button.
+- `expand: false` omits expand and the dialog.
+
+**Under a strict Content-Security-Policy.** A page that draws diagrams with controls
+loads the modules in `contract.py::PUBLIC_DIAGRAM_SCRIPT_MODULES` and may fetch the
+sprites in `PUBLIC_DIAGRAM_SPRITES`, so a host whose `script-src` names exact URLs
+admits those modules and its `connect-src` admits the sprites.
+Image placement needs no `<style>` element; Mermaid still adds one to its measuring
+host, and a policy that blocks it is reported but changes nothing drawn.
+
 ### Dynamic Render Contract
 
 The host calls `kpress.runtime.render_view(KPressRenderRequest)` and receives a
@@ -492,6 +604,7 @@ JSON-ready dict. Fields and semantics:
 | `widgets` | no | Widget presence + opaque config map (same shape as `format.widgets`); defaults to `{}` for fragments and is echoed in the response payload so host-mounted widgets read the same config the standalone page model carries |
 | `extra_tags` | no | Additional inert HTML/XML tags admitted by the sanitized render path |
 | `extra_attributes` | no | Additional inert attributes admitted only on pass-through tags |
+| `diagrams` | no | Which fences draw as diagrams: `"auto"` (default) draws Mermaid and inline SVG, `"mermaid"` draws only Mermaid and leaves `svg` fences as highlighted code, as GitHub does, and `"off"` leaves both as code; any other value fails with `KPressInvalidRequestError` |
 
 Render response shape:
 
