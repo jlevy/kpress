@@ -231,6 +231,11 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         raise KPressInvalidRequestError(
             f"Invalid include_toc: {include_toc!r}; expected 'auto', 'on', or 'off'"
         )
+    diagrams: Any = request.diagrams
+    if diagrams not in ("off", "auto", "mermaid"):
+        raise KPressInvalidRequestError(
+            f"Invalid diagrams: {diagrams!r}; expected 'off', 'auto', or 'mermaid'"
+        )
     # Same untrusted-runtime-value treatment as toc_collapse_depth above: a
     # bool is an int in Python, and a negative threshold would silently mean
     # "always", so both are rejected here rather than at the render.
@@ -274,6 +279,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         request.toc_collapse_depth,
         request.toc_expand_on_scroll,
         request.toc_rail,
+        request.diagrams,
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -333,6 +339,7 @@ def render_view(request: KPressRenderRequest) -> dict[str, Any]:
         toc_collapse_depth=request.toc_collapse_depth,
         toc_expand_on_scroll=request.toc_expand_on_scroll,
         toc_rail=toc_rail,
+        diagrams=diagrams,
         widgets=widgets,
         extra_tags=tuple(request.extra_tags),
         extra_attributes=tuple(request.extra_attributes),

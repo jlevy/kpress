@@ -578,6 +578,7 @@ JSON-ready dict. Fields and semantics:
 | `widgets` | no | Widget presence + opaque config map (same shape as `format.widgets`); defaults to `{}` for fragments and is echoed in the response payload so host-mounted widgets read the same config the standalone page model carries |
 | `extra_tags` | no | Additional inert HTML/XML tags admitted by the sanitized render path |
 | `extra_attributes` | no | Additional inert attributes admitted only on pass-through tags |
+| `diagrams` | no | Which fences draw as diagrams: `"auto"` (default) draws Mermaid and inline SVG, `"mermaid"` draws only Mermaid and leaves `svg` fences as highlighted code, as GitHub does, and `"off"` leaves both as code; any other value fails with `KPressInvalidRequestError` |
 
 Render response shape:
 
