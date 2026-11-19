@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   diagramControls,
+  ensureDiagramSprites,
   fitView,
   keyAction,
   MAX_FIT_SCALE,
@@ -449,6 +450,75 @@ describe("diagram controls", () => {
     expect(
       [...document.querySelectorAll(".kpress-diagram-toolbar button")].map((b) => b.className),
     ).toEqual(["kpress-diagram-button kpress-diagram-toggle-source"]);
+  });
+
+  it("fetches only the sprites a sanitized render lost, once, from beside the module", async () => {
+    const doc = document.implementation.createHTMLDocument("");
+    doc.body.innerHTML = '<svg><symbol id="kpress-icon-copy"></symbol></svg>';
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          '<svg xmlns="http://www.w3.org/2000/svg" style="display: none"><symbol id="kpress-icon-zoom-in"/></svg>',
+        ),
+    );
+    vi.stubGlobal("fetch", fetch);
+    try {
+      await Promise.all([ensureDiagramSprites(doc), ensureDiagramSprites(doc)]);
+      await ensureDiagramSprites(doc);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(String(fetch.mock.calls[0][0])).toMatch(/\/static\/icons\/diagram-icons\.svg$/);
+    const added = doc.getElementById("kpress-icon-zoom-in")?.closest("svg");
+    expect(added?.parentElement).toBe(doc.body);
+    expect(added?.style.display).toBe("none");
+    expect(added?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("checks again for a sprite that a replaced render took with it", async () => {
+    const doc = document.implementation.createHTMLDocument("");
+    doc.body.innerHTML =
+      '<article><svg><symbol id="kpress-icon-copy"></symbol><symbol id="kpress-icon-zoom-in"></symbol></svg></article>';
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          '<svg xmlns="http://www.w3.org/2000/svg"><symbol id="kpress-icon-copy"/></svg>',
+        ),
+    );
+    vi.stubGlobal("fetch", fetch);
+    try {
+      await ensureDiagramSprites(doc);
+      expect(fetch).not.toHaveBeenCalled();
+      doc.body.innerHTML = '<svg><symbol id="kpress-icon-zoom-in"></symbol></svg>';
+      await ensureDiagramSprites(doc);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(String(fetch.mock.calls[0][0])).toMatch(/\/static\/icons\/icons\.svg$/);
+    expect(doc.getElementById("kpress-icon-copy")).not.toBeNull();
+  });
+
+  it("loads no sprite for a host that draws its own icons", async () => {
+    document.body.innerHTML = FIGURE("graph TD");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const binding = initKpressDiagrams(document, {
+        mermaid: fakeMermaid(),
+        controls: diagramControls({ icon }),
+        yieldBetween: noYield,
+      });
+      await binding.ready;
+      /** @type {HTMLButtonElement} */ (
+        figures()[0].querySelector(".kpress-diagram-expand")
+      ).click();
+      binding.dispose();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("opens a zoom and pan dialog that closes with the binding", async () => {

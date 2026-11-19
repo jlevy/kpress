@@ -529,6 +529,19 @@ PUBLIC_PAGE_MODEL_KEYS = (
 # Stability-pinned ES-module exports (the wrap-one-aspect seam). Start narrow:
 # only what the documented demos exercise; an export is a contract, so names
 # are added deliberately, not by reflex.
+# What a page that draws Mermaid diagrams with controls loads from the package: the two
+# diagram modules and every module they import, then the sprites `ensureDiagramSprites`
+# fetches for a render that lost them. A host under a strict Content-Security-Policy
+# admits the modules as scripts by exact URL, and the sprites as fetches.
+# tests/test_public_contract.py derives both from the shipped files.
+PUBLIC_DIAGRAM_SCRIPT_MODULES = (
+    "js/diagrams.js",
+    "js/diagram-controls.js",
+    "js/runtime.js",
+    "js/icons.js",
+)
+PUBLIC_DIAGRAM_SPRITES = ("icons/icons.svg", "icons/diagram-icons.svg")
+
 PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     "js/runtime.js": ("getModel", "on", "off", "emit", "storage", "widgets", "behaviors"),
     "js/theme-controls.js": (
@@ -561,6 +574,7 @@ PUBLIC_JS_EXPORTS: dict[str, tuple[str, ...]] = {
     ),
     "js/diagram-controls.js": (
         "diagramControls",
+        "ensureDiagramSprites",
         "openDiagramDialog",
         "fitView",
         "zoomAbout",
@@ -631,6 +645,8 @@ __all__ = [
     "PUBLIC_CSS_CLASSES",
     "PUBLIC_CSS_VARIABLES",
     "PUBLIC_DATA_ATTRIBUTES",
+    "PUBLIC_DIAGRAM_SCRIPT_MODULES",
+    "PUBLIC_DIAGRAM_SPRITES",
     "PUBLIC_FORMAT_API",
     "PUBLIC_FRAGMENT_CSS_CLASSES",
     "PUBLIC_FRAGMENT_CSS_VARIABLES",

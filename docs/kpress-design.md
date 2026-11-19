@@ -709,6 +709,9 @@ Each is a hidden sprite containing one `<symbol id="kpress-icon-<name>">` per gl
 - **Client rendering:** [`static/js/icons.js`](../src/kpress/format/static/js/icons.js)
   exports `icon(name, className)`, which emits the same reference.
   The settings and code-copy modules use this helper.
+- **A render without the sprites:** a host that sanitizes a render removes the inline
+  sprites, so `diagram-controls.js`’s `ensureDiagramSprites` fetches each missing sprite
+  file from beside the module and appends it to the document, once.
 
 No glyph geometry is authored in Python or JavaScript.
 `tests/test_icons.py` pins the required symbols and rejects inline SVG geometry in the

@@ -543,13 +543,23 @@ keys (`+`, `-`, `0`, arrows); the view arithmetic is exported as pure functions.
 Options:
 
 - `icon(name)` returns a button’s glyph markup; the default references the KPress
-  sprite, so a host whose markup carries no sprite passes its own.
+  sprites. The server inlines them, and a render that lost them, as a host’s sanitizer
+  removes inline SVG, gets them from `ensureDiagramSprites(document)`, which the
+  controls call: it fetches each missing sprite from beside the module, once per
+  document. A host that passes its own `icon` loads neither.
 - `decorate(button, name)` runs when a button is made and whenever its label changes,
   for a host’s own classes or tooltip attributes.
 - `copy(button, text)` takes the copy button over: KPress attaches no handler and the
   host copies however it copies.
   `copy: null` omits the button.
 - `expand: false` omits expand and the dialog.
+
+**Under a strict Content-Security-Policy.** A page that draws diagrams with controls
+loads the modules in `contract.py::PUBLIC_DIAGRAM_SCRIPT_MODULES` and may fetch the
+sprites in `PUBLIC_DIAGRAM_SPRITES`, so a host whose `script-src` names exact URLs
+admits those modules and its `connect-src` admits the sprites.
+Image placement needs no `<style>` element; Mermaid still adds one to its measuring
+host, and a policy that blocks it is reported but changes nothing drawn.
 
 ### Dynamic Render Contract
 

@@ -8,9 +8,11 @@
 //
 // The zoom and pan arithmetic is pure (`fitView`, `zoomAbout`, `panBy`, `viewAction`,
 // `keyAction`, `wheelView`), so it is tested without a browser. Glyphs come from the KPress
-// icon sprite through `icon()`; the server inlines the diagram glyphs
-// (static/icons/diagram-icons.svg) only in a document that holds a Mermaid figure. A host
-// whose markup has no sprite passes its own `icon`.
+// icon sprites through `icon()`; the server inlines the diagram glyphs
+// (static/icons/diagram-icons.svg) only in a document that holds a Mermaid figure. A
+// render that lost them -- a host's sanitizer drops inline SVG -- gets them from
+// `ensureDiagramSprites`, which fetches each missing sprite from beside this module. A
+// host that passes its own `icon` loads neither.
 
 import { icon as spriteIcon } from "./icons.js";
 
@@ -188,6 +190,77 @@ export function viewTransform(view) {
   return `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
 }
 
+/**
+ * The sprites the controls draw from, relative to this module, each with a symbol that
+ * shows it is already in the document.
+ */
+const SPRITES = /** @type {const} */ ([
+  ["../icons/icons.svg", "kpress-icon-copy"],
+  ["../icons/diagram-icons.svg", "kpress-icon-zoom-in"],
+]);
+/** Each document's sprite fetches, by path, so one is fetched at most once. */
+/** @type {WeakMap<Document, Map<string, Promise<void>>>} */
+const spriteLoads = new WeakMap();
+
+/**
+ * Add to *doc* the KPress sprites the controls draw from that it does not hold. A server
+ * render inlines them, but a host that sanitizes the render (an untrusted document's
+ * allowlist) removes them, and `<use href="#kpress-icon-*">` then draws nothing. Each
+ * missing sprite is fetched from beside this module at most once per document and
+ * appended to its body, where it outlives the render. The sprite's `style` attribute is
+ * replaced through the CSSOM, which a policy without `'unsafe-inline'` styles allows. A
+ * failure leaves the buttons labelled but blank, and is reported once.
+ *
+ * @param {Document} [doc]
+ * @returns {Promise<void>}
+ */
+export function ensureDiagramSprites(doc = document) {
+  let loads = spriteLoads.get(doc);
+  if (!loads) {
+    loads = new Map();
+    spriteLoads.set(doc, loads);
+  }
+  const pending = [];
+  for (const [path, marker] of SPRITES) {
+    if (doc.getElementById(marker)) {
+      continue;
+    }
+    let load = loads.get(path);
+    if (!load) {
+      load = fetchSprite(doc, path, marker).catch((error) => {
+        console.warn("kpress diagrams: the control glyphs could not be loaded", error);
+      });
+      loads.set(path, load);
+    }
+    pending.push(load);
+  }
+  return Promise.all(pending).then(() => {});
+}
+
+/**
+ * @param {Document} doc
+ * @param {string} path
+ * @param {string} marker
+ */
+async function fetchSprite(doc, path, marker) {
+  const response = await fetch(new URL(path, import.meta.url));
+  if (!response.ok) {
+    throw new Error(`${path}: HTTP ${response.status}`);
+  }
+  const parsed = new DOMParser().parseFromString(await response.text(), "image/svg+xml");
+  const sprite = parsed.documentElement;
+  if (sprite.localName !== "svg" || doc.getElementById(marker)) {
+    return;
+  }
+  sprite.removeAttribute("style");
+  const adopted = /** @type {SVGSVGElement} */ (
+    /** @type {unknown} */ (doc.importNode(sprite, true))
+  );
+  adopted.style.display = "none";
+  adopted.setAttribute("aria-hidden", "true");
+  doc.body.append(adopted);
+}
+
 /** The sprite glyph each control draws. */
 const GLYPHS = Object.freeze({
   copy: "copy",
@@ -229,7 +302,8 @@ function figureSource(figure) {
 /**
  * Controls for `initKpressDiagrams`.
  *
- * - `icon(name)` returns a button's glyph markup; it defaults to the KPress sprite.
+ * - `icon(name)` returns a button's glyph markup; it defaults to the KPress sprite, which
+ *   `ensureDiagramSprites` adds to a document that lacks it.
  * - `decorate(button, name)` runs when a button is made and whenever its label changes, so
  *   a host can add its own classes or tooltip attributes.
  * - `copy(button, text)` takes the copy button over: KPress then attaches no click handler
@@ -243,6 +317,7 @@ export function diagramControls(options = {}) {
   const glyph = options.icon ?? ((/** @type {string} */ name) => spriteIcon(name));
   const decorate = options.decorate ?? (() => {});
   const ownCopy = options.copy;
+  const ownIcons = options.icon !== undefined;
   const expandable = options.expand !== false;
 
   /**
@@ -272,6 +347,9 @@ export function diagramControls(options = {}) {
 
   return {
     attach(figure) {
+      if (!ownIcons) {
+        void ensureDiagramSprites(figure.ownerDocument);
+      }
       figure.querySelector(":scope > .kpress-diagram-toolbar")?.remove();
       const toolbar = document.createElement("div");
       toolbar.className = "kpress-diagram-toolbar kpress-no-print";
@@ -407,6 +485,9 @@ const toggleUpdates = new WeakMap();
  * @returns {() => void}
  */
 export function openDiagramDialog(figure, options = {}) {
+  if (!options.glyph) {
+    void ensureDiagramSprites(figure.ownerDocument);
+  }
   const glyph = options.glyph ?? ((/** @type {string} */ name) => spriteIcon(name));
   const decorate = options.decorate ?? (() => {});
   const drawing = figure.querySelector(
