@@ -34,7 +34,10 @@
   },
   "overrides": [
     {
-      "includes": ["src/kpress/format/static/icons/icons.svg"],
+      "includes": [
+        "src/kpress/format/static/icons/icons.svg",
+        "src/kpress/format/static/icons/diagram-icons.svg"
+      ],
       "linter": {
         "rules": {
           "a11y": {

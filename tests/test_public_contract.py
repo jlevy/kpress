@@ -20,6 +20,8 @@ from kpress.contract import (
     PUBLIC_CSS_CLASSES,
     PUBLIC_CSS_VARIABLES,
     PUBLIC_DATA_ATTRIBUTES,
+    PUBLIC_DIAGRAM_SCRIPT_MODULES,
+    PUBLIC_DIAGRAM_SPRITES,
     PUBLIC_FORMAT_API,
     PUBLIC_FRAGMENT_CSS_CLASSES,
     PUBLIC_FRAGMENT_CSS_VARIABLES,
@@ -384,6 +386,29 @@ def test_widget_behavior_and_js_export_contracts_match_the_js() -> None:
         for name in names:
             pattern = rf"export (?:async )?(?:function|const) {re.escape(name)}\b"
             assert re.search(pattern, text), f"{module}: {name} not exported"
+
+
+def test_the_diagram_closure_is_what_the_diagram_modules_load() -> None:
+    """A strict-CSP host admits exactly these, so a new import must be named here."""
+
+    static = _KPRESS_ROOT / "src/kpress/format/static"
+    imports = re.compile(r"""(?:from|import)\s+["']\./([\w-]+\.js)["']""")
+    closure: list[str] = []
+    pending = ["js/diagrams.js", "js/diagram-controls.js"]
+    while pending:
+        module = pending.pop(0)
+        if module in closure:
+            continue
+        closure.append(module)
+        text = (static / module).read_text(encoding="utf-8")
+        pending.extend(f"js/{name}" for name in imports.findall(text))
+    assert sorted(closure) == sorted(PUBLIC_DIAGRAM_SCRIPT_MODULES)
+
+    controls = (static / "js/diagram-controls.js").read_text(encoding="utf-8")
+    fetched = tuple(re.findall(r"""\["\.\./(icons/[\w-]+\.svg)",""", controls))
+    assert fetched == PUBLIC_DIAGRAM_SPRITES
+    for sprite in fetched:
+        assert (static / sprite).is_file(), sprite
 
 
 def test_classic_math_runtime_exposes_the_documented_methods() -> None:

@@ -23,6 +23,10 @@ TocMode = Literal["off", "auto", "on"]
 # fixed part of the layout. See RenderOptions.toc_rail.
 TocRail = Literal["auto", "reserved"]
 MathMode = Literal["off", "auto"]
+# Which fences render as diagram figures. "auto" draws ```mermaid fences as Mermaid
+# figures and ```svg fences as sanitized inline SVG; "mermaid" draws only Mermaid
+# fences and leaves ```svg fences as highlighted code, as GitHub does; "off" leaves
+# both as code.
 DiagramMode = Literal["off", "auto", "mermaid"]
 FontMode = Literal["custom", "system"]
 ProseFont = Literal["serif", "sans"]

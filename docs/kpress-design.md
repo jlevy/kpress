@@ -212,6 +212,14 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **Diagrams.** SVG fences render as sanitized inline SVG figures; Mermaid fences render
   as diagram figures with a readable source fallback and a progressive renderer when the
   host provides Mermaid.
+  The `diagrams` option (`DiagramMode` in `format/model.py`) selects which: `auto` draws
+  both, `mermaid` draws only Mermaid fences and leaves SVG fences as highlighted code,
+  as GitHub does, and `off` leaves both as code.
+  KPress does not ship Mermaid; `static/js/diagrams.js` draws with the one the page or
+  host supplies, shows Mermaid’s message on a figure that fails, and follows the theme.
+  The toolbar and the zoom and pan dialog (`static/js/diagram-controls.js`) are opt-in.
+  [Mermaid Diagrams](kpress-operations-and-host-integration.md#mermaid-diagrams) has the
+  host API.
 - **External link policy.** Absolute HTTP(S) links open in a new tab with
   `rel="noopener noreferrer"`; anchors, relative links, and `mailto:` are unchanged.
 
@@ -688,16 +696,22 @@ The two reading-font symbols are KPress originals drawn on the same grid.
 ### Icon Source and Rendering
 
 [`src/kpress/format/static/icons/icons.svg`](../src/kpress/format/static/icons/icons.svg)
-is the only file that owns KPress SVG geometry.
-It is a hidden sprite containing one `<symbol id="kpress-icon-<name>">` per glyph.
+and [`diagram-icons.svg`](../src/kpress/format/static/icons/diagram-icons.svg) beside it
+are the only files that own KPress SVG geometry.
+Each is a hidden sprite containing one `<symbol id="kpress-icon-<name>">` per glyph.
 
 - **Server rendering:** `format/render.py` inlines the sprite once per document through
   the cached `_icon_sprite()` helper.
+  It inlines the diagram sprite only in a document that holds a Mermaid figure, since
+  only the opt-in diagram controls draw those glyphs.
   `_icon(name, *, css_class, attrs)` emits an
   `<svg><use href="#kpress-icon-<name>"></use></svg>` reference.
 - **Client rendering:** [`static/js/icons.js`](../src/kpress/format/static/js/icons.js)
   exports `icon(name, className)`, which emits the same reference.
   The settings and code-copy modules use this helper.
+- **A render without the sprites:** a host that sanitizes a render removes the inline
+  sprites, so `diagram-controls.js`’s `ensureDiagramSprites` fetches each missing sprite
+  file from beside the module and appends it to the document, once.
 
 No glyph geometry is authored in Python or JavaScript.
 `tests/test_icons.py` pins the required symbols and rejects inline SVG geometry in the
@@ -751,6 +765,21 @@ it.
 | `chevrons-up-down` | `chevrons-up-down` | TOC expand-all control (collapsed state) |
 | `chevrons-down-up` | `chevrons-down-up` | TOC expand-all control (expanded state) |
 
+`tests/test_icons.py::_DIAGRAM_ICONS` pins the diagram sprite’s symbols, all drawn by
+`diagram-controls.js`. The toolbar also uses `copy`, `check`, `triangle-alert`,
+`maximize`, and `x` from the main sprite.
+
+| Sprite Name | Lucide ID | Current Role |
+| --- | --- | --- |
+| `code` | `code` | Diagram show-source toggle |
+| `zoom-in` | `zoom-in` | Diagram dialog zoom in |
+| `zoom-out` | `zoom-out` | Diagram dialog zoom out |
+| `rotate-ccw` | `rotate-ccw` | Diagram dialog reset view |
+| `chevron-up` | `chevron-up` | Diagram dialog pan up |
+| `chevron-down` | `chevron-down` | Diagram dialog pan down |
+| `chevron-left` | `chevron-left` | Diagram dialog pan left |
+| `chevron-right` | `chevron-right` | Diagram dialog pan right |
+
 One deliberate non-icon: the doc-actions widget’s “PDF” and “MD” badges are plain text
 in the document sans stack, not sprite glyphs — a printer or generic file pictogram does
 not say what an action yields; the format letters do.
@@ -767,8 +796,10 @@ layer retains one glyph source.
 2. Retrieve the pinned v1.17.0 SVG from the reviewed Lucide artifact, such as
    `https://unpkg.com/lucide-static@1.17.0/icons/<id>.svg`. Verify the version, source,
    and license before copying it.
-3. Add a `<symbol id="kpress-icon-<name>">` to `icons.svg`. Copy only the source SVG’s
-   inner geometry and use the wrapper attributes from the [SVG Contract](#svg-contract).
+3. Add a `<symbol id="kpress-icon-<name>">` to `icons.svg`, or to `diagram-icons.svg`
+   for a glyph only the diagram controls draw.
+   Copy only the source SVG’s inner geometry and use the wrapper attributes from the
+   [SVG Contract](#svg-contract).
 4. Reference `_icon("<name>")` in `render.py` or `icon("<name>")` in client JavaScript.
 5. Add the name to `_REQUIRED_ICONS` when it becomes part of the guaranteed public set,
    and update the table above.
