@@ -374,26 +374,12 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
 # 3.14, and `noscript` only when asked to, so both parsers below enter text mode for
 # this set themselves, also after `<noscript/>`, since HTML ignores the slash there.
 _RAW_TEXT_ELEMENTS = ("script", "style", "xmp", "iframe", "noembed", "noframes", "noscript")
-_VOID_ELEMENTS = frozenset(
-    {
-        "area",
-        "base",
-        "br",
-        "col",
-        "embed",
-        "hr",
-        "img",
-        "input",
-        "link",
-        "meta",
-        "source",
-        "track",
-        "wbr",
-    }
-)
-_FOREIGN_ROOTS = frozenset({"math", "svg"})
-# MathML text integration points: html5ever parses HTML inside them again.
+# The open elements that decide whether an input survives (`_input_survives`): an input
+# in SVG or MathML is a foreign element, unless a MathML text element, where html5ever
+# parses HTML again, encloses it, and a `<template>`'s content is never output.
+_DROPS_INPUTS = frozenset({"math", "svg", "template"})
 _MATHML_TEXT_ELEMENTS = frozenset({"mi", "mn", "mo", "ms", "mtext"})
+_INPUT_CONTEXTS = _DROPS_INPUTS | _MATHML_TEXT_ELEMENTS
 
 
 @dataclass(frozen=True)
@@ -458,7 +444,10 @@ class _SanitizerAudit(HTMLParser):
         self.restricted_tags = pass_through - _ALLOWED_TAGS
         self.extra_attributes = extra_attributes
         self._entries: list[Diagnostic | _InputAudit] = []
-        self._open: list[str] = []
+        # The open `_INPUT_CONTEXTS` elements, innermost last, and how many of each, so
+        # an end tag costs amortized constant time however the document nests.
+        self._contexts: list[str] = []
+        self._context_counts: dict[str, int] = {}
 
     def _location(self) -> str:
         line, offset = self.getpos()
@@ -529,28 +518,22 @@ class _SanitizerAudit(HTMLParser):
                 )
 
     def _input_survives(self) -> bool:
-        """Whether an input at this point survives, judged from its open ancestors.
+        """Whether an input here survives, judged from the innermost open context.
 
-        html5ever makes an input in SVG or MathML a foreign element, which nh3 removes
-        with its content, unless a MathML text element encloses it; a `<template>`'s
-        content never reaches the output. This model leaves out how html5ever closes
-        foreign content early, so `sanitize_raw_html` trusts it only when the number
-        of inputs it predicts matches the output.
+        This model leaves out how html5ever closes foreign content early, and that an
+        `<mi>` inside SVG is no MathML text element, so `sanitize_raw_html` trusts it
+        only when the number of inputs it predicts matches the output.
         """
 
-        for tag in reversed(self._open):
-            if tag in _MATHML_TEXT_ELEMENTS:
-                return True
-            if tag in _FOREIGN_ROOTS or tag == "template":
-                return False
-        return True
+        return not self._contexts or self._contexts[-1] not in _DROPS_INPUTS
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._audit_tag(tag, attrs)
         if tag in _RAW_TEXT_ELEMENTS:
             self.set_cdata_mode(tag)
-        if tag not in _VOID_ELEMENTS:
-            self._open.append(tag)
+        if tag in _INPUT_CONTEXTS:
+            self._contexts.append(tag)
+            self._context_counts[tag] = self._context_counts.get(tag, 0) + 1
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._audit_tag(tag, attrs)
@@ -558,8 +541,14 @@ class _SanitizerAudit(HTMLParser):
             self.set_cdata_mode(tag)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in self._open:
-            del self._open[len(self._open) - 1 - self._open[::-1].index(tag) :]
+        # Close the innermost open element of this name and every context inside it.
+        if not self._context_counts.get(tag):
+            return
+        while self._contexts:
+            closed = self._contexts.pop()
+            self._context_counts[closed] -= 1
+            if closed == tag:
+                break
 
     @property
     def inputs_seen(self) -> int:

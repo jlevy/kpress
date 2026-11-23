@@ -558,6 +558,19 @@ def test_an_input_that_does_not_survive_is_reported_as_removed(
     assert [(item.type, item.message, item.location) for item in found] == diagnostics
 
 
+def test_the_audit_tracks_only_the_elements_that_decide_an_input() -> None:
+    # Tracking every open element made each end tag scan them all: 8,000 unclosed
+    # `<span>`s and 8,000 stray `</b>`s took 0.86 s in the audit alone, and four times
+    # that at twice the size.
+    audit = sanitize._SanitizerAudit(  # pyright: ignore[reportPrivateUsage]
+        pass_through=set(), extra_attributes=frozenset()
+    )
+    audit.feed("<span>" * 1000 + "</b>" * 1000 + "<math><mi><svg><g>" + "</mi>")
+    audit.close()
+
+    assert audit._contexts == ["math"]  # pyright: ignore[reportPrivateUsage]
+
+
 def test_an_unexplained_input_change_is_reported_beside_other_diagnostics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
