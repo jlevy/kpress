@@ -9,7 +9,15 @@ import sys
 import pytest
 
 from kpress.errors import KPressInvalidRequestError
-from kpress.format import Diagnostic, parse_markdown, sanitize
+from kpress.format import (
+    Diagnostic,
+    DocumentInput,
+    RenderOptions,
+    TrustMode,
+    parse_markdown,
+    render_fragment,
+    sanitize,
+)
 from kpress.format.sanitize import sanitize_generated_svg, sanitize_raw_html
 
 
@@ -653,6 +661,60 @@ def test_a_link_element_never_loads_a_resource(html: str) -> None:
 def test_a_link_element_cannot_be_admitted_as_an_extra_tag() -> None:
     with pytest.raises(KPressInvalidRequestError):
         sanitize_raw_html("<p>x</p>", "sanitized", extra_tags=["link"])
+
+
+def test_footnote_html_is_sanitized_in_sanitized_mode() -> None:
+    source = 'Text[^1]\n\n[^1]: <input type="text" name="q"> and <script>alert(1)</script>\n'
+    sanitized = parse_markdown(source, title="T", trust_mode="sanitized")
+    trusted = parse_markdown(source, title="T")
+
+    assert [note.html for note in sanitized.footnotes] == [f"<p>{_INERT} and </p>"]
+    assert [note.html for note in trusted.footnotes] == [
+        '<p><input type="text" name="q"> and <script>alert(1)</script></p>'
+    ]
+    # The body holds the same note, so what it lost is reported once, from the body.
+    assert [item.message for item in sanitized.diagnostics] == [
+        "Removed attribute 'name' from <input>.",
+        "Set attribute 'disabled' to 'disabled' on <input>.",
+        "Set attribute 'type' to 'checkbox' on <input>.",
+        "Removed raw HTML tag <script>.",
+    ]
+
+
+def test_a_plain_footnote_keeps_its_html_when_sanitized() -> None:
+    source = 'A[^a]\n\n[^a]: A *note*, a [link](https://example.com "T"), `code` & more.\n'
+    trusted = parse_markdown(source, title="T")
+    sanitized = parse_markdown(source, title="T", trust_mode="sanitized")
+
+    assert sanitized.footnotes == trusted.footnotes
+    assert [note.html for note in trusted.footnotes] == [
+        '<p>A <em>note</em>, a <a href="https://example.com" title="T">link</a>, '
+        "<code>code</code> &amp; more.</p>"
+    ]
+
+
+@pytest.mark.parametrize("trust_mode", ["trusted", "sanitized"])
+def test_host_body_html_follows_the_trust_mode(trust_mode: TrustMode) -> None:
+    body = '<p>x</p><script>alert(1)</script><input type="text" name="q">'
+    rendered = render_fragment(
+        DocumentInput(
+            title="T", source_text="", source_path="x.html", body_html=body, trust_mode=trust_mode
+        ),
+        RenderOptions(include_toc="off"),
+    )
+
+    if trust_mode == "trusted":
+        assert body in rendered.html
+        assert rendered.diagnostics == []
+    else:
+        assert f"<p>x</p>{_INERT}" in rendered.html
+        assert "<script" not in rendered.html
+        assert [item["type"] for item in rendered.diagnostics] == [
+            "html_sanitized_tag",
+            "html_sanitized_attribute",
+            "html_sanitized_attribute",
+            "html_sanitized_attribute",
+        ]
 
 
 def test_trusted_keeps_a_raw_input_as_written() -> None:

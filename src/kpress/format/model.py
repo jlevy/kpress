@@ -137,6 +137,9 @@ class DocumentInput:
     source_path: str
     logical_path: str | None = None
     body_markdown: str | None = None
+    # HTML the host has already rendered, used as the body instead of Markdown. It is
+    # not trusted for being host-supplied: `trust_mode` governs it as it governs
+    # rendered Markdown, so in `sanitized` mode it is sanitized the same way.
     body_html: str | None = None
     frontmatter: dict[str, Any] = field(default_factory=dict)
     sidematter: dict[str, Any] = field(default_factory=dict)

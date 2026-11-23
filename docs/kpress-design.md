@@ -518,7 +518,8 @@ question: **do we trust the person who wrote this Markdown?**
   (`kpress.runtime.render_view`, the entry point hosts call to render a document
   fragment into their own page at request time), static site builds (`build_site`, the
   `kpress.yml`-driven publisher), and single-document exports (`export_document`) all
-  use.
+  use. Each note in `DocumentTree.footnotes`, which is rendered again apart from the
+  body, and HTML a host passes as `DocumentInput.body_html` are sanitized the same way.
 
 **Why sanitization works on the whole document.** Rendering is a two-stage pipe:
 markdown-it renders the Markdown source into one HTML string, then nh3 sanitizes that

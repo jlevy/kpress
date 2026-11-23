@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
+from dataclasses import replace
 from html import escape, unescape
 from html.parser import HTMLParser
 from typing import Any, Literal, cast
@@ -1222,6 +1223,20 @@ def parse_markdown(
             html, trust_mode, extra_tags=extra_tags, extra_attributes=extra_attributes
         )
         diagnostics.extend(html_diagnostics)
+        # Each note is rendered again apart from the body, so it is sanitized the same
+        # way. The body holds the same notes, so its diagnostics already name what went.
+        footnotes = [
+            replace(
+                note,
+                html=sanitize_raw_html(
+                    note.html,
+                    trust_mode,
+                    extra_tags=extra_tags,
+                    extra_attributes=extra_attributes,
+                )[0],
+            )
+            for note in footnotes
+        ]
     diagnostics.extend(_broken_anchor_diagnostics(html))
 
     toc = _toc_entries(headings)
