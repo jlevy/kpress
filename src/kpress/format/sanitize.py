@@ -32,7 +32,6 @@ _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
     "section",
     "main",
     "input",
-    "link",
     "line",
     "linearGradient",
     "math",

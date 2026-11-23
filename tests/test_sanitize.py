@@ -613,6 +613,28 @@ def test_no_element_keeps_form() -> None:
     ]
 
 
+@pytest.mark.parametrize(
+    "html",
+    [
+        '<link rel="stylesheet" href="https://evil.test/x.css">',
+        '<link rel="preload" as="image" href="https://evil.test/pixel.png">',
+        '<link rel="prefetch" href="https://evil.test/track">',
+    ],
+)
+def test_a_link_element_never_loads_a_resource(html: str) -> None:
+    sanitized, diagnostics = sanitize_raw_html(f"<p>x</p>{html}", "sanitized")
+
+    assert sanitized == "<p>x</p>"
+    assert [(item.type, item.message) for item in diagnostics] == [
+        ("html_sanitized_tag", "Removed raw HTML tag <link>.")
+    ]
+
+
+def test_a_link_element_cannot_be_admitted_as_an_extra_tag() -> None:
+    with pytest.raises(KPressInvalidRequestError):
+        sanitize_raw_html("<p>x</p>", "sanitized", extra_tags=["link"])
+
+
 def test_trusted_keeps_a_raw_input_as_written() -> None:
     html = '<input type="text" value="x" form="host-form">'
     assert sanitize_raw_html(html, "trusted") == (html, [])
