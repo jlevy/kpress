@@ -39,6 +39,26 @@ def test_svg_camelcase_restore_skips_text_content() -> None:
     assert ">use viewbox= here</text>" in result
 
 
+@pytest.mark.parametrize(
+    "svg",
+    [
+        '<input type="text" name="q"><svg viewBox="0 0 8 8"><rect width="8" height="8"/></svg>',
+        '<svg viewBox="0 0 8 8"><rect width="8" height="8"/></svg><input type="checkbox">',
+    ],
+)
+def test_svg_fence_profile_drops_any_input(svg: str) -> None:
+    result = sanitize_generated_svg(svg)
+
+    assert "<input" not in result
+    assert '<svg viewBox="0 0 8 8"><rect width="8" height="8"></rect></svg>' in result
+
+
+def test_svg_fence_profile_keeps_a_button_from_submitting() -> None:
+    result = sanitize_generated_svg('<button form="host-form">Go</button><svg></svg>')
+
+    assert result == '<button type="button">Go</button><svg></svg>'
+
+
 def test_span_and_div_pass_through_by_default() -> None:
     html = '<div class="wrap" data-x="1"><span class="hl" data-y="2">hi</span></div>'
     out, _ = sanitize_raw_html(html, "sanitized")

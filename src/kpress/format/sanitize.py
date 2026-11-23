@@ -810,13 +810,18 @@ def _restore_camelcase_at_attributes(svg: str) -> str:
 
 
 def sanitize_generated_svg(svg: str) -> str:
-    """Return KPress-generated inline SVG using the sanitized-mode nh3 profile."""
+    """Return KPress-generated inline SVG using the sanitized-mode nh3 profile.
+
+    An SVG diagram has no task-list box, so `<input>` is dropped here outright rather
+    than rewritten, and a `<button>` is `type="button"` as everywhere sanitized.
+    """
 
     sanitized = nh3.clean(
         svg,
-        tags=_ALLOWED_TAGS,
+        tags=_ALLOWED_TAGS - {"input"},
         attributes=_ALLOWED_ATTRIBUTES,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
+        set_tag_attribute_values={"button": _BUTTON_SET_VALUES},
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
     ).strip()
