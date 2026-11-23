@@ -510,7 +510,9 @@ question: **do we trust the person who wrote this Markdown?**
   (`task-list-item-checkbox`, alone), becomes a disabled checkbox written byte for byte
   as KPress writes its box, and a diagnostic names each attribute removed or set.
   An input that does not survive parsing, such as one inside SVG, is reported as
-  removed. Comments are stripped silently, since they carry no content, and so is nh3’s
+  removed. A `<button>` is always `type="button"`, as KPress’s own buttons are, and no
+  element keeps `form`, so a document cannot submit or reset a form on the host page.
+  Comments are stripped silently, since they carry no content, and so is nh3’s
   reserialization (entity spelling, quoting); a change the audit cannot explain gets the
   catch-all `html_sanitized`. This is what the dynamic render API
   (`kpress.runtime.render_view`, the entry point hosts call to render a document

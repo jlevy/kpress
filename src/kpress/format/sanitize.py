@@ -91,7 +91,6 @@ _GLOBAL_ATTRIBUTES = {
     "display",
     "encoding",
     "fill",
-    "form",
     "height",
     "href",
     "id",
@@ -182,6 +181,12 @@ _SANITIZED_INPUT_RE = re.compile(
     + "|".join(re.escape(f'{name}="{value}"') for name, value in _INPUT_VALUES.items())
     + "))*)>"
 )
+# A `<button>` is always `type="button"`: KPress's own buttons are, and any other type
+# submits or resets a form, which a bare button inside a host page's form reaches
+# without `form`. No sanitized element keeps `form`, which ties a control to a form
+# anywhere on the host page by its id.
+_BUTTON_SET_VALUES = {"type": "button"}
+_SET_TAG_ATTRIBUTE_VALUES = {"input": _INPUT_SET_VALUES, "button": _BUTTON_SET_VALUES}
 # Attributes whose presence is their meaning: `disabled=""` and `disabled="disabled"`
 # are the same, so setting one over the other changes nothing a reader receives.
 _BOOLEAN_ATTRIBUTES = frozenset({"checked", "disabled"})
@@ -289,6 +294,7 @@ FORBIDDEN_EXTRA_ATTRIBUTES = frozenset(
         "srcset",
         "srcdoc",
         "action",
+        "form",
         "formaction",
         "background",
         "ping",
@@ -511,6 +517,17 @@ class _SanitizerAudit(HTMLParser):
                         location=location,
                     )
                 )
+        values = dict(reversed(attrs))  # the first of a repeated attribute wins
+        for name, value in _SET_TAG_ATTRIBUTE_VALUES.get(tag, {}).items():
+            if values.get(name) != value:
+                self._entries.append(
+                    Diagnostic(
+                        type="html_sanitized_attribute",
+                        message=f"Set attribute {name!r} to {value!r} on <{tag}>.",
+                        severity="warning",
+                        location=location,
+                    )
+                )
 
     def _input_survives(self) -> bool:
         """Whether an input at this point survives, judged from its open ancestors.
@@ -591,7 +608,8 @@ def sanitize_raw_html(
     ``kind`` or ``term``, validated against a forbidden set) — never
     ``style``/``on*``/unsafe URLs. Standard HTML tags keep their fixed policy;
     ``extra_attributes`` widens only the whitelist-only (custom-element) tags. An
-    ``<input>`` survives only as the disabled checkbox of a task list item.
+    ``<input>`` survives only as the disabled checkbox of a task list item, a
+    ``<button>`` only as ``type="button"``, and no element keeps ``form``.
     """
 
     if trust_mode == "trusted":
@@ -653,7 +671,7 @@ def sanitize_raw_html(
         attributes=attributes,
         attribute_filter=_attribute_filter,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
-        set_tag_attribute_values={"input": _INPUT_SET_VALUES},
+        set_tag_attribute_values=_SET_TAG_ATTRIBUTE_VALUES,
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
     )

