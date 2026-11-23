@@ -90,13 +90,17 @@ _SEMANTIC_CONTAINER_CLASSES = (
     "video-item",
 )
 _QUOTED_TAB_LABEL_RE = re.compile(r"""^(['"])(.*)\1$""")
-# A GitHub task list item opens its first paragraph with `[ ]`, `[x]`, or `[X]` and a
-# whitespace character (https://github.github.com/gfm/#task-list-items-extension-).
-_TASK_MARKER_RE = re.compile(r"\[([ xX])\][ \t\n\v\f\r]")
+# A GitHub task list item opens its first paragraph with a marker, `[`, a whitespace
+# character or `x` or `X`, then `]`, and a whitespace character after it
+# (https://github.github.com/gfm/#task-list-items-extension-). GFM's whitespace
+# characters are space, tab, line feed, line tabulation, form feed, and carriage return.
+_TASK_MARKER_RE = re.compile(r"\[([ \t\n\v\f\rxX])\][ \t\n\v\f\r]")
 # The box of a task list item is a KPress token, not raw HTML, so a consumer of the
 # token stream reads the box and its state without matching markup: its type is this,
 # its tag `input`, its markup the source marker, and `meta["checked"]` is True when
-# ticked. `_render_task_checkbox` draws it.
+# ticked. Its attrs are those of a disabled checkbox, in the order `class`, `checked`
+# (only when ticked), `disabled`, `type`, so markdown-it's own `renderToken` draws it,
+# in KPress's renderer or any other.
 _TASK_CHECKBOX_TOKEN = "kpress_task_checkbox"
 _YOUTUBE_HOSTS = {
     "m.youtube.com",
@@ -387,11 +391,20 @@ def _mark_standalone_image_figures(tokens: list[Token]) -> None:
             close.meta["kpress_figure_caption"] = caption
 
 
-def _render_task_checkbox(tokens: list[Token], idx: int, _options: Any, _env: Any) -> str:
+def _task_checkbox(marker: str) -> Token:
+    """The box token for a task *marker*, such as `[ ]` or `[x]`."""
+
+    checked = marker[1] in "xX"
+    box = Token(_TASK_CHECKBOX_TOKEN, "input", 0, markup=marker)
     # Disabled in every trust mode: the box shows what the source records, and a
     # disabled checkbox is the one `<input>` the sanitized profile admits.
-    checked = ' checked="checked"' if tokens[idx].meta.get("checked") else ""
-    return f'<input class="task-list-item-checkbox"{checked} disabled="disabled" type="checkbox">'
+    box.attrSet("class", "task-list-item-checkbox")
+    if checked:
+        box.attrSet("checked", "checked")
+    box.attrSet("disabled", "disabled")
+    box.attrSet("type", "checkbox")
+    box.meta["checked"] = checked
+    return box
 
 
 def _take_task_marker(inline: Token) -> str | None:
@@ -403,22 +416,13 @@ def _take_task_marker(inline: Token) -> str | None:
         return None
     marker = match.group(0)[:3]
     first = children[0]
-    if first.type == "text" and first.content.startswith(marker):
-        first.content = first.content[len(marker) :]
-        if not first.content:
-            del children[0]
-    elif (
-        # A document that defines `[x]` as a link makes the marker a shortcut link.
-        # GitHub reads the marker before links, so the box replaces the link.
-        first.type == "link_open"
-        and len(children) >= 3
-        and children[1].type == "text"
-        and children[1].content == match.group(1)
-        and children[2].type == "link_close"
-    ):
-        del children[:3]
-    else:
+    # A marker that is not plain text, such as `[x]` that the document defines as a
+    # link, is not a marker: GitHub shows the link and no box.
+    if first.type != "text" or not first.content.startswith(marker):
         return None
+    first.content = first.content[len(marker) :]
+    if not first.content:
+        del children[0]
     inline.content = inline.content[len(marker) :]
     return marker
 
@@ -457,9 +461,7 @@ def _task_lists(state: StateCore) -> None:
             marker = _take_task_marker(token)
             if marker is None:
                 continue
-            box = Token(_TASK_CHECKBOX_TOKEN, "input", 0, markup=marker)
-            box.meta["checked"] = marker != "[ ]"
-            token.children = [box, *(token.children or ())]
+            token.children = [_task_checkbox(marker), *(token.children or ())]
             _add_token_classes(tokens[idx - 2], "kpress-task", "task-list-item")
             _add_token_classes(open_lists[-1], "contains-task-list")
 
@@ -502,7 +504,6 @@ def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode
     renderer_rules["image"] = _render_image
     renderer_rules["paragraph_open"] = _render_paragraph_open
     renderer_rules["paragraph_close"] = _render_paragraph_close
-    renderer_rules[_TASK_CHECKBOX_TOKEN] = _render_task_checkbox
     return md
 
 

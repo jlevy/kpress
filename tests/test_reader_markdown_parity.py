@@ -3,6 +3,7 @@ from __future__ import annotations
 from textwrap import dedent
 
 import pytest
+from markdown_it import MarkdownIt
 
 from kpress.format import DocumentInput, RenderOptions, TrustMode, parse_markdown, render_page
 from kpress.format.markdown import _markdown_it  # pyright: ignore[reportPrivateUsage]
@@ -418,9 +419,17 @@ def test_task_boxes_render_their_state_in_every_trust_mode(trust_mode: TrustMode
     assert tree.diagnostics == []
 
 
-@pytest.mark.parametrize("trust_mode", ["trusted", "sanitized"])
-def test_task_box_is_a_kpress_token_that_carries_its_state(trust_mode: TrustMode) -> None:
-    md = _markdown_it(trust_mode=trust_mode, diagrams="off", math="off")
+_OPEN_ATTRS = {"class": "task-list-item-checkbox", "disabled": "disabled", "type": "checkbox"}
+_TICKED_ATTRS = {
+    "class": "task-list-item-checkbox",
+    "checked": "checked",
+    "disabled": "disabled",
+    "type": "checkbox",
+}
+
+
+def test_task_box_is_a_kpress_token_that_carries_its_state() -> None:
+    md = _markdown_it(trust_mode="trusted", diagrams="off", math="off")
     tokens = md.parse("- [ ] Open\n- [x] Done\n- [X] Also done\n")
     children = [child for token in tokens for child in token.children or ()]
 
@@ -432,7 +441,19 @@ def test_task_box_is_a_kpress_token_that_carries_its_state(trust_mode: TrustMode
         ("input", 0, "[x]", {"checked": True}),
         ("input", 0, "[X]", {"checked": True}),
     ]
+    # In this order, so that markdown-it's own renderToken writes KPress's box.
+    assert [list(box.attrItems()) for box in boxes] == [
+        list(_OPEN_ATTRS.items()),
+        list(_TICKED_ATTRS.items()),
+        list(_TICKED_ATTRS.items()),
+    ]
     assert [child.content for child in children if child.type == "text"] == [
+        " Open",
+        " Done",
+        " Also done",
+    ]
+    # The marker leaves the inline token's source too, not only its text child.
+    assert [token.content for token in tokens if token.type == "inline"] == [
         " Open",
         " Done",
         " Also done",
@@ -444,6 +465,76 @@ def test_task_box_is_a_kpress_token_that_carries_its_state(trust_mode: TrustMode
     assert [t.attrGet("class") for t in tokens if t.type == "bullet_list_open"] == [
         "contains-task-list"
     ]
+
+
+def test_any_markdown_it_renderer_draws_the_box_from_the_token_alone() -> None:
+    # A renderer without KPress's rules, such as markdown-it's stock one, writes the same
+    # disabled checkbox, never a bare `<input>` (a text field).
+    tokens = _markdown_it(trust_mode="trusted", diagrams="off", math="off").parse(
+        "- [ ] Open\n- [x] Done\n"
+    )
+    stock = MarkdownIt("js-default", {"html": True})
+
+    assert stock.renderer.render(tokens, stock.options, {}) == (
+        '<ul class="contains-task-list">\n'
+        f'<li class="kpress-task task-list-item">{_OPEN_BOX} Open</li>\n'
+        f'<li class="kpress-task task-list-item">{_TICKED_BOX} Done</li>\n'
+        "</ul>\n"
+    )
+
+
+@pytest.mark.parametrize("space", [" ", "\t", "\v", "\f"])
+def test_any_whitespace_character_inside_the_brackets_is_an_open_box(space: str) -> None:
+    md = _markdown_it(trust_mode="trusted", diagrams="off", math="off")
+    tokens = md.parse(f"- [{space}] Open\n")
+    boxes = [
+        child
+        for token in tokens
+        for child in token.children or ()
+        if child.type == "kpress_task_checkbox"
+    ]
+
+    assert [(box.markup, box.meta) for box in boxes] == [(f"[{space}]", {"checked": False})]
+    assert f'<li class="kpress-task task-list-item">{_OPEN_BOX} Open</li>' in md.render(
+        f"- [{space}] Open\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        # Only the list that holds the item is a task list, not the list around it.
+        (
+            "- a\n  - [ ] b\n",
+            '<ul>\n<li>a\n<ul class="contains-task-list">\n'
+            f'<li class="kpress-task task-list-item">{_OPEN_BOX} b</li>\n</ul>\n</li>\n</ul>',
+        ),
+        # A nested list that closed before the item is not its list.
+        (
+            "- a\n  - b\n- [ ] c\n",
+            '<ul class="contains-task-list">\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n'
+            f'<li class="kpress-task task-list-item">{_OPEN_BOX} c</li>\n</ul>',
+        ),
+        (
+            "1. [ ] a\n",
+            '<ol class="contains-task-list">\n'
+            f'<li class="kpress-task task-list-item">{_OPEN_BOX} a</li>\n</ol>',
+        ),
+        # The marker must open the item's first block, not a later paragraph.
+        (
+            "- a\n\n  [x] second para\n",
+            "<ul>\n<li>\n<p>a</p>\n<p>[x] second para</p>\n</li>\n</ul>",
+        ),
+        # The marker must be followed by whitespace.
+        ("- [x]a\n", "<ul>\n<li>[x]a</li>\n</ul>"),
+        # Only whitespace or `x` goes between the brackets.
+        ("- [y] no\n", "<ul>\n<li>[y] no</li>\n</ul>"),
+    ],
+)
+def test_task_item_detection(source: str, expected: str) -> None:
+    tree = parse_markdown(source, title="", diagrams="off", math="off")
+
+    assert tree.html == expected
 
 
 def test_task_marker_followed_by_a_tab_or_line_break_gets_its_box() -> None:
@@ -459,13 +550,14 @@ def test_task_list_keeps_classes_from_attribute_syntax() -> None:
     assert '<ul class="checklist contains-task-list">' in tree.html
 
 
-def test_task_marker_that_a_document_defines_as_a_link_is_still_the_box() -> None:
-    # GitHub reads the marker before links, so `[x]` is the box, not a link to the
-    # definition.
+def test_task_marker_that_a_document_defines_as_a_link_is_the_link() -> None:
+    # github.com renders the link and no box, in comments and in files alike.
     tree = parse_markdown("- [x] Done\n\n[x]: https://example.com\n", title="Tasks")
 
-    assert f'<li class="kpress-task task-list-item">{_TICKED_BOX} Done</li>' in tree.html
-    assert "<a " not in tree.html
+    assert tree.html == (
+        '<ul>\n<li><a href="https://example.com" target="_blank" '
+        'rel="noopener noreferrer">x</a> Done</li>\n</ul>'
+    )
 
 
 def test_marker_not_at_the_start_of_an_item_is_text() -> None:
@@ -482,10 +574,13 @@ def test_task_list_in_a_footnote_gets_its_box(trust_mode: TrustMode) -> None:
         "Note[^1]\n\n[^1]: - [x] In a footnote\n", title="Tasks", trust_mode=trust_mode
     )
 
-    assert (
+    list_html = (
         f'<ul class="contains-task-list">\n<li class="kpress-task task-list-item">'
-        f"{_TICKED_BOX} In a footnote</li>"
-    ) in tree.html
+        f"{_TICKED_BOX} In a footnote</li>\n</ul>"
+    )
+    assert list_html in tree.html
+    # The note's own HTML carries the same item classes as the body's copy of it.
+    assert [note.html for note in tree.footnotes] == [list_html]
 
 
 def test_tables_preserve_attrs_and_get_static_reader_hooks() -> None:

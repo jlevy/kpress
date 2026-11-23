@@ -158,12 +158,15 @@ feature guarantees); the sections named in the table carry the architecture deta
 
 - **GFM block and inline parsing.** Headings, paragraphs, nested lists, blockquotes,
   links and autolinks, strikethrough, task lists, hard/soft breaks, and code fences.
-- **Task lists.** A list item whose first paragraph opens with `[ ]`, `[x]`, or `[X]`
-  and whitespace starts with a disabled checkbox, ticked or not, as on GitHub.
+- **Task lists.** A list item whose first paragraph opens with a marker (`[`, a
+  whitespace character or `x` or `X`, then `]`) and whitespace starts with a disabled
+  checkbox, ticked by `x` or `X`, as on GitHub.
+  A marker the document defines as a link stays the link, with no box, as on GitHub.
   KPress draws the box from its own token, `kpress_task_checkbox` in
   `format/markdown.py`, whose `meta["checked"]` holds the state, so a consumer of the
-  token stream never has to match the box’s HTML. The box is the one `<input>` the
-  `sanitized` mode keeps as it is.
+  token stream never has to match the box’s HTML. The token carries the box’s
+  attributes, so any markdown-it renderer writes the same disabled checkbox.
+  The box is the one `<input>` the `sanitized` mode keeps as it is.
 - **GitHub-compatible heading anchors and TOC metadata.** Heading ids are generated from
   visible plain inline text by a dependency-free implementation pinned to
   `github-slugger` 2.0.0 at commit `3461c4350868329c8530904d170358bca1d31448` and its
