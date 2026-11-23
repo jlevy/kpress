@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
@@ -152,17 +153,72 @@ for _align_tag in ("div", "p", "h1", "h2", "h3", "h4", "h5", "h6"):
     )
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto", "tel"}
 _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
-# `<input>` is admitted only as the box of a task list item (`_render_task_checkbox` in
+# `<input>` is admitted only as the box of a task list item (`_TASK_CHECKBOX_TOKEN` in
 # markdown.py): a disabled checkbox, ticked or not. Any other input is a live form
 # control, such as a text or password field, a submit button that `form` can tie to a
 # form on the host page, or `type="image"` loading a remote image. The sanitizer cannot
 # tell KPress's box from an input an author typed, so every `<input>` keeps only these
-# attributes and is given these values.
-_INPUT_ATTRIBUTES = frozenset({"checked", "class", "disabled", "type"})
-_INPUT_SET_VALUES = {"disabled": "disabled", "type": "checkbox"}
+# attributes, each with this one value, and is written with them in this order, which
+# is the order of KPress's own box: a sanitized input is byte for byte KPress's box.
+# `class` survives only when it names the box class, and then as that class alone, so a
+# forged input cannot take another KPress class.
+_TASK_CHECKBOX_CLASS = "task-list-item-checkbox"
+_INPUT_VALUES = {
+    "class": _TASK_CHECKBOX_CLASS,
+    "checked": "checked",
+    "disabled": "disabled",
+    "type": "checkbox",
+}
+_INPUT_ATTRIBUTES = frozenset(_INPUT_VALUES)
+# The attributes every input is given. nh3 runs `attribute_filter` after it sets these,
+# so each must also be in `_INPUT_ATTRIBUTES`, or the filter would remove it again.
+_INPUT_SET_VALUES = {name: _INPUT_VALUES[name] for name in ("disabled", "type")}
+# nh3 adds the set values it finds missing in hash order, so `<input>` would come out
+# with `disabled` and `type` in either order; `_canonical_inputs` writes every input it
+# kept in `_INPUT_VALUES` order. Inside nh3's output this pattern matches only a real
+# tag: text escapes `<`, and an attribute value escapes `"`.
+_SANITIZED_INPUT_RE = re.compile(
+    "<input((?: (?:"
+    + "|".join(re.escape(f'{name}="{value}"') for name, value in _INPUT_VALUES.items())
+    + "))*)>"
+)
 # Attributes whose presence is their meaning: `disabled=""` and `disabled="disabled"`
 # are the same, so setting one over the other changes nothing a reader receives.
 _BOOLEAN_ATTRIBUTES = frozenset({"checked", "disabled"})
+# The class names in an attribute value: HTML splits it on ASCII whitespace.
+_ASCII_WHITESPACE_RE = re.compile(r"[\t\n\f\r ]+")
+
+
+def _class_names(value: str) -> list[str]:
+    return [name for name in _ASCII_WHITESPACE_RE.split(value) if name]
+
+
+def _input_attribute(name: str, value: str) -> str | None:
+    """The value an input keeps for attribute *name*, or None when it loses it."""
+
+    if name == "class":
+        return _TASK_CHECKBOX_CLASS if _TASK_CHECKBOX_CLASS in _class_names(value) else None
+    return _INPUT_VALUES.get(name)
+
+
+def _canonical_input(match: re.Match[str]) -> str:
+    present = set(match.group(1).split())
+    return (
+        "<input"
+        + "".join(
+            f' {name}="{value}"'
+            for name, value in _INPUT_VALUES.items()
+            if f'{name}="{value}"' in present
+        )
+        + ">"
+    )
+
+
+def _canonical_inputs(sanitized: str) -> tuple[str, int]:
+    """Write each input of nh3 output in `_INPUT_VALUES` order; also count them."""
+
+    return _SANITIZED_INPUT_RE.subn(_canonical_input, sanitized)
+
 
 # Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
 # unions any host `extra_tags` on top of this default set. `class`/`data-*` survive on
@@ -307,6 +363,77 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
     return tags
 
 
+# Elements whose content html5ever, which nh3 parses with, reads as text: the raw-text
+# elements of the HTML standard, `noscript` among them because html5ever parses with
+# scripting on. Python's HTMLParser reads only `script` and `style` this way before
+# 3.14, and `noscript` only when asked to, so both parsers below enter text mode for
+# this set themselves, also after `<noscript/>`, since HTML ignores the slash there.
+_RAW_TEXT_ELEMENTS = ("script", "style", "xmp", "iframe", "noembed", "noframes", "noscript")
+_VOID_ELEMENTS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "source",
+        "track",
+        "wbr",
+    }
+)
+_FOREIGN_ROOTS = frozenset({"math", "svg"})
+# MathML text integration points: html5ever parses HTML inside them again.
+_MATHML_TEXT_ELEMENTS = frozenset({"mi", "mn", "mo", "ms", "mtext"})
+
+
+@dataclass(frozen=True)
+class _InputAudit:
+    """One `<input>` the audit saw: where, whether it survives, and how it changes."""
+
+    location: str
+    survives: bool
+    diagnostics: list[Diagnostic]
+
+
+def _input_diagnostics(attrs: list[tuple[str, str | None]], location: str) -> list[Diagnostic]:
+    """What sanitizing removes from and sets on an input with *attrs*, as nh3 does it."""
+
+    def diagnostic(message: str) -> Diagnostic:
+        return Diagnostic(
+            type="html_sanitized_attribute",
+            message=message,
+            severity="warning",
+            location=location,
+        )
+
+    # The first of a repeated attribute is the one HTML keeps.
+    values: dict[str, str | None] = {}
+    for name, value in attrs:
+        values.setdefault(name, value)
+    diagnostics: list[Diagnostic] = []
+    for name, value in values.items():
+        if _input_attribute(name, value or "") is None:
+            diagnostics.append(diagnostic(f"Removed attribute {name!r} from <input>."))
+    for name, value in _INPUT_VALUES.items():
+        if name in _BOOLEAN_ATTRIBUTES:
+            # Presence is the meaning, so only adding a missing one changes anything.
+            changed = name in _INPUT_SET_VALUES and name not in values
+        elif name in values:
+            # A class without the box's name is reported as removed above.
+            kept = _input_attribute(name, values[name] or "")
+            changed = kept is not None and values[name] != value
+        else:
+            changed = name in _INPUT_SET_VALUES
+        if changed:
+            diagnostics.append(diagnostic(f"Set attribute {name!r} to {value!r} on <input>."))
+    return diagnostics
+
+
 class _SanitizerAudit(HTMLParser):
     """Mirror the nh3 policy to diagnose each removed tag and attribute and each set value.
 
@@ -325,15 +452,14 @@ class _SanitizerAudit(HTMLParser):
         self.allowed_tags = _ALLOWED_TAGS | pass_through
         self.restricted_tags = pass_through - _ALLOWED_TAGS
         self.extra_attributes = extra_attributes
-        self.diagnostics: list[Diagnostic] = []
+        self._entries: list[Diagnostic | _InputAudit] = []
+        self._open: list[str] = []
 
     def _location(self) -> str:
         line, offset = self.getpos()
         return f"line {line}, column {offset + 1}"
 
     def _attribute_allowed(self, tag: str, name: str, value: str | None) -> bool:
-        if tag == "input":
-            return name in _INPUT_ATTRIBUTES
         if tag in self.restricted_tags:
             allowed = (
                 name in PUBLIC_PASS_THROUGH_ATTRIBUTES
@@ -353,21 +479,31 @@ class _SanitizerAudit(HTMLParser):
                 return False
         return True
 
+    def _removed_tag(self, tag: str, location: str) -> Diagnostic:
+        return Diagnostic(
+            type="html_sanitized_tag",
+            message=f"Removed raw HTML tag <{tag}>.",
+            severity="warning",
+            location=location,
+        )
+
     def _audit_tag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         location = self._location()
         if tag not in self.allowed_tags:
-            self.diagnostics.append(
-                Diagnostic(
-                    type="html_sanitized_tag",
-                    message=f"Removed raw HTML tag <{tag}>.",
-                    severity="warning",
+            self._entries.append(self._removed_tag(tag, location))
+            return
+        if tag == "input":
+            self._entries.append(
+                _InputAudit(
                     location=location,
+                    survives=self._input_survives(),
+                    diagnostics=_input_diagnostics(attrs, location),
                 )
             )
             return
         for name, value in attrs:
             if not self._attribute_allowed(tag, name, value):
-                self.diagnostics.append(
+                self._entries.append(
                     Diagnostic(
                         type="html_sanitized_attribute",
                         message=f"Removed attribute {name!r} from <{tag}>.",
@@ -375,31 +511,68 @@ class _SanitizerAudit(HTMLParser):
                         location=location,
                     )
                 )
-        if tag == "input":
-            # The first of a repeated attribute is the one HTML keeps.
-            values: dict[str, str | None] = {}
-            for name, value in attrs:
-                values.setdefault(name, value)
-            for name, value in _INPUT_SET_VALUES.items():
-                if name in _BOOLEAN_ATTRIBUTES:
-                    changed = name not in values
-                else:
-                    changed = values.get(name) != value
-                if changed:
-                    self.diagnostics.append(
-                        Diagnostic(
-                            type="html_sanitized_attribute",
-                            message=f"Set attribute {name!r} to {value!r} on <input>.",
-                            severity="warning",
-                            location=location,
-                        )
-                    )
+
+    def _input_survives(self) -> bool:
+        """Whether an input at this point survives, judged from its open ancestors.
+
+        html5ever makes an input in SVG or MathML a foreign element, which nh3 removes
+        with its content, unless a MathML text element encloses it; a `<template>`'s
+        content never reaches the output. This model leaves out how html5ever closes
+        foreign content early, so `sanitize_raw_html` trusts it only when the number
+        of inputs it predicts matches the output.
+        """
+
+        for tag in reversed(self._open):
+            if tag in _MATHML_TEXT_ELEMENTS:
+                return True
+            if tag in _FOREIGN_ROOTS or tag == "template":
+                return False
+        return True
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._audit_tag(tag, attrs)
+        if tag in _RAW_TEXT_ELEMENTS:
+            self.set_cdata_mode(tag)
+        if tag not in _VOID_ELEMENTS:
+            self._open.append(tag)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._audit_tag(tag, attrs)
+        if tag in _RAW_TEXT_ELEMENTS:
+            self.set_cdata_mode(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._open:
+            del self._open[len(self._open) - 1 - self._open[::-1].index(tag) :]
+
+    @property
+    def inputs_seen(self) -> int:
+        return sum(isinstance(entry, _InputAudit) for entry in self._entries)
+
+    def finish(self, survivors: int) -> tuple[list[Diagnostic], bool]:
+        """The diagnostics, given how many inputs survived, and whether any is an input's.
+
+        An input that did not survive is reported as removed, not edited. When the
+        survival model disagrees with the output's count, the inputs that went are
+        unknown, so no input is reported and the caller's catch-all covers them.
+        """
+
+        inputs = [entry for entry in self._entries if isinstance(entry, _InputAudit)]
+        known = sum(entry.survives for entry in inputs) == survivors
+        diagnostics: list[Diagnostic] = []
+        reported_inputs = False
+        for entry in self._entries:
+            if isinstance(entry, Diagnostic):
+                diagnostics.append(entry)
+            elif not known:
+                continue
+            elif entry.survives:
+                diagnostics.extend(entry.diagnostics)
+                reported_inputs = reported_inputs or bool(entry.diagnostics)
+            else:
+                diagnostics.append(self._removed_tag("input", entry.location))
+                reported_inputs = True
+        return diagnostics, reported_inputs
 
 
 def sanitize_raw_html(
@@ -436,7 +609,7 @@ def sanitize_raw_html(
 
     def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
         if element == "input":
-            return value if attribute in _INPUT_ATTRIBUTES else None
+            return _input_attribute(attribute, value)
         if element not in restricted:
             # Standard tags keep their fixed policy: a host-declared extra attribute
             # rides only on whitelist-only tags, never widens standard HTML (unless
@@ -451,6 +624,17 @@ def sanitize_raw_html(
         if attribute.startswith(prefix_tuple):
             return value
         return None
+
+    filter_errors: list[Exception] = []
+
+    def _attribute_filter(element: str, attribute: str, value: str) -> str | None:
+        # nh3 keeps the attribute when its filter raises, so an error never reaches
+        # nh3: the attribute goes, and the error is raised once nh3 returns.
+        try:
+            return _restrict_pass_through(element, attribute, value)
+        except Exception as error:
+            filter_errors.append(error)
+            return None
 
     attributes = _ALLOWED_ATTRIBUTES
     if extra_attrs:
@@ -467,22 +651,30 @@ def sanitize_raw_html(
         html,
         tags=_ALLOWED_TAGS | pass_through,
         attributes=attributes,
-        attribute_filter=_restrict_pass_through,
+        attribute_filter=_attribute_filter,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
         set_tag_attribute_values={"input": _INPUT_SET_VALUES},
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
     )
-    diagnostics = audit.diagnostics
+    if filter_errors:
+        raise filter_errors[0]
+    sanitized, survivors = _canonical_inputs(sanitized)
+    diagnostics, reported_inputs = audit.finish(survivors)
     # Safety net for drift between the audit and the nh3 policy: report a change the
     # audit did not explain. Compare content, not strings, because nh3 also strips
     # comments and reserializes (a non-breaking space becomes `&nbsp;`), and neither
-    # removes anything a reader would see.
-    if (
-        sanitized != html
-        and not diagnostics
-        and _content_events(sanitized) != _content_events(html)
-    ):
+    # removes anything a reader would see. An input that changed is reported even beside
+    # other diagnostics, since none of those explains it.
+    check_inputs = not reported_inputs and bool(survivors or audit.inputs_seen)
+    if sanitized != html and (not diagnostics or check_inputs):
+        before, after = _content_events(html), _content_events(sanitized)
+        if diagnostics:
+            before, after = _input_events(before), _input_events(after)
+        unexplained = before != after
+    else:
+        unexplained = False
+    if unexplained:
         diagnostics.append(
             Diagnostic(
                 type="html_sanitized",
@@ -500,9 +692,10 @@ class _ContentEvents(HTMLParser):
     """Reduce HTML to what a reader receives: start tags, their attributes, and text.
 
     Comments, declarations, end tags, attribute order and quoting, a boolean attribute's
-    value, entity spelling, and whitespace runs carry no content, so HTML that differs
-    only there reduces to the same events. Removing an element always removes its start
-    tag, so dropping end tags cannot hide a removal.
+    value, a repeated attribute after its first (HTML parsing drops it), entity spelling,
+    and whitespace runs carry no content, so HTML that differs only there reduces to the
+    same events. Removing an element always removes its start tag, so dropping end tags
+    cannot hide a removal.
     """
 
     def __init__(self) -> None:
@@ -518,8 +711,12 @@ class _ContentEvents(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._flush_text()
-        values = sorted((n, "" if n in _BOOLEAN_ATTRIBUTES else v or "") for n, v in attrs)
-        self.events.append(("tag", tag, tuple(values)))
+        values: dict[str, str] = {}
+        for name, value in attrs:
+            values.setdefault(name, "" if name in _BOOLEAN_ATTRIBUTES else value or "")
+        self.events.append(("tag", tag, tuple(sorted(values.items()))))
+        if tag in _RAW_TEXT_ELEMENTS:
+            self.set_cdata_mode(tag)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
@@ -537,6 +734,10 @@ def _content_events(html: str) -> list[_ContentEvent]:
     parser.feed(html)
     parser.close()
     return parser.events
+
+
+def _input_events(events: list[_ContentEvent]) -> list[_ContentEvent]:
+    return [event for event in events if event[:2] == ("tag", "input")]
 
 
 _SVG_CAMELCASE = {

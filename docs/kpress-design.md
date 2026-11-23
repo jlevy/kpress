@@ -506,9 +506,11 @@ question: **do we trust the person who wrote this Markdown?**
   Everything else is stripped — the tag is removed, its text content is kept — and an
   `html_sanitized_tag` or `html_sanitized_attribute` diagnostic names what went.
   An `<input>` is kept only as the disabled checkbox of a task list: any other input is
-  a live form control, so it keeps only `class` and `checked` and becomes a disabled
-  checkbox, and a diagnostic names each attribute removed or set.
-  Comments are stripped silently, since they carry no content, and so is nh3’s
+  a live form control, so it keeps only `checked` and the box’s class
+  (`task-list-item-checkbox`, alone), becomes a disabled checkbox written byte for byte
+  as KPress writes its box, and a diagnostic names each attribute removed or set.
+  An input that does not survive parsing, such as one inside SVG, is reported as
+  removed. Comments are stripped silently, since they carry no content, and so is nh3’s
   reserialization (entity spelling, quoting); a change the audit cannot explain gets the
   catch-all `html_sanitized`. This is what the dynamic render API
   (`kpress.runtime.render_view`, the entry point hosts call to render a document

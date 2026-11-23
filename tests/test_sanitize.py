@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
+import sys
 
 import pytest
 
 from kpress.errors import KPressInvalidRequestError
+from kpress.format import Diagnostic, parse_markdown, sanitize
 from kpress.format.sanitize import sanitize_generated_svg, sanitize_raw_html
 
 
@@ -205,14 +210,14 @@ def test_presentational_align_survives_on_blocks_and_headings() -> None:
     assert diagnostics == []
 
 
-@pytest.mark.parametrize(
-    "box",
-    [
-        '<input class="task-list-item-checkbox" disabled="disabled" type="checkbox">',
-        '<input class="task-list-item-checkbox" checked="checked" disabled="disabled" '
-        'type="checkbox">',
-    ],
+_BOX = '<input class="task-list-item-checkbox" disabled="disabled" type="checkbox">'
+_TICKED_BOX = (
+    '<input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox">'
 )
+_INERT = '<input disabled="disabled" type="checkbox">'
+
+
+@pytest.mark.parametrize("box", [_BOX, _TICKED_BOX])
 def test_task_box_survives_sanitizing_unchanged(box: str) -> None:
     html = (
         '<ul class="contains-task-list">\n'
@@ -230,8 +235,65 @@ def test_hand_written_disabled_checkbox_keeps_its_state_unreported() -> None:
         '<input type="checkbox" checked disabled>', "sanitized"
     )
 
-    assert sanitized == '<input type="checkbox" checked="" disabled="disabled">'
+    assert sanitized == '<input checked="checked" disabled="disabled" type="checkbox">'
     assert diagnostics == []
+
+
+@pytest.mark.parametrize(
+    "html",
+    [
+        '<input type="checkbox" disabled class="task-list-item-checkbox" checked>',
+        "<input checked='' type=checkbox class=task-list-item-checkbox disabled=''>",
+        '<INPUT TYPE="checkbox" CHECKED="CHECKED" Disabled CLASS="task-list-item-checkbox">',
+    ],
+)
+def test_a_box_written_in_any_order_or_case_is_byte_for_byte_kpress_box(html: str) -> None:
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == _TICKED_BOX
+    assert diagnostics == []
+
+
+_UNSTABLE_INPUTS = [
+    ("<input>", _INERT),
+    ('<input class="x">', _INERT),
+    ("<input checked>", '<input checked="checked" disabled="disabled" type="checkbox">'),
+    ("<INPUT>", _INERT),
+    ('<input class="task-list-item-checkbox">', _BOX),
+]
+
+
+@pytest.mark.parametrize(("html", "expected"), _UNSTABLE_INPUTS)
+def test_an_input_missing_type_and_disabled_has_one_serialization(html: str, expected: str) -> None:
+    # nh3 adds the two set values in hash order, so one call could pass by chance.
+    outputs = {sanitize_raw_html(html, "sanitized")[0] for _ in range(200)}
+
+    assert outputs == {expected}
+
+
+def test_input_serialization_is_the_same_in_every_process() -> None:
+    script = (
+        "import json, sys\n"
+        "from kpress.format.sanitize import sanitize_raw_html\n"
+        "sources = json.loads(sys.argv[1])\n"
+        "print(json.dumps([sanitize_raw_html(s, 'sanitized')[0] for s in sources]))\n"
+    )
+    sources = [html for html, _ in _UNSTABLE_INPUTS]
+    outputs: set[str] = set()
+    for seed in ("0", "1", "2", "3", "random", "random", "random", "random"):
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        result = subprocess.run(
+            [sys.executable, "-c", script, json.dumps(sources)],
+            capture_output=True,
+            check=True,
+            env=env,
+            text=True,
+            timeout=60,
+        )
+        outputs.add(result.stdout)
+
+    assert len(outputs) == 1
+    assert json.loads(outputs.pop()) == [expected for _, expected in _UNSTABLE_INPUTS]
 
 
 @pytest.mark.parametrize(
@@ -239,7 +301,7 @@ def test_hand_written_disabled_checkbox_keeps_its_state_unreported() -> None:
     [
         (
             '<input type="text" value="secret" form="host-form" id="field">',
-            '<input type="checkbox" disabled="disabled">',
+            _INERT,
             [
                 "Removed attribute 'value' from <input>.",
                 "Removed attribute 'form' from <input>.",
@@ -250,7 +312,7 @@ def test_hand_written_disabled_checkbox_keeps_its_state_unreported() -> None:
         ),
         (
             '<input type="image" src="https://evil.test/pixel.png">',
-            '<input type="checkbox" disabled="disabled">',
+            _INERT,
             [
                 "Removed attribute 'src' from <input>.",
                 "Set attribute 'disabled' to 'disabled' on <input>.",
@@ -259,17 +321,79 @@ def test_hand_written_disabled_checkbox_keeps_its_state_unreported() -> None:
         ),
         (
             '<input type="password" disabled>',
-            '<input type="checkbox" disabled="disabled">',
+            _INERT,
             ["Set attribute 'type' to 'checkbox' on <input>."],
         ),
         (
             '<input type="checkbox" checked data-k="v" tabindex="0">',
-            '<input type="checkbox" checked="" disabled="disabled">',
+            '<input checked="checked" disabled="disabled" type="checkbox">',
             [
                 "Removed attribute 'data-k' from <input>.",
                 "Removed attribute 'tabindex' from <input>.",
                 "Set attribute 'disabled' to 'disabled' on <input>.",
             ],
+        ),
+        (
+            '<input type="checkbox" disabled name="q" formaction="https://evil.test/" '
+            'onclick="alert(1)" onfocus="alert(2)" style="position:fixed" autofocus>',
+            _INERT,
+            [
+                "Removed attribute 'name' from <input>.",
+                "Removed attribute 'formaction' from <input>.",
+                "Removed attribute 'onclick' from <input>.",
+                "Removed attribute 'onfocus' from <input>.",
+                "Removed attribute 'style' from <input>.",
+                "Removed attribute 'autofocus' from <input>.",
+            ],
+        ),
+        # The first of a repeated attribute is the one HTML keeps.
+        ('<input type="checkbox" type="text" disabled>', _INERT, []),
+        (
+            '<input type="text" type="checkbox" disabled>',
+            _INERT,
+            ["Set attribute 'type' to 'checkbox' on <input>."],
+        ),
+        (
+            '<input class="kpress-video-backdrop" class="task-list-item-checkbox" disabled '
+            'type="checkbox">',
+            _INERT,
+            ["Removed attribute 'class' from <input>."],
+        ),
+        # `type` is matched case-sensitively, so another spelling is rewritten.
+        (
+            '<input TYPE="CHECKBOX" disabled>',
+            _INERT,
+            ["Set attribute 'type' to 'checkbox' on <input>."],
+        ),
+        (
+            '<input type=" checkbox " disabled>',
+            _INERT,
+            ["Set attribute 'type' to 'checkbox' on <input>."],
+        ),
+        (
+            '<input type="hidden" value="token">',
+            _INERT,
+            [
+                "Removed attribute 'value' from <input>.",
+                "Set attribute 'disabled' to 'disabled' on <input>.",
+                "Set attribute 'type' to 'checkbox' on <input>.",
+            ],
+        ),
+        # A forged input cannot take a KPress class, and keeps only the box's.
+        (
+            '<input class="kpress-video-backdrop kpress-visible" type="checkbox" disabled>',
+            _INERT,
+            ["Removed attribute 'class' from <input>."],
+        ),
+        (
+            '<input class="kpress-visible task-list-item-checkbox" type="checkbox" disabled>',
+            _BOX,
+            ["Set attribute 'class' to 'task-list-item-checkbox' on <input>."],
+        ),
+        (
+            '<input checked="no" type="checkbox" disabled>',
+            _TICKED_BOX.replace(' class="task-list-item-checkbox"', ""),
+            [],
         ),
     ],
 )
@@ -281,6 +405,142 @@ def test_any_other_input_becomes_a_disabled_checkbox(
     assert sanitized == expected
     assert [item.type for item in diagnostics] == ["html_sanitized_attribute"] * len(messages)
     assert [item.message for item in diagnostics] == messages
+
+
+def test_extra_tags_and_attributes_cannot_widen_an_input() -> None:
+    sanitized, diagnostics = sanitize_raw_html(
+        '<input type="text" kind="note" data-k="v" class="x-note">',
+        "sanitized",
+        extra_tags=["input", "x-note"],
+        extra_attributes=["kind"],
+    )
+
+    assert sanitized == _INERT
+    assert [item.message for item in diagnostics] == [
+        "Removed attribute 'kind' from <input>.",
+        "Removed attribute 'data-k' from <input>.",
+        "Removed attribute 'class' from <input>.",
+        "Set attribute 'disabled' to 'disabled' on <input>.",
+        "Set attribute 'type' to 'checkbox' on <input>.",
+    ]
+
+
+def test_a_raw_input_in_markdown_is_a_disabled_checkbox_when_sanitized() -> None:
+    tree = parse_markdown(
+        'Search: <input type="text" name="q" value="v">\n', title="T", trust_mode="sanitized"
+    )
+
+    assert tree.html == f"<p>Search: {_INERT}</p>"
+    assert [item.message for item in tree.diagnostics] == [
+        "Removed attribute 'name' from <input>.",
+        "Removed attribute 'value' from <input>.",
+        "Set attribute 'disabled' to 'disabled' on <input>.",
+        "Set attribute 'type' to 'checkbox' on <input>.",
+    ]
+
+
+def test_input_set_values_stay_inside_the_input_allow_list() -> None:
+    # nh3 runs the attribute filter after it sets values, so a set value outside the
+    # allow-list would be removed again: without `type`, an input is a text field.
+    set_values = sanitize._INPUT_SET_VALUES  # pyright: ignore[reportPrivateUsage]
+    values = sanitize._INPUT_VALUES  # pyright: ignore[reportPrivateUsage]
+    assert set(set_values) <= sanitize._INPUT_ATTRIBUTES  # pyright: ignore[reportPrivateUsage]
+    assert {"disabled", "type"} <= set(set_values)
+    assert all(values[name] == value for name, value in set_values.items())
+
+
+def _no_input_diagnostics(*_args: object) -> list[Diagnostic]:
+    return []
+
+
+def test_an_attribute_filter_error_is_raised_not_passed_to_nh3(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # nh3 keeps the attribute when its filter raises, which would keep `type="text"`.
+    def broken(_name: str, _value: str) -> str | None:
+        raise RuntimeError("filter bug")
+
+    monkeypatch.setattr(sanitize, "_input_diagnostics", _no_input_diagnostics)
+    monkeypatch.setattr(sanitize, "_input_attribute", broken)
+
+    with pytest.raises(RuntimeError, match="filter bug"):
+        sanitize_raw_html('<input type="text">', "sanitized")
+
+
+@pytest.mark.parametrize(
+    ("html", "expected", "diagnostics"),
+    [
+        # html5ever makes an input in SVG a foreign element, which nh3 removes.
+        (
+            '<svg><input type="text" form="x"></svg>',
+            "<svg></svg>",
+            [("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 6")],
+        ),
+        (
+            '<math><mrow><input type="text"></mrow></math>',
+            "<math><mrow></mrow></math>",
+            [("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 13")],
+        ),
+        # html5ever parses `<noscript>` content as text, so no input is there.
+        (
+            '<noscript><input type="text" form="x"></noscript>',
+            '&lt;input type="text" form="x"&gt;',
+            [("html_sanitized_tag", "Removed raw HTML tag <noscript>.", "line 1, column 1")],
+        ),
+        # A MathML text element holds HTML, so its input survives and is reported.
+        (
+            '<math><mi><input type="text" disabled></mi></math>',
+            f"<math><mi>{_INERT}</mi></math>",
+            [
+                (
+                    "html_sanitized_attribute",
+                    "Set attribute 'type' to 'checkbox' on <input>.",
+                    "line 1, column 11",
+                )
+            ],
+        ),
+        # A survivor beside a removed input keeps its own report.
+        (
+            '<svg><input></svg><input type="text" disabled>',
+            f"<svg></svg>{_INERT}",
+            [
+                ("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 6"),
+                (
+                    "html_sanitized_attribute",
+                    "Set attribute 'type' to 'checkbox' on <input>.",
+                    "line 1, column 19",
+                ),
+            ],
+        ),
+        # html5ever leaves SVG at `<p>`, which the audit does not model: the count of
+        # inputs disagrees, so no input is reported as edited and the catch-all fires.
+        (
+            '<svg><p><input type="text">',
+            f"<svg></svg><p>{_INERT}</p>",
+            [("html_sanitized", "Raw HTML was removed or rewritten for this trust mode.", None)],
+        ),
+    ],
+)
+def test_an_input_that_does_not_survive_is_reported_as_removed(
+    html: str, expected: str, diagnostics: list[tuple[str, str, str | None]]
+) -> None:
+    sanitized, found = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == expected
+    assert [(item.type, item.message, item.location) for item in found] == diagnostics
+
+
+def test_an_unexplained_input_change_is_reported_beside_other_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Simulate drift: the audit sees no change to the input that the policy rewrites.
+    monkeypatch.setattr(sanitize, "_input_diagnostics", _no_input_diagnostics)
+    sanitized, diagnostics = sanitize_raw_html(
+        '<input type="text"><span style="color:red">x</span>', "sanitized"
+    )
+
+    assert sanitized == f"{_INERT}<span>x</span>"
+    assert [item.type for item in diagnostics] == ["html_sanitized_attribute", "html_sanitized"]
 
 
 def test_trusted_keeps_a_raw_input_as_written() -> None:
