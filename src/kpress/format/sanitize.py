@@ -174,11 +174,12 @@ _INPUT_SET_VALUES = {name: _INPUT_VALUES[name] for name in ("disabled", "type")}
 # nh3 adds the set values it finds missing in hash order, so `<input>` would come out
 # with `disabled` and `type` in either order; `_canonical_inputs` writes every input it
 # kept in `_INPUT_VALUES` order. Inside nh3's output this pattern matches only a real
-# tag: text escapes `<`, and an attribute value escapes `"`.
+# tag: text escapes `<`, and an attribute value escapes `"`, so a value holding
+# `<input>` cannot match, since every kept input has at least one quoted attribute.
 _SANITIZED_INPUT_RE = re.compile(
     "<input((?: (?:"
     + "|".join(re.escape(f'{name}="{value}"') for name, value in _INPUT_VALUES.items())
-    + "))*)>"
+    + "))+)>"
 )
 # A `<button>` is always `type="button"`: KPress's own buttons are, and any other type
 # submits or resets a form, which a bare button inside a host page's form reaches

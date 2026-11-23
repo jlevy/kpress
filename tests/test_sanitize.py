@@ -540,6 +540,18 @@ def test_an_attribute_filter_error_is_raised_not_passed_to_nh3(
                 ),
             ],
         ),
+        # An `<input>` in an attribute value is text, not an input that survived.
+        (
+            '<a title="<input>" href="https://x.example">a</a><input type="text" disabled>',
+            f'<a title="<input>" href="https://x.example">a</a>{_INERT}',
+            [
+                (
+                    "html_sanitized_attribute",
+                    "Set attribute 'type' to 'checkbox' on <input>.",
+                    "line 1, column 50",
+                )
+            ],
+        ),
         # html5ever leaves SVG at `<p>`, which the audit does not model: the count of
         # inputs disagrees, so no input is reported as edited and the catch-all fires.
         (
