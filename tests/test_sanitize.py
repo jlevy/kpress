@@ -205,6 +205,89 @@ def test_presentational_align_survives_on_blocks_and_headings() -> None:
     assert diagnostics == []
 
 
+@pytest.mark.parametrize(
+    "box",
+    [
+        '<input class="task-list-item-checkbox" disabled="disabled" type="checkbox">',
+        '<input class="task-list-item-checkbox" checked="checked" disabled="disabled" '
+        'type="checkbox">',
+    ],
+)
+def test_task_box_survives_sanitizing_unchanged(box: str) -> None:
+    html = (
+        '<ul class="contains-task-list">\n'
+        f'<li class="kpress-task task-list-item">{box} x</li>\n</ul>'
+    )
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == html
+    assert diagnostics == []
+
+
+def test_hand_written_disabled_checkbox_keeps_its_state_unreported() -> None:
+    # A bare `disabled` is the value the policy sets, spelled differently.
+    sanitized, diagnostics = sanitize_raw_html(
+        '<input type="checkbox" checked disabled>', "sanitized"
+    )
+
+    assert sanitized == '<input type="checkbox" checked="" disabled="disabled">'
+    assert diagnostics == []
+
+
+@pytest.mark.parametrize(
+    ("html", "expected", "messages"),
+    [
+        (
+            '<input type="text" value="secret" form="host-form" id="field">',
+            '<input type="checkbox" disabled="disabled">',
+            [
+                "Removed attribute 'value' from <input>.",
+                "Removed attribute 'form' from <input>.",
+                "Removed attribute 'id' from <input>.",
+                "Set attribute 'disabled' to 'disabled' on <input>.",
+                "Set attribute 'type' to 'checkbox' on <input>.",
+            ],
+        ),
+        (
+            '<input type="image" src="https://evil.test/pixel.png">',
+            '<input type="checkbox" disabled="disabled">',
+            [
+                "Removed attribute 'src' from <input>.",
+                "Set attribute 'disabled' to 'disabled' on <input>.",
+                "Set attribute 'type' to 'checkbox' on <input>.",
+            ],
+        ),
+        (
+            '<input type="password" disabled>',
+            '<input type="checkbox" disabled="disabled">',
+            ["Set attribute 'type' to 'checkbox' on <input>."],
+        ),
+        (
+            '<input type="checkbox" checked data-k="v" tabindex="0">',
+            '<input type="checkbox" checked="" disabled="disabled">',
+            [
+                "Removed attribute 'data-k' from <input>.",
+                "Removed attribute 'tabindex' from <input>.",
+                "Set attribute 'disabled' to 'disabled' on <input>.",
+            ],
+        ),
+    ],
+)
+def test_any_other_input_becomes_a_disabled_checkbox(
+    html: str, expected: str, messages: list[str]
+) -> None:
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == expected
+    assert [item.type for item in diagnostics] == ["html_sanitized_attribute"] * len(messages)
+    assert [item.message for item in diagnostics] == messages
+
+
+def test_trusted_keeps_a_raw_input_as_written() -> None:
+    html = '<input type="text" value="x" form="host-form">'
+    assert sanitize_raw_html(html, "trusted") == (html, [])
+
+
 def test_unexplained_removal_still_reports_the_catch_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

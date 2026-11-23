@@ -62,6 +62,8 @@ Use this index for implementation, maintenance, and release work.
 - [End-to-End Testing](kpress-e2e-testing.runbook.md): real-browser reader checks that
   automated tests cannot fully establish
 - [Release Publishing](publishing.md): trusted PyPI release procedure
+- [KPress 0.3.10](releases/0.3.10.md), unreleased: task-list boxes drawn from a KPress
+  token, and an `<input>` kept in `sanitized` mode only as a disabled checkbox
 - [KPress 0.3.9](releases/0.3.9.md): Mermaid diagrams drawn as GitHub draws them, by a
   renderer a host configures, with visible errors and opt-in controls
 - [KPress 0.3.8](releases/0.3.8.md): `<kbd>`, `<samp>`, and code in a link preview set

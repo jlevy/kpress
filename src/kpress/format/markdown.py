@@ -11,12 +11,12 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from latex2mathml.converter import convert as convert_latex_math
 from markdown_it import MarkdownIt
+from markdown_it.rules_core import StateCore
 from markdown_it.token import Token
 from mdit_py_plugins.attrs import attrs_block_plugin, attrs_plugin
 from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.footnote import footnote_plugin
-from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name  # pyright: ignore[reportUnknownVariableType]
@@ -89,6 +89,14 @@ _SEMANTIC_CONTAINER_CLASSES = (
     "video-item",
 )
 _QUOTED_TAB_LABEL_RE = re.compile(r"""^(['"])(.*)\1$""")
+# A GitHub task list item opens its first paragraph with `[ ]`, `[x]`, or `[X]` and a
+# whitespace character (https://github.github.com/gfm/#task-list-items-extension-).
+_TASK_MARKER_RE = re.compile(r"\[([ xX])\][ \t\n\v\f\r]")
+# The box of a task list item is a KPress token, not raw HTML, so a consumer of the
+# token stream reads the box and its state without matching markup: its type is this,
+# its tag `input`, its markup the source marker, and `meta["checked"]` is True when
+# ticked. `_render_task_checkbox` draws it.
+_TASK_CHECKBOX_TOKEN = "kpress_task_checkbox"
 _YOUTUBE_HOSTS = {
     "m.youtube.com",
     "www.youtube.com",
@@ -378,12 +386,89 @@ def _mark_standalone_image_figures(tokens: list[Token]) -> None:
             close.meta["kpress_figure_caption"] = caption
 
 
+def _render_task_checkbox(tokens: list[Token], idx: int, _options: Any, _env: Any) -> str:
+    # Disabled in every trust mode: the box shows what the source records, and a
+    # disabled checkbox is the one `<input>` the sanitized profile admits.
+    checked = ' checked="checked"' if tokens[idx].meta.get("checked") else ""
+    return f'<input class="task-list-item-checkbox"{checked} disabled="disabled" type="checkbox">'
+
+
+def _take_task_marker(inline: Token) -> str | None:
+    """Remove the task marker that opens *inline* and return it, or return None."""
+
+    match = _TASK_MARKER_RE.match(inline.content)
+    children = inline.children
+    if match is None or not children:
+        return None
+    marker = match.group(0)[:3]
+    first = children[0]
+    if first.type == "text" and first.content.startswith(marker):
+        first.content = first.content[len(marker) :]
+        if not first.content:
+            del children[0]
+    elif (
+        # A document that defines `[x]` as a link makes the marker a shortcut link.
+        # GitHub reads the marker before links, so the box replaces the link.
+        first.type == "link_open"
+        and len(children) >= 3
+        and children[1].type == "text"
+        and children[1].content == match.group(1)
+        and children[2].type == "link_close"
+    ):
+        del children[:3]
+    else:
+        return None
+    inline.content = inline.content[len(marker) :]
+    return marker
+
+
+def _add_token_classes(token: Token, *class_names: str) -> None:
+    classes = str(token.attrGet("class") or "").split()
+    for class_name in class_names:
+        if class_name not in classes:
+            classes.append(class_name)
+    token.attrSet("class", " ".join(classes))
+
+
+def _task_lists(state: StateCore) -> None:
+    """Give each GitHub task list item a box token, and the item and its list classes.
+
+    The item is a list item whose first paragraph opens with a task marker. Its box is a
+    `_TASK_CHECKBOX_TOKEN` in place of the marker; classes already on the item or the list
+    (from attribute syntax) are kept.
+    """
+
+    tokens = state.tokens
+    open_lists: list[Token] = []
+    for idx, token in enumerate(tokens):
+        if token.type in {"bullet_list_open", "ordered_list_open"}:
+            open_lists.append(token)
+        elif token.type in {"bullet_list_close", "ordered_list_close"}:
+            if open_lists:
+                open_lists.pop()
+        elif (
+            token.type == "inline"
+            and idx >= 2
+            and tokens[idx - 1].type == "paragraph_open"
+            and tokens[idx - 2].type == "list_item_open"
+            and open_lists
+        ):
+            marker = _take_task_marker(token)
+            if marker is None:
+                continue
+            box = Token(_TASK_CHECKBOX_TOKEN, "input", 0, markup=marker)
+            box.meta["checked"] = marker != "[ ]"
+            token.children = [box, *(token.children or ())]
+            _add_token_classes(tokens[idx - 2], "kpress-task", "task-list-item")
+            _add_token_classes(open_lists[-1], "contains-task-list")
+
+
 def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode) -> MarkdownIt:
     # Raw HTML always reaches the renderer; the sanitized mode then runs nh3 over the
     # output as the single authority on what survives
     # (kpress.format.sanitize.sanitize_raw_html).
     md = MarkdownIt("js-default", {"html": True})
-    md.use(tasklists_plugin, enabled=False)
+    md.core.ruler.after("inline", "kpress_task_lists", _task_lists)
     md.use(footnote_plugin)
     if math != "off":
         md.use(dollarmath_plugin, allow_space=False, allow_digits=False)
@@ -416,6 +501,7 @@ def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode
     renderer_rules["image"] = _render_image
     renderer_rules["paragraph_open"] = _render_paragraph_open
     renderer_rules["paragraph_close"] = _render_paragraph_close
+    renderer_rules[_TASK_CHECKBOX_TOKEN] = _render_task_checkbox
     return md
 
 
@@ -444,10 +530,6 @@ def _add_heading_ids(tokens: list[Token]) -> list[Heading]:
         token.attrSet("id", heading_id)
         headings.append(Heading(level=level, title=title, id=heading_id))
     return headings
-
-
-def _postprocess_tasks(html: str) -> str:
-    return html.replace('class="task-list-item"', 'class="kpress-task task-list-item"')
 
 
 def _is_external_http_url(value: str | None) -> bool:
@@ -1124,7 +1206,6 @@ def parse_markdown(
     headings = _add_heading_ids(tokens)
     footnotes = _collect_footnotes(md, tokens, env)
     html = md.renderer.render(tokens, md.options, env)
-    html = _postprocess_tasks(html)
     html = _postprocess_html(
         html,
         table_wide_min_columns=table_wide_min_columns,

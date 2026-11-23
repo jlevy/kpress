@@ -18,7 +18,8 @@ from kpress.errors import KPressInvalidRequestError
 from kpress.format.model import Diagnostic, TrustMode
 
 # This nh3 policy and `_SanitizerAudit` describe the same decisions: update both
-# whenever tags, attributes, URL schemes, or pass-through restrictions change.
+# whenever tags, attributes, set values, URL schemes, or pass-through restrictions
+# change.
 _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
     "annotation",
     "button",
@@ -151,6 +152,17 @@ for _align_tag in ("div", "p", "h1", "h2", "h3", "h4", "h5", "h6"):
     )
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto", "tel"}
 _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
+# `<input>` is admitted only as the box of a task list item (`_render_task_checkbox` in
+# markdown.py): a disabled checkbox, ticked or not. Any other input is a live form
+# control, such as a text or password field, a submit button that `form` can tie to a
+# form on the host page, or `type="image"` loading a remote image. The sanitizer cannot
+# tell KPress's box from an input an author typed, so every `<input>` keeps only these
+# attributes and is given these values.
+_INPUT_ATTRIBUTES = frozenset({"checked", "class", "disabled", "type"})
+_INPUT_SET_VALUES = {"disabled": "disabled", "type": "checkbox"}
+# Attributes whose presence is their meaning: `disabled=""` and `disabled="disabled"`
+# are the same, so setting one over the other changes nothing a reader receives.
+_BOOLEAN_ATTRIBUTES = frozenset({"checked", "disabled"})
 
 # Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
 # unions any host `extra_tags` on top of this default set. `class`/`data-*` survive on
@@ -296,10 +308,11 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
 
 
 class _SanitizerAudit(HTMLParser):
-    """Mirror the nh3 policy to diagnose each removed tag and attribute.
+    """Mirror the nh3 policy to diagnose each removed tag and attribute and each set value.
 
     Keep this audit in sync with the policy constants above and the
-    ``_restrict_pass_through`` filter in ``sanitize_raw_html``.
+    ``_restrict_pass_through`` filter and ``set_tag_attribute_values`` in
+    ``sanitize_raw_html``.
     """
 
     def __init__(
@@ -319,6 +332,8 @@ class _SanitizerAudit(HTMLParser):
         return f"line {line}, column {offset + 1}"
 
     def _attribute_allowed(self, tag: str, name: str, value: str | None) -> bool:
+        if tag == "input":
+            return name in _INPUT_ATTRIBUTES
         if tag in self.restricted_tags:
             allowed = (
                 name in PUBLIC_PASS_THROUGH_ATTRIBUTES
@@ -360,6 +375,25 @@ class _SanitizerAudit(HTMLParser):
                         location=location,
                     )
                 )
+        if tag == "input":
+            # The first of a repeated attribute is the one HTML keeps.
+            values: dict[str, str | None] = {}
+            for name, value in attrs:
+                values.setdefault(name, value)
+            for name, value in _INPUT_SET_VALUES.items():
+                if name in _BOOLEAN_ATTRIBUTES:
+                    changed = name not in values
+                else:
+                    changed = values.get(name) != value
+                if changed:
+                    self.diagnostics.append(
+                        Diagnostic(
+                            type="html_sanitized_attribute",
+                            message=f"Set attribute {name!r} to {value!r} on <input>.",
+                            severity="warning",
+                            location=location,
+                        )
+                    )
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._audit_tag(tag, attrs)
@@ -383,7 +417,8 @@ def sanitize_raw_html(
     ``data-*``, and any host-declared ``extra_attributes`` (inert semantic names like
     ``kind`` or ``term``, validated against a forbidden set) — never
     ``style``/``on*``/unsafe URLs. Standard HTML tags keep their fixed policy;
-    ``extra_attributes`` widens only the whitelist-only (custom-element) tags.
+    ``extra_attributes`` widens only the whitelist-only (custom-element) tags. An
+    ``<input>`` survives only as the disabled checkbox of a task list item.
     """
 
     if trust_mode == "trusted":
@@ -400,6 +435,8 @@ def sanitize_raw_html(
     prefix_tuple = tuple(_PASS_THROUGH_ATTRIBUTE_PREFIXES)
 
     def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
+        if element == "input":
+            return value if attribute in _INPUT_ATTRIBUTES else None
         if element not in restricted:
             # Standard tags keep their fixed policy: a host-declared extra attribute
             # rides only on whitelist-only tags, never widens standard HTML (unless
@@ -432,6 +469,7 @@ def sanitize_raw_html(
         attributes=attributes,
         attribute_filter=_restrict_pass_through,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
+        set_tag_attribute_values={"input": _INPUT_SET_VALUES},
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
     )
@@ -461,10 +499,10 @@ _ContentEvent = tuple[str, str, tuple[tuple[str, str], ...]]
 class _ContentEvents(HTMLParser):
     """Reduce HTML to what a reader receives: start tags, their attributes, and text.
 
-    Comments, declarations, end tags, attribute order and quoting, entity spelling, and
-    whitespace runs carry no content, so HTML that differs only there reduces to the
-    same events. Removing an element always removes its start tag, so dropping end
-    tags cannot hide a removal.
+    Comments, declarations, end tags, attribute order and quoting, a boolean attribute's
+    value, entity spelling, and whitespace runs carry no content, so HTML that differs
+    only there reduces to the same events. Removing an element always removes its start
+    tag, so dropping end tags cannot hide a removal.
     """
 
     def __init__(self) -> None:
@@ -480,7 +518,8 @@ class _ContentEvents(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._flush_text()
-        self.events.append(("tag", tag, tuple(sorted((n, v or "") for n, v in attrs))))
+        values = sorted((n, "" if n in _BOOLEAN_ATTRIBUTES else v or "") for n, v in attrs)
+        self.events.append(("tag", tag, tuple(values)))
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
