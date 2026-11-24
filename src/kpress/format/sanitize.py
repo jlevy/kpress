@@ -405,7 +405,8 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
 # elements of the HTML standard, `noscript` among them because html5ever parses with
 # scripting on. Python's HTMLParser reads only `script` and `style` this way before
 # 3.14, and `noscript` only when asked to, so both parsers below enter text mode for
-# this set themselves, also after `<noscript/>`, since HTML ignores the slash there.
+# this set themselves, also after `<noscript/>`, since HTML ignores the slash there, and
+# never in SVG or MathML, where each is an ordinary element.
 _RAW_TEXT_ELEMENTS = ("script", "style", "xmp", "iframe", "noembed", "noframes", "noscript")
 # The open elements that decide whether an input or a button survives
 # (`_control_survives`): either in SVG or MathML is a foreign element, unless a MathML
@@ -520,6 +521,31 @@ class _Html5everContexts(HTMLParser):
         ):
             self._contexts.append(tag)
             self._context_counts[tag] = self._context_counts.get(tag, 0) + 1
+
+    def set_cdata_mode(self, elem: str, **kwargs: bool) -> None:
+        # In SVG or MathML html5ever reads no element's content as text, so neither the
+        # elements HTMLParser enters text mode for itself nor `_RAW_TEXT_ELEMENTS` do.
+        if not self._in_foreign_content():
+            super().set_cdata_mode(elem, **kwargs)
+
+    def parse_html_declaration(self, i: int) -> int:
+        """Read `<![` as html5ever does: a bogus comment, which the first `>` ends, except
+        a CDATA section in SVG or MathML, which is text up to `]]>`.
+
+        HTMLParser reads a CDATA or marked section on to `]]>` wherever it is, which hid
+        the tags after its first `>` from the audit though nh3 keeps them.
+        """
+
+        rawdata = self.rawdata
+        if not rawdata.startswith("<![", i):
+            return super().parse_html_declaration(i)
+        if self._in_foreign_content() and rawdata.startswith("<![CDATA[", i):
+            end = rawdata.find("]]>", i + 9)
+            if end < 0:
+                return -1
+            self.handle_data(rawdata[i + 9 : end])
+            return end + 3
+        return self.parse_bogus_comment(i)
 
     def _end(self, tag: str) -> None:
         """Close the innermost open context of this name and every context inside it."""
@@ -895,7 +921,7 @@ def sanitize_raw_html(
 _ContentEvent = tuple[str, str, tuple[tuple[str, str], ...]]
 
 
-class _ContentEvents(HTMLParser):
+class _ContentEvents(_Html5everContexts):
     """Reduce HTML to what a reader receives: start tags, their attributes, and text.
 
     Comments, declarations, end tags, attribute order and quoting, a boolean attribute's
@@ -916,17 +942,25 @@ class _ContentEvents(HTMLParser):
             self.events.append(("text", text, ()))
         self._text.clear()
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def _tag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._flush_text()
         values: dict[str, str] = {}
         for name, value in attrs:
             values.setdefault(name, "" if name in _BOOLEAN_ATTRIBUTES else value or "")
         self.events.append(("tag", tag, tuple(sorted(values.items()))))
-        if tag in _RAW_TEXT_ELEMENTS:
-            self.set_cdata_mode(tag)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
+        self._tag(tag, attrs)
+        self._opened(tag, self_closing=False)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self.handle_starttag(tag, attrs)
+        self._start(tag, attrs)
+        self._tag(tag, attrs)
+        self._opened(tag, self_closing=True)
+
+    def handle_endtag(self, tag: str) -> None:
+        self._end(tag)
 
     def handle_data(self, data: str) -> None:
         self._text.append(data)

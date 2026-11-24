@@ -666,6 +666,67 @@ def test_an_input_that_does_not_survive_is_reported_as_removed(
     assert [(item.type, item.message, item.location) for item in found] == diagnostics
 
 
+@pytest.mark.parametrize(
+    ("html", "expected", "diagnostics"),
+    [
+        # In HTML content html5ever ends `<![` at the first `>`, so what follows is
+        # markup; HTMLParser read on to `]]>` and so audited none of it.
+        (
+            '<b onclick="x">b</b><svg><input disabled type="checkbox"></svg>'
+            '<![CDATA[x><input type="text" name="q" onfocus="x">]]>',
+            "<b>b</b><svg></svg>]]&gt;",
+            [
+                (
+                    "html_sanitized_attribute",
+                    "Removed attribute 'onclick' from <b>.",
+                    "line 1, column 1",
+                ),
+                ("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 26"),
+                ("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 75"),
+            ],
+        ),
+        (
+            '<b onclick="x">b</b><![CDATA[x><span style="color:red">y</span>]]>',
+            "<b>b</b><span>y</span>]]&gt;",
+            [
+                (
+                    "html_sanitized_attribute",
+                    "Removed attribute 'onclick' from <b>.",
+                    "line 1, column 1",
+                ),
+                (
+                    "html_sanitized_attribute",
+                    "Removed attribute 'style' from <span>.",
+                    "line 1, column 32",
+                ),
+            ],
+        ),
+        # In SVG a CDATA section is text up to `]]>`, which nh3 escapes: nothing went.
+        (
+            '<svg><![CDATA[a>b<input type="checkbox">]]></svg>',
+            '<svg>a&gt;b&lt;input type="checkbox"&gt;</svg>',
+            [],
+        ),
+        # In SVG `<style>` is an ordinary element, so its content is markup.
+        (
+            '<svg><style><input type="checkbox"></style></svg>',
+            "<svg></svg>",
+            [
+                ("html_sanitized_tag", "Removed raw HTML tag <style>.", "line 1, column 6"),
+                ("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 13"),
+            ],
+        ),
+    ],
+)
+def test_the_audit_reads_cdata_and_text_elements_as_html5ever_does(
+    html: str, expected: str, diagnostics: list[tuple[str, str, str | None]]
+) -> None:
+    sanitized, found = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == expected
+    assert [(item.type, item.message, item.location) for item in found] == diagnostics
+
+
 def test_the_audit_tracks_only_the_elements_that_decide_an_input() -> None:
     # Tracking every open element made each end tag scan them all: 8,000 unclosed
     # `<span>`s and 8,000 stray `</b>`s took 0.86 s in the audit alone, and four times
