@@ -159,8 +159,11 @@ feature guarantees); the sections named in the table carry the architecture deta
 - **GFM block and inline parsing.** Headings, paragraphs, nested lists, blockquotes,
   links and autolinks, strikethrough, task lists, hard/soft breaks, and code fences.
 - **Task lists.** A list item whose first paragraph opens with a marker (`[`, a
-  whitespace character or `x` or `X`, then `]`) and whitespace starts with a disabled
-  checkbox, ticked by `x` or `X`, as on GitHub.
+  whitespace character other than a line ending or `x` or `X`, then `]`) and whitespace,
+  with more of the line after it, starts with a disabled checkbox, ticked by `x` or `X`,
+  as on github.com. A marker that only spaces, tabs and a line ending follow is text
+  there and here. github.com shows a vertical tab as U+FFFD, so a vertical tab in or
+  after a marker makes it text there, where KPress follows GFM and draws the box.
   A marker the document defines as a link stays the link, with no box, as on GitHub.
   KPress draws the box from its own token, `kpress_task_checkbox` in
   `format/markdown.py`, whose `meta["checked"]` holds the state, so a consumer of the

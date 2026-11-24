@@ -579,11 +579,30 @@ def test_task_item_detection(source: str, expected: str) -> None:
     assert tree.html == expected
 
 
-def test_task_marker_followed_by_a_tab_or_line_break_gets_its_box() -> None:
-    tree = parse_markdown("- [ ]\tTabbed\n- [x]\n  next line\n", title="Tasks")
+def test_task_marker_followed_by_a_tab_gets_its_box() -> None:
+    tree = parse_markdown("- [ ]\tTabbed\n- [x]\f\n  next line\n", title="Tasks")
 
     assert f'<li class="kpress-task task-list-item">{_OPEN_BOX}\tTabbed</li>' in tree.html
-    assert f'<li class="kpress-task task-list-item">{_TICKED_BOX}\nnext line</li>' in tree.html
+    assert f'<li class="kpress-task task-list-item">{_TICKED_BOX}\f\nnext line</li>' in tree.html
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "- [ ]\n  next line\n",
+        "- [x]\n  next line\n",
+        "- [ ] \n  next line\n",
+        "- [x]\t\n  next line\n",
+        "- [\n] next line\n",
+    ],
+)
+def test_task_marker_that_ends_its_line_is_text(source: str) -> None:
+    # github.com (`gfm` mode) shows each of these as text, with no box.
+    tree = parse_markdown(source, title="Tasks")
+
+    assert "<input" not in tree.html
+    assert "task-list" not in tree.html
+    assert tree.html.startswith("<ul>\n<li>[")
 
 
 def test_task_list_keeps_classes_from_attribute_syntax() -> None:

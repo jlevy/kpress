@@ -93,8 +93,12 @@ _QUOTED_TAB_LABEL_RE = re.compile(r"""^(['"])(.*)\1$""")
 # A GitHub task list item opens its first paragraph with a marker, `[`, a whitespace
 # character or `x` or `X`, then `]`, and a whitespace character after it
 # (https://github.github.com/gfm/#task-list-items-extension-). GFM's whitespace
-# characters are space, tab, line feed, line tabulation, form feed, and carriage return.
-_TASK_MARKER_RE = re.compile(r"\[([ \t\n\v\f\rxX])\][ \t\n\v\f\r]")
+# characters are space, tab, line feed, line tabulation, form feed, and carriage return,
+# but github.com draws no box for a marker that holds a line ending, or that only
+# spaces, tabs and a line ending follow (`- [ ]` then a new line), so neither is one
+# here: after the `]` the line goes on. Markdown-it has already made every line ending
+# a line feed.
+_TASK_MARKER_RE = re.compile(r"\[([ \t\v\fxX])\](?=[ \t]*[^ \t\n])[ \t\v\f]")
 # The box of a task list item is a KPress token, not raw HTML, so a consumer of the
 # token stream reads the box and its state without matching markup: its type is this,
 # its tag `input`, its markup the source marker, and `meta["checked"]` is True when
