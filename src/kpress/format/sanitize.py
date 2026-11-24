@@ -190,6 +190,10 @@ _SANITIZED_INPUT_RE = re.compile(
 # without `form`. No sanitized element keeps `form`, which ties a control to a form
 # anywhere on the host page by its id.
 _BUTTON_SET_VALUES = {"type": "button"}
+# A `<button>` in nh3's output, which always has `type`. As for inputs, an attribute value
+# escapes `"`, so a value holding `<button ...>` cannot match.
+_SANITIZED_BUTTON_RE = re.compile(r'<button((?: [^\s"\'>/=]+="[^"]*")+)>')
+_ATTRIBUTE_NAME_RE = re.compile(r' ([^\s"\'>/=]+)="')
 _SET_TAG_ATTRIBUTE_VALUES = {"input": _INPUT_SET_VALUES, "button": _BUTTON_SET_VALUES}
 # Attributes whose presence is their meaning: `disabled=""` and `disabled="disabled"`
 # are the same, so setting one over the other changes nothing a reader receives.
@@ -403,10 +407,10 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
 # 3.14, and `noscript` only when asked to, so both parsers below enter text mode for
 # this set themselves, also after `<noscript/>`, since HTML ignores the slash there.
 _RAW_TEXT_ELEMENTS = ("script", "style", "xmp", "iframe", "noembed", "noframes", "noscript")
-# The open elements that decide whether an input survives (`_input_survives`): an input
-# in SVG or MathML is a foreign element, unless a MathML text element directly in
-# MathML, where html5ever parses HTML again, encloses it, and a `<template>`'s content is
-# never output.
+# The open elements that decide whether an input or a button survives
+# (`_control_survives`): either in SVG or MathML is a foreign element, unless a MathML
+# text element directly in MathML, where html5ever parses HTML again, encloses it, and
+# a `<template>`'s content is never output.
 _FOREIGN_ROOTS = frozenset({"math", "svg"})
 _DROPS_INPUTS = _FOREIGN_ROOTS | {"template"}
 _MATHML_TEXT_ELEMENTS = frozenset({"mi", "mn", "mo", "ms", "mtext"})
@@ -544,6 +548,17 @@ class _InputAudit:
         return f' type="{_INPUT_VALUES["type"]}"' in self.form
 
 
+@dataclass(frozen=True)
+class _ButtonAudit:
+    """One `<button>` the audit saw: where, whether it survives parsing, the names of the
+    attributes nh3 keeps on it, sorted, and how it changes when it is kept."""
+
+    location: str
+    survives: bool
+    names: tuple[str, ...]
+    diagnostics: list[Diagnostic]
+
+
 def _expected_input_form(attrs: list[tuple[str, str | None]]) -> str:
     """The form nh3 keeps an input with *attrs* in, before `_canonical_inputs` runs."""
 
@@ -608,7 +623,7 @@ class _SanitizerAudit(_Html5everContexts):
         self.allowed_tags = _ALLOWED_TAGS | pass_through
         self.restricted_tags = pass_through - _ALLOWED_TAGS
         self.extra_attributes = extra_attributes
-        self._entries: list[Diagnostic | _InputAudit] = []
+        self._entries: list[Diagnostic | _InputAudit | _ButtonAudit] = []
 
     def _location(self) -> str:
         line, offset = self.getpos()
@@ -651,15 +666,16 @@ class _SanitizerAudit(_Html5everContexts):
             self._entries.append(
                 _InputAudit(
                     location=location,
-                    survives=self._input_survives(),
+                    survives=self._control_survives(),
                     form=_expected_input_form(attrs),
                     diagnostics=_input_diagnostics(attrs, location),
                 )
             )
             return
+        found: list[Diagnostic] = []
         for name, value in attrs:
             if not self._attribute_allowed(tag, name, value):
-                self._entries.append(
+                found.append(
                     Diagnostic(
                         type="html_sanitized_attribute",
                         message=f"Removed attribute {name!r} from <{tag}>.",
@@ -668,9 +684,10 @@ class _SanitizerAudit(_Html5everContexts):
                     )
                 )
         values = dict(reversed(attrs))  # the first of a repeated attribute wins
-        for name, value in _SET_TAG_ATTRIBUTE_VALUES.get(tag, {}).items():
+        set_values = _SET_TAG_ATTRIBUTE_VALUES.get(tag, {})
+        for name, value in set_values.items():
             if values.get(name) != value:
-                self._entries.append(
+                found.append(
                     Diagnostic(
                         type="html_sanitized_attribute",
                         message=f"Set attribute {name!r} to {value!r} on <{tag}>.",
@@ -678,12 +695,25 @@ class _SanitizerAudit(_Html5everContexts):
                         location=location,
                     )
                 )
+        if tag != "button":
+            self._entries.extend(found)
+            return
+        kept = {name for name, value in values.items() if self._attribute_allowed(tag, name, value)}
+        self._entries.append(
+            _ButtonAudit(
+                location=location,
+                survives=self._control_survives(),
+                names=tuple(sorted(kept | set(set_values))),
+                diagnostics=found,
+            )
+        )
 
-    def _input_survives(self) -> bool:
-        """Whether an input here survives, judged from the innermost open context.
+    def _control_survives(self) -> bool:
+        """Whether an input or a button here survives, judged from the innermost open
+        context.
 
-        `sanitize_raw_html` trusts this only when every input it predicts kept is in
-        nh3's output, in order and in the form predicted (`finish`).
+        `sanitize_raw_html` trusts this only when the inputs and buttons it predicts kept
+        are those in nh3's output, in order (`finish`).
         """
 
         return not self._contexts or self._contexts[-1] not in _DROPS_INPUTS
@@ -701,37 +731,50 @@ class _SanitizerAudit(_Html5everContexts):
     def handle_endtag(self, tag: str) -> None:
         self._end(tag)
 
-    @property
-    def inputs_seen(self) -> int:
-        return sum(isinstance(entry, _InputAudit) for entry in self._entries)
+    def finish(
+        self, input_forms: list[str], button_names: list[tuple[str, ...]]
+    ) -> tuple[list[Diagnostic], frozenset[str]]:
+        """The diagnostics, given the form of each input nh3 kept and the sorted attribute
+        names of each button it kept, in document order; and the tags, `input` or
+        `button`, whose changes no diagnostic explains, for the caller's catch-all.
 
-    def finish(self, input_forms: list[str]) -> tuple[list[Diagnostic], bool]:
-        """The diagnostics, given the form of each input nh3 kept, in document order, and
-        whether any diagnostic is an input's.
-
-        An input that did not survive, or is not a checkbox, is reported as removed, not
-        edited. When the inputs predicted kept are not those nh3 kept, in order and form,
-        the inputs that went are unknown, so no input is reported and the caller's
-        catch-all covers them. Two mispredictions that leave the same forms in the same
-        order still pass, with each report at the other's location.
+        An input or button that did not survive, or an input that is not a checkbox, is
+        reported as removed, not edited. When the inputs predicted kept are not those nh3
+        kept, in order and form, the inputs that went are unknown, so no input is
+        reported and the catch-all covers them; buttons likewise. Two mispredictions that
+        leave the same forms in the same order still pass, with each report at the
+        other's location.
         """
 
         inputs = [entry for entry in self._entries if isinstance(entry, _InputAudit)]
-        known = [entry.form for entry in inputs if entry.survives] == input_forms
+        buttons = [entry for entry in self._entries if isinstance(entry, _ButtonAudit)]
+        known = {
+            "input": [entry.form for entry in inputs if entry.survives] == input_forms,
+            "button": [entry.names for entry in buttons if entry.survives] == button_names,
+        }
         diagnostics: list[Diagnostic] = []
-        reported_inputs = False
+        reported: set[str] = set()
         for entry in self._entries:
             if isinstance(entry, Diagnostic):
                 diagnostics.append(entry)
-            elif not known:
                 continue
-            elif entry.survives and entry.box:
+            tag = "input" if isinstance(entry, _InputAudit) else "button"
+            if not known[tag]:
+                continue
+            if entry.survives and (not isinstance(entry, _InputAudit) or entry.box):
                 diagnostics.extend(entry.diagnostics)
-                reported_inputs = reported_inputs or bool(entry.diagnostics)
+                if entry.diagnostics:
+                    reported.add(tag)
             else:
-                diagnostics.append(self._removed_tag("input", entry.location))
-                reported_inputs = True
-        return diagnostics, reported_inputs
+                diagnostics.append(self._removed_tag(tag, entry.location))
+                reported.add(tag)
+        present = {
+            "input": bool(inputs or input_forms),
+            "button": bool(buttons or button_names),
+        }
+        return diagnostics, frozenset(
+            tag for tag, seen in present.items() if seen and tag not in reported
+        )
 
 
 def sanitize_raw_html(
@@ -819,18 +862,22 @@ def sanitize_raw_html(
     )
     if filter_errors:
         raise filter_errors[0]
+    button_names = [
+        tuple(sorted(_ATTRIBUTE_NAME_RE.findall(match.group(1))))
+        for match in _SANITIZED_BUTTON_RE.finditer(sanitized)
+    ]
     sanitized, input_forms = _canonical_inputs(sanitized)
-    diagnostics, reported_inputs = audit.finish(input_forms)
+    diagnostics, unexplained_tags = audit.finish(input_forms, button_names)
     # Safety net for drift between the audit and the nh3 policy: report a change the
     # audit did not explain. Compare content, not strings, because nh3 also strips
     # comments and reserializes (a non-breaking space becomes `&nbsp;`), and neither
-    # removes anything a reader would see. An input that changed is reported even beside
-    # other diagnostics, since none of those explains it.
-    check_inputs = not reported_inputs and bool(input_forms or audit.inputs_seen)
-    if sanitized != html and (not diagnostics or check_inputs):
+    # removes anything a reader would see. An input or button that changed is reported
+    # even beside other diagnostics, since none of those explains it.
+    if sanitized != html and (not diagnostics or unexplained_tags):
         before, after = _content_events(html), _content_events(sanitized)
         if diagnostics:
-            before, after = _input_events(before), _input_events(after)
+            before = _tag_events(before, unexplained_tags)
+            after = _tag_events(after, unexplained_tags)
         unexplained = before != after
     else:
         unexplained = False
@@ -896,8 +943,8 @@ def _content_events(html: str) -> list[_ContentEvent]:
     return parser.events
 
 
-def _input_events(events: list[_ContentEvent]) -> list[_ContentEvent]:
-    return [event for event in events if event[:2] == ("tag", "input")]
+def _tag_events(events: list[_ContentEvent], tags: frozenset[str]) -> list[_ContentEvent]:
+    return [event for event in events if event[0] == "tag" and event[1] in tags]
 
 
 _SVG_CAMELCASE = {

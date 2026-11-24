@@ -718,7 +718,7 @@ def test_mispredictions_that_cancel_in_number_still_get_the_catch_all(
     def survives(_audit: object) -> bool:
         return next(predictions)
 
-    monkeypatch.setattr(sanitize._SanitizerAudit, "_input_survives", survives)  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(sanitize._SanitizerAudit, "_control_survives", survives)  # pyright: ignore[reportPrivateUsage]
     sanitized, diagnostics = sanitize_raw_html(
         '<svg><input type="checkbox" name="a"></svg><input type="checkbox" checked>',
         "sanitized",
@@ -780,6 +780,91 @@ def test_a_button_can_never_submit_or_reset_a_host_form(
 
     assert sanitized == expected
     assert [item.message for item in diagnostics] == messages
+
+
+@pytest.mark.parametrize(
+    ("html", "expected", "diagnostics"),
+    [
+        # html5ever makes a button in SVG or MathML a foreign element, which nh3 removes.
+        (
+            "<svg><button>go</button></svg>",
+            "<svg></svg>",
+            [("html_sanitized_tag", "Removed raw HTML tag <button>.", "line 1, column 6")],
+        ),
+        (
+            '<math><button type="submit">go</button></math><b onclick="x">y</b>',
+            "<math></math><b>y</b>",
+            [
+                ("html_sanitized_tag", "Removed raw HTML tag <button>.", "line 1, column 7"),
+                (
+                    "html_sanitized_attribute",
+                    "Removed attribute 'onclick' from <b>.",
+                    "line 1, column 47",
+                ),
+            ],
+        ),
+        # A MathML text element holds HTML, and `<p>` ends SVG, so these survive.
+        (
+            "<math><mi><button>b</button></mi></math>",
+            '<math><mi><button type="button">b</button></mi></math>',
+            [
+                (
+                    "html_sanitized_attribute",
+                    "Set attribute 'type' to 'button' on <button>.",
+                    "line 1, column 11",
+                )
+            ],
+        ),
+        (
+            "<svg><p><button>b</button></p></svg>",
+            '<svg></svg><p><button type="button">b</button></p>',
+            [
+                (
+                    "html_sanitized_attribute",
+                    "Set attribute 'type' to 'button' on <button>.",
+                    "line 1, column 9",
+                )
+            ],
+        ),
+        # A `<button>` in an attribute value is text, not a button that survived.
+        (
+            '<a title="<button>">a</a><svg><button>b</button></svg>',
+            '<a title="<button>">a</a><svg></svg>',
+            [("html_sanitized_tag", "Removed raw HTML tag <button>.", "line 1, column 31")],
+        ),
+        # An HTML end tag closes SVG open inside its element, which the audit does not
+        # model, so the button it predicts removed survives and the catch-all fires.
+        (
+            "<div><svg></div><button>b</button>",
+            '<div><svg></svg></div><button type="button">b</button>',
+            [("html_sanitized", "Raw HTML was removed or rewritten for this trust mode.", None)],
+        ),
+    ],
+)
+def test_a_button_that_does_not_survive_is_reported_as_removed(
+    html: str, expected: str, diagnostics: list[tuple[str, str, str | None]]
+) -> None:
+    sanitized, found = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == expected
+    assert [(item.type, item.message, item.location) for item in found] == diagnostics
+
+
+def test_a_button_the_audit_mispredicts_gets_the_catch_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Simulate drift: the audit approves `formaction`, which nh3 removes, so the
+    # attributes it predicts on the button are not those nh3 kept.
+    def approve_everything(*_args: object) -> bool:
+        return True
+
+    monkeypatch.setattr(sanitize._SanitizerAudit, "_attribute_allowed", approve_everything)  # pyright: ignore[reportPrivateUsage]
+    sanitized, diagnostics = sanitize_raw_html(
+        '<button formaction="https://evil.test/">b</button><b onclick="x">y</b>', "sanitized"
+    )
+
+    assert sanitized == '<button type="button">b</button><b>y</b>'
+    assert [item.type for item in diagnostics] == ["html_sanitized"]
 
 
 def test_no_element_keeps_form() -> None:
