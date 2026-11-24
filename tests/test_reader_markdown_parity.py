@@ -467,6 +467,48 @@ def test_task_box_is_a_kpress_token_that_carries_its_state() -> None:
     ]
 
 
+def test_task_classes_kpress_adds_are_recorded_apart_from_the_authors() -> None:
+    md = _markdown_it(trust_mode="trusted", diagrams="off", math="off")
+    source = (
+        "{.checklist}\n- [ ] Open\n- Plain\n\n"
+        "Between.\n\n"
+        "{.contains-task-list .steps}\n1. [x] Done\n"
+    )
+    tokens = md.parse(source)
+    opens = [
+        (token.type, token.attrGet("class"), token.meta.get("kpress_classes"))
+        for token in tokens
+        if token.type in {"bullet_list_open", "ordered_list_open", "list_item_open"}
+    ]
+
+    # The author's classes come first; KPress records only what it appended, so a
+    # class the author already gave is the author's.
+    assert opens == [
+        ("bullet_list_open", "checklist contains-task-list", ["contains-task-list"]),
+        ("list_item_open", "kpress-task task-list-item", ["kpress-task", "task-list-item"]),
+        ("list_item_open", None, None),
+        ("ordered_list_open", "contains-task-list steps", []),
+        ("list_item_open", "kpress-task task-list-item", ["kpress-task", "task-list-item"]),
+    ]
+    authors = [
+        [name for name in str(cls).split() if name not in (kpress or ())]
+        for _, cls, kpress in opens
+        if cls is not None
+    ]
+    assert authors == [["checklist"], [], ["contains-task-list", "steps"], []]
+    # The record is meta only: the HTML is what the classes alone render.
+    assert md.renderer.render(tokens, md.options, {}) == (
+        '<ul class="checklist contains-task-list">\n'
+        f'<li class="kpress-task task-list-item">{_OPEN_BOX} Open</li>\n'
+        "<li>Plain</li>\n"
+        "</ul>\n"
+        "<p>Between.</p>\n"
+        '<ol class="contains-task-list steps">\n'
+        f'<li class="kpress-task task-list-item">{_TICKED_BOX} Done</li>\n'
+        "</ol>\n"
+    )
+
+
 def test_any_markdown_it_renderer_draws_the_box_from_the_token_alone() -> None:
     # A renderer without KPress's rules, such as markdown-it's stock one, writes the same
     # disabled checkbox, never a bare `<input>` (a text field).

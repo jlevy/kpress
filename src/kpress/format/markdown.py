@@ -102,6 +102,10 @@ _TASK_MARKER_RE = re.compile(r"\[([ \t\n\v\f\rxX])\][ \t\n\v\f\r]")
 # (only when ticked), `disabled`, `type`, so markdown-it's own `renderToken` draws it,
 # in KPress's renderer or any other.
 _TASK_CHECKBOX_TOKEN = "kpress_task_checkbox"
+# A task item's `list_item_open` token and its list's open token carry KPress's classes
+# in `class`, beside any the author gave by attribute syntax, so this meta key lists the
+# ones KPress appended (`_add_kpress_classes`).
+_KPRESS_CLASSES_META = "kpress_classes"
 _YOUTUBE_HOSTS = {
     "m.youtube.com",
     "www.youtube.com",
@@ -427,12 +431,21 @@ def _take_task_marker(inline: Token) -> str | None:
     return marker
 
 
-def _add_token_classes(token: Token, *class_names: str) -> None:
+def _add_kpress_classes(token: Token, *class_names: str) -> None:
+    """Append each of *class_names* that *token*'s class lacks, and record it as KPress's.
+
+    `meta["kpress_classes"]` lists, in order, the classes KPress appended, so a consumer
+    of the token stream can tell them from the author's, given by attribute syntax.
+    """
+
     classes = str(token.attrGet("class") or "").split()
+    added = [str(name) for name in token.meta.get(_KPRESS_CLASSES_META, ())]
     for class_name in class_names:
         if class_name not in classes:
             classes.append(class_name)
+            added.append(class_name)
     token.attrSet("class", " ".join(classes))
+    token.meta[_KPRESS_CLASSES_META] = added
 
 
 def _task_lists(state: StateCore) -> None:
@@ -462,8 +475,8 @@ def _task_lists(state: StateCore) -> None:
             if marker is None:
                 continue
             token.children = [_task_checkbox(marker), *(token.children or ())]
-            _add_token_classes(tokens[idx - 2], "kpress-task", "task-list-item")
-            _add_token_classes(open_lists[-1], "contains-task-list")
+            _add_kpress_classes(tokens[idx - 2], "kpress-task", "task-list-item")
+            _add_kpress_classes(open_lists[-1], "contains-task-list")
 
 
 def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode) -> MarkdownIt:

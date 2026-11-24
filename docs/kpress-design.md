@@ -166,7 +166,11 @@ feature guarantees); the sections named in the table carry the architecture deta
   `format/markdown.py`, whose `meta["checked"]` holds the state, so a consumer of the
   token stream never has to match the box’s HTML. The token carries the box’s
   attributes, so any markdown-it renderer writes the same disabled checkbox.
-  The box is the one `<input>` the `sanitized` mode keeps as it is.
+  The item’s open token gets the classes `kpress-task task-list-item` and its list’s
+  `contains-task-list`, after any the author gave by attribute syntax, and each lists
+  the ones KPress appended in `meta["kpress_classes"]`, so a consumer can tell KPress’s
+  classes from the author’s. The box is the one `<input>` the `sanitized` mode keeps as
+  it is.
 - **GitHub-compatible heading anchors and TOC metadata.** Heading ids are generated from
   visible plain inline text by a dependency-free implementation pinned to
   `github-slugger` 2.0.0 at commit `3461c4350868329c8530904d170358bca1d31448` and its
