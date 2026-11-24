@@ -10,7 +10,9 @@ that survives.
 
 This builds a page, copies each task list with every class removed and each box reduced
 to those attributes, and compares what Chromium computes for the two, on screen and in
-print, item by item.
+print, item by item. Only a `ul` item drops its marker for the box: an ordered item,
+a footnote among them, keeps its number, so a class-free ordered task list shows the
+number beside the box, where KPress's classed one shows the box alone.
 """
 
 from __future__ import annotations
@@ -106,6 +108,7 @@ _DESCRIBE = """
     }
     return {
       text: item.textContent.trim().split("\\n")[0],
+      ordered: item.parentElement.tagName === "OL",
       listStyle: style.listStyleType,
       bullet: before.content,
       height: itemRect.height,
@@ -121,9 +124,9 @@ class _QuietHandler(SimpleHTTPRequestHandler):
         _ = (format, args)
 
 
-def _build_fixture_site(tmp_path: Path) -> Path:
+def _build_fixture_site(tmp_path: Path, source: str) -> Path:
     (tmp_path / "content").mkdir(parents=True)
-    (tmp_path / "content" / "index.md").write_text(_SOURCE, encoding="utf-8")
+    (tmp_path / "content" / "index.md").write_text(source, encoding="utf-8")
     (tmp_path / "kpress.yml").write_text(
         "sources:\n  - path: content\npublish:\n  output_dir: public\n  asset_mode: linked\n",
         encoding="utf-8",
@@ -146,14 +149,14 @@ def _launch_chromium(playwright: Any, sync_api: Any) -> Any:
 
 
 @contextmanager
-def _task_page(tmp_path: Path) -> Generator[Any]:
-    """The fixture site, served locally and open in Chromium with its fonts settled."""
+def _task_page(tmp_path: Path, source: str = _SOURCE) -> Generator[Any]:
+    """A site of *source*, served locally and open in Chromium with its fonts settled."""
     sync_api = (
         import_module("playwright.sync_api")
         if os.environ.get("KPRESS_REQUIRE_BROWSER") == "1"
         else pytest.importorskip("playwright.sync_api")
     )
-    public = _build_fixture_site(tmp_path)
+    public = _build_fixture_site(tmp_path, source)
     handler = partial(_QuietHandler, directory=str(public))
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -165,7 +168,7 @@ def _task_page(tmp_path: Path) -> Generator[Any]:
                 context = browser.new_context(viewport={"width": 900, "height": 900})
                 page = context.new_page()
                 page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
-                page.wait_for_selector(".kpress-prose .contains-task-list")
+                page.wait_for_selector(".kpress-prose")
                 page.evaluate("document.fonts.ready")
                 yield page
             finally:
@@ -195,7 +198,17 @@ def test_a_task_list_without_classes_draws_as_the_classed_one(tmp_path: Path) ->
         for index in range(count):
             classed = described[media, f"classed-{index}"]
             bare = described[media, f"bare-{index}"]
-            assert bare == classed, (media, index)
+            for classed_item, bare_item in zip(classed, bare, strict=True):
+                if bare_item["ordered"] and bare_item["box"] is not None:
+                    # An ordered item keeps its number without `.kpress-task`.
+                    if media == "screen":
+                        assert (classed_item["listStyle"], bare_item["listStyle"]) == (
+                            "none",
+                            "decimal",
+                        ), bare_item
+                    classed_item = {**classed_item, "listStyle": None}
+                    bare_item = {**bare_item, "listStyle": None}
+                assert bare_item == classed_item, (media, index)
 
     # And what both draw is KPress's box with no bullet, not the browser's checkbox.
     screen = [item for index in range(count) for item in described["screen", f"bare-{index}"]]
@@ -205,7 +218,7 @@ def test_a_task_list_without_classes_draws_as_the_classed_one(tmp_path: Path) ->
         assert item["box"]["appearance"] == "none", item
         assert item["box"]["mask"].startswith('url("data:image/svg+xml'), item
         assert item["bullet"] in ("none", "normal"), item
-        assert item["listStyle"] == "none", item
+        assert item["listStyle"] == ("decimal" if item["ordered"] else "none"), item
     assert [item["box"]["checked"] for item in tasks] == [
         False,
         True,
@@ -220,3 +233,47 @@ def test_a_task_list_without_classes_draws_as_the_classed_one(tmp_path: Path) ->
     # A plain item keeps its bullet, beside a task item as anywhere else.
     plain = [item for item in screen if item["text"].startswith("A plain item")]
     assert [item["bullet"] for item in plain] == ['""']
+
+
+#: An ordered item and a footnote whose first element is a box, each beside one that
+#: is not. `sanitized` output, which a site build writes, keeps the raw box disabled.
+_NUMBERED_SOURCE = (
+    "# Numbered boxes\n\n"
+    '1. <input type="checkbox" disabled> first\n'
+    "2. second\n\n"
+    "Note[^1] and another[^2].\n\n"
+    '[^1]: <input type="checkbox" disabled> pending\n'
+    "[^2]: plain\n"
+)
+
+#: Each ordered item's marker, on its own and through `::before`, which print draws.
+_MARKERS = """
+() => [...document.querySelectorAll(".kpress-prose ol > li")].map((item) => ({
+  text: item.textContent.trim(),
+  listStyle: getComputedStyle(item).listStyleType,
+  before: getComputedStyle(item, "::before").content,
+}))
+"""
+
+
+def test_an_ordered_item_or_footnote_that_starts_with_a_box_keeps_its_number(
+    tmp_path: Path,
+) -> None:
+    with _task_page(tmp_path, _NUMBERED_SOURCE) as page:
+        markers: dict[str, list[dict[str, str]]] = {}
+        for media in ("screen", "print"):
+            page.emulate_media(media=media)
+            markers[media] = cast(list[dict[str, str]], page.evaluate(_MARKERS))
+
+    for media, items in markers.items():
+        assert [item["text"].split()[0] for item in items] == [
+            "first",
+            "second",
+            "pending",
+            "plain",
+        ], media
+        boxed = [items[0], items[2]]
+        plain = [items[1], items[3]]
+        for box_item, plain_item in zip(boxed, plain, strict=True):
+            assert {**box_item, "text": ""} == {**plain_item, "text": ""}, media
+    assert markers["screen"][0]["listStyle"] == "decimal"

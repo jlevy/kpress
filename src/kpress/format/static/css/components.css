@@ -1126,7 +1126,10 @@
    Metabrowser's inert hardener does, and there the box drew as the browser's own
    checkbox under a bullet. That is safe in `sanitized` output, where the box is the
    only `<input>` that survives. CSS cannot see text, so an item whose first element
-   is a checkbox after some words also loses its bullet.
+   is a checkbox after some words also loses its bullet. Only a `ul` item loses its
+   marker that way: an ordered item, a footnote among them, keeps its number, which
+   the reader needs, so a class-free ordered task list shows the number beside the
+   box, where KPress's classed one shows the box alone (`.kpress-task`).
 
    The structural selectors put `:where()` around their context so each ties the
    class rule beside it on specificity, and an element both match is styled exactly
@@ -1154,10 +1157,11 @@
 
 .kpress-prose
   :where(
-    li:has(
-      > input[type="checkbox"]:first-child,
-      > p:first-child > input[type="checkbox"]:first-child
-    )
+    ul
+      > li:has(
+        > input[type="checkbox"]:first-child,
+        > p:first-child > input[type="checkbox"]:first-child
+      )
   ) {
   list-style: none;
 }
