@@ -223,32 +223,34 @@ def _input_attribute(name: str, value: str) -> str | None:
     return _INPUT_VALUES.get(name)
 
 
-def _canonical_inputs(sanitized: str) -> tuple[str, int, int]:
+def _input_form(kept: Iterable[str]) -> str:
+    """An input with the attributes named in *kept*, written in `_INPUT_VALUES` order."""
+
+    names = set(kept)
+    return (
+        "<input"
+        + "".join(f' {name}="{value}"' for name, value in _INPUT_VALUES.items() if name in names)
+        + ">"
+    )
+
+
+def _canonical_inputs(sanitized: str) -> tuple[str, list[str]]:
     """Write each checkbox of nh3 output in `_INPUT_VALUES` order and remove any other input.
 
-    Also return how many inputs nh3 kept and how many of them are checkboxes.
+    Also return, in document order, the form of each input nh3 kept, checkbox or not.
     """
 
-    boxes = 0
+    forms: list[str] = []
 
     def canonical(match: re.Match[str]) -> str:
-        nonlocal boxes
         present = set(match.group(1).split())
-        if f'type="{_INPUT_VALUES["type"]}"' not in present:
-            return ""
-        boxes += 1
-        return (
-            "<input"
-            + "".join(
-                f' {name}="{value}"'
-                for name, value in _INPUT_VALUES.items()
-                if f'{name}="{value}"' in present
-            )
-            + ">"
+        form = _input_form(
+            name for name, value in _INPUT_VALUES.items() if f'{name}="{value}"' in present
         )
+        forms.append(form)
+        return form if f'type="{_INPUT_VALUES["type"]}"' in present else ""
 
-    sanitized, inputs = _SANITIZED_INPUT_RE.subn(canonical, sanitized)
-    return sanitized, inputs, boxes
+    return _SANITIZED_INPUT_RE.sub(canonical, sanitized), forms
 
 
 # Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
@@ -402,22 +404,156 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
 # this set themselves, also after `<noscript/>`, since HTML ignores the slash there.
 _RAW_TEXT_ELEMENTS = ("script", "style", "xmp", "iframe", "noembed", "noframes", "noscript")
 # The open elements that decide whether an input survives (`_input_survives`): an input
-# in SVG or MathML is a foreign element, unless a MathML text element, where html5ever
-# parses HTML again, encloses it, and a `<template>`'s content is never output.
-_DROPS_INPUTS = frozenset({"math", "svg", "template"})
+# in SVG or MathML is a foreign element, unless a MathML text element directly in
+# MathML, where html5ever parses HTML again, encloses it, and a `<template>`'s content is
+# never output.
+_FOREIGN_ROOTS = frozenset({"math", "svg"})
+_DROPS_INPUTS = _FOREIGN_ROOTS | {"template"}
 _MATHML_TEXT_ELEMENTS = frozenset({"mi", "mn", "mo", "ms", "mtext"})
-_INPUT_CONTEXTS = _DROPS_INPUTS | _MATHML_TEXT_ELEMENTS
+# The start tags that end SVG or MathML content where they appear, by HTML's rules for
+# foreign content, which html5ever follows; `font` does only with one of the attributes
+# below, and the end tags `</br>` and `</p>` do as well.
+_BREAKS_OUT_OF_FOREIGN = frozenset(
+    {
+        "b",
+        "big",
+        "blockquote",
+        "body",
+        "br",
+        "center",
+        "code",
+        "dd",
+        "div",
+        "dl",
+        "dt",
+        "em",
+        "embed",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "head",
+        "hr",
+        "i",
+        "img",
+        "li",
+        "listing",
+        "menu",
+        "meta",
+        "nobr",
+        "ol",
+        "p",
+        "pre",
+        "ruby",
+        "s",
+        "small",
+        "span",
+        "strong",
+        "strike",
+        "sub",
+        "sup",
+        "table",
+        "tt",
+        "u",
+        "ul",
+        "var",
+    }
+)
+_FONT_BREAKS_OUT_WITH = frozenset({"color", "face", "size"})
+_END_TAGS_BREAKING_OUT = frozenset({"br", "p"})
+
+
+class _Html5everContexts(HTMLParser):
+    """Track the open elements that decide what html5ever makes of a tag.
+
+    Those are SVG and MathML roots, a MathML text element directly in MathML, and a
+    `<template>`, innermost last; every other element is left out, so an end tag costs
+    amortized constant time however the document nests. The model leaves out, among
+    other things, an HTML end tag that closes SVG open inside its element, so what it
+    predicts is checked against nh3's output.
+    """
+
+    def __init__(self, *, convert_charrefs: bool) -> None:
+        super().__init__(convert_charrefs=convert_charrefs)
+        self._contexts: list[str] = []
+        self._context_counts: dict[str, int] = {}
+
+    def _in_foreign_content(self) -> bool:
+        return bool(self._contexts) and self._contexts[-1] in _FOREIGN_ROOTS
+
+    def _pop_context(self) -> str:
+        closed = self._contexts.pop()
+        self._context_counts[closed] -= 1
+        return closed
+
+    def _leave_foreign_content(self) -> None:
+        while self._in_foreign_content():
+            self._pop_context()
+
+    def _start(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Before a start tag is handled, leave the foreign content it ends."""
+
+        if self._in_foreign_content() and (
+            tag in _BREAKS_OUT_OF_FOREIGN
+            or (tag == "font" and any(name in _FONT_BREAKS_OUT_WITH for name, _ in attrs))
+        ):
+            self._leave_foreign_content()
+
+    def _opened(self, tag: str, *, self_closing: bool) -> None:
+        """After a start tag is handled, enter what it opens."""
+
+        foreign = self._in_foreign_content()
+        if self_closing and (foreign or tag in _FOREIGN_ROOTS):
+            return  # html5ever closes a self-closing foreign element at once
+        if tag in _RAW_TEXT_ELEMENTS:
+            self.set_cdata_mode(tag)
+        if (
+            tag in _FOREIGN_ROOTS
+            or (tag == "template" and not foreign)
+            or (tag in _MATHML_TEXT_ELEMENTS and self._contexts and self._contexts[-1] == "math")
+        ):
+            self._contexts.append(tag)
+            self._context_counts[tag] = self._context_counts.get(tag, 0) + 1
+
+    def _end(self, tag: str) -> None:
+        """Close the innermost open context of this name and every context inside it."""
+
+        if self._in_foreign_content() and tag in _END_TAGS_BREAKING_OUT:
+            self._leave_foreign_content()
+            return
+        if not self._context_counts.get(tag):
+            return
+        while self._contexts and self._pop_context() != tag:
+            pass
 
 
 @dataclass(frozen=True)
 class _InputAudit:
-    """One `<input>` the audit saw: where, whether it survives parsing and is a checkbox,
-    and how it changes when it is kept."""
+    """One `<input>` the audit saw: where, whether it survives parsing, the form nh3 keeps
+    it in if it does, whether that is a checkbox, and how it changes when it is kept."""
 
     location: str
     survives: bool
-    box: bool
+    form: str
     diagnostics: list[Diagnostic]
+
+    @property
+    def box(self) -> bool:
+        return f' type="{_INPUT_VALUES["type"]}"' in self.form
+
+
+def _expected_input_form(attrs: list[tuple[str, str | None]]) -> str:
+    """The form nh3 keeps an input with *attrs* in, before `_canonical_inputs` runs."""
+
+    values: dict[str, str | None] = {}
+    for name, value in attrs:
+        values.setdefault(name, value)  # the first of a repeated attribute wins
+    kept = {
+        name for name, value in values.items() if _input_attribute(name, value or "") is not None
+    }
+    return _input_form(kept | set(_INPUT_SET_VALUES))
 
 
 def _input_diagnostics(attrs: list[tuple[str, str | None]], location: str) -> list[Diagnostic]:
@@ -454,7 +590,7 @@ def _input_diagnostics(attrs: list[tuple[str, str | None]], location: str) -> li
     return diagnostics
 
 
-class _SanitizerAudit(HTMLParser):
+class _SanitizerAudit(_Html5everContexts):
     """Mirror the nh3 policy to diagnose each removed tag and attribute and each set value.
 
     Keep this audit in sync with the policy constants above and the
@@ -473,10 +609,6 @@ class _SanitizerAudit(HTMLParser):
         self.restricted_tags = pass_through - _ALLOWED_TAGS
         self.extra_attributes = extra_attributes
         self._entries: list[Diagnostic | _InputAudit] = []
-        # The open `_INPUT_CONTEXTS` elements, innermost last, and how many of each, so
-        # an end tag costs amortized constant time however the document nests.
-        self._contexts: list[str] = []
-        self._context_counts: dict[str, int] = {}
 
     def _location(self) -> str:
         line, offset = self.getpos()
@@ -516,12 +648,11 @@ class _SanitizerAudit(HTMLParser):
             self._entries.append(self._removed_tag(tag, location))
             return
         if tag == "input":
-            kind = next((value for name, value in attrs if name == "type"), None)
             self._entries.append(
                 _InputAudit(
                     location=location,
                     survives=self._input_survives(),
-                    box=_is_checkbox_type(kind),
+                    form=_expected_input_form(attrs),
                     diagnostics=_input_diagnostics(attrs, location),
                 )
             )
@@ -551,54 +682,42 @@ class _SanitizerAudit(HTMLParser):
     def _input_survives(self) -> bool:
         """Whether an input here survives, judged from the innermost open context.
 
-        This model leaves out how html5ever closes foreign content early, and that an
-        `<mi>` inside SVG is no MathML text element, so `sanitize_raw_html` trusts it
-        only when the number of inputs it predicts matches the output.
+        `sanitize_raw_html` trusts this only when every input it predicts kept is in
+        nh3's output, in order and in the form predicted (`finish`).
         """
 
         return not self._contexts or self._contexts[-1] not in _DROPS_INPUTS
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
         self._audit_tag(tag, attrs)
-        if tag in _RAW_TEXT_ELEMENTS:
-            self.set_cdata_mode(tag)
-        if tag in _INPUT_CONTEXTS:
-            self._contexts.append(tag)
-            self._context_counts[tag] = self._context_counts.get(tag, 0) + 1
+        self._opened(tag, self_closing=False)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
         self._audit_tag(tag, attrs)
-        if tag in _RAW_TEXT_ELEMENTS:
-            self.set_cdata_mode(tag)
+        self._opened(tag, self_closing=True)
 
     def handle_endtag(self, tag: str) -> None:
-        # Close the innermost open element of this name and every context inside it.
-        if not self._context_counts.get(tag):
-            return
-        while self._contexts:
-            closed = self._contexts.pop()
-            self._context_counts[closed] -= 1
-            if closed == tag:
-                break
+        self._end(tag)
 
     @property
     def inputs_seen(self) -> int:
         return sum(isinstance(entry, _InputAudit) for entry in self._entries)
 
-    def finish(self, survivors: int, boxes: int) -> tuple[list[Diagnostic], bool]:
-        """The diagnostics, given how many inputs survived parsing and how many of them
-        were kept as checkboxes, and whether any diagnostic is an input's.
+    def finish(self, input_forms: list[str]) -> tuple[list[Diagnostic], bool]:
+        """The diagnostics, given the form of each input nh3 kept, in document order, and
+        whether any diagnostic is an input's.
 
         An input that did not survive, or is not a checkbox, is reported as removed, not
-        edited. When the model disagrees with either count, the inputs that went are
-        unknown, so no input is reported and the caller's catch-all covers them.
+        edited. When the inputs predicted kept are not those nh3 kept, in order and form,
+        the inputs that went are unknown, so no input is reported and the caller's
+        catch-all covers them. Two mispredictions that leave the same forms in the same
+        order still pass, with each report at the other's location.
         """
 
         inputs = [entry for entry in self._entries if isinstance(entry, _InputAudit)]
-        known = (
-            sum(entry.survives for entry in inputs) == survivors
-            and sum(entry.survives and entry.box for entry in inputs) == boxes
-        )
+        known = [entry.form for entry in inputs if entry.survives] == input_forms
         diagnostics: list[Diagnostic] = []
         reported_inputs = False
         for entry in self._entries:
@@ -700,14 +819,14 @@ def sanitize_raw_html(
     )
     if filter_errors:
         raise filter_errors[0]
-    sanitized, survivors, boxes = _canonical_inputs(sanitized)
-    diagnostics, reported_inputs = audit.finish(survivors, boxes)
+    sanitized, input_forms = _canonical_inputs(sanitized)
+    diagnostics, reported_inputs = audit.finish(input_forms)
     # Safety net for drift between the audit and the nh3 policy: report a change the
     # audit did not explain. Compare content, not strings, because nh3 also strips
     # comments and reserializes (a non-breaking space becomes `&nbsp;`), and neither
     # removes anything a reader would see. An input that changed is reported even beside
     # other diagnostics, since none of those explains it.
-    check_inputs = not reported_inputs and bool(survivors or audit.inputs_seen)
+    check_inputs = not reported_inputs and bool(input_forms or audit.inputs_seen)
     if sanitized != html and (not diagnostics or check_inputs):
         before, after = _content_events(html), _content_events(sanitized)
         if diagnostics:

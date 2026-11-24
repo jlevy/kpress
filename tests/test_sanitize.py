@@ -503,6 +503,14 @@ def _no_input_diagnostics(*_args: object) -> list[Diagnostic]:
     return []
 
 
+def _set_disabled(location: str) -> tuple[str, str, str]:
+    return (
+        "html_sanitized_attribute",
+        "Set attribute 'disabled' to 'disabled' on <input>.",
+        location,
+    )
+
+
 def test_an_attribute_filter_error_is_raised_not_passed_to_nh3(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -581,16 +589,70 @@ def test_an_attribute_filter_error_is_raised_not_passed_to_nh3(
                 )
             ],
         ),
-        # html5ever leaves SVG at `<p>`, which the audit does not model: the count of
-        # inputs disagrees, so no input is reported as edited and the catch-all fires.
+        # html5ever leaves SVG at `<p>` and the other tags HTML says end foreign content.
         (
             '<svg><p><input type="checkbox">',
             f"<svg></svg><p>{_INERT}</p>",
-            [("html_sanitized", "Raw HTML was removed or rewritten for this trust mode.", None)],
+            [_set_disabled("line 1, column 9")],
         ),
         (
             '<svg><p><input type="text">',
             "<svg></svg><p></p>",
+            [("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 9")],
+        ),
+        (
+            '<svg><g><b>x</b><input type="checkbox"></svg>',
+            f"<svg><g></g></svg><b>x</b>{_INERT}",
+            [_set_disabled("line 1, column 17")],
+        ),
+        (
+            '<svg></p><input type="checkbox"></svg>',
+            f"<svg></svg><p></p>{_INERT}",
+            [_set_disabled("line 1, column 10")],
+        ),
+        (
+            '<svg><font color="red"><input type="checkbox"></svg>',
+            f"<svg></svg>{_INERT}",
+            [
+                ("html_sanitized_tag", "Removed raw HTML tag <font>.", "line 1, column 6"),
+                _set_disabled("line 1, column 24"),
+            ],
+        ),
+        (
+            '<svg><font><input type="checkbox"></svg>',
+            "<svg></svg>",
+            [
+                ("html_sanitized_tag", "Removed raw HTML tag <font>.", "line 1, column 6"),
+                ("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 12"),
+            ],
+        ),
+        # In SVG, `<mi>` is no MathML text element, so its input is foreign; the
+        # mispredictions here once cancelled in a count and swapped the two reports.
+        (
+            '<svg><mi><input type="checkbox" name="a"></mi></svg>'
+            '<svg><p><input type="checkbox" checked></p></svg>',
+            '<svg></svg><svg></svg><p><input checked="checked" disabled="disabled" '
+            'type="checkbox"></p>',
+            [
+                ("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 10"),
+                _set_disabled("line 1, column 61"),
+            ],
+        ),
+        # `<template/>` stays open, since HTML ignores the slash on it.
+        (
+            '<template/><input type="checkbox">',
+            "",
+            [
+                ("html_sanitized_tag", "Removed raw HTML tag <template>.", "line 1, column 1"),
+                ("html_sanitized_tag", "Removed raw HTML tag <input>.", "line 1, column 12"),
+            ],
+        ),
+        # An HTML end tag closes SVG open inside its element, which the audit does not
+        # model: the inputs it predicts kept are not those nh3 kept, so no input is
+        # reported as edited and the catch-all fires.
+        (
+            '<div><svg><input type="checkbox"></div><input type="checkbox">',
+            f"<div><svg></svg></div>{_INERT}",
             [("html_sanitized", "Raw HTML was removed or rewritten for this trust mode.", None)],
         ),
     ],
@@ -630,20 +692,39 @@ def test_an_unexplained_input_change_is_reported_beside_other_diagnostics(
     assert [item.type for item in diagnostics] == ["html_sanitized_attribute", "html_sanitized"]
 
 
+def _no_checkbox_form(*_args: object) -> str:
+    return '<input disabled="disabled">'
+
+
 def test_an_input_the_audit_expects_removed_but_the_policy_keeps_gets_the_catch_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Simulate drift: the policy keeps a text field as a checkbox, which the audit
-    # expects removed, so the count of checkboxes disagrees and the catch-all fires.
-    keep_input_attribute = sanitize._input_attribute  # pyright: ignore[reportPrivateUsage]
-
-    def any_type_is_a_checkbox(name: str, value: str) -> str | None:
-        return "checkbox" if name == "type" else keep_input_attribute(name, value)
-
-    monkeypatch.setattr(sanitize, "_input_attribute", any_type_is_a_checkbox)
-    sanitized, diagnostics = sanitize_raw_html('<input type="text">', "sanitized")
+    # Simulate drift: the audit expects nh3 to keep the checkbox without its `type`, so
+    # it would be removed, and the form nh3 kept disagrees: the catch-all fires.
+    monkeypatch.setattr(sanitize, "_expected_input_form", _no_checkbox_form)
+    sanitized, diagnostics = sanitize_raw_html('<input type="checkbox">', "sanitized")
 
     assert sanitized == _INERT
+    assert [item.type for item in diagnostics] == ["html_sanitized"]
+
+
+def test_mispredictions_that_cancel_in_number_still_get_the_catch_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Simulate a survival model wrong twice: it keeps the input in SVG and drops the
+    # next one. As many inputs survive as it predicts, but not the ones it predicts.
+    predictions = iter([True, False])
+
+    def survives(_audit: object) -> bool:
+        return next(predictions)
+
+    monkeypatch.setattr(sanitize._SanitizerAudit, "_input_survives", survives)  # pyright: ignore[reportPrivateUsage]
+    sanitized, diagnostics = sanitize_raw_html(
+        '<svg><input type="checkbox" name="a"></svg><input type="checkbox" checked>',
+        "sanitized",
+    )
+
+    assert sanitized == '<svg></svg><input checked="checked" disabled="disabled" type="checkbox">'
     assert [item.type for item in diagnostics] == ["html_sanitized"]
 
 
