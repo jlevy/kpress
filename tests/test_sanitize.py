@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 
+import nh3
 import pytest
 
 from kpress.errors import KPressInvalidRequestError
@@ -243,6 +244,18 @@ _TICKED_BOX = (
     '<input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox">'
 )
 _INERT = '<input disabled="disabled" type="checkbox">'
+
+
+def _title(value: str) -> str:
+    """Spell `value` as nh3 writes it in an attribute.
+
+    nh3 0.3.5, the locked version, writes `<` and `>` there as they are and 0.3.7
+    writes `&lt;` and `&gt;`; `pyproject.toml` admits both.
+    """
+    spelled = nh3.clean(
+        f'<a title="{value}">a</a>', tags={"a"}, attributes={"a": {"title"}}, link_rel=None
+    )
+    return spelled.removeprefix('<a title="').removesuffix('">a</a>')
 
 
 @pytest.mark.parametrize("box", [_BOX, _TICKED_BOX])
@@ -580,7 +593,7 @@ def test_an_attribute_filter_error_is_raised_not_passed_to_nh3(
         # An `<input>` in an attribute value is text, not an input that survived.
         (
             '<a title="<input>" href="https://x.example">a</a><input type="CHECKBOX" disabled>',
-            f'<a title="<input>" href="https://x.example">a</a>{_INERT}',
+            f'<a title="{_title("<input>")}" href="https://x.example">a</a>{_INERT}',
             [
                 (
                     "html_sanitized_attribute",
@@ -890,7 +903,7 @@ def test_a_button_can_never_submit_or_reset_a_host_form(
         # A `<button>` in an attribute value is text, not a button that survived.
         (
             '<a title="<button>">a</a><svg><button>b</button></svg>',
-            '<a title="<button>">a</a><svg></svg>',
+            f'<a title="{_title("<button>")}">a</a><svg></svg>',
             [("html_sanitized_tag", "Removed raw HTML tag <button>.", "line 1, column 31")],
         ),
         # An HTML end tag closes SVG open inside its element, which the audit does not
