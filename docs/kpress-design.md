@@ -170,7 +170,9 @@ feature guarantees); the sections named in the table carry the architecture deta
   `contains-task-list`, after any the author gave by attribute syntax, and each lists
   the ones KPress appended in `meta["kpress_classes"]`, so a consumer can tell KPress’s
   classes from the author’s. The box is the one `<input>` the `sanitized` mode keeps as
-  it is.
+  it is. Its styles key on its place, the first element of its item or of the item’s
+  first paragraph, as well as on those classes, so a host that strips every class and
+  keeps only `<input type="checkbox" disabled>` still draws KPress’s box with no bullet.
 - **GitHub-compatible heading anchors and TOC metadata.** Heading ids are generated from
   visible plain inline text by a dependency-free implementation pinned to
   `github-slugger` 2.0.0 at commit `3461c4350868329c8530904d170358bca1d31448` and its

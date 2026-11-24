@@ -1118,8 +1118,33 @@
 /* Task-list checkboxes: one clean box (no extra prose bullet), drawn with the
    shared Lucide `square` / `square-check` glyphs via a mask. Unchecked is a dimmer
    gray empty box; checked is a darker box with a check. The disabled <input> stays
-   for its accessible checked/unchecked state. */
+   for its accessible checked/unchecked state.
+
+   Each rule also keys on where the box sits, the first element of its item or of
+   the item's first paragraph (a loose list), because a host that sanitizes KPress's
+   HTML again can strip every class and keep only `<input type="checkbox" disabled>`:
+   Metabrowser's inert hardener does, and there the box drew as the browser's own
+   checkbox under a bullet. That is safe in `sanitized` output, where the box is the
+   only `<input>` that survives. CSS cannot see text, so an item whose first element
+   is a checkbox after some words also loses its bullet.
+
+   The structural selectors put `:where()` around their context so each ties the
+   class rule beside it on specificity, and an element both match is styled exactly
+   as before. The two rules that need `:has()` stay apart from the class rules, since
+   a browser without it drops a rule that shares its selector list. The bullet rule
+   outranks its class rule, which changes nothing: no KPress rule between the two
+   sets `content` on an item's `::before`. tests/test_playwright_task_box.py compares
+   a class-free list with the classed one in Chromium. */
 .kpress-prose ul > li.kpress-task::before {
+  content: none;
+}
+
+.kpress-prose
+  ul
+  > li:has(
+    > input[type="checkbox"]:first-child,
+    > p:first-child > input[type="checkbox"]:first-child
+  )::before {
   content: none;
 }
 
@@ -1127,7 +1152,19 @@
   list-style: none;
 }
 
-.kpress-task input[type="checkbox"] {
+.kpress-prose
+  :where(
+    li:has(
+      > input[type="checkbox"]:first-child,
+      > p:first-child > input[type="checkbox"]:first-child
+    )
+  ) {
+  list-style: none;
+}
+
+.kpress-task input[type="checkbox"],
+:where(.kpress-prose li) > input[type="checkbox"]:first-child,
+:where(.kpress-prose li > p:first-child) > input[type="checkbox"]:first-child {
   appearance: none;
   background-color: var(--kpress-doc-muted);
   block-size: var(--kpress-checkbox-size);
@@ -1140,7 +1177,9 @@
   vertical-align: -0.15em;
 }
 
-.kpress-task input[type="checkbox"]:checked {
+.kpress-task input[type="checkbox"]:checked,
+:where(.kpress-prose li) > input[type="checkbox"]:first-child:checked,
+:where(.kpress-prose li > p:first-child) > input[type="checkbox"]:first-child:checked {
   background-color: var(--kpress-doc-text);
   mask:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' stroke-width='2'/%3E%3Cpath d='m7 12.5 3.5 3.5 6.5-7' stroke-width='2.5'/%3E%3C/svg%3E")
