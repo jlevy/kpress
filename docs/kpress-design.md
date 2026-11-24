@@ -174,8 +174,10 @@ feature guarantees); the sections named in the table carry the architecture deta
   the ones KPress appended in `meta["kpress_classes"]`, so a consumer can tell KPress’s
   classes from the author’s. The box is the one `<input>` the `sanitized` mode keeps as
   it is. Its styles key on its place, the first element of its item or of the item’s
-  first paragraph, as well as on those classes, so a host that strips every class and
-  keeps only `<input type="checkbox" disabled>` still draws KPress’s box with no bullet.
+  first paragraph, and on its being disabled, as well as on those classes, so a host
+  that strips every class and keeps only `<input type="checkbox" disabled>` still draws
+  KPress’s box with no bullet, and a checkbox a reader can tick in a `trusted` document
+  keeps the browser’s look.
   Only a `ul` item drops its marker for a box found by place; an ordered item, a
   footnote among them, keeps its number.
 - **GitHub-compatible heading anchors and TOC metadata.** Heading ids are generated from

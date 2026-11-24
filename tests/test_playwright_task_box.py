@@ -29,6 +29,7 @@ from typing import Any, cast
 
 import pytest
 
+from kpress.format import parse_markdown
 from kpress.publish import build_site
 
 #: Tight and loose task lists, an ordered one, one nested in an ordered item (which
@@ -277,3 +278,45 @@ def test_an_ordered_item_or_footnote_that_starts_with_a_box_keeps_its_number(
         for box_item, plain_item in zip(boxed, plain, strict=True):
             assert {**box_item, "text": ""} == {**plain_item, "text": ""}, media
     assert markers["screen"][0]["listStyle"] == "decimal"
+
+
+#: Checkboxes a reader can tick, as a `trusted` render writes them, beside a plain item
+#: and an inert box.
+_TICKABLE_SOURCE = (
+    '- <input type="checkbox"> Tickable, tight\n'
+    "- A plain item\n\n"
+    "Between.\n\n"
+    '- <input type="checkbox"> Tickable, loose\n\n'
+    '- <input type="checkbox" disabled> Inert, loose\n'
+)
+
+#: Put *html* at the end of the page's prose, in a holder `_DESCRIBE` can find.
+_APPEND = """
+(html) => {
+  const holder = document.createElement("div");
+  holder.dataset.probe = "trusted";
+  holder.innerHTML = html;
+  document.querySelector(".kpress-prose").append(holder);
+}
+"""
+
+
+def test_a_checkbox_a_reader_can_tick_keeps_the_browsers_look_and_its_bullet(
+    tmp_path: Path,
+) -> None:
+    html = parse_markdown(_TICKABLE_SOURCE, title="T", trust_mode="trusted").html
+    assert html.count('<input type="checkbox">') == 2
+    with _task_page(tmp_path, "# Trusted boxes\n\nText.\n") as page:
+        page.evaluate(_APPEND, html)
+        described = cast(list[dict[str, Any]], page.evaluate(_DESCRIBE, "trusted"))
+
+    items = {item["text"]: item for item in described}
+    assert set(items) == {"Tickable, tight", "A plain item", "Tickable, loose", "Inert, loose"}
+    for text in ("Tickable, tight", "Tickable, loose"):
+        item = items[text]
+        assert item["box"]["appearance"] != "none", item
+        assert item["box"]["mask"] == "none", item
+        assert item["bullet"] == items["A plain item"]["bullet"] == '""', item
+    inert = items["Inert, loose"]
+    assert inert["box"]["appearance"] == "none", inert
+    assert inert["bullet"] in ("none", "normal"), inert
