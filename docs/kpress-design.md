@@ -508,13 +508,15 @@ question: **do we trust the person who wrote this Markdown?**
   the pass-through whitelist.
   Everything else is stripped — the tag is removed, its text content is kept — and an
   `html_sanitized_tag` or `html_sanitized_attribute` diagnostic names what went.
-  An `<input>` is kept only as the disabled checkbox of a task list: any other input is
-  a live form control, so it keeps only `checked` and the box’s class
-  (`task-list-item-checkbox`, alone), becomes a disabled checkbox written byte for byte
-  as KPress writes its box, and a diagnostic names each attribute removed or set.
-  An input that does not survive parsing, such as one inside SVG, is reported as
-  removed. A `<button>` is always `type="button"`, as KPress’s own buttons are, and no
-  element keeps `form`, so a document cannot submit or reset a form on the host page.
+  An `<input>` is kept only as the disabled checkbox of a task list, since any other
+  input is a live form control: one whose `type` is not `checkbox` is removed, a missing
+  `type` included, since that is a text field.
+  A checkbox keeps only `checked` and the box’s class (`task-list-item-checkbox`,
+  alone), and becomes a disabled checkbox written byte for byte as KPress writes its
+  box. A diagnostic names each attribute removed or set and each input removed, one that
+  does not survive parsing, such as one inside SVG, included.
+  A `<button>` is always `type="button"`, as KPress’s own buttons are, and no element
+  keeps `form`, so a document cannot submit or reset a form on the host page.
   Comments are stripped silently, since they carry no content, and so is nh3’s
   reserialization (entity spelling, quoting); a change the audit cannot explain gets the
   catch-all `html_sanitized`. This is what the dynamic render API

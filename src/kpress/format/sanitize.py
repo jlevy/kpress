@@ -154,12 +154,14 @@ _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
 # `<input>` is admitted only as the box of a task list item (`_TASK_CHECKBOX_TOKEN` in
 # markdown.py): a disabled checkbox, ticked or not. Any other input is a live form
 # control, such as a text or password field, a submit button that `form` can tie to a
-# form on the host page, or `type="image"` loading a remote image. The sanitizer cannot
-# tell KPress's box from an input an author typed, so every `<input>` keeps only these
-# attributes, each with this one value, and is written with them in this order, which
-# is the order of KPress's own box: a sanitized input is byte for byte KPress's box.
-# `class` survives only when it names the box class, and then as that class alone, so a
-# forged input cannot take another KPress class.
+# form on the host page, or `type="image"` loading a remote image, so an input whose
+# `type` is not `checkbox` is removed (`_is_checkbox_type`), a missing `type` included,
+# since that is a text field. The sanitizer cannot tell KPress's box from a checkbox an
+# author typed, so every checkbox keeps only these attributes, each with this one value,
+# and is written with them in this order, which is the order of KPress's own box: a
+# sanitized input is byte for byte KPress's box. `class` survives only when it names the
+# box class, and then as that class alone, so a forged input cannot take another KPress
+# class.
 _TASK_CHECKBOX_CLASS = "task-list-item-checkbox"
 _INPUT_VALUES = {
     "class": _TASK_CHECKBOX_CLASS,
@@ -170,12 +172,14 @@ _INPUT_VALUES = {
 _INPUT_ATTRIBUTES = frozenset(_INPUT_VALUES)
 # The attributes every input is given. nh3 runs `attribute_filter` after it sets these,
 # so each must also be in `_INPUT_ATTRIBUTES`, or the filter would remove it again.
-_INPUT_SET_VALUES = {name: _INPUT_VALUES[name] for name in ("disabled", "type")}
-# nh3 adds the set values it finds missing in hash order, so `<input>` would come out
-# with `disabled` and `type` in either order; `_canonical_inputs` writes every input it
-# kept in `_INPUT_VALUES` order. Inside nh3's output this pattern matches only a real
-# tag: text escapes `<`, and an attribute value escapes `"`, so a value holding
-# `<input>` cannot match, since every kept input has at least one quoted attribute.
+# `type` is not one: an input without it is a text field, which nh3 must leave without
+# `type` so that `_canonical_input` removes it.
+_INPUT_SET_VALUES = {name: _INPUT_VALUES[name] for name in ("disabled",)}
+# nh3 keeps an input's attributes in source order and adds the set values it finds
+# missing in hash order; `_canonical_inputs` writes every checkbox in `_INPUT_VALUES`
+# order and removes every other input. Inside nh3's output this pattern matches only a
+# real tag: text escapes `<`, and an attribute value escapes `"`, so a value holding
+# `<input>` cannot match, since every input nh3 keeps has a quoted `disabled`.
 _SANITIZED_INPUT_RE = re.compile(
     "<input((?: (?:"
     + "|".join(re.escape(f'{name}="{value}"') for name, value in _INPUT_VALUES.items())
@@ -198,31 +202,53 @@ def _class_names(value: str) -> list[str]:
     return [name for name in _ASCII_WHITESPACE_RE.split(value) if name]
 
 
+def _is_checkbox_type(value: str | None) -> bool:
+    """Whether an input's `type` value makes it a checkbox.
+
+    HTML matches `type` ASCII case-insensitively; surrounding ASCII whitespace is
+    trimmed too, which makes no input a checkbox that would be anything worse.
+    """
+
+    kind = (value or "").strip("\t\n\f\r ")
+    return kind.isascii() and kind.lower() == "checkbox"
+
+
 def _input_attribute(name: str, value: str) -> str | None:
     """The value an input keeps for attribute *name*, or None when it loses it."""
 
     if name == "class":
         return _TASK_CHECKBOX_CLASS if _TASK_CHECKBOX_CLASS in _class_names(value) else None
+    if name == "type":
+        return _INPUT_VALUES["type"] if _is_checkbox_type(value) else None
     return _INPUT_VALUES.get(name)
 
 
-def _canonical_input(match: re.Match[str]) -> str:
-    present = set(match.group(1).split())
-    return (
-        "<input"
-        + "".join(
-            f' {name}="{value}"'
-            for name, value in _INPUT_VALUES.items()
-            if f'{name}="{value}"' in present
+def _canonical_inputs(sanitized: str) -> tuple[str, int, int]:
+    """Write each checkbox of nh3 output in `_INPUT_VALUES` order and remove any other input.
+
+    Also return how many inputs nh3 kept and how many of them are checkboxes.
+    """
+
+    boxes = 0
+
+    def canonical(match: re.Match[str]) -> str:
+        nonlocal boxes
+        present = set(match.group(1).split())
+        if f'type="{_INPUT_VALUES["type"]}"' not in present:
+            return ""
+        boxes += 1
+        return (
+            "<input"
+            + "".join(
+                f' {name}="{value}"'
+                for name, value in _INPUT_VALUES.items()
+                if f'{name}="{value}"' in present
+            )
+            + ">"
         )
-        + ">"
-    )
 
-
-def _canonical_inputs(sanitized: str) -> tuple[str, int]:
-    """Write each input of nh3 output in `_INPUT_VALUES` order; also count them."""
-
-    return _SANITIZED_INPUT_RE.subn(_canonical_input, sanitized)
+    sanitized, inputs = _SANITIZED_INPUT_RE.subn(canonical, sanitized)
+    return sanitized, inputs, boxes
 
 
 # Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
@@ -385,10 +411,12 @@ _INPUT_CONTEXTS = _DROPS_INPUTS | _MATHML_TEXT_ELEMENTS
 
 @dataclass(frozen=True)
 class _InputAudit:
-    """One `<input>` the audit saw: where, whether it survives, and how it changes."""
+    """One `<input>` the audit saw: where, whether it survives parsing and is a checkbox,
+    and how it changes when it is kept."""
 
     location: str
     survives: bool
+    box: bool
     diagnostics: list[Diagnostic]
 
 
@@ -488,10 +516,12 @@ class _SanitizerAudit(HTMLParser):
             self._entries.append(self._removed_tag(tag, location))
             return
         if tag == "input":
+            kind = next((value for name, value in attrs if name == "type"), None)
             self._entries.append(
                 _InputAudit(
                     location=location,
                     survives=self._input_survives(),
+                    box=_is_checkbox_type(kind),
                     diagnostics=_input_diagnostics(attrs, location),
                 )
             )
@@ -555,16 +585,20 @@ class _SanitizerAudit(HTMLParser):
     def inputs_seen(self) -> int:
         return sum(isinstance(entry, _InputAudit) for entry in self._entries)
 
-    def finish(self, survivors: int) -> tuple[list[Diagnostic], bool]:
-        """The diagnostics, given how many inputs survived, and whether any is an input's.
+    def finish(self, survivors: int, boxes: int) -> tuple[list[Diagnostic], bool]:
+        """The diagnostics, given how many inputs survived parsing and how many of them
+        were kept as checkboxes, and whether any diagnostic is an input's.
 
-        An input that did not survive is reported as removed, not edited. When the
-        survival model disagrees with the output's count, the inputs that went are
+        An input that did not survive, or is not a checkbox, is reported as removed, not
+        edited. When the model disagrees with either count, the inputs that went are
         unknown, so no input is reported and the caller's catch-all covers them.
         """
 
         inputs = [entry for entry in self._entries if isinstance(entry, _InputAudit)]
-        known = sum(entry.survives for entry in inputs) == survivors
+        known = (
+            sum(entry.survives for entry in inputs) == survivors
+            and sum(entry.survives and entry.box for entry in inputs) == boxes
+        )
         diagnostics: list[Diagnostic] = []
         reported_inputs = False
         for entry in self._entries:
@@ -572,7 +606,7 @@ class _SanitizerAudit(HTMLParser):
                 diagnostics.append(entry)
             elif not known:
                 continue
-            elif entry.survives:
+            elif entry.survives and entry.box:
                 diagnostics.extend(entry.diagnostics)
                 reported_inputs = reported_inputs or bool(entry.diagnostics)
             else:
@@ -666,8 +700,8 @@ def sanitize_raw_html(
     )
     if filter_errors:
         raise filter_errors[0]
-    sanitized, survivors = _canonical_inputs(sanitized)
-    diagnostics, reported_inputs = audit.finish(survivors)
+    sanitized, survivors, boxes = _canonical_inputs(sanitized)
+    diagnostics, reported_inputs = audit.finish(survivors, boxes)
     # Safety net for drift between the audit and the nh3 policy: report a change the
     # audit did not explain. Compare content, not strings, because nh3 also strips
     # comments and reserializes (a non-breaking space becomes `&nbsp;`), and neither
