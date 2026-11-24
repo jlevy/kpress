@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
@@ -18,7 +19,8 @@ from kpress.errors import KPressInvalidRequestError
 from kpress.format.model import Diagnostic, TrustMode
 
 # This nh3 policy and `_SanitizerAudit` describe the same decisions: update both
-# whenever tags, attributes, URL schemes, or pass-through restrictions change.
+# whenever tags, attributes, set values, URL schemes, or pass-through restrictions
+# change.
 _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
     "annotation",
     "button",
@@ -30,7 +32,6 @@ _ALLOWED_TAGS = nh3.ALLOWED_TAGS | {
     "section",
     "main",
     "input",
-    "link",
     "line",
     "linearGradient",
     "math",
@@ -89,7 +90,6 @@ _GLOBAL_ATTRIBUTES = {
     "display",
     "encoding",
     "fill",
-    "form",
     "height",
     "href",
     "id",
@@ -151,6 +151,151 @@ for _align_tag in ("div", "p", "h1", "h2", "h3", "h4", "h5", "h6"):
     )
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto", "tel"}
 _GENERIC_ATTRIBUTE_PREFIXES = {"data-"}
+# `<input>` is admitted only as the box of a task list item (`_TASK_CHECKBOX_TOKEN` in
+# markdown.py): a disabled checkbox, ticked or not. Any other input is a live form
+# control, such as a text or password field, a submit button that `form` can tie to a
+# form on the host page, or `type="image"` loading a remote image, so an input whose
+# `type` is not `checkbox` is removed (`_is_checkbox_type`), a missing `type` included,
+# since that is a text field. The sanitizer cannot tell KPress's box from a checkbox an
+# author typed, so every checkbox keeps only these attributes, each with this one value,
+# and is written with them in this order, which is the order of KPress's own box: a
+# sanitized input is byte for byte KPress's box. `class` survives only when it names the
+# box class, and then as that class alone, so a forged input cannot take another KPress
+# class.
+_TASK_CHECKBOX_CLASS = "task-list-item-checkbox"
+_INPUT_VALUES = {
+    "class": _TASK_CHECKBOX_CLASS,
+    "checked": "checked",
+    "disabled": "disabled",
+    "type": "checkbox",
+}
+_INPUT_ATTRIBUTES = frozenset(_INPUT_VALUES)
+# The attributes every input is given. nh3 runs `attribute_filter` after it sets these,
+# so each must also be in `_INPUT_ATTRIBUTES`, or the filter would remove it again.
+# `type` is not one: an input without it is a text field, which nh3 must leave without
+# `type` so that `_canonical_input` removes it.
+_INPUT_SET_VALUES = {name: _INPUT_VALUES[name] for name in ("disabled",)}
+# nh3 keeps an input's attributes in source order and adds the set values it finds
+# missing in hash order; `_canonical_inputs` writes every checkbox in `_INPUT_VALUES`
+# order and removes every other input. Inside nh3's output this pattern matches only a
+# real tag: text escapes `<`, and an attribute value escapes `"`, so a value holding
+# `<input>` cannot match, since every input nh3 keeps has a quoted `disabled`.
+_SANITIZED_INPUT_RE = re.compile(
+    "<input((?: (?:"
+    + "|".join(re.escape(f'{name}="{value}"') for name, value in _INPUT_VALUES.items())
+    + "))+)>"
+)
+# Where HTML may hold an `<input>` tag, which `_InputTags` then finds exactly.
+_INPUT_TAG_OPEN_RE = re.compile("<input", re.IGNORECASE)
+# A `<button>` is always `type="button"`: KPress's own buttons are, and any other type
+# submits or resets a form, which a bare button inside a host page's form reaches
+# without `form`. No sanitized element keeps `form`, which ties a control to a form
+# anywhere on the host page by its id.
+_BUTTON_SET_VALUES = {"type": "button"}
+# A `<button>` in nh3's output, which always has `type`. As for inputs, an attribute value
+# escapes `"`, so a value holding `<button ...>` cannot match.
+_SANITIZED_BUTTON_RE = re.compile(r'<button((?: [^\s"\'>/=]+="[^"]*")+)>')
+_ATTRIBUTE_NAME_RE = re.compile(r' ([^\s"\'>/=]+)="')
+_SET_TAG_ATTRIBUTE_VALUES = {"input": _INPUT_SET_VALUES, "button": _BUTTON_SET_VALUES}
+# Attributes whose presence is their meaning: `disabled=""` and `disabled="disabled"`
+# are the same, so setting one over the other changes nothing a reader receives.
+_BOOLEAN_ATTRIBUTES = frozenset({"checked", "disabled"})
+# The class names in an attribute value: HTML splits it on ASCII whitespace.
+_ASCII_WHITESPACE_RE = re.compile(r"[\t\n\f\r ]+")
+
+
+def _class_names(value: str) -> list[str]:
+    return [name for name in _ASCII_WHITESPACE_RE.split(value) if name]
+
+
+def _is_checkbox_type(value: str | None) -> bool:
+    """Whether an input's `type` value makes it a checkbox.
+
+    HTML matches `type` ASCII case-insensitively; surrounding ASCII whitespace is
+    trimmed too, which makes no input a checkbox that would be anything worse.
+    """
+
+    kind = (value or "").strip("\t\n\f\r ")
+    return kind.isascii() and kind.lower() == "checkbox"
+
+
+def _input_attribute(name: str, value: str) -> str | None:
+    """The value an input keeps for attribute *name*, or None when it loses it."""
+
+    if name == "class":
+        return _TASK_CHECKBOX_CLASS if _TASK_CHECKBOX_CLASS in _class_names(value) else None
+    if name == "type":
+        return _INPUT_VALUES["type"] if _is_checkbox_type(value) else None
+    return _INPUT_VALUES.get(name)
+
+
+def _input_form(kept: Iterable[str]) -> str:
+    """An input with the attributes named in *kept*, written in `_INPUT_VALUES` order."""
+
+    names = set(kept)
+    return (
+        "<input"
+        + "".join(f' {name}="{value}"' for name, value in _INPUT_VALUES.items() if name in names)
+        + ">"
+    )
+
+
+def _canonical_inputs(sanitized: str) -> tuple[str, list[str]]:
+    """Write each checkbox of nh3 output in `_INPUT_VALUES` order and remove any other input.
+
+    Also return, in document order, the form of each input nh3 kept, checkbox or not.
+    An input `_SANITIZED_INPUT_RE` does not match is removed too and not returned, so
+    the audit finds it missing and adds the catch-all.
+    """
+
+    forms: list[str] = []
+    boxes: set[str] = set()
+
+    def canonical(match: re.Match[str]) -> str:
+        present = set(match.group(1).split())
+        form = _input_form(
+            name for name, value in _INPUT_VALUES.items() if f'{name}="{value}"' in present
+        )
+        forms.append(form)
+        if f'type="{_INPUT_VALUES["type"]}"' not in present:
+            return ""
+        boxes.add(form)
+        return form
+
+    canonical_html = _SANITIZED_INPUT_RE.sub(canonical, sanitized)
+    return _without_other_inputs(canonical_html, boxes), forms
+
+
+def _without_other_inputs(html: str, boxes: set[str]) -> str:
+    """Remove from *html* each `<input>` tag that is not one of *boxes*.
+
+    The pattern that rewrites inputs assumes nh3's spelling of one. An input it missed,
+    say from a later nh3 that wrote `disabled` bare, would stay as nh3 wrote it, a text
+    field among them; this removes it, failing closed. It removes rather than raises,
+    as a filter error does: a filter error is a bug in KPress's own filter, while this
+    would be a spelling change in an nh3 that `pyproject.toml` admits, and raising
+    would fail every render holding an input on that version, where removing leaves
+    safe HTML with the catch-all warning. The tests that pin the box's HTML still fail
+    loudly on such a version.
+    """
+
+    if not _INPUT_TAG_OPEN_RE.search(html):
+        return html
+    tags = _InputTags(html)
+    tags.feed(html)
+    tags.close()
+    pieces: list[str] = []
+    position = 0
+    for start, end in tags.spans:
+        if html[start:end] in boxes:
+            continue
+        pieces.append(html[position:start])
+        position = end
+    if not pieces:
+        return html
+    pieces.append(html[position:])
+    return "".join(pieces)
+
 
 # Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
 # unions any host `extra_tags` on top of this default set. `class`/`data-*` survive on
@@ -221,6 +366,7 @@ FORBIDDEN_EXTRA_ATTRIBUTES = frozenset(
         "srcset",
         "srcdoc",
         "action",
+        "form",
         "formaction",
         "background",
         "ping",
@@ -295,11 +441,274 @@ def _pass_through_tags(extra_tags: Iterable[str] | None) -> set[str]:
     return tags
 
 
-class _SanitizerAudit(HTMLParser):
-    """Mirror the nh3 policy to diagnose each removed tag and attribute.
+# Elements whose content html5ever, which nh3 parses with, reads as text: the raw-text
+# elements of the HTML standard, `noscript` among them because html5ever parses with
+# scripting on. Python's HTMLParser reads only `script` and `style` this way before
+# 3.14, and `noscript` only when asked to, so both parsers below enter text mode for
+# this set themselves, also after `<noscript/>`, since HTML ignores the slash there, and
+# never in SVG or MathML, where each is an ordinary element.
+_RAW_TEXT_ELEMENTS = ("script", "style", "xmp", "iframe", "noembed", "noframes", "noscript")
+# The open elements that decide whether an input or a button survives
+# (`_control_survives`): either in SVG or MathML is a foreign element, unless a MathML
+# text element directly in MathML, where html5ever parses HTML again, encloses it, and
+# a `<template>`'s content is never output.
+_FOREIGN_ROOTS = frozenset({"math", "svg"})
+_DROPS_INPUTS = _FOREIGN_ROOTS | {"template"}
+_MATHML_TEXT_ELEMENTS = frozenset({"mi", "mn", "mo", "ms", "mtext"})
+# The start tags that end SVG or MathML content where they appear, by HTML's rules for
+# foreign content, which html5ever follows; `font` does only with one of the attributes
+# below, and the end tags `</br>` and `</p>` do as well.
+_BREAKS_OUT_OF_FOREIGN = frozenset(
+    {
+        "b",
+        "big",
+        "blockquote",
+        "body",
+        "br",
+        "center",
+        "code",
+        "dd",
+        "div",
+        "dl",
+        "dt",
+        "em",
+        "embed",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "head",
+        "hr",
+        "i",
+        "img",
+        "li",
+        "listing",
+        "menu",
+        "meta",
+        "nobr",
+        "ol",
+        "p",
+        "pre",
+        "ruby",
+        "s",
+        "small",
+        "span",
+        "strong",
+        "strike",
+        "sub",
+        "sup",
+        "table",
+        "tt",
+        "u",
+        "ul",
+        "var",
+    }
+)
+_FONT_BREAKS_OUT_WITH = frozenset({"color", "face", "size"})
+_END_TAGS_BREAKING_OUT = frozenset({"br", "p"})
+
+
+class _Html5everContexts(HTMLParser):
+    """Track the open elements that decide what html5ever makes of a tag.
+
+    Those are SVG and MathML roots, a MathML text element directly in MathML, and a
+    `<template>`, innermost last; every other element is left out, so an end tag costs
+    amortized constant time however the document nests. The model leaves out, among
+    other things, an HTML end tag that closes SVG open inside its element, so what it
+    predicts is checked against nh3's output.
+    """
+
+    def __init__(self, *, convert_charrefs: bool) -> None:
+        super().__init__(convert_charrefs=convert_charrefs)
+        self._contexts: list[str] = []
+        self._context_counts: dict[str, int] = {}
+
+    def _in_foreign_content(self) -> bool:
+        return bool(self._contexts) and self._contexts[-1] in _FOREIGN_ROOTS
+
+    def _pop_context(self) -> str:
+        closed = self._contexts.pop()
+        self._context_counts[closed] -= 1
+        return closed
+
+    def _leave_foreign_content(self) -> None:
+        while self._in_foreign_content():
+            self._pop_context()
+
+    def _start(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Before a start tag is handled, leave the foreign content it ends."""
+
+        if self._in_foreign_content() and (
+            tag in _BREAKS_OUT_OF_FOREIGN
+            or (tag == "font" and any(name in _FONT_BREAKS_OUT_WITH for name, _ in attrs))
+        ):
+            self._leave_foreign_content()
+
+    def _opened(self, tag: str, *, self_closing: bool) -> None:
+        """After a start tag is handled, enter what it opens."""
+
+        foreign = self._in_foreign_content()
+        if self_closing and (foreign or tag in _FOREIGN_ROOTS):
+            return  # html5ever closes a self-closing foreign element at once
+        if tag in _RAW_TEXT_ELEMENTS:
+            self.set_cdata_mode(tag)
+        if (
+            tag in _FOREIGN_ROOTS
+            or (tag == "template" and not foreign)
+            or (tag in _MATHML_TEXT_ELEMENTS and self._contexts and self._contexts[-1] == "math")
+        ):
+            self._contexts.append(tag)
+            self._context_counts[tag] = self._context_counts.get(tag, 0) + 1
+
+    def set_cdata_mode(self, elem: str, **kwargs: bool) -> None:
+        # In SVG or MathML html5ever reads no element's content as text, so neither the
+        # elements HTMLParser enters text mode for itself nor `_RAW_TEXT_ELEMENTS` do.
+        if not self._in_foreign_content():
+            super().set_cdata_mode(elem, **kwargs)
+
+    def parse_html_declaration(self, i: int) -> int:
+        """Read `<![` as html5ever does: a bogus comment, which the first `>` ends, except
+        a CDATA section in SVG or MathML, which is text up to `]]>`.
+
+        HTMLParser reads a CDATA or marked section on to `]]>` wherever it is, which hid
+        the tags after its first `>` from the audit though nh3 keeps them.
+        """
+
+        rawdata = self.rawdata
+        if not rawdata.startswith("<![", i):
+            return super().parse_html_declaration(i)
+        if self._in_foreign_content() and rawdata.startswith("<![CDATA[", i):
+            end = rawdata.find("]]>", i + 9)
+            if end < 0:
+                return -1
+            self.handle_data(rawdata[i + 9 : end])
+            return end + 3
+        return self.parse_bogus_comment(i)
+
+    def _end(self, tag: str) -> None:
+        """Close the innermost open context of this name and every context inside it."""
+
+        if self._in_foreign_content() and tag in _END_TAGS_BREAKING_OUT:
+            self._leave_foreign_content()
+            return
+        if not self._context_counts.get(tag):
+            return
+        while self._contexts and self._pop_context() != tag:
+            pass
+
+
+class _InputTags(_Html5everContexts):
+    """The span of each `<input>` start tag in HTML, as html5ever reads its tags.
+
+    A tag is found by parsing, not by pattern, so an `<input>` written inside an
+    attribute value, which nh3 0.3.5 leaves as it is, is not one.
+    """
+
+    def __init__(self, html: str) -> None:
+        super().__init__(convert_charrefs=False)
+        self.spans: list[tuple[int, int]] = []
+        self._line_starts = [0, *(match.end() for match in re.finditer("\n", html))]
+
+    def _record(self, tag: str) -> None:
+        if tag == "input":
+            line, offset = self.getpos()
+            start = self._line_starts[line - 1] + offset
+            self.spans.append((start, start + len(self.get_starttag_text() or "")))
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
+        self._record(tag)
+        self._opened(tag, self_closing=False)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
+        self._record(tag)
+        self._opened(tag, self_closing=True)
+
+    def handle_endtag(self, tag: str) -> None:
+        self._end(tag)
+
+
+@dataclass(frozen=True)
+class _InputAudit:
+    """One `<input>` the audit saw: where, whether it survives parsing, the form nh3 keeps
+    it in if it does, whether that is a checkbox, and how it changes when it is kept."""
+
+    location: str
+    survives: bool
+    form: str
+    diagnostics: list[Diagnostic]
+
+    @property
+    def box(self) -> bool:
+        return f' type="{_INPUT_VALUES["type"]}"' in self.form
+
+
+@dataclass(frozen=True)
+class _ButtonAudit:
+    """One `<button>` the audit saw: where, whether it survives parsing, the names of the
+    attributes nh3 keeps on it, sorted, and how it changes when it is kept."""
+
+    location: str
+    survives: bool
+    names: tuple[str, ...]
+    diagnostics: list[Diagnostic]
+
+
+def _expected_input_form(attrs: list[tuple[str, str | None]]) -> str:
+    """The form nh3 keeps an input with *attrs* in, before `_canonical_inputs` runs."""
+
+    values: dict[str, str | None] = {}
+    for name, value in attrs:
+        values.setdefault(name, value)  # the first of a repeated attribute wins
+    kept = {
+        name for name, value in values.items() if _input_attribute(name, value or "") is not None
+    }
+    return _input_form(kept | set(_INPUT_SET_VALUES))
+
+
+def _input_diagnostics(attrs: list[tuple[str, str | None]], location: str) -> list[Diagnostic]:
+    """What sanitizing removes from and sets on an input with *attrs*, as nh3 does it."""
+
+    def diagnostic(message: str) -> Diagnostic:
+        return Diagnostic(
+            type="html_sanitized_attribute",
+            message=message,
+            severity="warning",
+            location=location,
+        )
+
+    # The first of a repeated attribute is the one HTML keeps.
+    values: dict[str, str | None] = {}
+    for name, value in attrs:
+        values.setdefault(name, value)
+    diagnostics: list[Diagnostic] = []
+    for name, value in values.items():
+        if _input_attribute(name, value or "") is None:
+            diagnostics.append(diagnostic(f"Removed attribute {name!r} from <input>."))
+    for name, value in _INPUT_VALUES.items():
+        if name in _BOOLEAN_ATTRIBUTES:
+            # Presence is the meaning, so only adding a missing one changes anything.
+            changed = name in _INPUT_SET_VALUES and name not in values
+        elif name in values:
+            # A class without the box's name is reported as removed above.
+            kept = _input_attribute(name, values[name] or "")
+            changed = kept is not None and values[name] != value
+        else:
+            changed = name in _INPUT_SET_VALUES
+        if changed:
+            diagnostics.append(diagnostic(f"Set attribute {name!r} to {value!r} on <input>."))
+    return diagnostics
+
+
+class _SanitizerAudit(_Html5everContexts):
+    """Mirror the nh3 policy to diagnose each removed tag and attribute and each set value.
 
     Keep this audit in sync with the policy constants above and the
-    ``_restrict_pass_through`` filter in ``sanitize_raw_html``.
+    ``_restrict_pass_through`` filter and ``set_tag_attribute_values`` in
+    ``sanitize_raw_html``.
     """
 
     def __init__(
@@ -312,7 +721,7 @@ class _SanitizerAudit(HTMLParser):
         self.allowed_tags = _ALLOWED_TAGS | pass_through
         self.restricted_tags = pass_through - _ALLOWED_TAGS
         self.extra_attributes = extra_attributes
-        self.diagnostics: list[Diagnostic] = []
+        self._entries: list[Diagnostic | _InputAudit | _ButtonAudit] = []
 
     def _location(self) -> str:
         line, offset = self.getpos()
@@ -338,21 +747,33 @@ class _SanitizerAudit(HTMLParser):
                 return False
         return True
 
+    def _removed_tag(self, tag: str, location: str) -> Diagnostic:
+        return Diagnostic(
+            type="html_sanitized_tag",
+            message=f"Removed raw HTML tag <{tag}>.",
+            severity="warning",
+            location=location,
+        )
+
     def _audit_tag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         location = self._location()
         if tag not in self.allowed_tags:
-            self.diagnostics.append(
-                Diagnostic(
-                    type="html_sanitized_tag",
-                    message=f"Removed raw HTML tag <{tag}>.",
-                    severity="warning",
+            self._entries.append(self._removed_tag(tag, location))
+            return
+        if tag == "input":
+            self._entries.append(
+                _InputAudit(
                     location=location,
+                    survives=self._control_survives(),
+                    form=_expected_input_form(attrs),
+                    diagnostics=_input_diagnostics(attrs, location),
                 )
             )
             return
+        found: list[Diagnostic] = []
         for name, value in attrs:
             if not self._attribute_allowed(tag, name, value):
-                self.diagnostics.append(
+                found.append(
                     Diagnostic(
                         type="html_sanitized_attribute",
                         message=f"Removed attribute {name!r} from <{tag}>.",
@@ -360,12 +781,98 @@ class _SanitizerAudit(HTMLParser):
                         location=location,
                     )
                 )
+        values = dict(reversed(attrs))  # the first of a repeated attribute wins
+        set_values = _SET_TAG_ATTRIBUTE_VALUES.get(tag, {})
+        for name, value in set_values.items():
+            if values.get(name) != value:
+                found.append(
+                    Diagnostic(
+                        type="html_sanitized_attribute",
+                        message=f"Set attribute {name!r} to {value!r} on <{tag}>.",
+                        severity="warning",
+                        location=location,
+                    )
+                )
+        if tag != "button":
+            self._entries.extend(found)
+            return
+        kept = {name for name, value in values.items() if self._attribute_allowed(tag, name, value)}
+        self._entries.append(
+            _ButtonAudit(
+                location=location,
+                survives=self._control_survives(),
+                names=tuple(sorted(kept | set(set_values))),
+                diagnostics=found,
+            )
+        )
+
+    def _control_survives(self) -> bool:
+        """Whether an input or a button here survives, judged from the innermost open
+        context.
+
+        `sanitize_raw_html` trusts this only when the inputs and buttons it predicts kept
+        are those in nh3's output, in order (`finish`).
+        """
+
+        return not self._contexts or self._contexts[-1] not in _DROPS_INPUTS
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
         self._audit_tag(tag, attrs)
+        self._opened(tag, self_closing=False)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
         self._audit_tag(tag, attrs)
+        self._opened(tag, self_closing=True)
+
+    def handle_endtag(self, tag: str) -> None:
+        self._end(tag)
+
+    def finish(
+        self, input_forms: list[str], button_names: list[tuple[str, ...]]
+    ) -> tuple[list[Diagnostic], frozenset[str]]:
+        """The diagnostics, given the form of each input nh3 kept and the sorted attribute
+        names of each button it kept, in document order; and the tags, `input` or
+        `button`, whose changes no diagnostic explains, for the caller's catch-all.
+
+        An input or button that did not survive, or an input that is not a checkbox, is
+        reported as removed, not edited. When the inputs predicted kept are not those nh3
+        kept, in order and form, the inputs that went are unknown, so no input is
+        reported and the catch-all covers them; buttons likewise. Two mispredictions that
+        leave the same forms in the same order still pass, with each report at the
+        other's location.
+        """
+
+        inputs = [entry for entry in self._entries if isinstance(entry, _InputAudit)]
+        buttons = [entry for entry in self._entries if isinstance(entry, _ButtonAudit)]
+        known = {
+            "input": [entry.form for entry in inputs if entry.survives] == input_forms,
+            "button": [entry.names for entry in buttons if entry.survives] == button_names,
+        }
+        diagnostics: list[Diagnostic] = []
+        reported: set[str] = set()
+        for entry in self._entries:
+            if isinstance(entry, Diagnostic):
+                diagnostics.append(entry)
+                continue
+            tag = "input" if isinstance(entry, _InputAudit) else "button"
+            if not known[tag]:
+                continue
+            if entry.survives and (not isinstance(entry, _InputAudit) or entry.box):
+                diagnostics.extend(entry.diagnostics)
+                if entry.diagnostics:
+                    reported.add(tag)
+            else:
+                diagnostics.append(self._removed_tag(tag, entry.location))
+                reported.add(tag)
+        present = {
+            "input": bool(inputs or input_forms),
+            "button": bool(buttons or button_names),
+        }
+        return diagnostics, frozenset(
+            tag for tag, seen in present.items() if seen and tag not in reported
+        )
 
 
 def sanitize_raw_html(
@@ -383,7 +890,9 @@ def sanitize_raw_html(
     ``data-*``, and any host-declared ``extra_attributes`` (inert semantic names like
     ``kind`` or ``term``, validated against a forbidden set) — never
     ``style``/``on*``/unsafe URLs. Standard HTML tags keep their fixed policy;
-    ``extra_attributes`` widens only the whitelist-only (custom-element) tags.
+    ``extra_attributes`` widens only the whitelist-only (custom-element) tags. An
+    ``<input>`` survives only as the disabled checkbox of a task list item, a
+    ``<button>`` only as ``type="button"``, and no element keeps ``form``.
     """
 
     if trust_mode == "trusted":
@@ -400,6 +909,8 @@ def sanitize_raw_html(
     prefix_tuple = tuple(_PASS_THROUGH_ATTRIBUTE_PREFIXES)
 
     def _restrict_pass_through(element: str, attribute: str, value: str) -> str | None:
+        if element == "input":
+            return _input_attribute(attribute, value)
         if element not in restricted:
             # Standard tags keep their fixed policy: a host-declared extra attribute
             # rides only on whitelist-only tags, never widens standard HTML (unless
@@ -414,6 +925,17 @@ def sanitize_raw_html(
         if attribute.startswith(prefix_tuple):
             return value
         return None
+
+    filter_errors: list[Exception] = []
+
+    def _attribute_filter(element: str, attribute: str, value: str) -> str | None:
+        # nh3 keeps the attribute when its filter raises, so an error never reaches
+        # nh3: the attribute goes, and the error is raised once nh3 returns.
+        try:
+            return _restrict_pass_through(element, attribute, value)
+        except Exception as error:
+            filter_errors.append(error)
+            return None
 
     attributes = _ALLOWED_ATTRIBUTES
     if extra_attrs:
@@ -430,21 +952,34 @@ def sanitize_raw_html(
         html,
         tags=_ALLOWED_TAGS | pass_through,
         attributes=attributes,
-        attribute_filter=_restrict_pass_through,
+        attribute_filter=_attribute_filter,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
+        set_tag_attribute_values=_SET_TAG_ATTRIBUTE_VALUES,
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
     )
-    diagnostics = audit.diagnostics
+    if filter_errors:
+        raise filter_errors[0]
+    button_names = [
+        tuple(sorted(_ATTRIBUTE_NAME_RE.findall(match.group(1))))
+        for match in _SANITIZED_BUTTON_RE.finditer(sanitized)
+    ]
+    sanitized, input_forms = _canonical_inputs(sanitized)
+    diagnostics, unexplained_tags = audit.finish(input_forms, button_names)
     # Safety net for drift between the audit and the nh3 policy: report a change the
     # audit did not explain. Compare content, not strings, because nh3 also strips
     # comments and reserializes (a non-breaking space becomes `&nbsp;`), and neither
-    # removes anything a reader would see.
-    if (
-        sanitized != html
-        and not diagnostics
-        and _content_events(sanitized) != _content_events(html)
-    ):
+    # removes anything a reader would see. An input or button that changed is reported
+    # even beside other diagnostics, since none of those explains it.
+    if sanitized != html and (not diagnostics or unexplained_tags):
+        before, after = _content_events(html), _content_events(sanitized)
+        if diagnostics:
+            before = _tag_events(before, unexplained_tags)
+            after = _tag_events(after, unexplained_tags)
+        unexplained = before != after
+    else:
+        unexplained = False
+    if unexplained:
         diagnostics.append(
             Diagnostic(
                 type="html_sanitized",
@@ -458,13 +993,14 @@ def sanitize_raw_html(
 _ContentEvent = tuple[str, str, tuple[tuple[str, str], ...]]
 
 
-class _ContentEvents(HTMLParser):
+class _ContentEvents(_Html5everContexts):
     """Reduce HTML to what a reader receives: start tags, their attributes, and text.
 
-    Comments, declarations, end tags, attribute order and quoting, entity spelling, and
-    whitespace runs carry no content, so HTML that differs only there reduces to the
-    same events. Removing an element always removes its start tag, so dropping end
-    tags cannot hide a removal.
+    Comments, declarations, end tags, attribute order and quoting, a boolean attribute's
+    value, a repeated attribute after its first (HTML parsing drops it), entity spelling,
+    and whitespace runs carry no content, so HTML that differs only there reduces to the
+    same events. Removing an element always removes its start tag, so dropping end tags
+    cannot hide a removal.
     """
 
     def __init__(self) -> None:
@@ -478,12 +1014,25 @@ class _ContentEvents(HTMLParser):
             self.events.append(("text", text, ()))
         self._text.clear()
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def _tag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._flush_text()
-        self.events.append(("tag", tag, tuple(sorted((n, v or "") for n, v in attrs))))
+        values: dict[str, str] = {}
+        for name, value in attrs:
+            values.setdefault(name, "" if name in _BOOLEAN_ATTRIBUTES else value or "")
+        self.events.append(("tag", tag, tuple(sorted(values.items()))))
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
+        self._tag(tag, attrs)
+        self._opened(tag, self_closing=False)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self.handle_starttag(tag, attrs)
+        self._start(tag, attrs)
+        self._tag(tag, attrs)
+        self._opened(tag, self_closing=True)
+
+    def handle_endtag(self, tag: str) -> None:
+        self._end(tag)
 
     def handle_data(self, data: str) -> None:
         self._text.append(data)
@@ -498,6 +1047,10 @@ def _content_events(html: str) -> list[_ContentEvent]:
     parser.feed(html)
     parser.close()
     return parser.events
+
+
+def _tag_events(events: list[_ContentEvent], tags: frozenset[str]) -> list[_ContentEvent]:
+    return [event for event in events if event[0] == "tag" and event[1] in tags]
 
 
 _SVG_CAMELCASE = {
@@ -553,13 +1106,18 @@ def _restore_camelcase_at_attributes(svg: str) -> str:
 
 
 def sanitize_generated_svg(svg: str) -> str:
-    """Return KPress-generated inline SVG using the sanitized-mode nh3 profile."""
+    """Return KPress-generated inline SVG using the sanitized-mode nh3 profile.
+
+    An SVG diagram has no task-list box, so `<input>` is dropped here outright rather
+    than rewritten, and a `<button>` is `type="button"` as everywhere sanitized.
+    """
 
     sanitized = nh3.clean(
         svg,
-        tags=_ALLOWED_TAGS,
+        tags=_ALLOWED_TAGS - {"input"},
         attributes=_ALLOWED_ATTRIBUTES,
         generic_attribute_prefixes=_GENERIC_ATTRIBUTE_PREFIXES,
+        set_tag_attribute_values={"button": _BUTTON_SET_VALUES},
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel=None,
     ).strip()

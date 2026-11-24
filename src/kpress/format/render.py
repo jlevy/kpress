@@ -30,6 +30,7 @@ from kpress.format.model import (
     TocEntry,
     resolve_widgets,
 )
+from kpress.format.sanitize import sanitize_raw_html
 from kpress.format.templating import render_template
 from kpress.models import PrintProfile
 
@@ -243,7 +244,16 @@ def _render_document(document: DocumentInput, options: RenderOptions) -> tuple[s
     title = document.frontmatter.get("title") or document.title
     header_id = f"kpress-title-{_slug_class(str(title))}"
     if document.body_html is not None:
-        tree = DocumentTree(title=str(title), html=document.body_html, profile="document")
+        # The trust mode governs HTML a host supplies as it governs rendered Markdown.
+        body_html, body_diagnostics = sanitize_raw_html(
+            document.body_html,
+            document.trust_mode,
+            extra_tags=options.extra_tags,
+            extra_attributes=options.extra_attributes,
+        )
+        tree = DocumentTree(
+            title=str(title), html=body_html, profile="document", diagnostics=body_diagnostics
+        )
     else:
         tree = parse_markdown(
             document.body_markdown or document.source_text,

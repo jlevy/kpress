@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
+from dataclasses import replace
 from html import escape, unescape
 from html.parser import HTMLParser
 from typing import Any, Literal, cast
@@ -11,12 +12,12 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from latex2mathml.converter import convert as convert_latex_math
 from markdown_it import MarkdownIt
+from markdown_it.rules_core import StateCore
 from markdown_it.token import Token
 from mdit_py_plugins.attrs import attrs_block_plugin, attrs_plugin
 from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.footnote import footnote_plugin
-from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name  # pyright: ignore[reportUnknownVariableType]
@@ -89,6 +90,26 @@ _SEMANTIC_CONTAINER_CLASSES = (
     "video-item",
 )
 _QUOTED_TAB_LABEL_RE = re.compile(r"""^(['"])(.*)\1$""")
+# A GitHub task list item opens its first paragraph with a marker, `[`, a whitespace
+# character or `x` or `X`, then `]`, and a whitespace character after it
+# (https://github.github.com/gfm/#task-list-items-extension-). GFM's whitespace
+# characters are space, tab, line feed, line tabulation, form feed, and carriage return,
+# but github.com draws no box for a marker that holds a line ending, or that only
+# spaces, tabs and a line ending follow (`- [ ]` then a new line), so neither is one
+# here: after the `]` the line goes on. Markdown-it has already made every line ending
+# a line feed.
+_TASK_MARKER_RE = re.compile(r"\[([ \t\v\fxX])\](?=[ \t]*[^ \t\n])[ \t\v\f]")
+# The box of a task list item is a KPress token, not raw HTML, so a consumer of the
+# token stream reads the box and its state without matching markup: its type is this,
+# its tag `input`, its markup the source marker, and `meta["checked"]` is True when
+# ticked. Its attrs are those of a disabled checkbox, in the order `class`, `checked`
+# (only when ticked), `disabled`, `type`, so markdown-it's own `renderToken` draws it,
+# in KPress's renderer or any other.
+_TASK_CHECKBOX_TOKEN = "kpress_task_checkbox"
+# A task item's `list_item_open` token and its list's open token carry KPress's classes
+# in `class`, beside any the author gave by attribute syntax, so this meta key lists the
+# ones KPress appended (`_add_kpress_classes`).
+_KPRESS_CLASSES_META = "kpress_classes"
 _YOUTUBE_HOSTS = {
     "m.youtube.com",
     "www.youtube.com",
@@ -378,12 +399,96 @@ def _mark_standalone_image_figures(tokens: list[Token]) -> None:
             close.meta["kpress_figure_caption"] = caption
 
 
+def _task_checkbox(marker: str) -> Token:
+    """The box token for a task *marker*, such as `[ ]` or `[x]`."""
+
+    checked = marker[1] in "xX"
+    box = Token(_TASK_CHECKBOX_TOKEN, "input", 0, markup=marker)
+    # Disabled in every trust mode: the box shows what the source records, and a
+    # disabled checkbox is the one `<input>` the sanitized profile admits.
+    box.attrSet("class", "task-list-item-checkbox")
+    if checked:
+        box.attrSet("checked", "checked")
+    box.attrSet("disabled", "disabled")
+    box.attrSet("type", "checkbox")
+    box.meta["checked"] = checked
+    return box
+
+
+def _take_task_marker(inline: Token) -> str | None:
+    """Remove the task marker that opens *inline* and return it, or return None."""
+
+    match = _TASK_MARKER_RE.match(inline.content)
+    children = inline.children
+    if match is None or not children:
+        return None
+    marker = match.group(0)[:3]
+    first = children[0]
+    # A marker that is not plain text, such as `[x]` that the document defines as a
+    # link, is not a marker: GitHub shows the link and no box.
+    if first.type != "text" or not first.content.startswith(marker):
+        return None
+    first.content = first.content[len(marker) :]
+    if not first.content:
+        del children[0]
+    inline.content = inline.content[len(marker) :]
+    return marker
+
+
+def _add_kpress_classes(token: Token, *class_names: str) -> None:
+    """Append each of *class_names* that *token*'s class lacks, and record it as KPress's.
+
+    `meta["kpress_classes"]` lists, in order, the classes KPress appended, so a consumer
+    of the token stream can tell them from the author's, given by attribute syntax.
+    """
+
+    classes = str(token.attrGet("class") or "").split()
+    added = [str(name) for name in token.meta.get(_KPRESS_CLASSES_META, ())]
+    for class_name in class_names:
+        if class_name not in classes:
+            classes.append(class_name)
+            added.append(class_name)
+    token.attrSet("class", " ".join(classes))
+    token.meta[_KPRESS_CLASSES_META] = added
+
+
+def _task_lists(state: StateCore) -> None:
+    """Give each GitHub task list item a box token, and the item and its list classes.
+
+    The item is a list item whose first paragraph opens with a task marker. Its box is a
+    `_TASK_CHECKBOX_TOKEN` in place of the marker; classes already on the item or the list
+    (from attribute syntax) are kept.
+    """
+
+    tokens = state.tokens
+    open_lists: list[Token] = []
+    for idx, token in enumerate(tokens):
+        if token.type in {"bullet_list_open", "ordered_list_open"}:
+            open_lists.append(token)
+        elif token.type in {"bullet_list_close", "ordered_list_close"}:
+            if open_lists:
+                open_lists.pop()
+        elif (
+            token.type == "inline"
+            and idx >= 2
+            and tokens[idx - 1].type == "paragraph_open"
+            and tokens[idx - 2].type == "list_item_open"
+            and open_lists
+        ):
+            marker = _take_task_marker(token)
+            if marker is None:
+                continue
+            token.children = [_task_checkbox(marker), *(token.children or ())]
+            _add_kpress_classes(tokens[idx - 2], "kpress-task", "task-list-item")
+            _add_kpress_classes(open_lists[-1], "contains-task-list")
+
+
 def _markdown_it(*, trust_mode: TrustMode, diagrams: DiagramMode, math: MathMode) -> MarkdownIt:
     # Raw HTML always reaches the renderer; the sanitized mode then runs nh3 over the
     # output as the single authority on what survives
     # (kpress.format.sanitize.sanitize_raw_html).
     md = MarkdownIt("js-default", {"html": True})
-    md.use(tasklists_plugin, enabled=False)
+    md.core.ruler.after("inline", "kpress_task_lists", _task_lists)
     md.use(footnote_plugin)
     if math != "off":
         md.use(dollarmath_plugin, allow_space=False, allow_digits=False)
@@ -444,10 +549,6 @@ def _add_heading_ids(tokens: list[Token]) -> list[Heading]:
         token.attrSet("id", heading_id)
         headings.append(Heading(level=level, title=title, id=heading_id))
     return headings
-
-
-def _postprocess_tasks(html: str) -> str:
-    return html.replace('class="task-list-item"', 'class="kpress-task task-list-item"')
 
 
 def _is_external_http_url(value: str | None) -> bool:
@@ -1124,7 +1225,6 @@ def parse_markdown(
     headings = _add_heading_ids(tokens)
     footnotes = _collect_footnotes(md, tokens, env)
     html = md.renderer.render(tokens, md.options, env)
-    html = _postprocess_tasks(html)
     html = _postprocess_html(
         html,
         table_wide_min_columns=table_wide_min_columns,
@@ -1141,6 +1241,20 @@ def parse_markdown(
             html, trust_mode, extra_tags=extra_tags, extra_attributes=extra_attributes
         )
         diagnostics.extend(html_diagnostics)
+        # Each note is rendered again apart from the body, so it is sanitized the same
+        # way. The body holds the same notes, so its diagnostics already name what went.
+        footnotes = [
+            replace(
+                note,
+                html=sanitize_raw_html(
+                    note.html,
+                    trust_mode,
+                    extra_tags=extra_tags,
+                    extra_attributes=extra_attributes,
+                )[0],
+            )
+            for note in footnotes
+        ]
     diagnostics.extend(_broken_anchor_diagnostics(html))
 
     toc = _toc_entries(headings)

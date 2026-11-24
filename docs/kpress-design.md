@@ -158,6 +158,28 @@ feature guarantees); the sections named in the table carry the architecture deta
 
 - **GFM block and inline parsing.** Headings, paragraphs, nested lists, blockquotes,
   links and autolinks, strikethrough, task lists, hard/soft breaks, and code fences.
+- **Task lists.** A list item whose first paragraph opens with a marker (`[`, a
+  whitespace character other than a line ending or `x` or `X`, then `]`) and whitespace,
+  with more of the line after it, starts with a disabled checkbox, ticked by `x` or `X`,
+  as on github.com. A marker that only spaces, tabs and a line ending follow is text
+  there and here. github.com shows a vertical tab as U+FFFD, so a vertical tab in or
+  after a marker makes it text there, where KPress follows GFM and draws the box.
+  A marker the document defines as a link stays the link, with no box, as on GitHub.
+  KPress draws the box from its own token, `kpress_task_checkbox` in
+  `format/markdown.py`, whose `meta["checked"]` holds the state, so a consumer of the
+  token stream never has to match the box’s HTML. The token carries the box’s
+  attributes, so any markdown-it renderer writes the same disabled checkbox.
+  The item’s open token gets the classes `kpress-task task-list-item` and its list’s
+  `contains-task-list`, after any the author gave by attribute syntax, and each lists
+  the ones KPress appended in `meta["kpress_classes"]`, so a consumer can tell KPress’s
+  classes from the author’s. The box is the one `<input>` the `sanitized` mode keeps as
+  it is. Its styles key on its place, the first element of its item or of the item’s
+  first paragraph, and on its being disabled, as well as on those classes, so a host
+  that strips every class and keeps only `<input type="checkbox" disabled>` still draws
+  KPress’s box with no bullet, and a checkbox a reader can tick in a `trusted` document
+  keeps the browser’s look.
+  Only a `ul` item drops its marker for a box found by place; an ordered item, a
+  footnote among them, keeps its number.
 - **GitHub-compatible heading anchors and TOC metadata.** Heading ids are generated from
   visible plain inline text by a dependency-free implementation pinned to
   `github-slugger` 2.0.0 at commit `3461c4350868329c8530904d170358bca1d31448` and its
@@ -499,13 +521,24 @@ question: **do we trust the person who wrote this Markdown?**
   the pass-through whitelist.
   Everything else is stripped — the tag is removed, its text content is kept — and an
   `html_sanitized_tag` or `html_sanitized_attribute` diagnostic names what went.
+  An `<input>` is kept only as the disabled checkbox of a task list, since any other
+  input is a live form control: one whose `type` is not `checkbox` is removed, a missing
+  `type` included, since that is a text field.
+  A checkbox keeps only `checked` and the box’s class (`task-list-item-checkbox`,
+  alone), and becomes a disabled checkbox written byte for byte as KPress writes its
+  box; an input in an nh3 spelling the rewrite does not recognize is removed, not kept
+  as nh3 wrote it. A diagnostic names each attribute removed or set and each input
+  removed, one that does not survive parsing, such as one inside SVG, included.
+  A `<button>` is always `type="button"`, as KPress’s own buttons are, and no element
+  keeps `form`, so a document cannot submit or reset a form on the host page.
   Comments are stripped silently, since they carry no content, and so is nh3’s
   reserialization (entity spelling, quoting); a change the audit cannot explain gets the
   catch-all `html_sanitized`. This is what the dynamic render API
   (`kpress.runtime.render_view`, the entry point hosts call to render a document
   fragment into their own page at request time), static site builds (`build_site`, the
   `kpress.yml`-driven publisher), and single-document exports (`export_document`) all
-  use.
+  use. Each note in `DocumentTree.footnotes`, which is rendered again apart from the
+  body, and HTML a host passes as `DocumentInput.body_html` are sanitized the same way.
 
 **Why sanitization works on the whole document.** Rendering is a two-stage pipe:
 markdown-it renders the Markdown source into one HTML string, then nh3 sanitizes that
