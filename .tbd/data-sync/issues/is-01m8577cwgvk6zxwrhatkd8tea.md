@@ -5,7 +5,7 @@ title: "Review PR #82 (native task-list tokens, sanitized input) and address its
 kind: task
 status: open
 priority: 2
-version: 19
+version: 24
 spec_path: TODO.md
 labels: []
 dependencies: []
@@ -29,6 +29,11 @@ child_order_hints:
   - is-01m85drgg6nk2cb8e99bnm4rzh
   - is-01m85drk3jbbmgmq60c7hw7872
   - is-01m85drnambpz5nkd80a7rbj2g
+  - is-01m85g3hgpdp4z934wkdezherj
+  - is-01m85g3k3nh1fq5h2r5rk1pewn
+  - is-01m85g3nz60jj7gc4gw8e4n83v
+  - is-01m85g3sdpr5jdc4q35ec0cets
+  - is-01m85g3whxgnjnze3dzz2ez4gq
 created_at: 2026-11-23T22:08:04.493Z
-updated_at: 2026-11-24T00:02:21.649Z
+updated_at: 2026-11-24T00:43:26.642Z
 ---
