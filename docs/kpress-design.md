@@ -526,8 +526,9 @@ question: **do we trust the person who wrote this Markdown?**
   `type` included, since that is a text field.
   A checkbox keeps only `checked` and the box’s class (`task-list-item-checkbox`,
   alone), and becomes a disabled checkbox written byte for byte as KPress writes its
-  box. A diagnostic names each attribute removed or set and each input removed, one that
-  does not survive parsing, such as one inside SVG, included.
+  box; an input in an nh3 spelling the rewrite does not recognize is removed, not kept
+  as nh3 wrote it. A diagnostic names each attribute removed or set and each input
+  removed, one that does not survive parsing, such as one inside SVG, included.
   A `<button>` is always `type="button"`, as KPress’s own buttons are, and no element
   keeps `form`, so a document cannot submit or reset a form on the host page.
   Comments are stripped silently, since they carry no content, and so is nh3’s

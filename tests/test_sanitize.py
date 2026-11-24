@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+from typing import Any
 
 import nh3
 import pytest
@@ -938,6 +939,37 @@ def test_a_button_the_audit_mispredicts_gets_the_catch_all(
     )
 
     assert sanitized == '<button type="button">b</button><b>y</b>'
+    assert [item.type for item in diagnostics] == ["html_sanitized"]
+
+
+@pytest.mark.parametrize(
+    ("html", "expected"),
+    [
+        # Without the fail-closed pass this stayed as `<input disabled>`, a text field.
+        ('<input type="text" form="f">', ""),
+        ('<input type="checkbox">', ""),
+        # An `<input>` in an attribute value is text, which the pass leaves alone.
+        (
+            '<a title="<input>">a</a><input type="checkbox" checked>',
+            f'<a title="{_title("<input>")}">a</a>',
+        ),
+        ('<p>x</p>\n<p><input type="checkbox"></p>', "<p>x</p>\n<p></p>"),
+    ],
+)
+def test_an_input_nh3_spells_otherwise_is_removed(
+    monkeypatch: pytest.MonkeyPatch, html: str, expected: str
+) -> None:
+    # Simulate an nh3 that writes a boolean attribute bare, which the pattern that
+    # rewrites inputs does not match.
+    clean = nh3.clean
+
+    def bare_booleans(*args: Any, **kwargs: Any) -> str:
+        return clean(*args, **kwargs).replace(' disabled="disabled"', " disabled")
+
+    monkeypatch.setattr(sanitize.nh3, "clean", bare_booleans)
+    sanitized, diagnostics = sanitize_raw_html(html, "sanitized")
+
+    assert sanitized == expected
     assert [item.type for item in diagnostics] == ["html_sanitized"]
 
 

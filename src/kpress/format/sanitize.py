@@ -185,6 +185,8 @@ _SANITIZED_INPUT_RE = re.compile(
     + "|".join(re.escape(f'{name}="{value}"') for name, value in _INPUT_VALUES.items())
     + "))+)>"
 )
+# Where HTML may hold an `<input>` tag, which `_InputTags` then finds exactly.
+_INPUT_TAG_OPEN_RE = re.compile("<input", re.IGNORECASE)
 # A `<button>` is always `type="button"`: KPress's own buttons are, and any other type
 # submits or resets a form, which a bare button inside a host page's form reaches
 # without `form`. No sanitized element keeps `form`, which ties a control to a form
@@ -242,9 +244,12 @@ def _canonical_inputs(sanitized: str) -> tuple[str, list[str]]:
     """Write each checkbox of nh3 output in `_INPUT_VALUES` order and remove any other input.
 
     Also return, in document order, the form of each input nh3 kept, checkbox or not.
+    An input `_SANITIZED_INPUT_RE` does not match is removed too and not returned, so
+    the audit finds it missing and adds the catch-all.
     """
 
     forms: list[str] = []
+    boxes: set[str] = set()
 
     def canonical(match: re.Match[str]) -> str:
         present = set(match.group(1).split())
@@ -252,9 +257,44 @@ def _canonical_inputs(sanitized: str) -> tuple[str, list[str]]:
             name for name, value in _INPUT_VALUES.items() if f'{name}="{value}"' in present
         )
         forms.append(form)
-        return form if f'type="{_INPUT_VALUES["type"]}"' in present else ""
+        if f'type="{_INPUT_VALUES["type"]}"' not in present:
+            return ""
+        boxes.add(form)
+        return form
 
-    return _SANITIZED_INPUT_RE.sub(canonical, sanitized), forms
+    canonical_html = _SANITIZED_INPUT_RE.sub(canonical, sanitized)
+    return _without_other_inputs(canonical_html, boxes), forms
+
+
+def _without_other_inputs(html: str, boxes: set[str]) -> str:
+    """Remove from *html* each `<input>` tag that is not one of *boxes*.
+
+    The pattern that rewrites inputs assumes nh3's spelling of one. An input it missed,
+    say from a later nh3 that wrote `disabled` bare, would stay as nh3 wrote it, a text
+    field among them; this removes it, failing closed. It removes rather than raises,
+    as a filter error does: a filter error is a bug in KPress's own filter, while this
+    would be a spelling change in an nh3 that `pyproject.toml` admits, and raising
+    would fail every render holding an input on that version, where removing leaves
+    safe HTML with the catch-all warning. The tests that pin the box's HTML still fail
+    loudly on such a version.
+    """
+
+    if not _INPUT_TAG_OPEN_RE.search(html):
+        return html
+    tags = _InputTags(html)
+    tags.feed(html)
+    tags.close()
+    pieces: list[str] = []
+    position = 0
+    for start, end in tags.spans:
+        if html[start:end] in boxes:
+            continue
+        pieces.append(html[position:start])
+        position = end
+    if not pieces:
+        return html
+    pieces.append(html[position:])
+    return "".join(pieces)
 
 
 # Whitelisted pass-through tags always admitted (pinned in kpress.contract). A render
@@ -557,6 +597,38 @@ class _Html5everContexts(HTMLParser):
             return
         while self._contexts and self._pop_context() != tag:
             pass
+
+
+class _InputTags(_Html5everContexts):
+    """The span of each `<input>` start tag in HTML, as html5ever reads its tags.
+
+    A tag is found by parsing, not by pattern, so an `<input>` written inside an
+    attribute value, which nh3 0.3.5 leaves as it is, is not one.
+    """
+
+    def __init__(self, html: str) -> None:
+        super().__init__(convert_charrefs=False)
+        self.spans: list[tuple[int, int]] = []
+        self._line_starts = [0, *(match.end() for match in re.finditer("\n", html))]
+
+    def _record(self, tag: str) -> None:
+        if tag == "input":
+            line, offset = self.getpos()
+            start = self._line_starts[line - 1] + offset
+            self.spans.append((start, start + len(self.get_starttag_text() or "")))
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
+        self._record(tag)
+        self._opened(tag, self_closing=False)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._start(tag, attrs)
+        self._record(tag)
+        self._opened(tag, self_closing=True)
+
+    def handle_endtag(self, tag: str) -> None:
+        self._end(tag)
 
 
 @dataclass(frozen=True)
