@@ -233,3 +233,5 @@ norecursedirs = []
 filterwarnings = []
 timeout = 60
 timeout_method = "thread"
+# Delete passing tests' temp files when they finish; keep failing tests' for debugging.
+tmp_path_retention_policy = "failed"
