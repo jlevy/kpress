@@ -881,6 +881,7 @@ def sanitize_raw_html(
     *,
     extra_tags: Iterable[str] | None = None,
     extra_attributes: Iterable[str] | None = None,
+    diagnose: bool = True,
 ) -> tuple[str, list[Diagnostic]]:
     """Return raw HTML according to the configured trust mode.
 
@@ -893,6 +894,11 @@ def sanitize_raw_html(
     ``extra_attributes`` widens only the whitelist-only (custom-element) tags. An
     ``<input>`` survives only as the disabled checkbox of a task list item, a
     ``<button>`` only as ``type="button"``, and no element keeps ``form``.
+
+    ``diagnose=False`` returns the same HTML with no diagnostics, skipping the audit and
+    the content comparison that write them. Neither feeds the output, and together they
+    cost most of the call: three HTML parses beside nh3's own. A host that renders only to
+    compare or measure the result, and never shows what was removed, passes it.
     """
 
     if trust_mode == "trusted":
@@ -944,9 +950,11 @@ def sanitize_raw_html(
         attributes = dict(_ALLOWED_ATTRIBUTES)
         attributes["*"] = _GLOBAL_ATTRIBUTES | extra_attrs
 
-    audit = _SanitizerAudit(pass_through=pass_through, extra_attributes=extra_attrs)
-    audit.feed(html)
-    audit.close()
+    audit = None
+    if diagnose:
+        audit = _SanitizerAudit(pass_through=pass_through, extra_attributes=extra_attrs)
+        audit.feed(html)
+        audit.close()
 
     sanitized = nh3.clean(
         html,
@@ -960,6 +968,8 @@ def sanitize_raw_html(
     )
     if filter_errors:
         raise filter_errors[0]
+    if audit is None:
+        return _canonical_inputs(sanitized)[0], []
     button_names = [
         tuple(sorted(_ATTRIBUTE_NAME_RE.findall(match.group(1))))
         for match in _SANITIZED_BUTTON_RE.finditer(sanitized)
