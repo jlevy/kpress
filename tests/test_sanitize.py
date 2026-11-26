@@ -20,7 +20,34 @@ from kpress.format import (
     render_fragment,
     sanitize,
 )
+from kpress.format import markdown as markdown_module
+from kpress.format import render as render_module
 from kpress.format.sanitize import sanitize_generated_svg, sanitize_raw_html
+
+
+@pytest.fixture(autouse=True)
+def undiagnosed_html_is_the_same(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every sanitizer call in this module, directly or through a render, is made again
+    with ``diagnose=False``, which must return the same HTML and no diagnostics, or raise
+    the same error: the diagnostics never shape the output."""
+
+    def both(*args: Any, **kwargs: Any) -> tuple[str, list[Diagnostic]]:
+        try:
+            fast: tuple[str, list[Diagnostic]] | Exception = sanitize.sanitize_raw_html(
+                *args, **kwargs, diagnose=False
+            )
+        except Exception as error:
+            fast = error
+        try:
+            full = sanitize.sanitize_raw_html(*args, **kwargs)
+        except Exception as error:
+            assert type(fast) is type(error)
+            raise
+        assert fast == (full[0], [])
+        return full
+
+    for module in (sys.modules[__name__], markdown_module, render_module):
+        monkeypatch.setattr(module, "sanitize_raw_html", both)
 
 
 def test_svg_camelcase_restored_at_attribute_position() -> None:
